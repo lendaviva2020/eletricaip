@@ -1,0 +1,56 @@
+import { Search, Bell, Play, Square, Save, Share2, GitBranch } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export function Topbar() {
+  return (
+    <header className="h-14 shrink-0 flex items-center gap-3 px-4 border-b border-border glass-strong">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <GitBranch className="h-3.5 w-3.5" />
+        <span className="font-mono">main</span>
+        <span className="text-border">/</span>
+        <span className="text-foreground font-medium">Planta — Linha 03</span>
+      </div>
+
+      <div className="flex-1 flex justify-center">
+        <div className="relative w-full max-w-md">
+          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            placeholder="Buscar tags, equipamentos, lógica, normas…"
+            className="w-full h-9 pl-9 pr-3 rounded-md bg-input/60 border border-border text-sm
+                       outline-none focus:ring-2 focus:ring-ring focus:bg-input
+                       placeholder:text-muted-foreground/70"
+          />
+          <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+            ⌘K
+          </kbd>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <Button size="sm" variant="ghost" className="h-8 px-2 gap-1.5 text-xs">
+          <Save className="h-3.5 w-3.5" /> Salvar
+        </Button>
+        <Button size="sm" variant="ghost" className="h-8 px-2 gap-1.5 text-xs">
+          <Share2 className="h-3.5 w-3.5" /> Compartilhar
+        </Button>
+        <div className="h-5 w-px bg-border mx-1" />
+        <Button size="sm" variant="ghost" className="h-8 px-2 gap-1.5 text-xs text-destructive">
+          <Square className="h-3.5 w-3.5 fill-current" /> Stop
+        </Button>
+        <Button
+          size="sm"
+          className="h-8 px-3 gap-1.5 text-xs font-semibold text-primary-foreground glow-primary"
+          style={{ background: "var(--gradient-primary)" }}
+        >
+          <Play className="h-3.5 w-3.5 fill-current" /> Run
+        </Button>
+        <div className="h-5 w-px bg-border mx-1" />
+        <Button size="icon" variant="ghost" className="h-8 w-8 relative">
+          <Bell className="h-4 w-4" />
+          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-warning energized" />
+        </Button>
+        <div className="h-7 w-7 rounded-full ring-1 ring-border bg-gradient-to-br from-primary/60 to-info/60" />
+      </div>
+    </header>
+  );
+}

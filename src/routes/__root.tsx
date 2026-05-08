@@ -1,119 +1,75 @@
+import { Outlet, createRootRoute } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  Outlet,
-  Link,
-  createRootRouteWithContext,
-  useRouter,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router";
-
+import { HeadContent, Scripts, Link, useRouter } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
+import { AppSidebar } from "@/components/app-sidebar";
+import { Topbar } from "@/components/topbar";
 
-function NotFoundComponent() {
+const queryClient = new QueryClient();
+
+function NotFound() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
-        </div>
+    <div className="min-h-screen grid place-items-center bg-background">
+      <div className="text-center">
+        <h1 className="text-7xl font-mono text-primary text-glow">404</h1>
+        <p className="mt-2 text-muted-foreground">Rota industrial não encontrada</p>
+        <Link to="/" className="mt-4 inline-block px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm">Voltar</Link>
       </div>
     </div>
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+function ErrorComp({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
-
+  console.error(error);
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Try again
-          </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
-        </div>
+    <div className="min-h-screen grid place-items-center bg-background">
+      <div className="text-center max-w-md">
+        <h1 className="text-xl font-semibold">Falha no runtime</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <button onClick={() => { router.invalidate(); reset(); }} className="mt-4 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm">Reiniciar</button>
       </div>
     </div>
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { title: "EletricAI Industrial OS — IA, PLC, SCADA, Digital Twin" },
+      { name: "description", content: "Sistema operacional industrial unificado com IA nativa: unifilar, ladder, FBD, SCADA, Digital Twin, PLC e simulação em tempo real." },
+      { property: "og:title", content: "EletricAI Industrial OS" },
+      { property: "og:description", content: "O primeiro Industrial OS com IA nativa." },
     ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   shellComponent: RootShell,
   component: RootComponent,
-  notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
+  notFoundComponent: NotFound,
+  errorComponent: ErrorComp,
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
+    <html lang="pt-BR" className="dark">
+      <head><HeadContent /></head>
+      <body>{children}<Scripts /></body>
     </html>
   );
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+        <AppSidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <Topbar />
+          <Outlet />
+        </div>
+      </div>
     </QueryClientProvider>
   );
 }
