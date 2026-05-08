@@ -1,0 +1,84 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import {
+  LayoutDashboard,
+  FolderKanban,
+  Cpu,
+  BarChart3,
+  Users,
+  Sparkles,
+  Settings,
+  Zap,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const items = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Projetos", url: "/projects", icon: FolderKanban },
+  { title: "Industrial Workspace", url: "/workspace", icon: Cpu, accent: true },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Clientes", url: "/clients", icon: Users },
+  { title: "IA Industrial", url: "/ai", icon: Sparkles },
+  { title: "Configurações", url: "/settings", icon: Settings },
+];
+
+export function AppSidebar() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <aside className="hidden md:flex w-[240px] shrink-0 flex-col border-r border-border bg-sidebar">
+      <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border">
+        <div className="relative h-8 w-8 rounded-md flex items-center justify-center"
+             style={{ background: "var(--gradient-primary)" }}>
+          <Zap className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
+          <span className="absolute -inset-px rounded-md ring-1 ring-primary/40 glow-primary" />
+        </div>
+        <div className="leading-tight">
+          <div className="text-[13px] font-semibold tracking-tight text-sidebar-foreground">
+            EletricAI
+          </div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Industrial OS
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex-1 px-2 py-3 space-y-0.5">
+        {items.map((item) => {
+          const active = path === item.url || (item.url !== "/" && path.startsWith(item.url));
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.url}
+              to={item.url}
+              className={cn(
+                "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all",
+                "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                active && "bg-sidebar-accent text-sidebar-foreground",
+                item.accent && active && "ring-1 ring-primary/40"
+              )}
+            >
+              <Icon className={cn("h-4 w-4", active && "text-primary")} />
+              <span className="flex-1">{item.title}</span>
+              {item.accent && (
+                <span className="text-[9px] font-mono uppercase tracking-wider text-primary/80">
+                  OS
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="px-3 py-3 border-t border-sidebar-border">
+        <div className="rounded-md glass p-3">
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-success energized" />
+            Runtime online · 24ms
+          </div>
+          <div className="mt-1 text-[10px] font-mono text-muted-foreground">
+            v0.1.0 · build 2026.05
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
