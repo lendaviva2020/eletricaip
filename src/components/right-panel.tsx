@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Sparkles, ShieldCheck, Wrench, Settings2, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useProjectStore } from "@/lib/project-store";
 
 const TABS = [
   { id: "props", label: "Propriedades", icon: Settings2 },
@@ -43,25 +44,40 @@ export function RightPanel() {
 }
 
 function PropsPanel() {
+  const node = useProjectStore((s) => s.nodes.find((n) => n.id === s.selectedId));
+  const removeNode = useProjectStore((s) => s.removeNode);
+  if (!node) {
+    return (
+      <div className="p-4 text-[12px] text-muted-foreground">
+        Selecione um equipamento no Unifilar, SCADA, Twin ou Ladder para ver suas propriedades.
+      </div>
+    );
+  }
   return (
     <div className="p-4 space-y-3 text-[12px]">
       <Section title="Selecionado">
-        <div className="text-sm font-medium">M-01 · Motor de Indução</div>
-        <div className="text-[11px] text-muted-foreground">Linha 03 / CCM-03 / Bay 02</div>
+        <div className="text-sm font-medium">{node.label} · {node.kind.toUpperCase()}</div>
+        <div className="text-[11px] text-muted-foreground capitalize">{node.category}</div>
       </Section>
       <Section title="Parâmetros">
-        {[
-          ["Tag", "M-01"], ["Potência", "7.5 kW"], ["Tensão", "380 V"],
-          ["IN", "16.0 A"], ["Partida", "VFD"], ["IP", "55"], ["Fator Serv.", "1.15"],
-        ].map(([k, v]) => (
-          <Row key={k} k={k} v={v} />
+        <Row k="Tag" v={node.id} />
+        <Row k="Categoria" v={node.category} />
+        <Row k="Energizado" v={node.energized ? "● SIM" : "○ NÃO"} />
+        {Object.entries(node.params).map(([k, v]) => (
+          <Row key={k} k={k} v={String(v)} />
         ))}
       </Section>
       <Section title="Tags vinculadas">
-        {["M01.RUN", "M01.SPEED", "M01.CURRENT", "M01.FAULT"].map((t) => (
+        {[`${node.id}.RUN`, `${node.id}.STATE`, `${node.id}.FAULT`].map((t) => (
           <div key={t} className="font-mono text-[11px] text-primary/90 py-0.5">{t}</div>
         ))}
       </Section>
+      <button
+        onClick={() => removeNode(node.id)}
+        className="w-full text-[11px] py-1.5 rounded border border-destructive/40 text-destructive hover:bg-destructive/10"
+      >
+        Remover do projeto
+      </button>
     </div>
   );
 }

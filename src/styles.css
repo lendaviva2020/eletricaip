@@ -185,3 +185,11 @@
     pointer-events: none;
   }
 }
+
+/* ReactFlow theming */
+.react-flow__renderer { background: transparent; }
+.react-flow__attribution { display: none !important; }
+.react-flow__edge-path { stroke-linecap: round; }
+.react-flow__handle { border: 1px solid oklch(0.16 0.012 250) !important; }
+.react-flow__controls-button { color: var(--foreground) !important; }
+.react-flow__controls-button svg { fill: currentColor; }
