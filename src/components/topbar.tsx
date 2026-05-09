@@ -1,5 +1,6 @@
-import { Search, Bell, Play, Square, Save, Share2, GitBranch } from "lucide-react";
+import { Search, Bell, Save, Share2, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RuntimeStatus } from "@/components/runtime-status";
 
 export function Topbar() {
   return (
@@ -34,16 +35,7 @@ export function Topbar() {
           <Share2 className="h-3.5 w-3.5" /> Compartilhar
         </Button>
         <div className="h-5 w-px bg-border mx-1" />
-        <Button size="sm" variant="ghost" className="h-8 px-2 gap-1.5 text-xs text-destructive">
-          <Square className="h-3.5 w-3.5 fill-current" /> Stop
-        </Button>
-        <Button
-          size="sm"
-          className="h-8 px-3 gap-1.5 text-xs font-semibold text-primary-foreground glow-primary"
-          style={{ background: "var(--gradient-primary)" }}
-        >
-          <Play className="h-3.5 w-3.5 fill-current" /> Run
-        </Button>
+        <RuntimeStatus />
         <div className="h-5 w-px bg-border mx-1" />
         <Button size="icon" variant="ghost" className="h-8 w-8 relative">
           <Bell className="h-4 w-4" />
