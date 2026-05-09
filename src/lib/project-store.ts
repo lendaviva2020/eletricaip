@@ -152,7 +152,36 @@ export const useProjectStore = create<ProjectState>((set) => ({
   addEdge: (e) => set((s) => ({ edges: [...s.edges, { ...e, id: `e${Date.now()}` }] })),
   removeEdge: (id) => set((s) => ({ edges: s.edges.filter((e) => e.id !== id) })),
   select: (id) => set({ selectedId: id }),
-  reset: () => set({ nodes: seedNodes(), edges: seedEdges(), selectedId: null }),
+  tags: {},
+  logs: [],
+  runtime: { connected: false, source: "off" },
+  applyTick: (payload) =>
+    set((s) => {
+      const nextTags = { ...s.tags, ...(payload.tags ?? {}) };
+      let nextNodes = s.nodes;
+      if (payload.energized) {
+        nextNodes = nextNodes.map((n) =>
+          payload.energized![n.id] !== undefined ? { ...n, energized: !!payload.energized![n.id] } : n
+        );
+      }
+      if (payload.params) {
+        nextNodes = nextNodes.map((n) =>
+          payload.params![n.id] ? { ...n, params: { ...n.params, ...payload.params![n.id] } } : n
+        );
+      }
+      const nextLogs = payload.logs?.length
+        ? [...payload.logs, ...s.logs].slice(0, 200)
+        : s.logs;
+      return {
+        nodes: nextNodes,
+        tags: nextTags,
+        logs: nextLogs,
+        runtime: { ...s.runtime, lastTick: payload.ts ?? Date.now(), cycleMs: payload.cycleMs ?? s.runtime.cycleMs },
+      };
+    }),
+  pushLog: (log) => set((s) => ({ logs: [log, ...s.logs].slice(0, 200) })),
+  setRuntime: (status) => set((s) => ({ runtime: { ...s.runtime, ...status } })),
+  reset: () => set({ nodes: seedNodes(), edges: seedEdges(), selectedId: null, tags: {}, logs: [] }),
 }));
 
 export const KIND_GLYPH: Record<NodeKind, string> = {
