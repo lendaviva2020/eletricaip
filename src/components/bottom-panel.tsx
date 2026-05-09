@@ -1,28 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { CONSOLE_TABS, type ConsoleTab } from "@/lib/workspace-data";
 import { ChevronDown, ChevronUp, Trash2, Terminal as TerminalIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useProjectStore } from "@/lib/project-store";
 
-const LOGS: Record<ConsoleTab, { t: string; tag: string; msg: string; lvl?: "info" | "warn" | "err" | "ok" }[]> = {
-  Logs: [
-    { t: "12:42:18", tag: "PLC", msg: "OB1 cycle 8.2 ms · OK", lvl: "ok" },
-    { t: "12:42:17", tag: "SCADA", msg: "Tag TQ101.NIVEL = 64.2", lvl: "info" },
-    { t: "12:42:15", tag: "SIM", msg: "Solver step #12340 OK", lvl: "info" },
-    { t: "12:42:10", tag: "AI", msg: "Sugestão: aumentar setpoint TQ-101 em 4%", lvl: "info" },
-  ],
-  Alarmes: [
-    { t: "12:42:18", tag: "ALM-1042", msg: "Nível alto TQ-101 (92.4%)", lvl: "err" },
-    { t: "12:39:02", tag: "ALM-1041", msg: "Sobrecarga térmica M-03", lvl: "err" },
-  ],
-  IA: [
-    { t: "12:41:00", tag: "AI", msg: "Detectado cabo subdimensionado em CCM-03 → NBR 5410 §6.2.6", lvl: "warn" },
-    { t: "12:40:55", tag: "AI", msg: "Recomenda intertravamento entre M-01 e V-303", lvl: "info" },
-  ],
-  Terminal: [{ t: "12:40:00", tag: "$", msg: "eletricai run --line 03", lvl: "info" }],
-  Eventos: [{ t: "12:35:00", tag: "EVT", msg: "Operador admin entrou em modo Run", lvl: "info" }],
-  "OPC-UA": [{ t: "12:42:18", tag: "ns=2;i=1042", msg: "TQ-101.NIVEL = 64.2 GOOD", lvl: "ok" }],
-  Modbus: [{ t: "12:42:18", tag: "HR[40001]", msg: "= 1450 (P-201 speed)", lvl: "info" }],
-  Runtime: [{ t: "12:42:18", tag: "RT", msg: "Heap 42 MB · 142 tags · 0 erros", lvl: "ok" }],
+const SEED: Partial<Record<ConsoleTab, { t: string; tag: string; msg: string; lvl?: "info" | "warn" | "err" | "ok" }[]>> = {
+  Logs: [{ t: "—", tag: "RT", msg: "Aguardando ticks do runtime…", lvl: "info" }],
+  IA: [{ t: "—", tag: "AI", msg: "Conecte o runtime para ver sugestões em tempo real", lvl: "info" }],
+  Terminal: [{ t: "—", tag: "$", msg: "eletricai run --line 03", lvl: "info" }],
 };
 
 const lvlColor = {
@@ -35,7 +20,11 @@ const lvlColor = {
 export function BottomPanel() {
   const [tab, setTab] = useState<ConsoleTab>("Logs");
   const [open, setOpen] = useState(true);
-  const lines = LOGS[tab] ?? [];
+  const liveLogs = useProjectStore((s) => s.logs);
+  const lines = useMemo(() => {
+    const live = liveLogs.filter((l) => (l.channel ?? "Logs") === tab);
+    return live.length ? live : (SEED[tab] ?? []);
+  }, [liveLogs, tab]);
 
   return (
     <div className={cn("shrink-0 border-t border-border glass-strong flex flex-col", open ? "h-56" : "h-9")}>
