@@ -80,8 +80,12 @@ function PaletteItem({ name }: { name: string }) {
   return (
     <button
       draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("application/eletricai", name);
+        e.dataTransfer.effectAllowed = "move";
+      }}
       className="group flex items-center gap-2 text-left px-2 py-1.5 rounded text-[11px] text-foreground/85
-                 hover:bg-accent hover:text-foreground border border-transparent hover:border-border transition-all"
+                 hover:bg-accent hover:text-foreground border border-transparent hover:border-border transition-all cursor-grab active:cursor-grabbing"
     >
       <span className="h-1.5 w-1.5 rounded-full bg-primary/60 group-hover:bg-primary group-hover:glow-primary" />
       {name}
