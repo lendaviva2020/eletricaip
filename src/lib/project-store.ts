@@ -74,10 +74,31 @@ const seedEdges = (): IndustrialEdge[] => [
   { id: "e5", source: "P-201", target: "V-303", kind: "pipe" },
 ];
 
+export interface RuntimeLog {
+  t: string;
+  tag: string;
+  msg: string;
+  lvl: "info" | "warn" | "err" | "ok";
+  channel?: "Logs" | "Alarmes" | "IA" | "Eventos" | "OPC-UA" | "Modbus" | "Runtime" | "Terminal";
+}
+
+export interface RuntimeStatus {
+  connected: boolean;
+  source: "supabase" | "local" | "off";
+  url?: string;
+  lastTick?: number;
+  cycleMs?: number;
+  error?: string;
+}
+
 interface ProjectState {
   nodes: IndustrialNode[];
   edges: IndustrialEdge[];
   selectedId: string | null;
+  // Runtime
+  tags: Record<string, number | boolean | string>;
+  logs: RuntimeLog[];
+  runtime: RuntimeStatus;
   addNode: (kindLabel: string, position: { x: number; y: number }) => string;
   updateNodePosition: (id: string, position: { x: number; y: number }) => void;
   updateNodeParam: (id: string, key: string, value: any) => void;
@@ -85,7 +106,19 @@ interface ProjectState {
   addEdge: (e: Omit<IndustrialEdge, "id">) => void;
   removeEdge: (id: string) => void;
   select: (id: string | null) => void;
+  applyTick: (payload: TickPayload) => void;
+  pushLog: (log: RuntimeLog) => void;
+  setRuntime: (status: Partial<RuntimeStatus>) => void;
   reset: () => void;
+}
+
+export interface TickPayload {
+  ts?: number;
+  cycleMs?: number;
+  tags?: Record<string, number | boolean | string>;
+  energized?: Record<string, boolean>;
+  params?: Record<string, Record<string, string | number>>;
+  logs?: RuntimeLog[];
 }
 
 let counter = 1;
