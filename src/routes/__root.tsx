@@ -94,12 +94,12 @@ function AuthGate() {
 }
 
 import { useEffect } from "react";
-function useEffect_redirect(loading: boolean, user: any, isPublic: boolean, path: string, router: any) {
+function useEffect_redirect(loading: boolean, user: unknown, isPublic: boolean, path: string, router: ReturnType<typeof useRouter>) {
   useEffect(() => {
     if (!loading && !user && !isPublic) {
       router.navigate({ to: "/login", search: { redirect: path } });
     }
-  }, [loading, user, isPublic, path]);
+  }, [loading, user, isPublic, path, router]);
 }
 
 function RootComponent() {
