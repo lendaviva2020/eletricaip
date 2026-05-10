@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Projetos", url: "/projects", icon: FolderKanban },
   { title: "Industrial Workspace", url: "/workspace", icon: Cpu, accent: true },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
@@ -43,7 +43,7 @@ export function AppSidebar() {
 
       <nav className="flex-1 px-2 py-3 space-y-0.5">
         {items.map((item) => {
-          const active = path === item.url || (item.url !== "/" && path.startsWith(item.url));
+          const active = path === item.url || path.startsWith(item.url + "/");
           const Icon = item.icon;
           return (
             <Link
