@@ -1,11 +1,14 @@
-import { Outlet, createRootRoute } from "@tanstack/react-router";
+import { Outlet, createRootRoute, useRouterState } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HeadContent, Scripts, Link, useRouter } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Topbar } from "@/components/topbar";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 
 const queryClient = new QueryClient();
+
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
 
 function NotFound() {
   return (
@@ -60,16 +63,51 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function AuthGate() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const isPublic = PUBLIC_PATHS.includes(path);
+
+  useEffect_redirect(loading, user, isPublic, path, router);
+
+  if (isPublic) {
+    return <Outlet />;
+  }
+
+  if (loading) {
+    return <div className="min-h-screen grid place-items-center text-muted-foreground text-sm">Carregando…</div>;
+  }
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+      <AppSidebar />
+      <div className="flex-1 flex flex-col min-w-0">
+        <Topbar />
+        <Outlet />
+      </div>
+    </div>
+  );
+}
+
+import { useEffect } from "react";
+function useEffect_redirect(loading: boolean, user: any, isPublic: boolean, path: string, router: any) {
+  useEffect(() => {
+    if (!loading && !user && !isPublic) {
+      router.navigate({ to: "/login", search: { redirect: path } });
+    }
+  }, [loading, user, isPublic, path]);
+}
+
 function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <Topbar />
-          <Outlet />
-        </div>
-      </div>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
