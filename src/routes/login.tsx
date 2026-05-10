@@ -102,7 +102,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
   );
 }
 
-export function Input({ label, type, value, onChange, required }: any) {
+export function Input({ label, type, value, onChange, required }: { label: string; type: string; value: string; onChange: (v: string) => void; required?: boolean }) {
   return (
     <label className="block">
       <span className="text-xs text-muted-foreground">{label}</span>
