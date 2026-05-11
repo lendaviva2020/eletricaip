@@ -1,1 +1,4 @@
 project_id = "hcjkwqyxqxnbqikwltvc"
+
+[functions.ai-industrial-architect]
+verify_jwt = false
