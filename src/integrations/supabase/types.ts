@@ -1422,6 +1422,24 @@ export type Database = {
         }
         Relationships: []
       }
+      plant_telemetry: {
+        Row: {
+          last_updated: string | null
+          tag_id: string
+          value: number | null
+        }
+        Insert: {
+          last_updated?: string | null
+          tag_id: string
+          value?: number | null
+        }
+        Update: {
+          last_updated?: string | null
+          tag_id?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
       platform_admins: {
         Row: {
           created_at: string
