@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 const queryClient = new QueryClient();
 
 const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
+const AUTH_NO_CHROME = ["/onboarding"]; // authenticated routes that render their own full-page layout
 
 function NotFound() {
   return (
@@ -80,6 +81,10 @@ function AuthGate() {
   }
   if (!user) {
     return null;
+  }
+
+  if (AUTH_NO_CHROME.includes(path)) {
+    return <Outlet />;
   }
 
   return (
