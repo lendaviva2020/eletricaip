@@ -20,7 +20,15 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) router.navigate({ to: redirect || "/dashboard" });
+    if (!user) return;
+    // After login, send to onboarding if no project is selected yet
+    (async () => {
+      const { useCurrentProject } = await import("@/lib/current-project");
+      const cp = useCurrentProject.getState();
+      cp.hydrateFromStorage();
+      const target = cp.project ? (redirect || "/workspace") : "/onboarding";
+      router.navigate({ to: target });
+    })();
   }, [user]);
 
   const handleEmail = async (e: React.FormEvent) => {
@@ -54,6 +62,9 @@ function LoginPage() {
         {loading && <Loader2 className="h-4 w-4 animate-spin"/>} Entrar
       </button>
     </form>
+    <div className="mt-4 text-center">
+      <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-primary">Esqueci minha senha</Link>
+    </div>
     <p className="text-xs text-center text-muted-foreground mt-6">
       Não tem conta? <Link to="/signup" className="text-primary hover:underline">Criar conta</Link>
     </p>
