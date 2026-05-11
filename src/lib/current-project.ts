@@ -36,26 +36,27 @@ export const useCurrentProject = create<State>((set) => ({
 export async function listMyProjects(): Promise<CurrentProject[]> {
   const { data, error } = await supabase
     .from("projects")
-    .select("id, name, client_name")
+    .select("id, name, metadata")
     .order("updated_at", { ascending: false })
     .limit(50);
   if (error) {
     console.warn("listMyProjects error:", error.message);
     return [];
   }
-  return (data ?? []).map((p: any) => ({ id: p.id, name: p.name, client: p.client_name }));
+  return (data ?? []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    client: (p.metadata as any)?.client ?? null,
+  }));
 }
 
 export async function createProject(input: { name: string; client?: string; description?: string }): Promise<CurrentProject | null> {
-  // Ensure tenant exists
   const { data: tid, error: bErr } = await supabase.rpc("bootstrap_personal_tenant_if_missing");
-  if (bErr) {
-    console.warn("bootstrap_personal_tenant_if_missing:", bErr.message);
-  }
+  if (bErr) console.warn("bootstrap_personal_tenant_if_missing:", bErr.message);
+
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) return null;
 
-  // Get tenant_id from profile
   const { data: profile } = await supabase
     .from("profiles")
     .select("tenant_id")
@@ -65,19 +66,21 @@ export async function createProject(input: { name: string; client?: string; desc
 
   const payload: any = {
     name: input.name,
-    client_name: input.client ?? null,
     description: input.description ?? null,
-    owner_id: u.user.id,
+    created_by: u.user.id,
     tenant_id: tenantId,
+    metadata: input.client ? { client: input.client } : {},
   };
   const { data, error } = await supabase
     .from("projects")
     .insert(payload)
-    .select("id, name, client_name")
+    .select("id, name, metadata")
     .maybeSingle();
   if (error) {
     console.error("createProject error:", error.message);
     return null;
   }
-  return data ? { id: (data as any).id, name: (data as any).name, client: (data as any).client_name } : null;
+  return data
+    ? { id: (data as any).id, name: (data as any).name, client: ((data as any).metadata as any)?.client ?? null }
+    : null;
 }
