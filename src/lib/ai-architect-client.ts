@@ -46,11 +46,11 @@ export function applyArchitectToStore(result: ArchitectResult, opts: { mode: "re
 
   // Push directly into the store (bypassing addNode to preserve AI-given ids/positions)
   useProjectStore.setState((s) => ({
-    nodes: opts.mode === "replace" ? nodes : [...s.nodes, ...nodes.filter(n => !s.nodes.find(x => x.id === n.id))],
+    nodes: opts.mode === "replace" ? nodes : [...s.nodes, ...nodes.filter((n) => !s.nodes.find((x) => x.id === n.id))],
     edges: opts.mode === "replace" ? edges : [...s.edges, ...edges],
     selectedId: nodes[0]?.id ?? null,
     logs: [
-      { t: new Date().toISOString(), tag: "AI", msg: `Sistema gerado: ${result.title} · ${nodes.length} nós · ${edges.length} ligações`, lvl: "ok", channel: "IA" },
+      { t: new Date().toISOString(), tag: "AI", msg: `Sistema gerado: ${result.title} · ${nodes.length} nós · ${edges.length} ligações`, lvl: "ok" as const, channel: "IA" as const },
       ...s.logs,
     ].slice(0, 200),
   }));
