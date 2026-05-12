@@ -12,6 +12,7 @@ import { PlcCanvas } from "@/components/canvases/plc-canvas";
 import { SimCanvas } from "@/components/canvases/sim-canvas";
 import { AlarmsCanvas } from "@/components/canvases/alarms-canvas";
 import { Boxes, Cable, Gauge, Search } from "lucide-react";
+import { CanvasAiChat } from "@/components/canvas-ai-chat";
 
 export function IndustrialWorkspace() {
   const [mode, setMode] = useState<WorkspaceMode>("unifilar");
@@ -56,6 +57,7 @@ export function IndustrialWorkspace() {
           {mode === "plc" && <PlcCanvas />}
           {mode === "sim" && <SimCanvas />}
           {mode === "alarms" && <AlarmsCanvas />}
+          <CanvasAiChat />
         </div>
         <BottomPanel />
       </div>

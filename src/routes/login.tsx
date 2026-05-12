@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Zap, Loader2 } from "lucide-react";
+import { Zap, Loader2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -114,11 +114,23 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
 }
 
 export function Input({ label, type, value, onChange, required }: { label: string; type: string; value: string; onChange: (v: string) => void; required?: boolean }) {
+  const [show, setShow] = useState(false);
+  const isPassword = type === "password";
+  const inputType = isPassword ? (show ? "text" : "password") : type;
   return (
     <label className="block">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <input type={type} value={value} required={required} onChange={(e) => onChange(e.target.value)}
-             className="mt-1 h-11 w-full rounded-md bg-input/60 border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-ring focus:bg-input"/>
+      <div className="relative mt-1">
+        <input type={inputType} value={value} required={required} onChange={(e) => onChange(e.target.value)}
+               className={`h-11 w-full rounded-md bg-input/60 border border-border px-3 ${isPassword ? "pr-10" : ""} text-sm outline-none focus:ring-2 focus:ring-ring focus:bg-input`}/>
+        {isPassword && (
+          <button type="button" onClick={() => setShow((s) => !s)}
+                  aria-label={show ? "Ocultar senha" : "Mostrar senha"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition">
+            {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
     </label>
   );
 }

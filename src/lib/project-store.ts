@@ -56,22 +56,28 @@ export const KIND_CATALOG: Record<string, { kind: NodeKind; category: NodeCatego
   Encoder: { kind: "encoder", category: "inst", label: "Encoder", defaults: { ppr: 1024 } },
 };
 
-const seedNodes = (): IndustrialNode[] => [
-  { id: "TR-01", kind: "transformer", category: "power", label: "TR-01", position: { x: 60, y: 80 }, params: { S: "1500kVA", U: "13.8/0.38kV" }, energized: true },
-  { id: "QGBT-01", kind: "busbar", category: "power", label: "QGBT-01", position: { x: 60, y: 220 }, params: { U: "380V" }, energized: true },
-  { id: "M-01", kind: "motor", category: "mech", label: "M-01", position: { x: 280, y: 360 }, params: { P: "7.5kW", IN: "16A" }, energized: true },
-  { id: "M-02", kind: "motor", category: "mech", label: "M-02", position: { x: 460, y: 360 }, params: { P: "15kW", IN: "30A" }, energized: true },
-  { id: "TQ-101", kind: "tank", category: "mech", label: "TQ-101", position: { x: 700, y: 100 }, params: { nivel: "64%" } },
-  { id: "P-201", kind: "pump", category: "mech", label: "P-201", position: { x: 700, y: 260 }, params: { Q: "142 m³/h" }, energized: true },
-  { id: "V-303", kind: "valve", category: "mech", label: "V-303", position: { x: 700, y: 380 }, params: { pos: "78%" } },
-];
+// Empty by default — user or AI creates the content.
+const seedNodes = (): IndustrialNode[] => [];
+const seedEdges = (): IndustrialEdge[] => [];
 
-const seedEdges = (): IndustrialEdge[] => [
+// Demo project containing INTENTIONAL violations for normative validator testing.
+// Used by "Carregar exemplo com falhas" button.
+export const demoFaultyNodes = (): IndustrialNode[] => [
+  { id: "TR-01", kind: "transformer", category: "power", label: "TR-01 (subdim.)", position: { x: 60, y: 80 }, params: { kVA: 150, primary_kV: 13.8, secondary_V: 380 }, energized: true },
+  { id: "QGBT-01", kind: "busbar", category: "power", label: "QGBT-01", position: { x: 60, y: 220 }, params: { U: 380 }, energized: true },
+  { id: "DJ-01", kind: "breaker", category: "power", label: "DJ-01 (curva ?)", position: { x: 280, y: 220 }, params: { In: 20 }, energized: true },
+  { id: "DJ-02", kind: "breaker", category: "power", label: "DJ-02 (super)", position: { x: 460, y: 220 }, params: { In: 250, curva: "C" }, energized: true },
+  { id: "M-01", kind: "motor", category: "mech", label: "M-01 75kW", position: { x: 280, y: 380 }, params: { P: 75, U: 380, cable_mm2: 6, breaker_A: 20, startMethod: "DOL" }, energized: true },
+  { id: "M-02", kind: "motor", category: "mech", label: "M-02 110kW", position: { x: 460, y: 380 }, params: { P: 110, U: 380, cable_mm2: 10, breaker_A: 250, startMethod: "DOL" }, energized: true },
+  { id: "M-03", kind: "motor", category: "mech", label: "M-03 esteira", position: { x: 640, y: 380 }, params: { P: 22, U: 380, cable_mm2: 4, breaker_A: 32 }, energized: true },
+];
+export const demoFaultyEdges = (): IndustrialEdge[] => [
   { id: "e1", source: "TR-01", target: "QGBT-01", kind: "power" },
-  { id: "e2", source: "QGBT-01", target: "M-01", kind: "power" },
-  { id: "e3", source: "QGBT-01", target: "M-02", kind: "power" },
-  { id: "e4", source: "TQ-101", target: "P-201", kind: "pipe" },
-  { id: "e5", source: "P-201", target: "V-303", kind: "pipe" },
+  { id: "e2", source: "QGBT-01", target: "DJ-01", kind: "power" },
+  { id: "e3", source: "QGBT-01", target: "DJ-02", kind: "power" },
+  { id: "e4", source: "DJ-01", target: "M-01", kind: "power" },
+  { id: "e5", source: "DJ-02", target: "M-02", kind: "power" },
+  { id: "e6", source: "QGBT-01", target: "M-03", kind: "power" },
 ];
 
 export interface RuntimeLog {
@@ -110,6 +116,7 @@ interface ProjectState {
   pushLog: (log: RuntimeLog) => void;
   setRuntime: (status: Partial<RuntimeStatus>) => void;
   reset: () => void;
+  loadDemoFaulty: () => void;
 }
 
 export interface TickPayload {
@@ -127,7 +134,7 @@ const nextId = (kind: NodeKind) => `${kind.toUpperCase()}-${String(counter++).pa
 export const useProjectStore = create<ProjectState>((set) => ({
   nodes: seedNodes(),
   edges: seedEdges(),
-  selectedId: "M-01",
+  selectedId: null,
   addNode: (kindLabel, position) => {
     const meta = KIND_CATALOG[kindLabel];
     if (!meta) return "";
@@ -182,6 +189,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
   pushLog: (log) => set((s) => ({ logs: [log, ...s.logs].slice(0, 200) })),
   setRuntime: (status) => set((s) => ({ runtime: { ...s.runtime, ...status } })),
   reset: () => set({ nodes: seedNodes(), edges: seedEdges(), selectedId: null, tags: {}, logs: [] }),
+  loadDemoFaulty: () => set({
+    nodes: demoFaultyNodes(),
+    edges: demoFaultyEdges(),
+    selectedId: null,
+    logs: [{ t: new Date().toISOString(), tag: "DEMO", msg: "Projeto demo com falhas carregado (cabos subdim, DJ incorretos, sem DR/E-STOP).", lvl: "warn", channel: "IA" }],
+  }),
 }));
 
 export const KIND_GLYPH: Record<NodeKind, string> = {
