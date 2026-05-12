@@ -189,6 +189,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
   pushLog: (log) => set((s) => ({ logs: [log, ...s.logs].slice(0, 200) })),
   setRuntime: (status) => set((s) => ({ runtime: { ...s.runtime, ...status } })),
   reset: () => set({ nodes: seedNodes(), edges: seedEdges(), selectedId: null, tags: {}, logs: [] }),
+  loadDemoFaulty: () => set({
+    nodes: demoFaultyNodes(),
+    edges: demoFaultyEdges(),
+    selectedId: null,
+    logs: [{ t: new Date().toISOString(), tag: "DEMO", msg: "Projeto demo com falhas carregado (cabos subdim, DJ incorretos, sem DR/E-STOP).", lvl: "warn", channel: "IA" }],
+  }),
 }));
 
 export const KIND_GLYPH: Record<NodeKind, string> = {
