@@ -177,6 +177,8 @@ function ResultCard({ result, onApply }: { result: ArchitectResult; onApply: (r:
         </div>
       </details>
 
+      <NormPanel findings={findings} summary={sum} />
+
       <div className="flex flex-wrap gap-2">
         <button onClick={() => onApply(result, "unifilar")}
           className="text-[12px] px-3 h-9 rounded-md text-primary-foreground glow-primary inline-flex items-center gap-1.5"
