@@ -1,8 +1,9 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Sparkles, Send, Loader2, Cpu, CheckCircle2, AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { Sparkles, Send, Loader2, Cpu, CheckCircle2, AlertCircle, ShieldAlert, ShieldCheck, Info } from "lucide-react";
+import { useState, useMemo } from "react";
 import { callArchitect, applyArchitectToStore, type ArchitectResult } from "@/lib/ai-architect-client";
 import { calcDemand, calcMotor } from "@/lib/electrical-calc";
+import { validateProject, summarize, type NormFinding } from "@/lib/norm-validator";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({ meta: [{ title: "IA Industrial · EletricAI" }, { name: "description", content: "Copilot industrial com IA nativa." }] }),
@@ -129,6 +130,12 @@ function ResultCard({ result, onApply }: { result: ArchitectResult; onApply: (r:
   const motorSpecs = result.motors.map((m) => calcMotor({ id: m.id, power_kW: m.power_kW, voltage_V: m.voltage_V, startMethod: m.startMethod }));
   const demand = calcDemand(result.motors.map((m) => ({ id: m.id, power_kW: m.power_kW, voltage_V: m.voltage_V })));
   const totalIn = motorSpecs.reduce((s, m) => s + m.In_A, 0);
+  const findings = useMemo(() => {
+    const nodes = result.nodes.map((n) => ({ ...n, kind: n.kind as any, category: n.category as any, params: n.params ?? {} })) as any;
+    const edges = result.edges.map((e, i) => ({ ...e, id: `tmp-${i}` })) as any;
+    return validateProject(nodes, edges);
+  }, [result]);
+  const sum = summarize(findings);
 
   return (
     <div className="mt-4 space-y-3">
@@ -170,6 +177,8 @@ function ResultCard({ result, onApply }: { result: ArchitectResult; onApply: (r:
         </div>
       </details>
 
+      <NormPanel findings={findings} summary={sum} />
+
       <div className="flex flex-wrap gap-2">
         <button onClick={() => onApply(result, "unifilar")}
           className="text-[12px] px-3 h-9 rounded-md text-primary-foreground glow-primary inline-flex items-center gap-1.5"
@@ -185,6 +194,45 @@ function ResultCard({ result, onApply }: { result: ArchitectResult; onApply: (r:
           Aplicar e abrir Workspace
         </button>
       </div>
+    </div>
+  );
+}
+
+function NormPanel({ findings, summary }: { findings: NormFinding[]; summary: { errors: number; warns: number; infos: number } }) {
+  if (findings.length === 0) {
+    return (
+      <div className="rounded-md border border-success/40 bg-success/10 p-3 flex items-center gap-2 text-xs">
+        <ShieldCheck className="h-4 w-4 text-success" />
+        Conforme NBR 5410 / NBR 14039 / NR-10 / NR-12 / IEC 61131 / ISA-18.2.
+      </div>
+    );
+  }
+  const tone = summary.errors > 0 ? "border-destructive/40 bg-destructive/5" : summary.warns > 0 ? "border-warning/40 bg-warning/5" : "border-border bg-card/40";
+  return (
+    <div className={`rounded-md border ${tone} p-3 space-y-2`}>
+      <div className="flex items-center gap-2 text-xs font-semibold">
+        <ShieldAlert className="h-4 w-4 text-warning" />
+        Validação normativa
+        <span className="ml-auto flex gap-2 font-mono text-[10px] text-muted-foreground">
+          {summary.errors > 0 && <span className="text-destructive">● {summary.errors} crítico(s)</span>}
+          {summary.warns > 0 && <span className="text-warning">● {summary.warns} aviso(s)</span>}
+          {summary.infos > 0 && <span>● {summary.infos} info</span>}
+        </span>
+      </div>
+      <ul className="space-y-1.5 max-h-56 overflow-auto scrollbar-thin">
+        {findings.map((f) => (
+          <li key={f.id} className="flex items-start gap-2 text-[11px] leading-relaxed">
+            {f.severity === "error" ? <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" /> :
+             f.severity === "warn" ? <ShieldAlert className="h-3.5 w-3.5 text-warning mt-0.5 shrink-0" /> :
+             <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />}
+            <div className="flex-1">
+              <div><span className="font-mono text-[9px] uppercase text-muted-foreground mr-1.5">{f.norm}</span><span className="font-semibold">{f.title}</span></div>
+              <div className="text-muted-foreground">{f.detail}</div>
+              {f.fixHint && <div className="text-primary/80 mt-0.5">→ {f.fixHint}</div>}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
