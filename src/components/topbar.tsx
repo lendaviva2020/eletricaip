@@ -29,16 +29,16 @@ export function Topbar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <Button size="sm" variant="ghost" className="h-8 px-2 gap-1.5 text-xs">
+      <div className="flex items-center gap-1 sm:gap-1.5">
+        <Button size="sm" variant="ghost" className="hidden md:inline-flex h-8 px-2 gap-1.5 text-xs">
           <Save className="h-3.5 w-3.5" /> Salvar
         </Button>
-        <Button size="sm" variant="ghost" className="h-8 px-2 gap-1.5 text-xs">
+        <Button size="sm" variant="ghost" className="hidden md:inline-flex h-8 px-2 gap-1.5 text-xs">
           <Share2 className="h-3.5 w-3.5" /> Compartilhar
         </Button>
-        <div className="h-5 w-px bg-border mx-1" />
+        <div className="hidden md:block h-5 w-px bg-border mx-1" />
         <RuntimeStatus />
-        <div className="h-5 w-px bg-border mx-1" />
+        <div className="hidden sm:block h-5 w-px bg-border mx-1" />
         <Button size="icon" variant="ghost" className="h-8 w-8 relative">
           <Bell className="h-4 w-4" />
           <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-warning energized" />
