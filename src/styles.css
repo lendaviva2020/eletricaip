@@ -55,17 +55,17 @@
 :root {
   --radius: 0.5rem;
 
-  --background: oklch(0.16 0.012 250);
-  --foreground: oklch(0.96 0.005 230);
+  --background: oklch(0.16 0.010 35);
+  --foreground: oklch(0.96 0.005 60);
 
-  --panel: oklch(0.19 0.014 250);
-  --panel-foreground: oklch(0.94 0.006 230);
+  --panel: oklch(0.19 0.012 35);
+  --panel-foreground: oklch(0.94 0.006 60);
 
-  --card: oklch(0.205 0.014 250);
-  --card-foreground: oklch(0.96 0.005 230);
+  --card: oklch(0.205 0.012 35);
+  --card-foreground: oklch(0.96 0.005 60);
 
-  --popover: oklch(0.21 0.015 250);
-  --popover-foreground: oklch(0.96 0.005 230);
+  --popover: oklch(0.21 0.013 35);
+  --popover-foreground: oklch(0.96 0.005 60);
 
   --primary: oklch(0.78 0.18 55);           /* industrial amber */
   --primary-foreground: oklch(0.15 0.02 40);
