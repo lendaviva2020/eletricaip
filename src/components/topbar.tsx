@@ -14,16 +14,16 @@ export function Topbar() {
         <span className="text-foreground font-medium">Planta — Linha 03</span>
       </div>
 
-      <div className="flex-1 flex justify-center">
+      <div className="flex-1 flex justify-center min-w-0">
         <div className="relative w-full max-w-md">
           <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
-            placeholder="Buscar tags, equipamentos, lógica, normas…"
+            placeholder="Buscar…"
             className="w-full h-9 pl-9 pr-3 rounded-md bg-input/60 border border-border text-sm
                        outline-none focus:ring-2 focus:ring-ring focus:bg-input
                        placeholder:text-muted-foreground/70"
           />
-          <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+          <kbd className="hidden sm:block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
             ⌘K
           </kbd>
         </div>
