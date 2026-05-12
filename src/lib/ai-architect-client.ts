@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectStore, type IndustrialNode, type IndustrialEdge, type NodeKind, type NodeCategory } from "@/lib/project-store";
+import { useCurrentProject } from "@/lib/current-project";
 
 export interface ArchitectResult {
   title: string;
@@ -55,5 +56,54 @@ export function applyArchitectToStore(result: ArchitectResult, opts: { mode: "re
     ].slice(0, 200),
   }));
 
+  // Auto-save snapshot as a project_version (non-blocking)
+  void autoSaveVersion(result, nodes, edges);
+
   return { nodes: nodes.length, edges: edges.length };
+}
+
+async function autoSaveVersion(result: ArchitectResult, nodes: IndustrialNode[], edges: IndustrialEdge[]) {
+  try {
+    const project = useCurrentProject.getState().project;
+    if (!project?.id) return;
+
+    // Next version number
+    const { data: last } = await supabase
+      .from("project_versions")
+      .select("version_number")
+      .eq("project_id", project.id)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const next = ((last as any)?.version_number ?? 0) + 1;
+
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return;
+
+    await supabase.from("project_versions").insert({
+      project_id: project.id,
+      created_by: u.user.id,
+      version_number: next,
+      snapshot: {
+        source: "ai-architect",
+        title: result.title,
+        rationale: result.rationale,
+        transformer: result.transformer,
+        ccm: result.ccm,
+        nodes,
+        edges,
+        savedAt: new Date().toISOString(),
+      } as any,
+    });
+
+    useProjectStore.getState().pushLog({
+      t: new Date().toISOString(),
+      tag: "VERSION",
+      msg: `Versão v${next} salva automaticamente`,
+      lvl: "ok",
+      channel: "IA",
+    });
+  } catch (e) {
+    console.warn("autoSaveVersion failed:", e);
+  }
 }
