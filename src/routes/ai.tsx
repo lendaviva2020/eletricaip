@@ -1,8 +1,9 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Sparkles, Send, Loader2, Cpu, CheckCircle2, AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { Sparkles, Send, Loader2, Cpu, CheckCircle2, AlertCircle, ShieldAlert, ShieldCheck, Info } from "lucide-react";
+import { useState, useMemo } from "react";
 import { callArchitect, applyArchitectToStore, type ArchitectResult } from "@/lib/ai-architect-client";
 import { calcDemand, calcMotor } from "@/lib/electrical-calc";
+import { validateProject, summarize, type NormFinding } from "@/lib/norm-validator";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({ meta: [{ title: "IA Industrial · EletricAI" }, { name: "description", content: "Copilot industrial com IA nativa." }] }),
