@@ -196,6 +196,45 @@ function ResultCard({ result, onApply }: { result: ArchitectResult; onApply: (r:
   );
 }
 
+function NormPanel({ findings, summary }: { findings: NormFinding[]; summary: { errors: number; warns: number; infos: number } }) {
+  if (findings.length === 0) {
+    return (
+      <div className="rounded-md border border-success/40 bg-success/10 p-3 flex items-center gap-2 text-xs">
+        <ShieldCheck className="h-4 w-4 text-success" />
+        Conforme NBR 5410 / NBR 14039 / NR-10 / NR-12 / IEC 61131 / ISA-18.2.
+      </div>
+    );
+  }
+  const tone = summary.errors > 0 ? "border-destructive/40 bg-destructive/5" : summary.warns > 0 ? "border-warning/40 bg-warning/5" : "border-border bg-card/40";
+  return (
+    <div className={`rounded-md border ${tone} p-3 space-y-2`}>
+      <div className="flex items-center gap-2 text-xs font-semibold">
+        <ShieldAlert className="h-4 w-4 text-warning" />
+        Validação normativa
+        <span className="ml-auto flex gap-2 font-mono text-[10px] text-muted-foreground">
+          {summary.errors > 0 && <span className="text-destructive">● {summary.errors} crítico(s)</span>}
+          {summary.warns > 0 && <span className="text-warning">● {summary.warns} aviso(s)</span>}
+          {summary.infos > 0 && <span>● {summary.infos} info</span>}
+        </span>
+      </div>
+      <ul className="space-y-1.5 max-h-56 overflow-auto scrollbar-thin">
+        {findings.map((f) => (
+          <li key={f.id} className="flex items-start gap-2 text-[11px] leading-relaxed">
+            {f.severity === "error" ? <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" /> :
+             f.severity === "warn" ? <ShieldAlert className="h-3.5 w-3.5 text-warning mt-0.5 shrink-0" /> :
+             <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />}
+            <div className="flex-1">
+              <div><span className="font-mono text-[9px] uppercase text-muted-foreground mr-1.5">{f.norm}</span><span className="font-semibold">{f.title}</span></div>
+              <div className="text-muted-foreground">{f.detail}</div>
+              {f.fixHint && <div className="text-primary/80 mt-0.5">→ {f.fixHint}</div>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-md border border-border bg-card/40 p-2">
