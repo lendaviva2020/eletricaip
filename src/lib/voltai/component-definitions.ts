@@ -1090,13 +1090,18 @@ export const VOLTAI_COMP_DEFS = VOLTAI_COMPONENT_DEFINITIONS.map((component) => 
 
 export const VOLTAI_COMP_DEF_BY_TYPE = Object.fromEntries(
   VOLTAI_COMP_DEFS.map((component) => [component.type, component]),
-) as Record<VoltaiComponentType, VoltaiComponentDefinition & { paramSpecs: Record<string, ParamSpec> }>;
+) as Record<
+  VoltaiComponentType,
+  VoltaiComponentDefinition & { paramSpecs: Record<string, ParamSpec> }
+>;
 
 export function getVoltaiCompDef(type: VoltaiComponentType) {
   return VOLTAI_COMP_DEF_BY_TYPE[type];
 }
 
-export function getVoltaiFactoryParams(type: VoltaiComponentType): Record<string, number | boolean | string> {
+export function getVoltaiFactoryParams(
+  type: VoltaiComponentType,
+): Record<string, number | boolean | string> {
   const definition = getVoltaiCompDef(type);
   return Object.fromEntries(
     Object.entries(definition.paramSpecs).map(([key, spec]) => [key, spec.defaultValue]),

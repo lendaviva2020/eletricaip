@@ -16,6 +16,12 @@ dist-ssr
 .nitro
 *.local
 
+# Environment files - secrets must stay local and must never be sent to GitHub
+.env
+.env.*
+!.env.example
+!.env.template
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

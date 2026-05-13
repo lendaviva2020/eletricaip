@@ -117,7 +117,10 @@ function serializeSimulationPayload(components: VoltaiDiagramComponent[], stepMs
       ty: component.type,
       lb: component.label,
       st: Object.fromEntries(
-        Object.entries(component.state).map(([key, value]) => [COMPACT_STATE_KEYS[key] ?? key, value]),
+        Object.entries(component.state).map(([key, value]) => [
+          COMPACT_STATE_KEYS[key] ?? key,
+          value,
+        ]),
       ),
     })),
   };
@@ -239,11 +242,15 @@ function simulateComponent(
     const rising = input && !state.lastCountInput;
     if (rising) {
       state.count =
-        params.countDirection === "down" ? Math.max(0, (state.count ?? preset) - 1) : (state.count ?? 0) + 1;
+        params.countDirection === "down"
+          ? Math.max(0, (state.count ?? preset) - 1)
+          : (state.count ?? 0) + 1;
     }
     state.lastCountInput = input;
     state.output =
-      params.countDirection === "down" ? (state.count ?? preset) <= 0 : (state.count ?? 0) >= preset;
+      params.countDirection === "down"
+        ? (state.count ?? preset) <= 0
+        : (state.count ?? 0) >= preset;
   }
 
   if (component.type === "UPS" && !state.energized) {
@@ -284,14 +291,20 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
   updateComponentParam: (id, key, value) =>
     set((store) => ({
       components: store.components.map((component) =>
-        component.id === id ? { ...component, params: { ...component.params, [key]: value } } : component,
+        component.id === id
+          ? { ...component, params: { ...component.params, [key]: value } }
+          : component,
       ),
     })),
   restoreFactoryParams: (id) =>
     set((store) => ({
       components: store.components.map((component) =>
         component.id === id
-          ? { ...component, params: getVoltaiFactoryParams(component.type), simulationState: createVoltaiDefaultState(component.type) }
+          ? {
+              ...component,
+              params: getVoltaiFactoryParams(component.type),
+              simulationState: createVoltaiDefaultState(component.type),
+            }
           : component,
       ),
     })),

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getMissingSupabasePublicEnv, getSupabasePublicEnv } from "@/integrations/supabase/env";
 import { getPlan } from "@/lib/plans";
 import {
   useProjectStore,
@@ -94,13 +95,16 @@ function pushStatus(ev: StatusEvent) {
 }
 
 export function getLocalAiUsage() {
-  if (typeof window === "undefined") return { plan: "basico", used: 0, remainingLabel: "100 chamadas IA" };
+  if (typeof window === "undefined")
+    return { plan: "basico", used: 0, remainingLabel: "100 chamadas IA" };
   try {
     const usage = JSON.parse(localStorage.getItem(AI_USAGE_KEY) ?? "{}");
     const plan = getPlan(usage.plan);
     const used = Number(usage.used ?? 0);
     const remainingLabel =
-      plan.aiCallsPerMonth === null ? "IA ilimitada" : `${Math.max(0, plan.aiCallsPerMonth - used)} chamadas IA`;
+      plan.aiCallsPerMonth === null
+        ? "IA ilimitada"
+        : `${Math.max(0, plan.aiCallsPerMonth - used)} chamadas IA`;
     return { plan: plan.id, used, remainingLabel };
   } catch {
     return { plan: "basico", used: 0, remainingLabel: "100 chamadas IA" };
@@ -157,11 +161,20 @@ export async function callArchitect(
 
 export async function pingArchitectHealth(): Promise<any> {
   // GET-only health endpoint of the same edge function.
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-industrial-architect?health=1`;
+  const { url: supabaseUrl, publishableKey } = getSupabasePublicEnv();
+  const missing = getMissingSupabasePublicEnv({ url: supabaseUrl, publishableKey });
+  if (missing.length) {
+    return { ok: false, error: `Missing Supabase environment variable(s): ${missing.join(", ")}` };
+  }
+  if (!supabaseUrl || !publishableKey) {
+    return { ok: false, error: "Missing Supabase environment variables." };
+  }
+
+  const url = `${supabaseUrl}/functions/v1/ai-industrial-architect?health=1`;
   const t0 = Date.now();
   try {
     const r = await fetch(url, {
-      headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
+      headers: { apikey: publishableKey },
     });
     const json = await r.json();
     pushStatus({

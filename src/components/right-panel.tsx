@@ -139,7 +139,14 @@ function ParamEditor({
   value,
   onChange,
 }: {
-  spec: { label: string; type: string; unit?: string; min?: number; max?: number; options?: { label: string; value: string }[] };
+  spec: {
+    label: string;
+    type: string;
+    unit?: string;
+    min?: number;
+    max?: number;
+    options?: { label: string; value: string }[];
+  };
   value: unknown;
   onChange: (value: string | number | boolean) => void;
 }) {
