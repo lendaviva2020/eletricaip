@@ -1,9 +1,27 @@
-import { Search, Bell, Save, Share2, GitBranch } from "lucide-react";
+import { useState } from "react";
+import { Search, Bell, Save, Share2, GitBranch, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RuntimeStatus } from "@/components/runtime-status";
 import { MobileMenu } from "@/components/mobile-menu";
+import { saveManualVersion } from "@/lib/ai-architect-client";
 
 export function Topbar() {
+  const [saving, setSaving] = useState<"idle" | "busy" | "ok" | "err">("idle");
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+
+  const onSave = async () => {
+    setSaving("busy");
+    setSavedMsg(null);
+    const r = await saveManualVersion(`Snapshot ${new Date().toLocaleString("pt-BR")}`);
+    if (r.ok) {
+      setSaving("ok"); setSavedMsg(`v${r.version} salva`);
+      setTimeout(() => { setSaving("idle"); setSavedMsg(null); }, 2500);
+    } else {
+      setSaving("err"); setSavedMsg(r.error ?? "Falha ao salvar");
+      setTimeout(() => { setSaving("idle"); setSavedMsg(null); }, 4000);
+    }
+  };
+
   return (
     <header className="h-14 shrink-0 flex items-center gap-2 px-3 sm:px-4 border-b border-border glass-strong">
       <MobileMenu />
@@ -30,8 +48,13 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-1.5">
-        <Button size="sm" variant="ghost" className="hidden md:inline-flex h-8 px-2 gap-1.5 text-xs">
-          <Save className="h-3.5 w-3.5" /> Salvar
+        <Button size="sm" variant={saving === "ok" ? "default" : saving === "err" ? "destructive" : "ghost"}
+                onClick={onSave} disabled={saving === "busy"}
+                className="h-8 px-2 gap-1.5 text-xs" title={savedMsg ?? "Salvar snapshot do projeto"}>
+          {saving === "busy" ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            : saving === "ok" ? <Check className="h-3.5 w-3.5" />
+            : <Save className="h-3.5 w-3.5" />}
+          <span className="hidden md:inline">{saving === "ok" ? savedMsg : saving === "err" ? "Falhou" : "Salvar"}</span>
         </Button>
         <Button size="sm" variant="ghost" className="hidden md:inline-flex h-8 px-2 gap-1.5 text-xs">
           <Share2 className="h-3.5 w-3.5" /> Compartilhar
