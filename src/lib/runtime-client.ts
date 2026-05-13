@@ -47,19 +47,32 @@ export async function connectSupabase(cfg: RuntimeConfig) {
       useProjectStore.getState().applyTick(payload as TickPayload);
     });
 
-    channel.on("postgres_changes" as any, { event: "INSERT", schema: "public", table: "runtime_logs" }, (msg: any) => {
-      const r = msg.new;
-      useProjectStore.getState().pushLog({
-        t: new Date(r.ts ?? Date.now()).toLocaleTimeString(),
-        tag: r.tag ?? "RT", msg: r.message ?? "", lvl: r.level ?? "info", channel: r.channel ?? "Logs",
-      });
-    });
+    channel.on(
+      "postgres_changes" as any,
+      { event: "INSERT", schema: "public", table: "runtime_logs" },
+      (msg: any) => {
+        const r = msg.new;
+        useProjectStore.getState().pushLog({
+          t: new Date(r.ts ?? Date.now()).toLocaleTimeString(),
+          tag: r.tag ?? "RT",
+          msg: r.message ?? "",
+          lvl: r.level ?? "info",
+          channel: r.channel ?? "Logs",
+        });
+      },
+    );
 
     await new Promise<void>((resolve, reject) => {
       channel!.subscribe((status) => {
         if (status === "SUBSCRIBED") {
           store.setRuntime({ connected: true, source: "supabase", url: cfg.url, error: undefined });
-          store.pushLog({ t: new Date().toLocaleTimeString(), tag: "RT", msg: `Conectado · ${channelName}`, lvl: "ok", channel: "Runtime" });
+          store.pushLog({
+            t: new Date().toLocaleTimeString(),
+            tag: "RT",
+            msg: `Conectado · ${channelName}`,
+            lvl: "ok",
+            channel: "Runtime",
+          });
           resolve();
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           reject(new Error(`Realtime ${status}`));
@@ -71,16 +84,31 @@ export async function connectSupabase(cfg: RuntimeConfig) {
     return true;
   } catch (e: any) {
     useProjectStore.getState().setRuntime({ connected: false, source: "off", error: e.message });
-    useProjectStore.getState().pushLog({ t: new Date().toLocaleTimeString(), tag: "RT", msg: `Falha: ${e.message}`, lvl: "err", channel: "Runtime" });
+    useProjectStore.getState().pushLog({
+      t: new Date().toLocaleTimeString(),
+      tag: "RT",
+      msg: `Falha: ${e.message}`,
+      lvl: "err",
+      channel: "Runtime",
+    });
     await disconnect();
     throw e;
   }
 }
 
 export async function disconnect() {
-  if (channel) { await channel.unsubscribe(); channel = null; }
-  if (client) { await client.removeAllChannels(); client = null; }
-  if (localTimer) { clearInterval(localTimer); localTimer = null; }
+  if (channel) {
+    await channel.unsubscribe();
+    channel = null;
+  }
+  if (client) {
+    await client.removeAllChannels();
+    client = null;
+  }
+  if (localTimer) {
+    clearInterval(localTimer);
+    localTimer = null;
+  }
   useProjectStore.getState().setRuntime({ connected: false, source: "off" });
 }
 
@@ -89,7 +117,13 @@ export function startLocalSimulation() {
   if (localTimer) return;
   const store = useProjectStore.getState();
   store.setRuntime({ connected: true, source: "local", cycleMs: 50 });
-  store.pushLog({ t: new Date().toLocaleTimeString(), tag: "SIM", msg: "Simulador local iniciado (50 ms)", lvl: "ok", channel: "Runtime" });
+  store.pushLog({
+    t: new Date().toLocaleTimeString(),
+    tag: "SIM",
+    msg: "Simulador local iniciado (50 ms)",
+    lvl: "ok",
+    channel: "Runtime",
+  });
 
   localTimer = setInterval(() => {
     localTick++;
@@ -121,10 +155,22 @@ export function startLocalSimulation() {
     }
 
     if (localTick % 80 === 0) {
-      logs.push({ t: new Date().toLocaleTimeString(), tag: "PLC", msg: `OB1 cycle ${(7 + Math.random()).toFixed(1)} ms`, lvl: "ok" as const, channel: "Logs" as const });
+      logs.push({
+        t: new Date().toLocaleTimeString(),
+        tag: "PLC",
+        msg: `OB1 cycle ${(7 + Math.random()).toFixed(1)} ms`,
+        lvl: "ok" as const,
+        channel: "Logs" as const,
+      });
     }
     if (localTick % 240 === 0) {
-      logs.push({ t: new Date().toLocaleTimeString(), tag: "ALM", msg: "Sobrecorrente M-02 (transiente)", lvl: "warn" as const, channel: "Alarmes" as const });
+      logs.push({
+        t: new Date().toLocaleTimeString(),
+        tag: "ALM",
+        msg: "Sobrecorrente M-02 (transiente)",
+        lvl: "warn" as const,
+        channel: "Alarmes" as const,
+      });
     }
 
     s.applyTick({ ts: Date.now(), cycleMs: 50, tags, params, energized, logs });
@@ -138,5 +184,10 @@ export function isLocalRunning() {
 export async function autoConnect() {
   const cfg = loadConfig();
   if (!cfg) return false;
-  try { await connectSupabase(cfg); return true; } catch { return false; }
+  try {
+    await connectSupabase(cfg);
+    return true;
+  } catch {
+    return false;
+  }
 }

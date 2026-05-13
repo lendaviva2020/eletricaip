@@ -21,7 +21,7 @@ export function ModeTabs({
               className={cn(
                 "relative h-9 px-3 text-xs font-medium rounded-t-md flex items-center gap-2 transition-all shrink-0",
                 "text-muted-foreground hover:text-foreground hover:bg-accent/40",
-                active && "text-foreground bg-background border border-b-0 border-border"
+                active && "text-foreground bg-background border border-b-0 border-border",
               )}
             >
               <span>{m.label}</span>
@@ -29,8 +29,10 @@ export function ModeTabs({
                 {m.hint}
               </span>
               {active && (
-                <span className="absolute -bottom-px left-2 right-2 h-0.5 rounded-full"
-                      style={{ background: "var(--gradient-primary)" }} />
+                <span
+                  className="absolute -bottom-px left-2 right-2 h-0.5 rounded-full"
+                  style={{ background: "var(--gradient-primary)" }}
+                />
               )}
             </button>
           );

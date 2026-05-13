@@ -29,7 +29,9 @@ export const useCurrentProject = create<State>((set) => ({
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) set({ project: JSON.parse(raw) });
-    } catch {}
+    } catch {
+      localStorage.removeItem(KEY);
+    }
   },
 }));
 
@@ -50,7 +52,11 @@ export async function listMyProjects(): Promise<CurrentProject[]> {
   }));
 }
 
-export async function createProject(input: { name: string; client?: string; description?: string }): Promise<CurrentProject | null> {
+export async function createProject(input: {
+  name: string;
+  client?: string;
+  description?: string;
+}): Promise<CurrentProject | null> {
   const { data: tid, error: bErr } = await supabase.rpc("bootstrap_personal_tenant_if_missing");
   if (bErr) console.warn("bootstrap_personal_tenant_if_missing:", bErr.message);
 
@@ -81,6 +87,10 @@ export async function createProject(input: { name: string; client?: string; desc
     return null;
   }
   return data
-    ? { id: (data as any).id, name: (data as any).name, client: ((data as any).metadata as any)?.client ?? null }
+    ? {
+        id: (data as any).id,
+        name: (data as any).name,
+        client: ((data as any).metadata as any)?.client ?? null,
+      }
     : null;
 }

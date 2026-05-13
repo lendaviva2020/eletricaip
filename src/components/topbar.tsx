@@ -1,24 +1,43 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, Bell, Save, Share2, GitBranch, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RuntimeStatus } from "@/components/runtime-status";
 import { MobileMenu } from "@/components/mobile-menu";
-import { saveManualVersion } from "@/lib/ai-architect-client";
+import { getLocalAiUsage, saveManualVersion } from "@/lib/ai-architect-client";
 
 export function Topbar() {
   const [saving, setSaving] = useState<"idle" | "busy" | "ok" | "err">("idle");
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [aiUsage, setAiUsage] = useState(() => getLocalAiUsage());
+
+  useEffect(() => {
+    const updateUsage = () => setAiUsage(getLocalAiUsage());
+    window.addEventListener("ai-usage-event", updateUsage);
+    window.addEventListener("storage", updateUsage);
+    return () => {
+      window.removeEventListener("ai-usage-event", updateUsage);
+      window.removeEventListener("storage", updateUsage);
+    };
+  }, []);
 
   const onSave = async () => {
     setSaving("busy");
     setSavedMsg(null);
     const r = await saveManualVersion(`Snapshot ${new Date().toLocaleString("pt-BR")}`);
     if (r.ok) {
-      setSaving("ok"); setSavedMsg(`v${r.version} salva`);
-      setTimeout(() => { setSaving("idle"); setSavedMsg(null); }, 2500);
+      setSaving("ok");
+      setSavedMsg(`v${r.version} salva`);
+      setTimeout(() => {
+        setSaving("idle");
+        setSavedMsg(null);
+      }, 2500);
     } else {
-      setSaving("err"); setSavedMsg(r.error ?? "Falha ao salvar");
-      setTimeout(() => { setSaving("idle"); setSavedMsg(null); }, 4000);
+      setSaving("err");
+      setSavedMsg(r.error ?? "Falha ao salvar");
+      setTimeout(() => {
+        setSaving("idle");
+        setSavedMsg(null);
+      }, 4000);
     }
   };
 
@@ -48,19 +67,37 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-1.5">
-        <Button size="sm" variant={saving === "ok" ? "default" : saving === "err" ? "destructive" : "ghost"}
-                onClick={onSave} disabled={saving === "busy"}
-                className="h-8 px-2 gap-1.5 text-xs" title={savedMsg ?? "Salvar snapshot do projeto"}>
-          {saving === "busy" ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            : saving === "ok" ? <Check className="h-3.5 w-3.5" />
-            : <Save className="h-3.5 w-3.5" />}
-          <span className="hidden md:inline">{saving === "ok" ? savedMsg : saving === "err" ? "Falhou" : "Salvar"}</span>
+        <Button
+          size="sm"
+          variant={saving === "ok" ? "default" : saving === "err" ? "destructive" : "ghost"}
+          onClick={onSave}
+          disabled={saving === "busy"}
+          className="h-8 px-2 gap-1.5 text-xs"
+          title={savedMsg ?? "Salvar snapshot do projeto"}
+        >
+          {saving === "busy" ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : saving === "ok" ? (
+            <Check className="h-3.5 w-3.5" />
+          ) : (
+            <Save className="h-3.5 w-3.5" />
+          )}
+          <span className="hidden md:inline">
+            {saving === "ok" ? savedMsg : saving === "err" ? "Falhou" : "Salvar"}
+          </span>
         </Button>
-        <Button size="sm" variant="ghost" className="hidden md:inline-flex h-8 px-2 gap-1.5 text-xs">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="hidden md:inline-flex h-8 px-2 gap-1.5 text-xs"
+        >
           <Share2 className="h-3.5 w-3.5" /> Compartilhar
         </Button>
         <div className="hidden md:block h-5 w-px bg-border mx-1" />
         <RuntimeStatus />
+        <div className="hidden lg:flex h-8 items-center rounded border border-border bg-card px-2 text-[11px] font-mono text-muted-foreground">
+          {aiUsage.remainingLabel}
+        </div>
         <div className="hidden sm:block h-5 w-px bg-border mx-1" />
         <Button size="icon" variant="ghost" className="h-8 w-8 relative">
           <Bell className="h-4 w-4" />

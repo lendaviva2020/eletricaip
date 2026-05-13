@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/clients")({
-  head: () => ({ meta: [{ title: "Clientes · EletricAI" }, { name: "description", content: "Clientes industriais." }] }),
+  head: () => ({
+    meta: [
+      { title: "Clientes · EletricAI" },
+      { name: "description", content: "Clientes industriais." },
+    ],
+  }),
   component: ClientsPage,
 });
 
@@ -21,7 +26,10 @@ function ClientsPage() {
         <h1 className="text-2xl font-semibold mb-6">Clientes</h1>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {CLIENTS.map((c) => (
-            <div key={c.n} className="rounded-xl border border-border bg-card p-5 hover:border-primary/50 transition-colors">
+            <div
+              key={c.n}
+              className="rounded-xl border border-border bg-card p-5 hover:border-primary/50 transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full grid place-items-center font-semibold text-primary bg-primary/15">
                   {c.n[0]}
@@ -32,7 +40,8 @@ function ClientsPage() {
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-border flex justify-between text-[11px] text-muted-foreground font-mono">
-                <span>{c.p} projetos</span><span>SLA 99.9%</span>
+                <span>{c.p} projetos</span>
+                <span>SLA 99.9%</span>
               </div>
             </div>
           ))}
