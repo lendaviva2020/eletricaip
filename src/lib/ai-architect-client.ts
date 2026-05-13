@@ -12,22 +12,102 @@ export interface ArchitectResult {
   edges: Array<{ source: string; target: string; kind: "power" | "signal" | "pipe" }>;
 }
 
+export class AIServiceError extends Error {
+  code: string;
+  userMessage: string;
+  steps?: string[];
+  constructor(code: string, message: string, userMessage: string, steps?: string[]) {
+    super(message);
+    this.code = code;
+    this.userMessage = userMessage;
+    this.steps = steps;
+  }
+}
+
+function mapError(code: string, message: string): AIServiceError {
+  switch (code) {
+    case "MISSING_KEY":
+    case "INVALID_KEY_FORMAT":
+    case "AUTH_401":
+      return new AIServiceError(code, message,
+        "A IA não está autenticada. Verifique a chave de IA nas configurações do projeto.",
+        [
+          "Acesse platform.deepseek.com/api_keys e gere uma nova chave (a conta precisa ter créditos).",
+          "No Supabase, abra Settings → Edge Functions → Secrets e atualize DEEPSEEK_API_KEY.",
+          "Volte aqui e clique em 'Revalidar' na tela de Status da IA.",
+        ]);
+    case "RATE_LIMIT_429":
+      return new AIServiceError(code, message, "Muitas requisições à IA. Aguarde alguns segundos.");
+    case "NO_CREDITS_402":
+      return new AIServiceError(code, message,
+        "Créditos da conta DeepSeek esgotados.",
+        ["Adicione créditos em platform.deepseek.com/usage.", "Recarregue a página e tente novamente."]);
+    case "UPSTREAM_5XX":
+      return new AIServiceError(code, message, "Serviço DeepSeek temporariamente indisponível. Tente em alguns segundos.");
+    default:
+      return new AIServiceError(code || "UNKNOWN", message, message);
+  }
+}
+
+// --- Status tracking (for the Status page + global counters) ---------------
+const STATUS_KEY = "eletricai.ai.statusEvents";
+type StatusEvent = { ts: number; ok: boolean; code?: string; ms: number };
+function pushStatus(ev: StatusEvent) {
+  if (typeof window === "undefined") return;
+  try {
+    const arr: StatusEvent[] = JSON.parse(localStorage.getItem(STATUS_KEY) ?? "[]");
+    arr.unshift(ev);
+    localStorage.setItem(STATUS_KEY, JSON.stringify(arr.slice(0, 50)));
+    window.dispatchEvent(new CustomEvent("ai-status-event"));
+  } catch { /* ignore */ }
+}
+export function getStatusEvents(): StatusEvent[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(STATUS_KEY) ?? "[]"); } catch { return []; }
+}
+
 export async function callArchitect(prompt: string, includeContext = true): Promise<ArchitectResult> {
   const context = includeContext
     ? { nodes: useProjectStore.getState().nodes, edges: useProjectStore.getState().edges }
     : undefined;
+  const t0 = Date.now();
+  try {
+    const { data, error } = await supabase.functions.invoke("ai-industrial-architect", { body: { prompt, context } });
+    if (error) {
+      pushStatus({ ts: Date.now(), ok: false, code: "INVOKE_ERROR", ms: Date.now() - t0 });
+      throw mapError("INVOKE_ERROR", error.message);
+    }
+    if (!data?.ok) {
+      const code = data?.error?.code ?? "UNKNOWN";
+      const msg = data?.error?.message ?? "Falha desconhecida.";
+      pushStatus({ ts: Date.now(), ok: false, code, ms: Date.now() - t0 });
+      throw mapError(code, msg);
+    }
+    pushStatus({ ts: Date.now(), ok: true, ms: Date.now() - t0 });
+    return data.system as ArchitectResult;
+  } catch (e) {
+    if (e instanceof AIServiceError) throw e;
+    pushStatus({ ts: Date.now(), ok: false, code: "NETWORK", ms: Date.now() - t0 });
+    throw mapError("NETWORK", (e as Error).message);
+  }
+}
 
-  const { data, error } = await supabase.functions.invoke("ai-industrial-architect", {
-    body: { prompt, context },
-  });
-  if (error) throw new Error(error.message);
-  if (!data?.ok) throw new Error(data?.error || "Falha desconhecida");
-  return data.system as ArchitectResult;
+export async function pingArchitectHealth(): Promise<any> {
+  // GET-only health endpoint of the same edge function.
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-industrial-architect?health=1`;
+  const t0 = Date.now();
+  try {
+    const r = await fetch(url, { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string } });
+    const json = await r.json();
+    pushStatus({ ts: Date.now(), ok: !!json.ok, code: json.ok ? undefined : "HEALTH_FAIL", ms: Date.now() - t0 });
+    return json;
+  } catch (e) {
+    pushStatus({ ts: Date.now(), ok: false, code: "HEALTH_NETWORK", ms: Date.now() - t0 });
+    return { ok: false, error: (e as Error).message };
+  }
 }
 
 export function applyArchitectToStore(result: ArchitectResult, opts: { mode: "replace" | "merge" } = { mode: "replace" }) {
-  const store = useProjectStore.getState();
-
   const nodes: IndustrialNode[] = result.nodes.map((n) => ({
     id: n.id,
     kind: (n.kind as NodeKind) || "motor",
@@ -37,15 +117,10 @@ export function applyArchitectToStore(result: ArchitectResult, opts: { mode: "re
     params: (n.params as any) ?? {},
     energized: n.category === "power" || n.category === "mech",
   }));
-
   const edges: IndustrialEdge[] = result.edges.map((e, i) => ({
-    id: `ai-${Date.now()}-${i}`,
-    source: e.source,
-    target: e.target,
-    kind: e.kind,
+    id: `ai-${Date.now()}-${i}`, source: e.source, target: e.target, kind: e.kind,
   }));
 
-  // Push directly into the store (bypassing addNode to preserve AI-given ids/positions)
   useProjectStore.setState((s) => ({
     nodes: opts.mode === "replace" ? nodes : [...s.nodes, ...nodes.filter((n) => !s.nodes.find((x) => x.id === n.id))],
     edges: opts.mode === "replace" ? edges : [...s.edges, ...edges],
@@ -56,9 +131,7 @@ export function applyArchitectToStore(result: ArchitectResult, opts: { mode: "re
     ].slice(0, 200),
   }));
 
-  // Auto-save snapshot as a project_version (non-blocking)
   void autoSaveVersion(result, nodes, edges);
-
   return { nodes: nodes.length, edges: edges.length };
 }
 
@@ -66,44 +139,31 @@ async function autoSaveVersion(result: ArchitectResult, nodes: IndustrialNode[],
   try {
     const project = useCurrentProject.getState().project;
     if (!project?.id) return;
-
-    // Next version number
-    const { data: last } = await supabase
-      .from("project_versions")
-      .select("version_number")
-      .eq("project_id", project.id)
-      .order("version_number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data: last } = await supabase.from("project_versions").select("version_number").eq("project_id", project.id).order("version_number", { ascending: false }).limit(1).maybeSingle();
     const next = ((last as any)?.version_number ?? 0) + 1;
-
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
-
     await supabase.from("project_versions").insert({
-      project_id: project.id,
-      created_by: u.user.id,
-      version_number: next,
-      snapshot: {
-        source: "ai-architect",
-        title: result.title,
-        rationale: result.rationale,
-        transformer: result.transformer,
-        ccm: result.ccm,
-        nodes,
-        edges,
-        savedAt: new Date().toISOString(),
-      } as any,
+      project_id: project.id, created_by: u.user.id, version_number: next,
+      snapshot: { source: "ai-architect", title: result.title, rationale: result.rationale, transformer: result.transformer, ccm: result.ccm, nodes, edges, savedAt: new Date().toISOString() } as any,
     });
+    useProjectStore.getState().pushLog({ t: new Date().toISOString(), tag: "VERSION", msg: `Versão v${next} salva automaticamente`, lvl: "ok", channel: "IA" });
+  } catch (e) { console.warn("autoSaveVersion failed:", e); }
+}
 
-    useProjectStore.getState().pushLog({
-      t: new Date().toISOString(),
-      tag: "VERSION",
-      msg: `Versão v${next} salva automaticamente`,
-      lvl: "ok",
-      channel: "IA",
-    });
-  } catch (e) {
-    console.warn("autoSaveVersion failed:", e);
-  }
+export async function saveManualVersion(label: string): Promise<{ ok: boolean; version?: number; error?: string }> {
+  const project = useCurrentProject.getState().project;
+  if (!project?.id) return { ok: false, error: "Nenhum projeto ativo. Selecione um projeto no Onboarding." };
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return { ok: false, error: "Sessão expirada." };
+  const { data: last } = await supabase.from("project_versions").select("version_number").eq("project_id", project.id).order("version_number", { ascending: false }).limit(1).maybeSingle();
+  const next = ((last as any)?.version_number ?? 0) + 1;
+  const { nodes, edges } = useProjectStore.getState();
+  const { error } = await supabase.from("project_versions").insert({
+    project_id: project.id, created_by: u.user.id, version_number: next,
+    snapshot: { source: "manual", label, nodes, edges, savedAt: new Date().toISOString() } as any,
+  });
+  if (error) return { ok: false, error: error.message };
+  useProjectStore.getState().pushLog({ t: new Date().toISOString(), tag: "SAVE", msg: `Snapshot manual v${next} salvo (${label})`, lvl: "ok", channel: "Eventos" });
+  return { ok: true, version: next };
 }

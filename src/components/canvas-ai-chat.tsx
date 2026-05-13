@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Sparkles, Send, Loader2, X, MessageSquare, AlertTriangle } from "lucide-react";
-import { callArchitect, applyArchitectToStore } from "@/lib/ai-architect-client";
+import { Link } from "@tanstack/react-router";
+import { Sparkles, Send, Loader2, X, MessageSquare, AlertTriangle, Settings2 } from "lucide-react";
+import { callArchitect, applyArchitectToStore, AIServiceError } from "@/lib/ai-architect-client";
 import { useProjectStore } from "@/lib/project-store";
 
-interface Msg { role: "user" | "ai"; text: string; error?: string }
+interface Msg { role: "user" | "ai"; text: string; error?: string; steps?: string[]; needsConfig?: boolean }
 
 export function CanvasAiChat() {
   const [open, setOpen] = useState(false);
@@ -28,7 +29,11 @@ export function CanvasAiChat() {
         return c;
       });
     } catch (e: any) {
-      setMsgs((m) => { const c = [...m]; c[c.length - 1] = { role: "ai", text: "Falha ao gerar.", error: e.message }; return c; });
+      const isSvc = e instanceof AIServiceError;
+      const friendly = isSvc ? e.userMessage : (e?.message ?? "Falha ao gerar.");
+      const steps = isSvc ? e.steps : undefined;
+      const needsConfig = isSvc && ["MISSING_KEY", "INVALID_KEY_FORMAT", "AUTH_401", "NO_CREDITS_402"].includes(e.code);
+      setMsgs((m) => { const c = [...m]; c[c.length - 1] = { role: "ai", text: friendly, steps, needsConfig }; return c; });
     } finally { setBusy(false); }
   };
 
@@ -63,9 +68,19 @@ export function CanvasAiChat() {
 
       <div className="flex-1 overflow-auto scrollbar-thin p-3 space-y-2">
         {msgs.map((m, i) => (
-          <div key={i} className={`rounded-md p-2.5 text-[12px] leading-relaxed whitespace-pre-wrap ${m.role === "ai" ? "bg-primary/5 border border-primary/15" : "bg-card border border-border"}`}>
+          <div key={i} className={`rounded-md p-2.5 text-[12px] leading-relaxed ${m.role === "ai" ? "bg-primary/5 border border-primary/15" : "bg-card border border-border"}`}>
             <div className="text-[9px] uppercase tracking-wider mb-0.5 text-muted-foreground">{m.role === "ai" ? "IA" : "Você"}</div>
-            {m.text}
+            <div className="whitespace-pre-wrap">{m.text}</div>
+            {m.steps && (
+              <ol className="list-decimal list-inside mt-2 space-y-0.5 text-[11px] text-foreground/85">
+                {m.steps.map((s, j) => <li key={j}>{s}</li>)}
+              </ol>
+            )}
+            {m.needsConfig && (
+              <Link to="/settings/ai-status" className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline">
+                <Settings2 className="h-3 w-3" /> Abrir status da IA
+              </Link>
+            )}
             {m.error && <div className="mt-1 text-destructive text-[11px]">{m.error}</div>}
           </div>
         ))}

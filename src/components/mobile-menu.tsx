@@ -36,7 +36,7 @@ export function MobileMenu() {
       </button>
 
       {open && (
-        <div className="md:hidden fixed inset-0 z-50">
+        <div className="md:hidden fixed inset-0 z-[100]">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <aside className="absolute left-0 top-0 bottom-0 w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col animate-in slide-in-from-left">
             <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border">
