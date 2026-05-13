@@ -1,83 +1,87 @@
+# Plano de implementação
 
-## Escopo
-
-Quatro frentes a entregar nesta iteração. A frente da IA é a maior — proponho um MVP funcional agora e marcos seguintes.
-
----
-
-### 1. Auth — proteção de rotas e "Esqueci minha senha"
-
-**Já existe** `AuthGate` em `src/routes/__root.tsx` que redireciona qualquer rota não pública para `/login`. Vou:
-
-- Auditar a lista `PUBLIC_PATHS` e garantir que `/workspace`, `/projects`, `/analytics`, `/clients`, `/ai`, `/settings`, `/dashboard`, `/onboarding` exigem sessão.
-- Trocar redirect lazy (`useEffect`) por `beforeLoad` no padrão TanStack `_authenticated` para evitar flash de conteúdo (opcional, mantenho o AuthGate atual se for menos invasivo).
-- Criar `/forgot-password` (form de email → `supabase.auth.resetPasswordForEmail` com `redirectTo: ${origin}/reset-password`).
-- Criar `/reset-password` (detecta `type=recovery` no hash, form de nova senha → `supabase.auth.updateUser({ password })`).
-- Adicionar link "Esqueci minha senha" em `/login`.
-
-### 2. Onboarding pós-login
-
-Novo fluxo em `/onboarding`:
-
-- Após login bem-sucedido, se o usuário não tem projetos na tabela `projects` (filtrada por `tenant_id`), redireciona para `/onboarding`.
-- Tela com duas opções: **selecionar projeto existente** (lista) ou **criar novo** (nome, cliente, tipo).
-- Ao confirmar, persiste `currentProjectId` em `localStorage` + `project-store` e navega para `/workspace`.
-- Hook `useCurrentProject()` para todo o app.
-
-### 3. Sidebar
-
-Já contém Dashboard, Projetos, Industrial Workspace, IA Industrial, Analytics, Clientes, Configurações. Vou:
-
-- Reordenar conforme pedido (Projetos → Workspace → IA → Analytics → Clientes).
-- Destacar "IA Industrial" como item principal (badge "CORE").
-- Adicionar indicador do projeto ativo no rodapé da sidebar.
-
-### 4. IA Industrial — motor central (MVP nesta iteração)
-
-Esta é a maior frente. Proposta de MVP agora e roadmap incremental.
-
-**MVP nesta entrega:**
-
-- **Edge Function `ai-industrial-architect`** (Lovable AI Gateway, modelo `google/gemini-2.5-pro` para reasoning pesado) que recebe um prompt em linguagem natural ("15 motores parafuso 500CV amônia, 20 condensadores com 2 motores cada") e devolve via tool calling um JSON estruturado:
-  ```
-  { transformer, ccm, motors[], condensers[], cables[], protections[], nodes[], edges[], rationale, calculations }
-  ```
-- **Web search opcional** dentro da edge function (tool `web_search` via gateway) quando o prompt pedir referências externas ("pesquise na web…").
-- **Cálculos em memória**: corrente nominal por motor (P/(√3·V·cosφ·η)), soma de demanda, queda de tensão, dimensionamento de condutor por capacidade, escolha de disjuntor por curva, FS do transformador. Tudo em `src/lib/electrical-calc.ts` (puro TS, validável).
-- **Aplicar resultado no projeto**: o JSON retornado é despejado direto no `project-store` (nodes + edges) e aparece simultaneamente em Unifilar, Ladder, FBD, SCADA e Twin (sincronização já existente).
-- **Escolha do usuário**: após geração, modal "Visualizar como: Unifilar / Ladder / Ambos".
-- **Painel lateral de componentes** no canvas (já existe parcialmente em `_industrial-node`): vou expandir com paleta arrastável categorizada — Power (transformador, disjuntor, contator, inversor), Mech (motor, bomba, válvula, esteira, condensador), Inst (PT100, pressão, vazão, nível), Safety (E-STOP, cortina), Comm (PLC, OPC-UA, Modbus). Drag-and-drop para o canvas já está ligado.
-- **Chat IA contextual** em `/ai`: passa snapshot do projeto atual para a edge function, permite "analise erros", "otimize consumo", "adicione redundância" — IA responde editando o store via tool calls (`add_node`, `add_edge`, `update_param`, `remove_node`).
-
-**Fora deste MVP (próximos marcos, peço confirmação antes):**
-
-- Geração de PLC code IEC 61131-3 (ST/IL) exportável.
-- Simulação física do Digital Twin com motor de física.
-- Validação automática contra NBR 5410 / NR-10 com base de conhecimento (RAG sobre `normative_chunks` que já existe no schema).
-- Manutenção preditiva com séries temporais reais.
+Vou dividir em 4 frentes. Como há muito código novo (biblioteca de 18+ componentes com SVG IEC, simulação em tempo real, motor Zustand), preciso confirmar 1 ponto crítico antes de começar.
 
 ---
 
-### Banco de dados
+## 1. IA — resolver 401 DeepSeek + diagnóstico
 
-Mudanças mínimas — uso tabelas que já existem (`projects`, `simulation_tags`, `ai_conversations`, `ai_messages`). Apenas garanto policies de leitura/escrita por `tenant_id` via `get_user_tenant_id()` (já existe).
+**Problema:** a chave `DEEPSEEK_API_KEY` está inválida e o app trava sem feedback claro.
 
-### Arquivos principais a criar/editar
+**Proposta (recomendada):** migrar o motor de IA para o **Lovable AI Gateway** (Gemini 3 Flash / GPT-5), que:
 
-- `src/routes/forgot-password.tsx`, `src/routes/reset-password.tsx`
-- `src/routes/onboarding.tsx`
-- `src/lib/current-project.ts` (hook + store)
-- `src/lib/electrical-calc.ts` (cálculos puros)
-- `src/components/component-palette.tsx` (paleta arrastável expandida)
-- `supabase/functions/ai-industrial-architect/index.ts`
-- `src/lib/ai-architect-client.ts` (chama edge fn, aplica resultado no store)
-- Editar: `src/routes/__root.tsx`, `src/routes/login.tsx`, `src/routes/ai.tsx`, `src/components/app-sidebar.tsx`, `src/components/industrial-workspace.tsx`
+- Não exige você gerenciar chave (provisionada automaticamente).
+- Tem tool-calling compatível, então o schema atual do "design_industrial_system" continua funcionando.
+- Remove o ponto de falha 401.
 
-### Pré-requisitos do usuário
+**Alternativa:** manter DeepSeek e só melhorar mensagens de erro (você precisará gerar nova chave).
 
-1. **No Supabase Dashboard → Authentication → URL Configuration**: adicionar `https://id-preview--85619baf-31cc-4353-8b05-f9173122588d.lovable.app/reset-password` em "Redirect URLs". Sem isso o reset de senha não funciona.
-2. Lovable AI Gateway já tem `LOVABLE_API_KEY` provisionado — sem ação necessária.
+**Independente da escolha, vou implementar:**
+
+- Validação no startup da edge function: checa se chave existe e tem prefixo esperado, loga erro claro.
+- Mapeamento de 401 → mensagem amigável no chat ("Chave de IA inválida. Verifique nas configurações…") sem expor a chave.
+- Nova rota `**/settings/ai-status**` com:
+  - Indicador "Chave configurada" (verde/vermelho)
+  - Último teste (timestamp + sucesso/falha)
+  - Contador de erros 401 nas últimas 24h
+  - Botão "Revalidar agora" → faz ping na edge function
+
+## 2. Correções de UI rápidas
+
+- **SCADA Canvas + Digital Twin Canvas:** habilitar zoom/pan no Konva (`draggable` no Stage + handler de wheel para zoom).
+- **Botão Salvar Projeto:** adicionar no Topbar do workspace, salva snapshot manual em `project_versions` com label "manual".
+- **Menu hambúrguer escondido:** corrigir `z-index` do drawer (`z-50`) e backdrop, garantir que sobreponha o conteúdo do dashboard.
+
+## 3. Biblioteca de componentes unifilares (IEC 60617)
+
+**Arquivo `src/lib/component-definitions.ts**` com 18 tipos:
+QF, QS, DR, FU, SPD, KM, KA, F/FR, M (motores), SS, VFD, TR, PS, PLC, KT, CT, BC, Sensores (PT/TT/LT/FT).
+
+Cada definição contém:
+
+```ts
+interface ComponentDefinition {
+  code: string;          // "QF"
+  name: string;
+  category: "power" | "control" | "signal" | "protection";
+  symbol: SVGSymbol;     // gerador SVG IEC 60617
+  terminals: Terminal[]; // { id, type, side, color }
+  defaults: Record<string, ParamSpec>; // tipo + unidade + min/max
+  simulate?: (state, dt) => state;     // física do componente
+}
+```
+
+**Cores dos bornes:** potência `#E53E3E`, controle `#D4A017`, sinal `#2563EB`, neutro `#6B7280`.
+
+**Painel de propriedades:** ao selecionar um componente, painel lateral direito mostra todos os parâmetros editáveis com unidade, com botão "Restaurar padrão de fábrica".
+
+**Paleta de componentes:** sidebar esquerdo no canvas Unifilar com busca + drag & drop dos 18 componentes.
+
+**Motor de simulação (`src/lib/simulation-engine.ts`):**
+
+- Loop a cada 50ms via `requestAnimationFrame` controlado.
+- Cada nó tem estado runtime (corrente, tensão, temperatura, contagem, timer).
+- Propaga energia pelas edges (power), avalia proteções (térmico, magnético, DR, fusível I²t), atualiza KT (delays), CT (contadores).
+- Eventos de falha (sobrecorrente, perda de fase, fusível rompido) viram alarmes no painel inferior.
+
+**IA edita biblioteca:** o prompt do architect ganha contexto da `ComponentDefinition` para poder sugerir "trocar QF de 100A por 125A" com cálculo de custo estimado (`+R$ XXX`).
+
+## 4. Ordem de execução
+
+1. Migrar/validar IA (frente 1) → desbloqueia testes do architect
+2. Correções rápidas SCADA/Twin/Salvar/Menu (frente 2)
+3. Biblioteca + painel de propriedades (frente 3, base estática)
+4. Motor de simulação (frente 3, dinâmico)
+5. Integração IA ↔ biblioteca (sugestões com custo)
 
 ---
 
-Posso começar pelo bloco 1+2+3 (auth, onboarding, forgot password, sidebar — entrega rápida, alto valor) e na sequência o bloco 4 (IA arquiteto). Confirma este plano?
+## ❓ Pergunta única antes de começar
+
+**Sobre o motor de IA**, você prefere: manter deepseek, criar nova chave! E no motor da IA, deixe a ia pesquisar fora do nosso sistema caso ela não consiga gerar ou criar o cálculo correto, pesquisar na web por mais que demore!
+
+**(A)** Migrar para **Lovable AI Gateway** — sem gerenciar chave, sem 401, modelo Gemini 3 Flash por padrão (recomendado, mais barato e estável).
+
+**(B)** Continuar com **DeepSeek** — você gera nova chave em platform.deepseek.com e atualiza o secret; eu só melhoro o tratamento de erros. 
+
+Responda **A** ou **B** e eu sigo direto com toda a implementação acima.
