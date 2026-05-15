@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { getMissingSupabasePublicEnv, getSupabasePublicEnv } from "@/integrations/supabase/env";
 import { getPlan } from "@/lib/plans";
 import {
   useProjectStore,
@@ -9,6 +8,7 @@ import {
   type NodeCategory,
 } from "@/lib/project-store";
 import { useCurrentProject } from "@/lib/current-project";
+import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
 
 export interface ArchitectResult {
   title: string;
@@ -136,22 +136,14 @@ export async function callArchitect(
     : undefined;
   const t0 = Date.now();
   try {
-    const { data, error } = await supabase.functions.invoke("ai-industrial-architect", {
-      body: { prompt, context },
-    });
-    if (error) {
-      pushStatus({ ts: Date.now(), ok: false, code: "INVOKE_ERROR", ms: Date.now() - t0 });
-      throw mapError("INVOKE_ERROR", error.message);
-    }
-    if (!data?.ok) {
-      const code = data?.error?.code ?? "UNKNOWN";
-      const msg = data?.error?.message ?? "Falha desconhecida.";
-      pushStatus({ ts: Date.now(), ok: false, code, ms: Date.now() - t0 });
-      throw mapError(code, msg);
+    const res = await generateArchitecture({ data: { prompt, context } });
+    if (!res.ok) {
+      pushStatus({ ts: Date.now(), ok: false, code: res.error.code, ms: Date.now() - t0 });
+      throw mapError(res.error.code, res.error.message);
     }
     pushStatus({ ts: Date.now(), ok: true, ms: Date.now() - t0 });
-    incrementLocalAiUsage((data as any)?.quota?.plan);
-    return data.system as ArchitectResult;
+    incrementLocalAiUsage();
+    return res.system as unknown as ArchitectResult;
   } catch (e) {
     if (e instanceof AIServiceError) throw e;
     pushStatus({ ts: Date.now(), ok: false, code: "NETWORK", ms: Date.now() - t0 });
@@ -159,24 +151,10 @@ export async function callArchitect(
   }
 }
 
-export async function pingArchitectHealth(): Promise<any> {
-  // GET-only health endpoint of the same edge function.
-  const { url: supabaseUrl, publishableKey } = getSupabasePublicEnv();
-  const missing = getMissingSupabasePublicEnv({ url: supabaseUrl, publishableKey });
-  if (missing.length) {
-    return { ok: false, error: `Missing Supabase environment variable(s): ${missing.join(", ")}` };
-  }
-  if (!supabaseUrl || !publishableKey) {
-    return { ok: false, error: "Missing Supabase environment variables." };
-  }
-
-  const url = `${supabaseUrl}/functions/v1/ai-industrial-architect?health=1`;
+export async function pingArchitectHealth(): Promise<unknown> {
   const t0 = Date.now();
   try {
-    const r = await fetch(url, {
-      headers: { apikey: publishableKey },
-    });
-    const json = await r.json();
+    const json = await pingArchitect();
     pushStatus({
       ts: Date.now(),
       ok: !!json.ok,
