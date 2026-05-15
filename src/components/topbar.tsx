@@ -1,24 +1,14 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Search, Bell, Save, Share2, GitBranch, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RuntimeStatus } from "@/components/runtime-status";
 import { MobileMenu } from "@/components/mobile-menu";
-import { getLocalAiUsage, saveManualVersion } from "@/lib/ai-architect-client";
+import { AiCreditsBadge } from "@/components/ai-credits-badge";
+import { saveManualVersion } from "@/lib/ai-architect-client";
 
 export function Topbar() {
   const [saving, setSaving] = useState<"idle" | "busy" | "ok" | "err">("idle");
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
-  const [aiUsage, setAiUsage] = useState(() => getLocalAiUsage());
-
-  useEffect(() => {
-    const updateUsage = () => setAiUsage(getLocalAiUsage());
-    window.addEventListener("ai-usage-event", updateUsage);
-    window.addEventListener("storage", updateUsage);
-    return () => {
-      window.removeEventListener("ai-usage-event", updateUsage);
-      window.removeEventListener("storage", updateUsage);
-    };
-  }, []);
 
   const onSave = async () => {
     setSaving("busy");
