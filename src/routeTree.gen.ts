@@ -29,6 +29,7 @@ import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-statu
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
 import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp.webhook'
+import { Route as ApiPublicIotIngestRouteImport } from './routes/api/public/iot.ingest'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
@@ -130,6 +131,11 @@ const ApiPublicMpWebhookRoute = ApiPublicMpWebhookRouteImport.update({
   path: '/api/public/mp/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicIotIngestRoute = ApiPublicIotIngestRouteImport.update({
+  id: '/api/public/iot/ingest',
+  path: '/api/public/iot/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
@@ -219,6 +228,7 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/billing'
     | '/settings/team'
+    | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -241,6 +251,7 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/billing'
     | '/settings/team'
+    | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
   id:
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/billing'
     | '/settings/team'
+    | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
   fileRoutesById: FileRoutesById
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   WorkspaceRoute: typeof WorkspaceRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  ApiPublicIotIngestRoute: typeof ApiPublicIotIngestRoute
   ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
@@ -429,6 +442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMpWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/iot/ingest': {
+      id: '/api/public/iot/ingest'
+      path: '/api/public/iot/ingest'
+      fullPath: '/api/public/iot/ingest'
+      preLoaderRoute: typeof ApiPublicIotIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -464,9 +484,20 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   WorkspaceRoute: WorkspaceRoute,
   InviteTokenRoute: InviteTokenRoute,
+  ApiPublicIotIngestRoute: ApiPublicIotIngestRoute,
   ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
