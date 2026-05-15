@@ -187,19 +187,22 @@ Deno.serve(async (req) => {
     const data = await resp.json();
     const call = data?.choices?.[0]?.message?.tool_calls?.[0];
     if (!call?.function?.arguments) {
-      const content = data?.choices?.[0]?.message?.content ?? "";
-      return err("BAD_RESPONSE", "A IA não devolveu estrutura válida. " + content.slice(0, 200));
+      console.error("DeepSeek bad response (no tool_call):", JSON.stringify(data).slice(0, 500));
+      return err("BAD_RESPONSE", "A IA não devolveu estrutura válida. Tente novamente.");
     }
 
     let parsed: any;
     try { parsed = JSON.parse(call.function.arguments); }
-    catch (e) { return err("BAD_RESPONSE", "JSON inválido devolvido pela IA: " + (e as Error).message); }
+    catch (e) {
+      console.error("DeepSeek JSON parse error:", e);
+      return err("BAD_RESPONSE", "JSON inválido devolvido pela IA. Tente novamente.");
+    }
 
     return new Response(JSON.stringify({ ok: true, system: parsed, provider: "deepseek" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("ai-industrial-architect erro inesperado:", e);
-    return err("BAD_RESPONSE", "Erro inesperado: " + (e as Error).message);
+    return err("BAD_RESPONSE", "Erro inesperado. Tente novamente.");
   }
 });
