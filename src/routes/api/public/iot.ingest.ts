@@ -43,7 +43,7 @@ export const Route = createFileRoute("/api/public/iot/ingest")({
           p_device_external_id: body.device_external_id,
           p_value: body.value,
           p_quality: body.quality ?? "GOOD",
-          p_message_id: body.message_id ?? null,
+          p_message_id: body.message_id ?? undefined,
           p_ttl_ms: body.ttl_ms ?? 5000,
         });
         if (error) {
