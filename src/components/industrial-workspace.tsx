@@ -222,6 +222,41 @@ function CanvasFallback() {
   );
 }
 
+function SaveBadge({
+  projectId,
+  loading,
+  state,
+}: {
+  projectId: string | null;
+  loading: boolean;
+  state: "idle" | "saving" | "saved" | "error";
+}) {
+  if (!projectId) return null;
+  return (
+    <div className="h-6 px-3 flex items-center gap-1.5 text-[10px] text-muted-foreground border-b border-border bg-panel/40">
+      {loading ? (
+        <>
+          <Loader2 className="h-3 w-3 animate-spin" /> Carregando projeto...
+        </>
+      ) : state === "saving" ? (
+        <>
+          <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
+        </>
+      ) : state === "saved" ? (
+        <>
+          <CheckCircle2 className="h-3 w-3 text-success" /> Salvo
+        </>
+      ) : state === "error" ? (
+        <>
+          <AlertCircle className="h-3 w-3 text-destructive" /> Erro ao salvar
+        </>
+      ) : (
+        <>Auto-save ativo (2s)</>
+      )}
+    </div>
+  );
+}
+
 function PaletteGroup({
   icon: Icon,
   title,
