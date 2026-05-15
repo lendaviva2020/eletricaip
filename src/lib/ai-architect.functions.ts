@@ -47,6 +47,7 @@ type ArchitectOk = {
   provider: "deepseek";
   tokensUsed: number;
   ragHits: number;
+  credits?: { cost?: number; used?: number; remaining?: number; plan?: string; unlimited?: boolean };
 };
 
 // Lightweight RAG: pull top normative_chunks matching keywords from the prompt.
