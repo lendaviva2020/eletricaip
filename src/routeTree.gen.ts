@@ -29,6 +29,7 @@ import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as ProjectsProjectIdExportRouteImport } from './routes/projects.$projectId.export'
 import { Route as ProjectsProjectIdBomRouteImport } from './routes/projects.$projectId.bom'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
 import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp.webhook'
@@ -134,6 +135,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsProjectIdExportRoute = ProjectsProjectIdExportRouteImport.update({
+  id: '/$projectId/export',
+  path: '/$projectId/export',
+  getParentRoute: () => ProjectsRoute,
+} as any)
 const ProjectsProjectIdBomRoute = ProjectsProjectIdBomRouteImport.update({
   id: '/$projectId/bom',
   path: '/$projectId/bom',
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
+  '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
+  '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
+  '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/settings/billing'
     | '/settings/team'
     | '/projects/$projectId/bom'
+    | '/projects/$projectId/export'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/settings/billing'
     | '/settings/team'
     | '/projects/$projectId/bom'
+    | '/projects/$projectId/export'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/settings/billing'
     | '/settings/team'
     | '/projects/$projectId/bom'
+    | '/projects/$projectId/export'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -480,6 +492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$projectId/export': {
+      id: '/projects/$projectId/export'
+      path: '/$projectId/export'
+      fullPath: '/projects/$projectId/export'
+      preLoaderRoute: typeof ProjectsProjectIdExportRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
     '/projects/$projectId/bom': {
       id: '/projects/$projectId/bom'
       path: '/$projectId/bom'
@@ -513,10 +532,12 @@ declare module '@tanstack/react-router' {
 
 interface ProjectsRouteChildren {
   ProjectsProjectIdBomRoute: typeof ProjectsProjectIdBomRoute
+  ProjectsProjectIdExportRoute: typeof ProjectsProjectIdExportRoute
 }
 
 const ProjectsRouteChildren: ProjectsRouteChildren = {
   ProjectsProjectIdBomRoute: ProjectsProjectIdBomRoute,
+  ProjectsProjectIdExportRoute: ProjectsProjectIdExportRoute,
 }
 
 const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
