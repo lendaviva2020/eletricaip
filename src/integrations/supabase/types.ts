@@ -2473,12 +2473,23 @@ export type Database = {
         }
       }
       bootstrap_personal_tenant_if_missing: { Args: never; Returns: string }
+      check_ai_quota: {
+        Args: never
+        Returns: {
+          allowed: boolean
+          max_tokens: number
+          plan: string
+          tenant_id: string
+          used: number
+        }[]
+      }
       create_monthly_tag_samples_partition: {
         Args: { target_month?: string }
         Returns: undefined
       }
       get_user_role: { Args: never; Returns: string }
       get_user_tenant_id: { Args: never; Returns: string }
+      increment_ai_tokens: { Args: { p_tokens: number }; Returns: undefined }
       increment_usage: {
         Args: { p_increment?: number; p_metric: string; p_project_id: string }
         Returns: undefined
