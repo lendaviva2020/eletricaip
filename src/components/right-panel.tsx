@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, ShieldCheck, Wrench, Settings2, Send } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/lib/project-store";
-import { getVoltaiCompDef } from "@/lib/voltai/component-definitions";
 import { useVoltaiStore } from "@/lib/voltai/store";
+import { useEditorStore } from "@/lib/editor/store";
+import { RightPropertyPanel } from "@/components/editor/right-property-panel";
 
 const TABS = [
   { id: "props", label: "Propriedades", icon: Settings2 },
@@ -12,6 +12,8 @@ const TABS = [
   { id: "norms", label: "Normas", icon: ShieldCheck },
   { id: "maint", label: "Manutenção", icon: Wrench },
 ] as const;
+
+const STRUCTURED_MODES = new Set(["unifilar", "ladder", "fbd"]);
 
 export function RightPanel() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("ai");
@@ -50,54 +52,34 @@ export function RightPanel() {
 }
 
 function PropsPanel() {
+  const activeMode = useEditorStore((s) => s.activeMode);
+  const setSelectedNode = useEditorStore((s) => s.setSelectedNode);
+
+  // Bridge: voltai store selection -> editor store (single source of truth)
+  const voltaiSelectedId = useVoltaiStore((s) => s.selectedId);
+  useEffect(() => {
+    if (STRUCTURED_MODES.has(activeMode)) {
+      setSelectedNode(voltaiSelectedId);
+    }
+  }, [voltaiSelectedId, activeMode, setSelectedNode]);
+
+  // Structured editors (Unifilar/Ladder/FBD): use Zod-validated panel
+  if (STRUCTURED_MODES.has(activeMode)) {
+    return <RightPropertyPanel />;
+  }
+
+  // Legacy demo path for SCADA / Twin / generic project nodes
+  return <LegacyProjectNodeProps />;
+}
+
+function LegacyProjectNodeProps() {
   const node = useProjectStore((s) => s.nodes.find((n) => n.id === s.selectedId));
   const removeNode = useProjectStore((s) => s.removeNode);
-  const voltaiNode = useVoltaiStore((s) => s.components.find((n) => n.id === s.selectedId));
-  const updateVoltaiParam = useVoltaiStore((s) => s.updateComponentParam);
-  const restoreVoltaiFactory = useVoltaiStore((s) => s.restoreFactoryParams);
-
-  if (voltaiNode) {
-    const definition = getVoltaiCompDef(voltaiNode.type);
-    return (
-      <div className="p-4 space-y-3 text-[12px]">
-        <Section title="Selecionado">
-          <div className="text-sm font-medium">
-            {voltaiNode.label} - {definition.name}
-          </div>
-          <div className="text-[11px] text-muted-foreground">{definition.category}</div>
-        </Section>
-        <Section title="Parametros">
-          {Object.entries(definition.paramSpecs).map(([key, spec]) => (
-            <ParamEditor
-              key={key}
-              spec={spec}
-              value={voltaiNode.params[key] ?? spec.defaultValue}
-              onChange={(value) => updateVoltaiParam(voltaiNode.id, key, value)}
-            />
-          ))}
-        </Section>
-        <Section title="Simulacao">
-          {Object.entries(voltaiNode.simulationState).map(([k, v]) => (
-            <Row key={k} k={k} v={String(v)} />
-          ))}
-        </Section>
-        <button
-          onClick={() => {
-            restoreVoltaiFactory(voltaiNode.id);
-            toast.success(`Configurações de fábrica restauradas para ${voltaiNode.label}`);
-          }}
-          className="w-full text-[11px] py-1.5 rounded border border-primary/40 text-primary hover:bg-primary/10"
-        >
-          Restaurar Fábrica
-        </button>
-      </div>
-    );
-  }
 
   if (!node) {
     return (
       <div className="p-4 text-[12px] text-muted-foreground">
-        Selecione um equipamento no Unifilar, SCADA, Twin ou Ladder para ver suas propriedades.
+        Selecione um equipamento no SCADA ou Twin para ver suas propriedades.
       </div>
     );
   }
@@ -117,13 +99,6 @@ function PropsPanel() {
           <Row key={k} k={k} v={String(v)} />
         ))}
       </Section>
-      <Section title="Tags vinculadas">
-        {[`${node.id}.RUN`, `${node.id}.STATE`, `${node.id}.FAULT`].map((t) => (
-          <div key={t} className="font-mono text-[11px] text-primary/90 py-0.5">
-            {t}
-          </div>
-        ))}
-      </Section>
       <button
         onClick={() => removeNode(node.id)}
         className="w-full text-[11px] py-1.5 rounded border border-destructive/40 text-destructive hover:bg-destructive/10"
@@ -131,61 +106,6 @@ function PropsPanel() {
         Remover do projeto
       </button>
     </div>
-  );
-}
-
-function ParamEditor({
-  spec,
-  value,
-  onChange,
-}: {
-  spec: {
-    label: string;
-    type: string;
-    unit?: string;
-    min?: number;
-    max?: number;
-    options?: { label: string; value: string }[];
-  };
-  value: unknown;
-  onChange: (value: string | number | boolean) => void;
-}) {
-  return (
-    <label className="grid gap-1 text-[11px]">
-      <span className="flex justify-between text-muted-foreground">
-        {spec.label}
-        {spec.unit && <span>{spec.unit}</span>}
-      </span>
-      {spec.type === "boolean" ? (
-        <input
-          type="checkbox"
-          checked={Boolean(value)}
-          onChange={(event) => onChange(event.target.checked)}
-          className="h-4 w-4"
-        />
-      ) : spec.type === "select" && spec.options ? (
-        <select
-          value={String(value)}
-          onChange={(event) => onChange(event.target.value)}
-          className="h-8 rounded bg-input border border-border px-2 text-foreground"
-        >
-          {spec.options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type="number"
-          value={Number(value)}
-          min={spec.min}
-          max={spec.max}
-          onChange={(event) => onChange(Number(event.target.value))}
-          className="h-8 rounded bg-input border border-border px-2 font-mono text-foreground"
-        />
-      )}
-    </label>
   );
 }
 
