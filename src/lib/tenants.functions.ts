@@ -98,22 +98,31 @@ export const listTenantMembers = createServerFn({ method: "GET" })
 
     const { data, error } = await supabase
       .from("tenant_memberships")
-      .select("user_id, role, accepted_at, created_at, profiles!inner(full_name)")
+      .select("user_id, role, accepted_at, created_at")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
-    return ((data ?? []) as Array<{
+    const rows = (data ?? []) as Array<{
       user_id: string;
       role: string;
       accepted_at: string | null;
       created_at: string;
-      profiles: { full_name: string | null } | null;
-    }>).map((r) => ({
+    }>;
+    if (rows.length === 0) return [];
+    const ids = rows.map((r) => r.user_id);
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", ids);
+    const nameById = new Map(
+      ((profs ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [p.id, p.full_name]),
+    );
+    return rows.map((r) => ({
       user_id: r.user_id,
       role: r.role,
       accepted_at: r.accepted_at,
       created_at: r.created_at,
-      full_name: r.profiles?.full_name ?? null,
+      full_name: nameById.get(r.user_id) ?? null,
     }));
   });
 
