@@ -1,4 +1,13 @@
-import { VOLTAI_COLORS, type VoltaiComponentType } from "./component-definitions";
+import {
+  VOLTAI_COLORS,
+  VOLTAI_COMPONENT_BY_TYPE,
+  type VoltaiComponentType,
+} from "./component-definitions";
+
+// Escape any user/DB-controlled string before inlining into SVG markup.
+// Prevents stored-XSS via crafted `type` values rendered through dangerouslySetInnerHTML.
+const esc = (v: string) =>
+  String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const base = (content: string) =>
   `<svg viewBox="0 0 96 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">${content}</svg>`;
@@ -6,9 +15,14 @@ const base = (content: string) =>
 const line = (stroke: string = VOLTAI_COLORS.power) =>
   `stroke="${stroke}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"`;
 const text = (label: string, color: string = VOLTAI_COLORS.neutral) =>
-  `<text x="48" y="58" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="${color}">${label}</text>`;
+  `<text x="48" y="58" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="${color}">${esc(label)}</text>`;
 
-export function getComponentSymbol(type: VoltaiComponentType): string {
+export function getComponentSymbol(rawType: VoltaiComponentType | string): string {
+  // Validate against the known component map at render time. Unknown types
+  // (e.g. tampered diagram rows in the DB) collapse to a safe placeholder.
+  const type = (VOLTAI_COMPONENT_BY_TYPE as Record<string, unknown>)[rawType as string]
+    ? (rawType as VoltaiComponentType)
+    : ("UNKNOWN" as VoltaiComponentType);
   const p = VOLTAI_COLORS.power;
   const c = VOLTAI_COLORS.control;
   const s = VOLTAI_COLORS.signal;

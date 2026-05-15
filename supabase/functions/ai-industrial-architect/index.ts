@@ -1,11 +1,29 @@
 // AI Industrial Architect — DeepSeek-powered with key validation, friendly errors and web fallback hint.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Vary": "Origin",
 };
+
+// Verify the caller's Supabase JWT. Returns the user id or null.
+async function requireUser(req: Request): Promise<{ userId: string } | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const ANON = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!SUPABASE_URL || !ANON) return null;
+  const supabase = createClient(SUPABASE_URL, ANON, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) return null;
+  return { userId: data.user.id };
+}
 
 // --- Startup key validation -------------------------------------------------
 function validateKeyFormat(k: string | undefined): { ok: boolean; reason?: string } {
@@ -95,6 +113,16 @@ async function healthCheck(): Promise<Response> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Require authenticated Supabase user for all calls (health + generation).
+  // Prevents anonymous abuse of DeepSeek credits.
+  const auth = await requireUser(req);
+  if (!auth) {
+    return new Response(
+      JSON.stringify({ ok: false, error: { code: "AUTH_REQUIRED", message: "Sessão necessária. Faça login para usar a IA." } }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   const url = new URL(req.url);
   if (req.method === "GET" && url.searchParams.get("health") === "1") return healthCheck();
