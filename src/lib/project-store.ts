@@ -236,6 +236,10 @@ interface ProjectState {
   nodes: IndustrialNode[];
   edges: IndustrialEdge[];
   selectedId: string | null;
+  // Persistence
+  projectId: string | null;
+  dirty: boolean;
+  lastSavedAt: number | null;
   // Runtime
   tags: Record<string, number | boolean | string>;
   logs: RuntimeLog[];
@@ -252,6 +256,9 @@ interface ProjectState {
   setRuntime: (status: Partial<RuntimeStatus>) => void;
   reset: () => void;
   loadDemoFaulty: () => void;
+  setAll: (nodes: IndustrialNode[], edges: IndustrialEdge[]) => void;
+  setProjectId: (id: string | null) => void;
+  markSaved: () => void;
 }
 
 export interface TickPayload {
