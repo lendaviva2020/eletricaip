@@ -49,6 +49,30 @@ export type Database = {
           },
         ]
       }
+      ai_credit_costs: {
+        Row: {
+          created_at: string
+          credits: number
+          description: string | null
+          operation: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits: number
+          description?: string | null
+          operation: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          description?: string | null
+          operation?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_messages: {
         Row: {
           content: string
@@ -2485,9 +2509,20 @@ export type Database = {
           used: number
         }[]
       }
+      consume_ai_credits: { Args: { p_operation: string }; Returns: Json }
       create_monthly_tag_samples_partition: {
         Args: { target_month?: string }
         Returns: undefined
+      }
+      get_ai_credits_remaining: {
+        Args: never
+        Returns: {
+          max_credits: number
+          plan: string
+          remaining: number
+          unlimited: boolean
+          used: number
+        }[]
       }
       get_user_role: { Args: never; Returns: string }
       get_user_tenant_id: { Args: never; Returns: string }
