@@ -122,6 +122,22 @@ function Projects() {
                     <span>{new Date(p.updated_at).toLocaleDateString()}</span>
                   </div>
                 </Link>
+                <div className="mt-2 flex gap-2 text-[11px]">
+                  <Link
+                    to="/projects/$projectId/bom"
+                    params={{ projectId: p.id }}
+                    className="text-primary hover:underline"
+                  >
+                    BOM
+                  </Link>
+                  <Link
+                    to="/projects/$projectId/export"
+                    params={{ projectId: p.id }}
+                    className="text-primary hover:underline"
+                  >
+                    Exportar
+                  </Link>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
