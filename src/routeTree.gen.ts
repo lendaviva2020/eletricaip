@@ -19,10 +19,13 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClientsRouteImport } from './routes/clients'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AiRouteImport } from './routes/ai'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
@@ -74,6 +77,11 @@ const ClientsRoute = ClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -89,16 +97,27 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsTeamRoute = SettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsAiStatusRoute = SettingsAiStatusRouteImport.update({
   id: '/ai-status',
   path: '/ai-status',
   getParentRoute: () => SettingsRoute,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/analytics': typeof AnalyticsRoute
+  '/chat': typeof ChatRoute
   '/clients': typeof ClientsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -109,12 +128,15 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/team': typeof SettingsTeamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/analytics': typeof AnalyticsRoute
+  '/chat': typeof ChatRoute
   '/clients': typeof ClientsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -125,13 +147,16 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/team': typeof SettingsTeamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/analytics': typeof AnalyticsRoute
+  '/chat': typeof ChatRoute
   '/clients': typeof ClientsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -142,7 +167,9 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/team': typeof SettingsTeamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/analytics'
+    | '/chat'
     | '/clients'
     | '/dashboard'
     | '/forgot-password'
@@ -160,12 +188,15 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+    | '/invite/$token'
     | '/settings/ai-status'
+    | '/settings/team'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/ai'
     | '/analytics'
+    | '/chat'
     | '/clients'
     | '/dashboard'
     | '/forgot-password'
@@ -176,12 +207,15 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+    | '/invite/$token'
     | '/settings/ai-status'
+    | '/settings/team'
   id:
     | '__root__'
     | '/'
     | '/ai'
     | '/analytics'
+    | '/chat'
     | '/clients'
     | '/dashboard'
     | '/forgot-password'
@@ -192,13 +226,16 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+    | '/invite/$token'
     | '/settings/ai-status'
+    | '/settings/team'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiRoute: typeof AiRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  ChatRoute: typeof ChatRoute
   ClientsRoute: typeof ClientsRoute
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -209,6 +246,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRouteWithChildren
   SignupRoute: typeof SignupRoute
   WorkspaceRoute: typeof WorkspaceRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -283,6 +321,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -304,6 +349,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/team': {
+      id: '/settings/team'
+      path: '/team'
+      fullPath: '/settings/team'
+      preLoaderRoute: typeof SettingsTeamRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/ai-status': {
       id: '/settings/ai-status'
       path: '/ai-status'
@@ -311,15 +363,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAiStatusRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface SettingsRouteChildren {
   SettingsAiStatusRoute: typeof SettingsAiStatusRoute
+  SettingsTeamRoute: typeof SettingsTeamRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAiStatusRoute: SettingsAiStatusRoute,
+  SettingsTeamRoute: SettingsTeamRoute,
 }
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
@@ -330,6 +391,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiRoute: AiRoute,
   AnalyticsRoute: AnalyticsRoute,
+  ChatRoute: ChatRoute,
   ClientsRoute: ClientsRoute,
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
@@ -340,6 +402,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRouteWithChildren,
   SignupRoute: SignupRoute,
   WorkspaceRoute: WorkspaceRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

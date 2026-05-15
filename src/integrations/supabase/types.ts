@@ -2416,6 +2416,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite: { Args: { p_token: string }; Returns: Json }
       batch_insert_alarm_history: {
         Args: { p_alarms: Json; p_project_id: string }
         Returns: {
