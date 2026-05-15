@@ -178,7 +178,7 @@ export const generateArchitecture = createServerFn({ method: "POST" })
       console.error("DeepSeek bad response:", JSON.stringify(json).slice(0, 500));
       return { ok: false, error: { code: "BAD_RESPONSE", message: "A IA não devolveu estrutura válida." } };
     }
-    let parsed: unknown;
+    let parsed: JsonValue;
     try {
       parsed = JSON.parse(call.function.arguments);
     } catch (e) {
