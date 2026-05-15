@@ -1,19 +1,36 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { LadderRung, LadderCell } from "@/lib/ladder/types";
 import { newRung, emptyCell, RUNG_COLS } from "@/lib/ladder/types";
 import { compileProgram } from "@/lib/ladder/compiler";
-import { scanRungs } from "@/lib/ladder/runtime";
+import { scanRungs, resetRuntimeState, type ScanResult } from "@/lib/ladder/runtime";
 import { useEditorStore } from "@/lib/editor/store";
 import { LadderCellView } from "./ladder-cell";
 import { Button } from "@/components/ui/button";
-import { Plus, Play, Square, Code2, Rows3, X } from "lucide-react";
+import { Plus, Play, Square, Code2, Rows3, X, Download, History, Pause, Trash2 } from "lucide-react";
+
+interface HistoryEntry {
+  ts: number;
+  scan: number;
+  rungId: string;
+  poweredOut: boolean;
+  perCell: boolean[][];
+  diagnostics?: ScanResult["diagnostics"];
+  tagDelta: { name: string; from: unknown; to: unknown }[];
+}
+
+const MAX_HISTORY = 200;
 
 export function RungGrid() {
   const [rungs, setRungs] = useState<LadderRung[]>([newRung(0)]);
   const [running, setRunning] = useState(false);
   const [showIL, setShowIL] = useState(false);
-  const [scanState, setScanState] = useState<Record<string, boolean[][]>>({});
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyPaused, setHistoryPaused] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [scanState, setScanState] = useState<Record<string, ScanResult>>({});
   const intervalRef = useRef<number | null>(null);
+  const scanCountRef = useRef(0);
+  const prevTagsRef = useRef<Record<string, unknown>>({});
   const selected = useEditorStore((s) => s.selectedNodeId);
   const select = useEditorStore((s) => s.setSelectedNode);
 
@@ -25,13 +42,42 @@ export function RungGrid() {
     }
     const tick = () => {
       const results = scanRungs(rungs);
-      setScanState(Object.fromEntries(results.map((r) => [r.rungId, r.perCell])));
+      scanCountRef.current += 1;
+      setScanState(Object.fromEntries(results.map((r) => [r.rungId, r])));
       setRungs((rs) =>
         rs.map((r) => {
           const found = results.find((x) => x.rungId === r.id);
           return found ? { ...r, poweredOut: found.poweredOut } : r;
         }),
       );
+
+      // Capture tag deltas
+      const currentTags = useEditorStore.getState().tags;
+      const flatNow: Record<string, unknown> = {};
+      Object.values(currentTags).forEach((t) => (flatNow[t.name] = t.value));
+      const deltas: { name: string; from: unknown; to: unknown }[] = [];
+      Object.entries(flatNow).forEach(([name, to]) => {
+        const from = prevTagsRef.current[name];
+        if (from !== to) deltas.push({ name, from, to });
+      });
+      prevTagsRef.current = flatNow;
+
+      if (!historyPaused) {
+        const ts = Date.now();
+        const scan = scanCountRef.current;
+        setHistory((h) => {
+          const entries: HistoryEntry[] = results.map((r) => ({
+            ts,
+            scan,
+            rungId: r.rungId,
+            poweredOut: r.poweredOut,
+            perCell: r.perCell,
+            diagnostics: r.diagnostics,
+            tagDelta: deltas,
+          }));
+          return [...entries, ...h].slice(0, MAX_HISTORY);
+        });
+      }
     };
     tick();
     intervalRef.current = window.setInterval(tick, 100);
@@ -39,7 +85,7 @@ export function RungGrid() {
       if (intervalRef.current) window.clearInterval(intervalRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, rungs.length]);
+  }, [running, rungs.length, historyPaused]);
 
   const updateCell = (rungId: string, row: number, col: number, next: LadderCell) => {
     setRungs((rs) =>
@@ -70,7 +116,19 @@ export function RungGrid() {
     setRungs((rs) => rs.filter((r) => r.id !== rungId));
   };
 
-  const il = compileProgram(rungs);
+  const il = useMemo(() => compileProgram(rungs), [rungs]);
+
+  const downloadIL = () => {
+    const blob = new Blob([il], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ladder-${new Date().toISOString().replace(/[:.]/g, "-")}.il`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -81,7 +139,16 @@ export function RungGrid() {
         <Button
           size="sm"
           variant={running ? "destructive" : "default"}
-          onClick={() => setRunning((v) => !v)}
+          onClick={() => {
+            if (running) {
+              setRunning(false);
+            } else {
+              resetRuntimeState();
+              scanCountRef.current = 0;
+              prevTagsRef.current = {};
+              setRunning(true);
+            }
+          }}
         >
           {running ? <Square className="mr-1 h-3 w-3" /> : <Play className="mr-1 h-3 w-3" />}
           {running ? "Parar scan" : "Simular"}
@@ -89,8 +156,11 @@ export function RungGrid() {
         <Button size="sm" variant="ghost" onClick={() => setShowIL((v) => !v)}>
           <Code2 className="mr-1 h-3 w-3" /> {showIL ? "Ocultar IL" : "Compilar"}
         </Button>
+        <Button size="sm" variant="ghost" onClick={() => setShowHistory((v) => !v)}>
+          <History className="mr-1 h-3 w-3" /> {showHistory ? "Ocultar histórico" : "Histórico"}
+        </Button>
         <div className="ml-auto text-[10px] font-mono text-muted-foreground">
-          {rungs.length} rungs · scan 100ms · {running ? "RUN" : "STOP"}
+          {rungs.length} rungs · scan 100ms · {running ? `RUN #${scanCountRef.current}` : "STOP"}
         </div>
       </div>
 
@@ -98,7 +168,9 @@ export function RungGrid() {
         <div className="flex-1 overflow-auto industrial-grid scan-overlay p-6">
           <div className="mx-auto max-w-5xl space-y-3">
             {rungs.map((rung, idx) => {
-              const cellState = scanState[rung.id] ?? [];
+              const result = scanState[rung.id];
+              const cellState = result?.perCell ?? [];
+              const diag = result?.diagnostics ?? {};
               const isSel = selected === rung.id;
               return (
                 <div
@@ -148,18 +220,31 @@ export function RungGrid() {
                     <div className="flex-1 px-2">
                       {rung.cells.map((row, ri) => (
                         <div key={ri} className="flex items-center gap-1 py-1">
-                          {row.map((cell, ci) => (
-                            <div key={ci} className="flex items-center">
-                              <span className="h-px w-2 bg-foreground/40" />
-                              <LadderCellView
-                                cell={cell}
-                                isOutputCol={ci === row.length - 1}
-                                energized={Boolean(cellState[ri]?.[ci])}
-                                onChange={(n) => updateCell(rung.id, ri, ci, n)}
-                              />
-                              <span className="h-px w-2 bg-foreground/40" />
-                            </div>
-                          ))}
+                          {row.map((cell, ci) => {
+                            const d = ri === 0 ? diag[`${ri}:${ci}`] : undefined;
+                            return (
+                              <div key={ci} className="flex flex-col items-center">
+                                <div className="flex items-center">
+                                  <span className="h-px w-2 bg-foreground/40" />
+                                  <LadderCellView
+                                    cell={cell}
+                                    isOutputCol={ci === row.length - 1}
+                                    energized={Boolean(cellState[ri]?.[ci])}
+                                    onChange={(n) => updateCell(rung.id, ri, ci, n)}
+                                  />
+                                  <span className="h-px w-2 bg-foreground/40" />
+                                </div>
+                                {d && (
+                                  <span className="mt-0.5 font-mono text-[9px] text-muted-foreground">
+                                    {d.kind === "TON"
+                                      ? `${Math.round(d.value)}/${d.preset}ms`
+                                      : `${d.value}/${d.preset}`}
+                                    {d.done ? " ✓" : ""}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       ))}
                     </div>
@@ -172,13 +257,98 @@ export function RungGrid() {
         </div>
 
         {showIL && (
-          <aside className="w-80 shrink-0 border-l border-border bg-background/80 backdrop-blur">
-            <div className="border-b border-border px-3 py-2 text-[11px] font-mono uppercase text-muted-foreground">
-              IEC 61131-3 · IL
+          <aside className="w-80 shrink-0 border-l border-border bg-background/80 backdrop-blur flex flex-col">
+            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+              <div className="text-[11px] font-mono uppercase text-muted-foreground">
+                IEC 61131-3 · IL
+              </div>
+              <Button size="sm" variant="ghost" onClick={downloadIL} className="h-6 px-2">
+                <Download className="mr-1 h-3 w-3" /> .il
+              </Button>
             </div>
-            <pre className="overflow-auto p-3 text-[11px] font-mono leading-relaxed text-foreground">
+            <pre className="flex-1 overflow-auto p-3 text-[11px] font-mono leading-relaxed text-foreground">
 {il}
             </pre>
+          </aside>
+        )}
+
+        {showHistory && (
+          <aside className="w-96 shrink-0 border-l border-border bg-background/80 backdrop-blur flex flex-col">
+            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+              <div className="text-[11px] font-mono uppercase text-muted-foreground">
+                Histórico de scan ({history.length})
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant={historyPaused ? "default" : "ghost"}
+                  onClick={() => setHistoryPaused((v) => !v)}
+                  className="h-6 px-2"
+                >
+                  {historyPaused ? <Play className="mr-1 h-3 w-3" /> : <Pause className="mr-1 h-3 w-3" />}
+                  {historyPaused ? "Retomar" : "Pausar"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setHistory([])}
+                  className="h-6 px-2"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-2 space-y-1">
+              {history.length === 0 && (
+                <div className="p-4 text-center text-[11px] text-muted-foreground">
+                  Inicie a simulação para registrar ciclos.
+                </div>
+              )}
+              {history.map((h, i) => {
+                const rIdx = rungs.findIndex((r) => r.id === h.rungId);
+                return (
+                  <div
+                    key={`${h.scan}-${h.rungId}-${i}`}
+                    className="rounded border border-border bg-card/60 px-2 py-1.5 text-[10px] font-mono"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">
+                        #{h.scan} · R{String(rIdx + 1).padStart(3, "0")}
+                      </span>
+                      <span
+                        className={
+                          h.poweredOut ? "text-success" : "text-muted-foreground"
+                        }
+                      >
+                        {h.poweredOut ? "ON" : "off"}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-0.5">
+                      {h.perCell.map((row, ri) =>
+                        row.map((on, ci) => (
+                          <span
+                            key={`${ri}-${ci}`}
+                            className={`inline-block h-2 w-2 rounded-sm ${
+                              on ? "bg-success" : "bg-muted"
+                            }`}
+                            title={`r${ri}c${ci}=${on ? "1" : "0"}`}
+                          />
+                        )),
+                      )}
+                    </div>
+                    {h.tagDelta.length > 0 && i % rungs.length === 0 && (
+                      <div className="mt-1 space-y-0.5 text-[9px]">
+                        {h.tagDelta.slice(0, 4).map((d, di) => (
+                          <div key={di} className="text-warning">
+                            {d.name}: {String(d.from)} → {String(d.to)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </aside>
         )}
       </div>
