@@ -162,6 +162,7 @@ function BillingPage() {
         </p>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => handleManual("free")}>FREE</Button>
+          <Button size="sm" variant="outline" onClick={() => handleManual("basic")}>BASIC</Button>
           <Button size="sm" variant="outline" onClick={() => handleManual("pro")}>PRO</Button>
           <Button size="sm" variant="outline" onClick={() => handleManual("premium")}>PREMIUM</Button>
         </div>
