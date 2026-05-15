@@ -1535,6 +1535,68 @@ export type Database = {
           },
         ]
       }
+      project_bom_items: {
+        Row: {
+          component_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          manufacturer: string | null
+          notes: string | null
+          part_number: string | null
+          project_id: string
+          quantity: number
+          reference: string | null
+          source: string
+          unit: string
+          unit_price_brl: number | null
+          updated_at: string
+        }
+        Insert: {
+          component_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          manufacturer?: string | null
+          notes?: string | null
+          part_number?: string | null
+          project_id: string
+          quantity?: number
+          reference?: string | null
+          source?: string
+          unit?: string
+          unit_price_brl?: number | null
+          updated_at?: string
+        }
+        Update: {
+          component_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          manufacturer?: string | null
+          notes?: string | null
+          part_number?: string | null
+          project_id?: string
+          quantity?: number
+          reference?: string | null
+          source?: string
+          unit?: string
+          unit_price_brl?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_bom_items_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_components"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_folders: {
         Row: {
           created_at: string
@@ -2513,6 +2575,12 @@ export type Database = {
       create_monthly_tag_samples_partition: {
         Args: { target_month?: string }
         Returns: undefined
+      }
+      generate_bom_from_canvas: {
+        Args: { p_project_id: string }
+        Returns: {
+          items_added: number
+        }[]
       }
       get_ai_credits_remaining: {
         Args: never
