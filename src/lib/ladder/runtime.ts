@@ -1,5 +1,6 @@
 // Tiny scan-cycle runtime for the rung matrix.
 // Reads tag values from the editor store, evaluates rung-by-rung, writes outputs.
+// Maintains per-cell state for TON (timer on-delay) and CTU (counter up).
 import type { LadderCell, LadderRung } from "./types";
 import { isOutputKind } from "./types";
 import { useEditorStore, type EditorTag } from "@/lib/editor/store";
@@ -37,7 +38,7 @@ const evalContact = (cell: LadderCell, tags: Record<string, EditorTag>): boolean
   const v = readBool(cell.operand, tags);
   if (cell.kind === "XIC") return v;
   if (cell.kind === "XIO") return !v;
-  return true; // EMPTY pass-through (handled by caller)
+  return true;
 };
 
 const evalRow = (row: LadderCell[], tags: Record<string, EditorTag>): boolean => {
@@ -53,36 +54,123 @@ const evalRow = (row: LadderCell[], tags: Record<string, EditorTag>): boolean =>
   return any ? result : false;
 };
 
+// ---------- Timer / Counter persistent state ----------
+interface TimerState {
+  accum: number; // ms accumulated
+  done: boolean;
+  prevIn: boolean;
+  lastTick: number; // performance.now()
+}
+interface CounterState {
+  count: number;
+  done: boolean;
+  prevIn: boolean;
+}
+const timerState = new Map<string, TimerState>();
+const counterState = new Map<string, CounterState>();
+
+const cellKey = (rungId: string, row: number, col: number) => `${rungId}:${row}:${col}`;
+
+export const resetRuntimeState = () => {
+  timerState.clear();
+  counterState.clear();
+};
+
+const tickTimer = (key: string, input: boolean, presetMs: number, now: number): { done: boolean; accum: number } => {
+  let st = timerState.get(key);
+  if (!st) {
+    st = { accum: 0, done: false, prevIn: false, lastTick: now };
+    timerState.set(key, st);
+  }
+  const dt = Math.max(0, now - st.lastTick);
+  st.lastTick = now;
+  if (input) {
+    st.accum += dt;
+    if (presetMs > 0 && st.accum >= presetMs) {
+      st.accum = presetMs;
+      st.done = true;
+    }
+  } else {
+    st.accum = 0;
+    st.done = false;
+  }
+  st.prevIn = input;
+  return { done: st.done, accum: st.accum };
+};
+
+const tickCounter = (key: string, input: boolean, preset: number): { done: boolean; count: number } => {
+  let st = counterState.get(key);
+  if (!st) {
+    st = { count: 0, done: false, prevIn: false };
+    counterState.set(key, st);
+  }
+  // Rising edge increments
+  if (input && !st.prevIn) {
+    st.count += 1;
+    if (preset > 0 && st.count >= preset) st.done = true;
+  }
+  st.prevIn = input;
+  return { done: st.done, count: st.count };
+};
+
 export interface ScanResult {
   rungId: string;
   poweredOut: boolean;
   perCell: boolean[][];
+  /** Per-cell diagnostics for TON/CTU display */
+  diagnostics?: Record<string, { kind: "TON" | "CTU"; value: number; preset: number; done: boolean }>;
 }
 
 export const scanRungs = (rungs: LadderRung[]): ScanResult[] => {
   const tags = useEditorStore.getState().tags;
+  const now = typeof performance !== "undefined" ? performance.now() : Date.now();
   const results: ScanResult[] = [];
+
   for (const rung of rungs) {
     const perCell: boolean[][] = [];
+    const diagnostics: Record<string, { kind: "TON" | "CTU"; value: number; preset: number; done: boolean }> = {};
     let powered = false;
-    for (const row of rung.cells) {
+
+    for (let ri = 0; ri < rung.cells.length; ri++) {
+      const row = rung.cells[ri];
       const rowOn = evalRow(row, tags);
       powered = powered || rowOn;
-      perCell.push(row.map((c, i) => (i === row.length - 1 ? powered : c.kind === "EMPTY" ? rowOn : evalContact(c, tags))));
+      perCell.push(
+        row.map((c, i) =>
+          i === row.length - 1 ? powered : c.kind === "EMPTY" ? rowOn : evalContact(c, tags),
+        ),
+      );
     }
-    // Apply output (only first-row output cell)
+
+    // Output cell lives in row 0, last column. Its input = rung power.
     const outRow = rung.cells[0] ?? [];
-    const outCell = outRow[outRow.length - 1];
+    const outCol = outRow.length - 1;
+    const outCell = outRow[outCol];
     if (outCell && isOutputKind(outCell.kind) && outCell.operand) {
-      if (outCell.kind === "OTE") writeBool(outCell.operand, powered);
-      else if (outCell.kind === "OTL" && powered) writeBool(outCell.operand, true);
-      else if (outCell.kind === "OTU" && powered) writeBool(outCell.operand, false);
-      else if (outCell.kind === "TON") {
-        // Simplified: write powered immediately (preset ignored at MVP).
+      const key = cellKey(rung.id, 0, outCol);
+      const preset = outCell.preset ?? 0;
+
+      if (outCell.kind === "OTE") {
         writeBool(outCell.operand, powered);
+      } else if (outCell.kind === "OTL" && powered) {
+        writeBool(outCell.operand, true);
+      } else if (outCell.kind === "OTU" && powered) {
+        writeBool(outCell.operand, false);
+      } else if (outCell.kind === "TON") {
+        const { done, accum } = tickTimer(key, powered, preset, now);
+        writeBool(outCell.operand, done);
+        diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done };
+        // visual: output cell shows "done", not just rung power
+        perCell[0][outCol] = done;
+      } else if (outCell.kind === "CTU") {
+        const { done, count } = tickCounter(key, powered, preset);
+        writeBool(outCell.operand, done);
+        diagnostics[`${0}:${outCol}`] = { kind: "CTU", value: count, preset, done };
+        perCell[0][outCol] = done;
       }
     }
-    results.push({ rungId: rung.id, poweredOut: powered, perCell });
+
+    results.push({ rungId: rung.id, poweredOut: powered, perCell, diagnostics });
   }
   return results;
 };
