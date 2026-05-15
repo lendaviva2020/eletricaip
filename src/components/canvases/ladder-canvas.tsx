@@ -1,8 +1,15 @@
 import { motion } from "framer-motion";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { LADDER_ELEMENTS_BY_ID, type LadderElement } from "@/lib/ladder/definitions";
-import { useProjectStore } from "@/lib/project-store";
+import { useEditorStore } from "@/lib/editor/store";
 import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
+
+interface LadderRung {
+  id: string;
+  label: string;
+  contacts: string[];
+  coil: string;
+}
 
 interface DroppedLadderNode {
   id: string;
@@ -12,33 +19,26 @@ interface DroppedLadderNode {
 }
 
 export function LadderCanvas() {
-  const nodes = useProjectStore((s) => s.nodes);
-  const select = useProjectStore((s) => s.select);
-  const selectedId = useProjectStore((s) => s.selectedId);
+  // Ladder is its own system: NO read of unifilar/SCADA components.
+  // It only owns its own rungs + dropped elements, and shares tags via editor store.
+  const selectedId = useEditorStore((s) => s.selectedNodeId);
+  const select = useEditorStore((s) => s.setSelectedNode);
+
+  const [rungs, setRungs] = useState<LadderRung[]>([]);
   const [dropped, setDropped] = useState<DroppedLadderNode[]>([]);
 
-  const driven = nodes.filter((n) => ["motor", "pump", "valve", "conveyor"].includes(n.kind));
-  const safety = nodes.filter((n) => ["estop", "lightcurtain"].includes(n.kind));
-  const sensors = nodes.filter((n) =>
-    ["pt100", "pressure", "flow", "level", "encoder"].includes(n.kind),
-  );
-
-  const rungs = useMemo(
-    () =>
-      driven.map((d, i) => {
-        const contacts: string[] = ["I0.0 START"];
-        if (safety[0]) contacts.push(`!${safety[0].id}`);
-        if (sensors[i % Math.max(sensors.length, 1)])
-          contacts.push(`${sensors[i % sensors.length].id}.OK`);
-        return {
-          id: d.id,
-          label: `${d.label} - ${d.kind.toUpperCase()}`,
-          contacts,
-          coil: `Q0.${i} ${d.id}`,
-        };
-      }),
-    [driven, safety, sensors],
-  );
+  const addRung = () => {
+    const idx = rungs.length + 1;
+    setRungs((r) => [
+      ...r,
+      {
+        id: `rung-${Date.now()}`,
+        label: `Rung ${idx}`,
+        contacts: ["%I0.0"],
+        coil: `%Q0.${idx - 1}`,
+      },
+    ]);
+  };
 
   const onDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -67,14 +67,26 @@ export function LadderCanvas() {
       }}
     >
       <FloatingLegend
-        title="Ladder - IEC 61131-3"
-        items={["20 Hz", `${rungs.length + dropped.length} blocos`, "Drag & Drop", "Live"]}
+        title="Ladder · IEC 61131-3"
+        items={["20 Hz", `${rungs.length} rungs`, `${dropped.length} blocos`, "Isolado"]}
       />
+
+      <div className="absolute top-3 right-3 z-30">
+        <button
+          onClick={addRung}
+          className="h-8 px-3 rounded bg-primary text-primary-foreground text-[11px] hover:opacity-90"
+        >
+          + Novo Rung
+        </button>
+      </div>
 
       <div className="p-8 pt-16 pb-20 max-w-5xl mx-auto space-y-2">
         {rungs.length === 0 && dropped.length === 0 && (
           <div className="text-center text-sm text-muted-foreground py-20">
-            Arraste contatos, bobinas, timers, contadores e blocos IEC 61131-3 para o canvas.
+            Adicione um rung ou arraste contatos, bobinas, timers, contadores e blocos IEC 61131-3.
+            <div className="mt-2 text-[11px]">
+              Ladder é independente do Unifilar — diagramas não são compartilhados.
+            </div>
           </div>
         )}
         {rungs.map((r, idx) => (
@@ -146,7 +158,7 @@ export function LadderCanvas() {
           ["Scan", "50 ms"],
           ["Rungs", `${rungs.length}`],
           ["Blocos", `${dropped.length}`],
-          ["Sync", "Store"],
+          ["Sync", "Tags"],
         ]}
       />
     </div>
