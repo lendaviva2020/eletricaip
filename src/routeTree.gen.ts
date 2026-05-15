@@ -24,6 +24,7 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AiRouteImport } from './routes/ai'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsTeamRouteImport } from './routes/settings.team'
+import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
@@ -104,6 +105,11 @@ const SettingsTeamRoute = SettingsTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsBillingRoute = SettingsBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsAiStatusRoute = SettingsAiStatusRouteImport.update({
   id: '/ai-status',
   path: '/ai-status',
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/workspace': typeof WorkspaceRoute
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/workspace': typeof WorkspaceRoute
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/workspace': typeof WorkspaceRoute
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/workspace'
     | '/invite/$token'
     | '/settings/ai-status'
+    | '/settings/billing'
     | '/settings/team'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/workspace'
     | '/invite/$token'
     | '/settings/ai-status'
+    | '/settings/billing'
     | '/settings/team'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/workspace'
     | '/invite/$token'
     | '/settings/ai-status'
+    | '/settings/billing'
     | '/settings/team'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -382,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsTeamRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/billing': {
+      id: '/settings/billing'
+      path: '/billing'
+      fullPath: '/settings/billing'
+      preLoaderRoute: typeof SettingsBillingRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/ai-status': {
       id: '/settings/ai-status'
       path: '/ai-status'
@@ -415,11 +434,13 @@ declare module '@tanstack/react-router' {
 
 interface SettingsRouteChildren {
   SettingsAiStatusRoute: typeof SettingsAiStatusRoute
+  SettingsBillingRoute: typeof SettingsBillingRoute
   SettingsTeamRoute: typeof SettingsTeamRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAiStatusRoute: SettingsAiStatusRoute,
+  SettingsBillingRoute: SettingsBillingRoute,
   SettingsTeamRoute: SettingsTeamRoute,
 }
 
