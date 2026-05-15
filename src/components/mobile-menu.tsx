@@ -134,7 +134,8 @@ export function MobileMenu() {
               })}
             </nav>
           </aside>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
