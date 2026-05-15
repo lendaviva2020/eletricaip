@@ -10,6 +10,7 @@ import {
   createMpPreference,
   cancelSubscription,
   changePlanManual,
+  getIsPlatformAdmin,
 } from "@/lib/billing.functions";
 import { Button } from "@/components/ui/button";
 import { SUBSCRIPTION_PLANS, getPlan } from "@/lib/plans";
@@ -30,10 +31,16 @@ function BillingPage() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
 
+  const adminFn = useServerFn(getIsPlatformAdmin);
   const { data, isLoading, error } = useQuery({
     queryKey: ["billing-overview"],
     queryFn: () => overviewFn({}),
   });
+  const { data: adminInfo } = useQuery({
+    queryKey: ["is-platform-admin"],
+    queryFn: () => adminFn({}),
+  });
+  const isPlatformAdmin = !!adminInfo?.isPlatformAdmin;
 
   async function handleCheckout(provider: "stripe" | "mp", plan: PaidPlan) {
     setBusy(`${provider}:${plan}`);
