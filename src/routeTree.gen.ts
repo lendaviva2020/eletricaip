@@ -13,6 +13,7 @@ import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RealtimeRouteImport } from './routes/realtime'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
@@ -49,6 +50,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RealtimeRoute = RealtimeRouteImport.update({
+  id: '/realtime',
+  path: '/realtime',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
+  '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
+  '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
+  '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/projects'
+    | '/realtime'
     | '/reset-password'
     | '/settings'
     | '/signup'
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/projects'
+    | '/realtime'
     | '/reset-password'
     | '/settings'
     | '/signup'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/projects'
+    | '/realtime'
     | '/reset-password'
     | '/settings'
     | '/signup'
@@ -290,6 +302,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   ProjectsRoute: typeof ProjectsRoute
+  RealtimeRoute: typeof RealtimeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SignupRoute: typeof SignupRoute
@@ -328,6 +341,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/realtime': {
+      id: '/realtime'
+      path: '/realtime'
+      fullPath: '/realtime'
+      preLoaderRoute: typeof RealtimeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -479,6 +499,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   ProjectsRoute: ProjectsRoute,
+  RealtimeRoute: RealtimeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SignupRoute: SignupRoute,
