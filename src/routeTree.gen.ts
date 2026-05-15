@@ -23,6 +23,7 @@ import { Route as ChatRouteImport } from './routes/chat'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AiRouteImport } from './routes/ai'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
@@ -95,6 +96,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsTeamRoute = SettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsAiStatusRoute = SettingsAiStatusRouteImport.update({
   id: '/ai-status',
   path: '/ai-status',
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/team': typeof SettingsTeamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/team': typeof SettingsTeamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/team': typeof SettingsTeamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/workspace'
     | '/settings/ai-status'
+    | '/settings/team'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/workspace'
     | '/settings/ai-status'
+    | '/settings/team'
   id:
     | '__root__'
     | '/'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/workspace'
     | '/settings/ai-status'
+    | '/settings/team'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -324,6 +336,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/team': {
+      id: '/settings/team'
+      path: '/team'
+      fullPath: '/settings/team'
+      preLoaderRoute: typeof SettingsTeamRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/ai-status': {
       id: '/settings/ai-status'
       path: '/ai-status'
@@ -336,10 +355,12 @@ declare module '@tanstack/react-router' {
 
 interface SettingsRouteChildren {
   SettingsAiStatusRoute: typeof SettingsAiStatusRoute
+  SettingsTeamRoute: typeof SettingsTeamRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAiStatusRoute: SettingsAiStatusRoute,
+  SettingsTeamRoute: SettingsTeamRoute,
 }
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
@@ -365,3 +386,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
