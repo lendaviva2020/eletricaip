@@ -114,6 +114,16 @@ async function healthCheck(): Promise<Response> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Require authenticated Supabase user for all calls (health + generation).
+  // Prevents anonymous abuse of DeepSeek credits.
+  const auth = await requireUser(req);
+  if (!auth) {
+    return new Response(
+      JSON.stringify({ ok: false, error: { code: "AUTH_REQUIRED", message: "Sessão necessária. Faça login para usar a IA." } }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   const url = new URL(req.url);
   if (req.method === "GET" && url.searchParams.get("health") === "1") return healthCheck();
 
