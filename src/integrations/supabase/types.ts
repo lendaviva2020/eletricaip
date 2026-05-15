@@ -2483,6 +2483,7 @@ export type Database = {
         Args: { p_increment?: number; p_metric: string; p_project_id: string }
         Returns: undefined
       }
+      is_platform_admin: { Args: never; Returns: boolean }
       search_catalog_components: {
         Args: {
           match_count?: number
