@@ -95,7 +95,7 @@ export function buildProjectPdf(opts: {
     { label: "Subtotal", w: 20, align: "right" as const },
   ];
   doc.setFontSize(8);
-  doc.setFillColor(235);
+  doc.setFillColor(235, 235, 235);
   doc.rect(margin, y - 4, pageW - 2 * margin, 6, "F");
   let x = margin;
   doc.setFont("helvetica", "bold");
