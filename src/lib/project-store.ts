@@ -273,94 +273,119 @@ export interface TickPayload {
 let counter = 1;
 const nextId = (kind: NodeKind) => `${kind.toUpperCase()}-${String(counter++).padStart(2, "0")}`;
 
-export const useProjectStore = create<ProjectState>((set) => ({
-  nodes: seedNodes(),
-  edges: seedEdges(),
-  selectedId: null,
-  addNode: (kindLabel, position) => {
-    const meta = KIND_CATALOG[kindLabel];
-    if (!meta) return "";
-    const id = nextId(meta.kind);
-    const node: IndustrialNode = {
-      id,
-      kind: meta.kind,
-      category: meta.category,
-      label: id,
-      position,
-      params: { ...(meta.defaults ?? {}) },
-      energized: meta.category === "power" || meta.category === "mech",
-    };
-    set((s) => ({ nodes: [...s.nodes, node], selectedId: id }));
-    return id;
-  },
-  updateNodePosition: (id, position) =>
-    set((s) => ({ nodes: s.nodes.map((n) => (n.id === id ? { ...n, position } : n)) })),
-  updateNodeParam: (id, key, value) =>
-    set((s) => ({
-      nodes: s.nodes.map((n) =>
-        n.id === id ? { ...n, params: { ...n.params, [key]: value } } : n,
-      ),
-    })),
-  removeNode: (id) =>
-    set((s) => ({
-      nodes: s.nodes.filter((n) => n.id !== id),
-      edges: s.edges.filter((e) => e.source !== id && e.target !== id),
-      selectedId: s.selectedId === id ? null : s.selectedId,
-    })),
-  addEdge: (e) => set((s) => ({ edges: [...s.edges, { ...e, id: `e${Date.now()}` }] })),
-  removeEdge: (id) => set((s) => ({ edges: s.edges.filter((e) => e.id !== id) })),
-  select: (id) => set({ selectedId: id }),
-  tags: {},
-  logs: [],
-  runtime: { connected: false, source: "off" },
-  applyTick: (payload) =>
-    set((s) => {
-      const nextTags = { ...s.tags, ...(payload.tags ?? {}) };
-      let nextNodes = s.nodes;
-      if (payload.energized) {
-        nextNodes = nextNodes.map((n) =>
-          payload.energized![n.id] !== undefined
-            ? { ...n, energized: !!payload.energized![n.id] }
-            : n,
-        );
-      }
-      if (payload.params) {
-        nextNodes = nextNodes.map((n) =>
-          payload.params![n.id] ? { ...n, params: { ...n.params, ...payload.params![n.id] } } : n,
-        );
-      }
-      const nextLogs = payload.logs?.length ? [...payload.logs, ...s.logs].slice(0, 200) : s.logs;
-      return {
-        nodes: nextNodes,
-        tags: nextTags,
-        logs: nextLogs,
-        runtime: {
-          ...s.runtime,
-          lastTick: payload.ts ?? Date.now(),
-          cycleMs: payload.cycleMs ?? s.runtime.cycleMs,
-        },
+export const useProjectStore = create<ProjectState>((set) => {
+  const dirty = () => ({ dirty: true });
+  return {
+    nodes: seedNodes(),
+    edges: seedEdges(),
+    selectedId: null,
+    projectId: null,
+    dirty: false,
+    lastSavedAt: null,
+    addNode: (kindLabel, position) => {
+      const meta = KIND_CATALOG[kindLabel];
+      if (!meta) return "";
+      const id = nextId(meta.kind);
+      const node: IndustrialNode = {
+        id,
+        kind: meta.kind,
+        category: meta.category,
+        label: id,
+        position,
+        params: { ...(meta.defaults ?? {}) },
+        energized: meta.category === "power" || meta.category === "mech",
       };
-    }),
-  pushLog: (log) => set((s) => ({ logs: [log, ...s.logs].slice(0, 200) })),
-  setRuntime: (status) => set((s) => ({ runtime: { ...s.runtime, ...status } })),
-  reset: () =>
-    set({ nodes: seedNodes(), edges: seedEdges(), selectedId: null, tags: {}, logs: [] }),
-  loadDemoFaulty: () =>
-    set({
-      nodes: demoFaultyNodes(),
-      edges: demoFaultyEdges(),
-      selectedId: null,
-      logs: [
-        {
-          t: new Date().toISOString(),
-          tag: "DEMO",
-          msg: "Projeto demo com falhas carregado (cabos subdim, DJ incorretos, sem DR/E-STOP).",
-          lvl: "warn",
-          channel: "IA",
-        },
-      ],
-    }),
-}));
+      set((s) => ({ nodes: [...s.nodes, node], selectedId: id, ...dirty() }));
+      return id;
+    },
+    updateNodePosition: (id, position) =>
+      set((s) => ({
+        nodes: s.nodes.map((n) => (n.id === id ? { ...n, position } : n)),
+        ...dirty(),
+      })),
+    updateNodeParam: (id, key, value) =>
+      set((s) => ({
+        nodes: s.nodes.map((n) =>
+          n.id === id ? { ...n, params: { ...n.params, [key]: value } } : n,
+        ),
+        ...dirty(),
+      })),
+    removeNode: (id) =>
+      set((s) => ({
+        nodes: s.nodes.filter((n) => n.id !== id),
+        edges: s.edges.filter((e) => e.source !== id && e.target !== id),
+        selectedId: s.selectedId === id ? null : s.selectedId,
+        ...dirty(),
+      })),
+    addEdge: (e) =>
+      set((s) => ({ edges: [...s.edges, { ...e, id: `e${Date.now()}` }], ...dirty() })),
+    removeEdge: (id) => set((s) => ({ edges: s.edges.filter((e) => e.id !== id), ...dirty() })),
+    select: (id) => set({ selectedId: id }),
+    tags: {},
+    logs: [],
+    runtime: { connected: false, source: "off" },
+    applyTick: (payload) =>
+      set((s) => {
+        const nextTags = { ...s.tags, ...(payload.tags ?? {}) };
+        let nextNodes = s.nodes;
+        if (payload.energized) {
+          nextNodes = nextNodes.map((n) =>
+            payload.energized![n.id] !== undefined
+              ? { ...n, energized: !!payload.energized![n.id] }
+              : n,
+          );
+        }
+        if (payload.params) {
+          nextNodes = nextNodes.map((n) =>
+            payload.params![n.id] ? { ...n, params: { ...n.params, ...payload.params![n.id] } } : n,
+          );
+        }
+        const nextLogs = payload.logs?.length
+          ? [...payload.logs, ...s.logs].slice(0, 200)
+          : s.logs;
+        return {
+          nodes: nextNodes,
+          tags: nextTags,
+          logs: nextLogs,
+          runtime: {
+            ...s.runtime,
+            lastTick: payload.ts ?? Date.now(),
+            cycleMs: payload.cycleMs ?? s.runtime.cycleMs,
+          },
+        };
+      }),
+    pushLog: (log) => set((s) => ({ logs: [log, ...s.logs].slice(0, 200) })),
+    setRuntime: (status) => set((s) => ({ runtime: { ...s.runtime, ...status } })),
+    reset: () =>
+      set({
+        nodes: seedNodes(),
+        edges: seedEdges(),
+        selectedId: null,
+        tags: {},
+        logs: [],
+        dirty: false,
+      }),
+    loadDemoFaulty: () =>
+      set({
+        nodes: demoFaultyNodes(),
+        edges: demoFaultyEdges(),
+        selectedId: null,
+        dirty: true,
+        logs: [
+          {
+            t: new Date().toISOString(),
+            tag: "DEMO",
+            msg: "Projeto demo com falhas carregado (cabos subdim, DJ incorretos, sem DR/E-STOP).",
+            lvl: "warn",
+            channel: "IA",
+          },
+        ],
+      }),
+    setAll: (nodes, edges) => set({ nodes, edges, selectedId: null, dirty: false }),
+    setProjectId: (id) => set({ projectId: id, dirty: false }),
+    markSaved: () => set({ dirty: false, lastSavedAt: Date.now() }),
+  };
+});
 
 export const KIND_GLYPH: Record<NodeKind, string> = {
   breaker: "⎚",
