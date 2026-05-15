@@ -25,6 +25,7 @@ import { Route as AiRouteImport } from './routes/ai'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
@@ -106,6 +107,11 @@ const SettingsAiStatusRoute = SettingsAiStatusRouteImport.update({
   path: '/ai-status',
   getParentRoute: () => SettingsRoute,
 } as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/team': typeof SettingsTeamRoute
 }
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/team': typeof SettingsTeamRoute
 }
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/team': typeof SettingsTeamRoute
 }
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+    | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/team'
   fileRoutesByTo: FileRoutesByTo
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+    | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/team'
   id:
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+    | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/team'
   fileRoutesById: FileRoutesById
@@ -234,6 +246,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRouteWithChildren
   SignupRoute: typeof SignupRoute
   WorkspaceRoute: typeof WorkspaceRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -350,6 +363,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAiStatusRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -382,6 +402,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRouteWithChildren,
   SignupRoute: SignupRoute,
   WorkspaceRoute: WorkspaceRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
