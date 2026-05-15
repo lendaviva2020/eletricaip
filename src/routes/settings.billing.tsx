@@ -160,20 +160,22 @@ function BillingPage() {
         })}
       </section>
 
-      <section className="mb-8 border border-border rounded-lg p-4">
-        <h2 className="font-semibold mb-3 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-yellow-500" /> Override de admin (sem cobrança)
-        </h2>
-        <p className="text-xs text-muted-foreground mb-3">
-          Para testes locais ou mudanças manuais. Em produção, use o checkout.
-        </p>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => handleManual("free")}>FREE</Button>
-          <Button size="sm" variant="outline" onClick={() => handleManual("basic")}>BASIC</Button>
-          <Button size="sm" variant="outline" onClick={() => handleManual("pro")}>PRO</Button>
-          <Button size="sm" variant="outline" onClick={() => handleManual("premium")}>PREMIUM</Button>
-        </div>
-      </section>
+      {isPlatformAdmin && (
+        <section className="mb-8 border border-border rounded-lg p-4">
+          <h2 className="font-semibold mb-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-500" /> Override de admin de plataforma (sem cobrança)
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Visível apenas para administradores da plataforma. Para usuários, use o checkout.
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => handleManual("free")}>FREE</Button>
+            <Button size="sm" variant="outline" onClick={() => handleManual("basic")}>BASIC</Button>
+            <Button size="sm" variant="outline" onClick={() => handleManual("pro")}>PRO</Button>
+            <Button size="sm" variant="outline" onClick={() => handleManual("premium")}>PREMIUM</Button>
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="font-semibold mb-3">Faturas recentes</h2>
