@@ -2474,6 +2474,7 @@ export type Database = {
         }
       }
       bootstrap_personal_tenant_if_missing: { Args: never; Returns: string }
+      change_tenant_plan: { Args: { p_plan: string }; Returns: Json }
       check_ai_quota: {
         Args: never
         Returns: {
