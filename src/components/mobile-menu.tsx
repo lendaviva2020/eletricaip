@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Menu,
@@ -49,8 +50,8 @@ export function MobileMenu() {
         <Menu className="h-5 w-5" />
       </button>
 
-      {open && (
-        <div className="md:hidden fixed inset-0 z-[100]">
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="md:hidden fixed inset-0 z-[1000]">
           <div
             className="absolute inset-0 bg-background/80 backdrop-blur-sm"
             onClick={() => setOpen(false)}
@@ -133,7 +134,8 @@ export function MobileMenu() {
               })}
             </nav>
           </aside>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
