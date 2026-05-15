@@ -223,7 +223,14 @@ Deno.serve(async (req) => {
       return err("BAD_RESPONSE", "JSON inválido devolvido pela IA. Tente novamente.");
     }
 
-    return new Response(JSON.stringify({ ok: true, system: parsed, provider: "deepseek" }), {
+    // Server-side usage tracking (best effort).
+    const tokensUsed = Number(data?.usage?.total_tokens) || 0;
+    if (tokensUsed > 0) {
+      const { error: incErr } = await auth.supabase.rpc("increment_ai_tokens", { p_tokens: tokensUsed });
+      if (incErr) console.error("increment_ai_tokens failed:", incErr);
+    }
+
+    return new Response(JSON.stringify({ ok: true, system: parsed, provider: "deepseek", tokensUsed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
