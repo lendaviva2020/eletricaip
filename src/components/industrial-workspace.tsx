@@ -3,8 +3,9 @@ import { ModeTabs } from "@/components/mode-tabs";
 import { BottomPanel } from "@/components/bottom-panel";
 import { RightPanel } from "@/components/right-panel";
 import type { WorkspaceMode } from "@/lib/workspace-data";
-import { Boxes, Cable, Gauge, Search } from "lucide-react";
+import { Boxes, Cable, Gauge, Search, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { CanvasAiChat } from "@/components/canvas-ai-chat";
+import { useProjectPersistence } from "@/lib/use-project-persistence";
 import { LADDER_ELEMENTS, type LadderElement } from "@/lib/ladder/definitions";
 import {
   isBreakerComponent,
@@ -45,11 +46,12 @@ const AlarmsCanvas = lazy(() =>
   })),
 );
 
-export function IndustrialWorkspace() {
+export function IndustrialWorkspace({ projectId = null }: { projectId?: string | null }) {
   const [mode, setMode] = useState<WorkspaceMode>("unifilar");
   const [dragValidation, setDragValidation] = useState(
     "Arraste componentes IEC 60617 para o canvas.",
   );
+  const { loading, saveState } = useProjectPersistence(projectId);
 
   function validateDraggedBreaker(component: VoltaiComponentDefinition) {
     const isBreaker = isBreakerComponent(component.type);
@@ -74,6 +76,7 @@ export function IndustrialWorkspace() {
 
       <div className="flex-1 flex flex-col min-w-0">
         <ModeTabs mode={mode} onChange={setMode} />
+        <SaveBadge projectId={projectId} loading={loading} state={saveState} />
         <div className="flex-1 min-h-0 relative bg-background">
           <Suspense fallback={<CanvasFallback />}>
             {mode === "unifilar" && <UnifilarCanvas />}
