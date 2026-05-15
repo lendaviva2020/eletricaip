@@ -2531,6 +2531,27 @@ export type Database = {
         Args: { p_increment?: number; p_metric: string; p_project_id: string }
         Returns: undefined
       }
+      ingest_iot_reading: {
+        Args: {
+          p_api_key: string
+          p_device_external_id: string
+          p_message_id?: string
+          p_quality?: string
+          p_ttl_ms?: number
+          p_value: number
+        }
+        Returns: Json
+      }
+      iot_acknowledge_alert: { Args: { p_alert_id: string }; Returns: Json }
+      iot_enqueue_command: {
+        Args: {
+          p_command: string
+          p_device_external_id: string
+          p_payload?: Json
+          p_watchdog_ms?: number
+        }
+        Returns: Json
+      }
       is_platform_admin: { Args: never; Returns: boolean }
       search_catalog_components: {
         Args: {
@@ -2565,6 +2586,7 @@ export type Database = {
           similarity: number
         }[]
       }
+      tenant_has_feature: { Args: { p_feature: string }; Returns: boolean }
     }
     Enums: {
       alarm_category: "process" | "equipment" | "safety" | "communication"
