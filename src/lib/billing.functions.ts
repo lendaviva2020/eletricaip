@@ -15,11 +15,7 @@ const PLAN_PRICE_BRL: Record<string, number> = {
 };
 
 function originFromHeader(): string {
-  // Origin header is normally available; fallback to env.
   try {
-    // dynamic import inside server context only
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { getRequestHeader } = require("@tanstack/react-start/server") as typeof import("@tanstack/react-start/server");
     return getRequestHeader("origin") || process.env.PUBLIC_APP_URL || "";
   } catch {
     return process.env.PUBLIC_APP_URL || "";
