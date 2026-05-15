@@ -40,9 +40,10 @@ type ArchitectError = {
   ok: false;
   error: { code: string; message: string; used?: number; max?: number; plan?: string };
 };
+type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
 type ArchitectOk = {
   ok: true;
-  system: unknown;
+  system: JsonValue;
   provider: "deepseek";
   tokensUsed: number;
   ragHits: number;
