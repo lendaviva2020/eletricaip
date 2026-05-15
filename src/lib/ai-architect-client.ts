@@ -60,6 +60,13 @@ function mapError(code: string, message: string): AIServiceError {
           "Volte aqui e clique em 'Revalidar' na tela de Status da IA.",
         ],
       );
+    case "INSUFFICIENT_CREDITS":
+      return new AIServiceError(
+        code,
+        message,
+        "Créditos de IA insuficientes neste mês.",
+        ["Faça upgrade do plano em Configurações → Cobrança.", "Ou aguarde o próximo ciclo mensal."],
+      );
     case "RATE_LIMIT_429":
       return new AIServiceError(code, message, "Muitas requisições à IA. Aguarde alguns segundos.");
     case "NO_CREDITS_402":

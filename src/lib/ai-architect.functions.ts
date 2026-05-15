@@ -47,6 +47,7 @@ type ArchitectOk = {
   provider: "deepseek";
   tokensUsed: number;
   ragHits: number;
+  credits?: { cost?: number; used?: number; remaining?: number; plan?: string; unlimited?: boolean };
 };
 
 // Lightweight RAG: pull top normative_chunks matching keywords from the prompt.
@@ -101,27 +102,25 @@ export const generateArchitecture = createServerFn({ method: "POST" })
       return { ok: false, error: { code: "INVALID_KEY_FORMAT", message: "DEEPSEEK_API_KEY com formato inesperado." } };
     }
 
-    // Server-side quota check.
-    const { data: quota, error: quotaErr } = await supabase.rpc("check_ai_quota");
-    if (quotaErr) {
-      console.error("check_ai_quota failed:", quotaErr);
-      return { ok: false, error: { code: "BAD_RESPONSE", message: "Não foi possível verificar sua cota de IA." } };
+    // Atomic credit gate: deduct BEFORE calling provider.
+    const { data: gate, error: gateErr } = await supabase.rpc("consume_ai_credits", {
+      p_operation: "generate_panel",
+    });
+    if (gateErr) {
+      const msg = gateErr.message || "";
+      if (msg.includes("insufficient_credits")) {
+        return {
+          ok: false,
+          error: {
+            code: "INSUFFICIENT_CREDITS",
+            message: "Créditos de IA insuficientes neste mês. Faça upgrade ou aguarde o próximo ciclo.",
+          },
+        };
+      }
+      console.error("consume_ai_credits failed:", gateErr);
+      return { ok: false, error: { code: "BAD_RESPONSE", message: "Não foi possível debitar créditos de IA." } };
     }
-    const q = (Array.isArray(quota) ? quota[0] : quota) as
-      | { allowed: boolean; used: number; max_tokens: number; plan: string }
-      | null;
-    if (q && q.allowed === false) {
-      return {
-        ok: false,
-        error: {
-          code: "QUOTA_EXCEEDED",
-          message: `Cota mensal de IA do plano "${q.plan}" atingida (${q.used}/${q.max_tokens} tokens). Faça upgrade para continuar.`,
-          used: q.used,
-          max: q.max_tokens,
-          plan: q.plan,
-        },
-      };
-    }
+    const gateInfo = (gate ?? {}) as { cost?: number; used?: number; remaining?: number; plan?: string; unlimited?: boolean };
 
     // RAG: retrieve normative context.
     const rag = await fetchNormativeContext(supabase, data.prompt);
@@ -187,12 +186,22 @@ export const generateArchitecture = createServerFn({ method: "POST" })
     }
 
     const tokensUsed = Number(json?.usage?.total_tokens) || 0;
-    if (tokensUsed > 0) {
-      const { error: incErr } = await supabase.rpc("increment_ai_tokens", { p_tokens: tokensUsed });
-      if (incErr) console.error("increment_ai_tokens failed:", incErr);
-    }
+    return { ok: true, system: parsed, provider: "deepseek", tokensUsed, ragHits: rag.hits, credits: gateInfo };
+  });
 
-    return { ok: true, system: parsed, provider: "deepseek", tokensUsed, ragHits: rag.hits };
+export const getAiCredits = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data, error } = await supabase.rpc("get_ai_credits_remaining");
+    if (error) return { ok: false as const, error: error.message };
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | { plan: string; max_credits: number; used: number; remaining: number; unlimited: boolean }
+      | null;
+    return {
+      ok: true as const,
+      ...(row ?? { plan: "free", max_credits: 10, used: 0, remaining: 10, unlimited: false }),
+    };
   });
 
 export const pingArchitect = createServerFn({ method: "GET" }).handler(async () => {

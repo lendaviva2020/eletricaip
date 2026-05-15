@@ -1,0 +1,53 @@
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Sparkles, Infinity as InfinityIcon } from "lucide-react";
+import { getAiCredits } from "@/lib/ai-architect.functions";
+
+export function AiCreditsBadge() {
+  const fetchCredits = useServerFn(getAiCredits);
+  const q = useQuery({
+    queryKey: ["ai-credits"],
+    queryFn: () => fetchCredits(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
+  useEffect(() => {
+    const refresh = () => q.refetch();
+    window.addEventListener("ai-usage-event", refresh);
+    return () => window.removeEventListener("ai-usage-event", refresh);
+  }, [q]);
+
+  if (!q.data || !q.data.ok) {
+    return (
+      <div className="hidden lg:flex h-8 items-center gap-1.5 rounded border border-border bg-card px-2 text-[11px] font-mono text-muted-foreground">
+        <Sparkles className="h-3 w-3" /> --
+      </div>
+    );
+  }
+  const { plan, remaining, max_credits, unlimited } = q.data;
+  const low = !unlimited && remaining <= Math.max(1, Math.floor(max_credits * 0.1));
+  return (
+    <div
+      className={`hidden lg:flex h-8 items-center gap-1.5 rounded border px-2 text-[11px] font-mono ${
+        low
+          ? "border-destructive/40 bg-destructive/10 text-destructive"
+          : "border-border bg-card text-muted-foreground"
+      }`}
+      title={`Plano ${plan} · ${unlimited ? "ilimitado" : `${remaining}/${max_credits} créditos restantes`}`}
+    >
+      <Sparkles className="h-3 w-3" />
+      {unlimited ? (
+        <>
+          <InfinityIcon className="h-3 w-3" /> IA
+        </>
+      ) : (
+        <>
+          {remaining}
+          <span className="text-foreground/40">/{max_credits}</span>
+        </>
+      )}
+    </div>
+  );
+}
