@@ -85,9 +85,7 @@ export function Topbar() {
         </Button>
         <div className="hidden md:block h-5 w-px bg-border mx-1" />
         <RuntimeStatus />
-        <div className="hidden lg:flex h-8 items-center rounded border border-border bg-card px-2 text-[11px] font-mono text-muted-foreground">
-          {aiUsage.remainingLabel}
-        </div>
+        <AiCreditsBadge />
         <div className="hidden sm:block h-5 w-px bg-border mx-1" />
         <Button size="icon" variant="ghost" className="h-8 w-8 relative">
           <Bell className="h-4 w-4" />
