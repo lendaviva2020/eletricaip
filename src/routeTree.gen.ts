@@ -21,6 +21,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AiRouteImport } from './routes/ai'
 import { Route as IndexRouteImport } from './routes/index'
@@ -28,6 +29,8 @@ import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as ProjectsProjectIdExportRouteImport } from './routes/projects.$projectId.export'
+import { Route as ProjectsProjectIdBomRouteImport } from './routes/projects.$projectId.bom'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
 import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp.webhook'
 import { Route as ApiPublicIotIngestRouteImport } from './routes/api/public/iot.ingest'
@@ -92,6 +95,11 @@ const ChatRoute = ChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CatalogRoute = CatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -127,6 +135,16 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsProjectIdExportRoute = ProjectsProjectIdExportRouteImport.update({
+  id: '/$projectId/export',
+  path: '/$projectId/export',
+  getParentRoute: () => ProjectsRoute,
+} as any)
+const ProjectsProjectIdBomRoute = ProjectsProjectIdBomRouteImport.update({
+  id: '/$projectId/bom',
+  path: '/$projectId/bom',
+  getParentRoute: () => ProjectsRoute,
+} as any)
 const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   id: '/api/public/stripe/webhook',
   path: '/api/public/stripe/webhook',
@@ -147,13 +165,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/analytics': typeof AnalyticsRoute
+  '/catalog': typeof CatalogRoute
   '/chat': typeof ChatRoute
   '/clients': typeof ClientsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
-  '/projects': typeof ProjectsRoute
+  '/projects': typeof ProjectsRouteWithChildren
   '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -163,6 +182,8 @@ export interface FileRoutesByFullPath {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
+  '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -171,13 +192,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/analytics': typeof AnalyticsRoute
+  '/catalog': typeof CatalogRoute
   '/chat': typeof ChatRoute
   '/clients': typeof ClientsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
-  '/projects': typeof ProjectsRoute
+  '/projects': typeof ProjectsRouteWithChildren
   '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -187,6 +209,8 @@ export interface FileRoutesByTo {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
+  '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -196,13 +220,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/analytics': typeof AnalyticsRoute
+  '/catalog': typeof CatalogRoute
   '/chat': typeof ChatRoute
   '/clients': typeof ClientsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
-  '/projects': typeof ProjectsRoute
+  '/projects': typeof ProjectsRouteWithChildren
   '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -212,6 +237,8 @@ export interface FileRoutesById {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
+  '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -222,6 +249,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/analytics'
+    | '/catalog'
     | '/chat'
     | '/clients'
     | '/dashboard'
@@ -238,6 +266,8 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/billing'
     | '/settings/team'
+    | '/projects/$projectId/bom'
+    | '/projects/$projectId/export'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -246,6 +276,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/analytics'
+    | '/catalog'
     | '/chat'
     | '/clients'
     | '/dashboard'
@@ -262,6 +293,8 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/billing'
     | '/settings/team'
+    | '/projects/$projectId/bom'
+    | '/projects/$projectId/export'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -270,6 +303,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/analytics'
+    | '/catalog'
     | '/chat'
     | '/clients'
     | '/dashboard'
@@ -286,6 +320,8 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/billing'
     | '/settings/team'
+    | '/projects/$projectId/bom'
+    | '/projects/$projectId/export'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -295,13 +331,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiRoute: typeof AiRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  CatalogRoute: typeof CatalogRoute
   ChatRoute: typeof ChatRoute
   ClientsRoute: typeof ClientsRoute
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
-  ProjectsRoute: typeof ProjectsRoute
+  ProjectsRoute: typeof ProjectsRouteWithChildren
   RealtimeRoute: typeof RealtimeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRouteWithChildren
@@ -399,6 +436,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/catalog': {
+      id: '/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof CatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -448,6 +492,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$projectId/export': {
+      id: '/projects/$projectId/export'
+      path: '/$projectId/export'
+      fullPath: '/projects/$projectId/export'
+      preLoaderRoute: typeof ProjectsProjectIdExportRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
+    '/projects/$projectId/bom': {
+      id: '/projects/$projectId/bom'
+      path: '/$projectId/bom'
+      fullPath: '/projects/$projectId/bom'
+      preLoaderRoute: typeof ProjectsProjectIdBomRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
     '/api/public/stripe/webhook': {
       id: '/api/public/stripe/webhook'
       path: '/api/public/stripe/webhook'
@@ -472,6 +530,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ProjectsRouteChildren {
+  ProjectsProjectIdBomRoute: typeof ProjectsProjectIdBomRoute
+  ProjectsProjectIdExportRoute: typeof ProjectsProjectIdExportRoute
+}
+
+const ProjectsRouteChildren: ProjectsRouteChildren = {
+  ProjectsProjectIdBomRoute: ProjectsProjectIdBomRoute,
+  ProjectsProjectIdExportRoute: ProjectsProjectIdExportRoute,
+}
+
+const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
+  ProjectsRouteChildren,
+)
+
 interface SettingsRouteChildren {
   SettingsAiStatusRoute: typeof SettingsAiStatusRoute
   SettingsBillingRoute: typeof SettingsBillingRoute
@@ -492,13 +564,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiRoute: AiRoute,
   AnalyticsRoute: AnalyticsRoute,
+  CatalogRoute: CatalogRoute,
   ChatRoute: ChatRoute,
   ClientsRoute: ClientsRoute,
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
-  ProjectsRoute: ProjectsRoute,
+  ProjectsRoute: ProjectsRouteWithChildren,
   RealtimeRoute: RealtimeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRouteWithChildren,
