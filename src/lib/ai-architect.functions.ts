@@ -204,7 +204,9 @@ export const getAiCredits = createServerFn({ method: "GET" })
     };
   });
 
-export const pingArchitect = createServerFn({ method: "GET" }).handler(async () => {
+export const pingArchitect = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
   const key = process.env.DEEPSEEK_API_KEY;
   const keyConfigured = !!key;
   const keyFormatValid = !!key && /^sk-[A-Za-z0-9_-]+$/.test(key) && key.length >= 20;

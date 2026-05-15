@@ -55,14 +55,25 @@ export const getBillingOverview = createServerFn({ method: "GET" })
     };
   });
 
-/** Manual plan change (admin override; production flow uses webhooks). */
+/** Manual plan change — platform-admin only (server-enforced via RPC). */
 export const changePlanManual = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ plan: z.enum(["free", "pro", "premium"]) }).parse(input))
+  .inputValidator((input) =>
+    z.object({ plan: z.enum(["free", "basic", "pro", "premium"]) }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { error, data: res } = await context.supabase.rpc("change_tenant_plan", { p_plan: data.plan });
     if (error) throw new Error(error.message);
     return res as { tenant_id: string; plan: string };
+  });
+
+/** Returns whether the current user is a platform admin. */
+export const getIsPlatformAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase.rpc("is_platform_admin");
+    if (error) return { isPlatformAdmin: false };
+    return { isPlatformAdmin: !!data };
   });
 
 /**
