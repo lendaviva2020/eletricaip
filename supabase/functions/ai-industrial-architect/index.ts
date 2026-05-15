@@ -131,6 +131,20 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { prompt, context } = body as { prompt?: string; context?: unknown };
     if (!prompt || typeof prompt !== "string") return err("BAD_INPUT", "Prompt obrigatório.");
+    if (prompt.length > 4000) {
+      return err("BAD_INPUT", "Prompt muito longo (máx. 4 000 caracteres).");
+    }
+    let contextStr: string | undefined;
+    if (context !== undefined) {
+      try {
+        contextStr = JSON.stringify(context);
+      } catch {
+        return err("BAD_INPUT", "Contexto inválido.");
+      }
+      if (contextStr.length > 20000) {
+        return err("BAD_INPUT", "Contexto muito grande.");
+      }
+    }
 
     const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
     const v = validateKeyFormat(apiKey);
