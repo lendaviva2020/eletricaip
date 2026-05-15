@@ -150,8 +150,8 @@ Deno.serve(async (req) => {
     const v = validateKeyFormat(apiKey);
     if (!v.ok) return err(apiKey ? "INVALID_KEY_FORMAT" : "MISSING_KEY", v.reason!);
 
-    const userMsg = context
-      ? `Briefing:\n${prompt}\n\nContexto atual do projeto (JSON):\n${JSON.stringify(context).slice(0, 8000)}`
+    const userMsg = contextStr
+      ? `Briefing:\n${prompt}\n\nContexto atual do projeto (JSON):\n${contextStr.slice(0, 8000)}`
       : prompt;
 
     const resp = await fetch("https://api.deepseek.com/chat/completions", {
