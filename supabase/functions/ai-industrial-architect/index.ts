@@ -9,8 +9,10 @@ const corsHeaders = {
   "Vary": "Origin",
 };
 
-// Verify the caller's Supabase JWT. Returns the user id or null.
-async function requireUser(req: Request): Promise<{ userId: string } | null> {
+// Verify the caller's Supabase JWT. Returns user id + an authed client (RLS as user) or null.
+async function requireUser(
+  req: Request,
+): Promise<{ userId: string; supabase: ReturnType<typeof createClient> } | null> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -22,7 +24,7 @@ async function requireUser(req: Request): Promise<{ userId: string } | null> {
   });
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) return null;
-  return { userId: data.user.id };
+  return { userId: data.user.id, supabase };
 }
 
 // --- Startup key validation -------------------------------------------------
@@ -149,6 +151,29 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
     const v = validateKeyFormat(apiKey);
     if (!v.ok) return err(apiKey ? "INVALID_KEY_FORMAT" : "MISSING_KEY", v.reason!);
+
+    // Server-side AI quota check (closes CLIENT_SIDE_AUTH finding).
+    const { data: quota, error: quotaErr } = await auth.supabase.rpc("check_ai_quota");
+    if (quotaErr) {
+      console.error("check_ai_quota failed:", quotaErr);
+      return err("BAD_RESPONSE", "Não foi possível verificar sua cota de IA. Tente novamente.");
+    }
+    const q = Array.isArray(quota) ? quota[0] : quota;
+    if (q && q.allowed === false) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: "QUOTA_EXCEEDED",
+            message: `Cota mensal de IA do plano "${q.plan}" atingida (${q.used}/${q.max_tokens} tokens). Faça upgrade para continuar.`,
+            used: q.used,
+            max: q.max_tokens,
+            plan: q.plan,
+          },
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const userMsg = contextStr
       ? `Briefing:\n${prompt}\n\nContexto atual do projeto (JSON):\n${contextStr.slice(0, 8000)}`
