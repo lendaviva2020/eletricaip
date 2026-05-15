@@ -70,12 +70,8 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
           updated_at: new Date().toISOString(),
         })
         .eq("id", tenantId);
-      await supabaseAdmin.from("subscription_audit_log").insert({
-        action: "checkout_completed",
-        new_status: "active",
-        reason: "stripe_webhook",
-        metadata: { customer: customerId, subscription: subId, plan },
-      });
+      // Audit log skipped: requires user_id (webhook has no auth context).
+
       break;
     }
     case "customer.subscription.created":
