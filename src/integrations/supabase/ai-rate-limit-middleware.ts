@@ -23,7 +23,7 @@ export const requireAiQuota = createMiddleware({ type: "function" })
       .maybeSingle();
 
     const plan = getPlan(profile?.plan);
-    if (plan.aiCallsPerMonth === null) return next();
+    if (plan.aiCreditsPerMonth === null) return next();
 
     const period = monthKey();
     const { data: usage } = await supabase
@@ -34,13 +34,13 @@ export const requireAiQuota = createMiddleware({ type: "function" })
       .maybeSingle();
 
     const used = Number(usage?.calls_used ?? 0);
-    if (used >= plan.aiCallsPerMonth) {
+    if (used >= plan.aiCreditsPerMonth) {
       throw new Response(
         JSON.stringify({
           ok: false,
           error: {
             code: "PLAN_RATE_LIMIT_429",
-            message: `Limite mensal de ${plan.aiCallsPerMonth} chamadas de IA excedido.`,
+            message: `Limite mensal de ${plan.aiCreditsPerMonth} chamadas de IA excedido.`,
           },
         }),
         { status: 429, headers: { "content-type": "application/json" } },

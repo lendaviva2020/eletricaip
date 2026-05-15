@@ -76,12 +76,17 @@ export const createProject = createServerFn({ method: "POST" })
     const planName = tenant?.plan ?? "free";
     const { data: limits } = await supabase.from("plan_limits").select("max_projects").eq("plan", planName).maybeSingle();
     const maxProjects = limits?.max_projects ?? 3;
-    const { count } = await supabase
-      .from("projects")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenant_id);
-    if ((count ?? 0) >= maxProjects) {
-      throw new Error(`plan_limit_reached: limite de ${maxProjects} projetos no plano ${planName}. Faça upgrade em /settings/billing.`);
+    if (maxProjects >= 0) {
+      const { count } = await supabase
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenant_id);
+      if ((count ?? 0) >= maxProjects) {
+        if (planName === "free") {
+          throw new Error("Limite de 3 projetos atingido. Faça upgrade para continuar.");
+        }
+        throw new Error(`Limite de ${maxProjects} projetos atingido no plano ${planName}. Faça upgrade em /settings/billing.`);
+      }
     }
 
     const { data: row, error } = await supabase

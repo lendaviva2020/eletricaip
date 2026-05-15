@@ -4,14 +4,16 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
+  basic: "STRIPE_PRICE_BASIC",
   pro: "STRIPE_PRICE_PRO",
   premium: "STRIPE_PRICE_PREMIUM",
 };
 
 const PLAN_PRICE_BRL: Record<string, number> = {
-  basico: 49,
-  pro: 149,
-  premium: 299,
+  free: 0,
+  basic: 100,
+  pro: 580,
+  premium: 1000,
 };
 
 function originFromHeader(): string {

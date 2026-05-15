@@ -96,22 +96,22 @@ function pushStatus(ev: StatusEvent) {
 
 export function getLocalAiUsage() {
   if (typeof window === "undefined")
-    return { plan: "basico", used: 0, remainingLabel: "100 chamadas IA" };
+    return { plan: "free", used: 0, remainingLabel: "10 créditos" };
   try {
     const usage = JSON.parse(localStorage.getItem(AI_USAGE_KEY) ?? "{}");
     const plan = getPlan(usage.plan);
     const used = Number(usage.used ?? 0);
     const remainingLabel =
-      plan.aiCallsPerMonth === null
+      plan.aiCreditsPerMonth === null
         ? "IA ilimitada"
-        : `${Math.max(0, plan.aiCallsPerMonth - used)} chamadas IA`;
+        : `${Math.max(0, plan.aiCreditsPerMonth - used)} créditos`;
     return { plan: plan.id, used, remainingLabel };
   } catch {
-    return { plan: "basico", used: 0, remainingLabel: "100 chamadas IA" };
+    return { plan: "free", used: 0, remainingLabel: "10 créditos" };
   }
 }
 
-function incrementLocalAiUsage(planId = "basico") {
+function incrementLocalAiUsage(planId = "free") {
   if (typeof window === "undefined") return;
   const current = getLocalAiUsage();
   const next = { plan: planId || current.plan, used: current.used + 1 };
