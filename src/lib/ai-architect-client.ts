@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { getMissingSupabasePublicEnv, getSupabasePublicEnv } from "@/integrations/supabase/env";
 import { getPlan } from "@/lib/plans";
 import {
   useProjectStore,
@@ -9,6 +8,7 @@ import {
   type NodeCategory,
 } from "@/lib/project-store";
 import { useCurrentProject } from "@/lib/current-project";
+import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
 
 export interface ArchitectResult {
   title: string;
