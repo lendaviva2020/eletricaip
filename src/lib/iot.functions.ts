@@ -72,7 +72,7 @@ export const enqueueIotCommand = createServerFn({ method: "POST" })
     const { data: out, error } = await supabase.rpc("iot_enqueue_command", {
       p_device_external_id: data.deviceExternalId,
       p_command: data.command,
-      p_payload: data.payload as Record<string, unknown>,
+      p_payload: JSON.parse(JSON.stringify(data.payload ?? {})),
       p_watchdog_ms: data.watchdogMs,
     });
     if (error) return { ok: false as const, error: error.message };
