@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, ShieldCheck, Wrench, Settings2, Send } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/lib/project-store";
-import { getVoltaiCompDef } from "@/lib/voltai/component-definitions";
 import { useVoltaiStore } from "@/lib/voltai/store";
+import { useEditorStore } from "@/lib/editor/store";
+import { RightPropertyPanel } from "@/components/editor/right-property-panel";
 
 const TABS = [
   { id: "props", label: "Propriedades", icon: Settings2 },
@@ -12,6 +12,8 @@ const TABS = [
   { id: "norms", label: "Normas", icon: ShieldCheck },
   { id: "maint", label: "Manutenção", icon: Wrench },
 ] as const;
+
+const STRUCTURED_MODES = new Set(["unifilar", "ladder", "fbd"]);
 
 export function RightPanel() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("ai");
