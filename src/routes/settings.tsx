@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -15,6 +15,18 @@ function SettingsPage() {
     <div className="flex-1 overflow-auto scrollbar-thin p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <h1 className="text-2xl font-semibold">Configurações</h1>
+
+        <Section title="Conta & Workspace">
+          <Row k="Faturamento & Assinatura">
+            <Link to="/settings/billing" className="text-primary hover:underline text-sm">Abrir →</Link>
+          </Row>
+          <Row k="Equipe & Convites">
+            <Link to="/settings/team" className="text-primary hover:underline text-sm">Abrir →</Link>
+          </Row>
+          <Row k="Status da IA">
+            <Link to="/settings/ai-status" className="text-primary hover:underline text-sm">Abrir →</Link>
+          </Row>
+        </Section>
 
         <Section title="Protocolos industriais">
           {[
