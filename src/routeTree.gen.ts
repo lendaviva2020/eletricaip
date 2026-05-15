@@ -27,6 +27,7 @@ import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
+import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp.webhook'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
@@ -118,6 +119,11 @@ const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   path: '/api/public/stripe/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMpWebhookRoute = ApiPublicMpWebhookRouteImport.update({
+  id: '/api/public/mp/webhook',
+  path: '/api/public/mp/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesById {
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRouteTypes {
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/team'
+    | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/team'
+    | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
   id:
     | '__root__'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/team'
+    | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   WorkspaceRoute: typeof WorkspaceRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
 
@@ -390,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mp/webhook': {
+      id: '/api/public/mp/webhook'
+      path: '/api/public/mp/webhook'
+      fullPath: '/api/public/mp/webhook'
+      preLoaderRoute: typeof ApiPublicMpWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -423,8 +443,19 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   WorkspaceRoute: WorkspaceRoute,
   InviteTokenRoute: InviteTokenRoute,
+  ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
