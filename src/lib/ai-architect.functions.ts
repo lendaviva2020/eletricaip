@@ -185,12 +185,22 @@ export const generateArchitecture = createServerFn({ method: "POST" })
     }
 
     const tokensUsed = Number(json?.usage?.total_tokens) || 0;
-    if (tokensUsed > 0) {
-      const { error: incErr } = await supabase.rpc("increment_ai_tokens", { p_tokens: tokensUsed });
-      if (incErr) console.error("increment_ai_tokens failed:", incErr);
-    }
+    return { ok: true, system: parsed, provider: "deepseek", tokensUsed, ragHits: rag.hits, credits: gateInfo };
+  });
 
-    return { ok: true, system: parsed, provider: "deepseek", tokensUsed, ragHits: rag.hits };
+export const getAiCredits = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data, error } = await supabase.rpc("get_ai_credits_remaining");
+    if (error) return { ok: false as const, error: error.message };
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | { plan: string; max_credits: number; used: number; remaining: number; unlimited: boolean }
+      | null;
+    return {
+      ok: true as const,
+      ...(row ?? { plan: "free", max_credits: 10, used: 0, remaining: 10, unlimited: false }),
+    };
   });
 
 export const pingArchitect = createServerFn({ method: "GET" }).handler(async () => {
