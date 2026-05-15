@@ -52,8 +52,9 @@ type ArchitectOk = {
 // Lightweight RAG: pull top normative_chunks matching keywords from the prompt.
 // Avoids embedding generation cost; uses ILIKE on chunk_text. Caller is auth'd
 // so RLS on normative_chunks applies.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchNormativeContext(
-  supabase: ReturnType<typeof import("@supabase/supabase-js").createClient>,
+  supabase: any,
   prompt: string,
 ): Promise<{ chunks: Array<{ category: string; text: string }>; hits: number }> {
   const stop = new Set([
