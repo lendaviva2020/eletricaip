@@ -31,6 +31,7 @@ interface VoltaiStore {
   edges: VoltaiDiagramEdge[];
   selectedId: string | null;
   lastSimulationJson: string;
+  dirty: boolean;
   addComponent: (type: VoltaiComponentType, position: { x: number; y: number }) => string;
   updateComponentParam: (id: string, key: string, value: unknown) => void;
   restoreFactoryParams: (id: string) => void;
@@ -38,6 +39,8 @@ interface VoltaiStore {
   selectComponent: (id: string | null) => void;
   addEdge: (edge: Omit<VoltaiDiagramEdge, "id">) => void;
   simulateStep: (stepMs: number) => void;
+  setAll: (components: VoltaiDiagramComponent[], edges: VoltaiDiagramEdge[]) => void;
+  markSaved: () => void;
 }
 
 const SimulationPayloadSchema = z.object({
@@ -269,6 +272,7 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
   edges: [],
   selectedId: null,
   lastSimulationJson: "",
+  dirty: false,
   addComponent: (type, position) => {
     const definition = VOLTAI_COMPONENT_BY_TYPE[type];
     const id = nextId(type);
@@ -285,6 +289,7 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
         },
       ],
       selectedId: id,
+      dirty: true,
     }));
     return id;
   },
@@ -295,6 +300,7 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
           ? { ...component, params: { ...component.params, [key]: value } }
           : component,
       ),
+      dirty: true,
     })),
   restoreFactoryParams: (id) =>
     set((store) => ({
@@ -307,17 +313,20 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
             }
           : component,
       ),
+      dirty: true,
     })),
   updateComponentPosition: (id, position) =>
     set((store) => ({
       components: store.components.map((component) =>
         component.id === id ? { ...component, position } : component,
       ),
+      dirty: true,
     })),
   selectComponent: (id) => set({ selectedId: id }),
   addEdge: (edge) =>
     set((store) => ({
       edges: [...store.edges, { ...edge, id: `ve-${Date.now()}-${store.edges.length}` }],
+      dirty: true,
     })),
   simulateStep: (stepMs) =>
     set((store) => {
@@ -327,4 +336,6 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
         lastSimulationJson: serializeSimulationPayload(components, stepMs),
       };
     }),
+  setAll: (components, edges) => set({ components, edges, selectedId: null, dirty: false }),
+  markSaved: () => set({ dirty: false }),
 }));
