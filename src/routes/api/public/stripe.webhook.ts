@@ -72,10 +72,9 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
         .eq("id", tenantId);
       await supabaseAdmin.from("subscription_audit_log").insert({
         action: "checkout_completed",
-        new_plan_type: plan,
         new_status: "active",
         reason: "stripe_webhook",
-        metadata: { customer: customerId, subscription: subId },
+        metadata: { customer: customerId, subscription: subId, plan },
       });
       break;
     }
