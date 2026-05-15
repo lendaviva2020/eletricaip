@@ -13,6 +13,7 @@ import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RealtimeRouteImport } from './routes/realtime'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
@@ -29,6 +30,7 @@ import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-statu
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
 import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp.webhook'
+import { Route as ApiPublicIotIngestRouteImport } from './routes/api/public/iot.ingest'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
@@ -48,6 +50,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RealtimeRoute = RealtimeRouteImport.update({
+  id: '/realtime',
+  path: '/realtime',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -130,6 +137,11 @@ const ApiPublicMpWebhookRoute = ApiPublicMpWebhookRouteImport.update({
   path: '/api/public/mp/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicIotIngestRoute = ApiPublicIotIngestRouteImport.update({
+  id: '/api/public/iot/ingest',
+  path: '/api/public/iot/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -142,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
+  '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
@@ -150,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
@@ -164,6 +178,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
+  '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
@@ -172,6 +187,7 @@ export interface FileRoutesByTo {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
@@ -187,6 +203,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/projects': typeof ProjectsRoute
+  '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
@@ -195,6 +212,7 @@ export interface FileRoutesById {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
@@ -211,6 +229,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/projects'
+    | '/realtime'
     | '/reset-password'
     | '/settings'
     | '/signup'
@@ -219,6 +238,7 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/billing'
     | '/settings/team'
+    | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -233,6 +253,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/projects'
+    | '/realtime'
     | '/reset-password'
     | '/settings'
     | '/signup'
@@ -241,6 +262,7 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/billing'
     | '/settings/team'
+    | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
   id:
@@ -255,6 +277,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/projects'
+    | '/realtime'
     | '/reset-password'
     | '/settings'
     | '/signup'
@@ -263,6 +286,7 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/billing'
     | '/settings/team'
+    | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
   fileRoutesById: FileRoutesById
@@ -278,11 +302,13 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   ProjectsRoute: typeof ProjectsRoute
+  RealtimeRoute: typeof RealtimeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SignupRoute: typeof SignupRoute
   WorkspaceRoute: typeof WorkspaceRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  ApiPublicIotIngestRoute: typeof ApiPublicIotIngestRoute
   ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
@@ -315,6 +341,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/realtime': {
+      id: '/realtime'
+      path: '/realtime'
+      fullPath: '/realtime'
+      preLoaderRoute: typeof RealtimeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -429,6 +462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMpWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/iot/ingest': {
+      id: '/api/public/iot/ingest'
+      path: '/api/public/iot/ingest'
+      fullPath: '/api/public/iot/ingest'
+      preLoaderRoute: typeof ApiPublicIotIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -459,11 +499,13 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   ProjectsRoute: ProjectsRoute,
+  RealtimeRoute: RealtimeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SignupRoute: SignupRoute,
   WorkspaceRoute: WorkspaceRoute,
   InviteTokenRoute: InviteTokenRoute,
+  ApiPublicIotIngestRoute: ApiPublicIotIngestRoute,
   ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }
