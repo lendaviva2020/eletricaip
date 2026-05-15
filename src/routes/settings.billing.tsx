@@ -19,7 +19,7 @@ export const Route = createFileRoute("/settings/billing")({
   component: BillingPage,
 });
 
-type Plan = "pro" | "premium";
+type PaidPlan = "basic" | "pro" | "premium";
 
 function BillingPage() {
   const overviewFn = useServerFn(getBillingOverview);
@@ -35,7 +35,7 @@ function BillingPage() {
     queryFn: () => overviewFn({}),
   });
 
-  async function handleCheckout(provider: "stripe" | "mp", plan: Plan) {
+  async function handleCheckout(provider: "stripe" | "mp", plan: PaidPlan) {
     setBusy(`${provider}:${plan}`);
     try {
       const res =
@@ -60,7 +60,7 @@ function BillingPage() {
     }
   }
 
-  async function handleManual(plan: "free" | Plan) {
+  async function handleManual(plan: "free" | PaidPlan) {
     if (!confirm(`Forçar mudança para o plano ${plan} (admin override, sem cobrança)?`)) return;
     try {
       await manualFn({ data: { plan } });
@@ -90,13 +90,19 @@ function BillingPage() {
       {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
       {error && <p className="text-sm text-destructive">{(error as Error).message}</p>}
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {(Object.values(SUBSCRIPTION_PLANS) as typeof SUBSCRIPTION_PLANS[keyof typeof SUBSCRIPTION_PLANS][]).map((p) => {
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {(Object.values(SUBSCRIPTION_PLANS)).map((p) => {
           const isCurrent = currentPlan === p.id;
+          const creditsLabel =
+            p.aiCreditsPerMonth === null
+              ? "Créditos IA ilimitados"
+              : `${p.aiCreditsPerMonth} créditos IA/mês`;
+          const projectsLabel =
+            p.maxProjects < 0 ? "Projetos ilimitados" : `Até ${p.maxProjects} projetos`;
           return (
             <div
               key={p.id}
-              className={`border rounded-lg p-5 ${isCurrent ? "border-primary bg-primary/5" : "border-border"}`}
+              className={`border rounded-lg p-5 flex flex-col ${isCurrent ? "border-primary bg-primary/5" : "border-border"}`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div>
@@ -108,16 +114,21 @@ function BillingPage() {
                 </div>
                 {isCurrent && <CheckCircle2 className="w-5 h-5 text-primary" />}
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
-                {p.aiCallsPerMonth ? `${p.aiCallsPerMonth} chamadas IA/mês` : "IA ilimitada"}
-              </p>
-              {!isCurrent && p.id !== "basico" && (
+              <ul className="text-xs text-muted-foreground space-y-1 mb-4 flex-1">
+                <li>• {projectsLabel}</li>
+                <li>• {creditsLabel}</li>
+                {p.realtime && <li>• Realtime OPC-UA / Modbus</li>}
+                {p.features.map((f) => (
+                  <li key={f}>• {f}</li>
+                ))}
+              </ul>
+              {!isCurrent && p.id !== "free" && (
                 <div className="space-y-2">
                   <Button
                     size="sm"
                     className="w-full"
                     disabled={!!busy}
-                    onClick={() => handleCheckout("stripe", p.id as Plan)}
+                    onClick={() => handleCheckout("stripe", p.id as PaidPlan)}
                   >
                     {busy === `stripe:${p.id}` ? "Abrindo…" : "Pagar com Stripe"}
                   </Button>
@@ -126,13 +137,13 @@ function BillingPage() {
                     variant="outline"
                     className="w-full"
                     disabled={!!busy}
-                    onClick={() => handleCheckout("mp", p.id as Plan)}
+                    onClick={() => handleCheckout("mp", p.id as PaidPlan)}
                   >
                     {busy === `mp:${p.id}` ? "Abrindo…" : "Pagar com Mercado Pago"}
                   </Button>
                 </div>
               )}
-              {isCurrent && currentPlan !== "basico" && (
+              {isCurrent && currentPlan !== "free" && (
                 <Button size="sm" variant="ghost" className="w-full" onClick={handleCancel}>
                   Cancelar assinatura
                 </Button>
