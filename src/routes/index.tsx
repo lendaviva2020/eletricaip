@@ -396,53 +396,74 @@ function Workflow() {
 function Pricing() {
   const plans = [
     {
-      name: "Starter",
-      price: "Grátis",
-      desc: "Para engenheiros individuais.",
-      features: ["3 projetos", "IA básica", "Export PDF", "Comunidade"],
+      name: "Grátis",
+      price: "R$ 0",
+      period: "/mês",
+      desc: "Para experimentar a plataforma.",
+      features: [
+        "Até 3 projetos",
+        "10 créditos de IA/mês",
+        "Exportação PDF",
+        "Suporte da comunidade",
+      ],
       cta: "Começar grátis",
       to: "/signup",
     },
     {
+      name: "Básico",
+      price: "R$ 100",
+      period: "/mês",
+      desc: "Para profissionais autônomos.",
+      features: [
+        "Até 10 projetos",
+        "100 créditos de IA/mês",
+        "Exportação PDF",
+        "Suporte por email",
+      ],
+      cta: "Assinar Básico",
+      to: "/settings/billing",
+    },
+    {
       name: "Pro",
-      price: "R$ 499/mês",
+      price: "R$ 580",
+      period: "/mês",
       desc: "Para equipes industriais.",
       features: [
         "Projetos ilimitados",
+        "250 créditos de IA/mês",
         "IA avançada + Digital Twin",
-        "Runtime em tempo real",
-        "OPC-UA / Modbus",
+        "Realtime OPC-UA / Modbus",
         "Suporte prioritário",
       ],
-      cta: "Iniciar Pro",
-      to: "/signup",
+      cta: "Assinar Pro",
+      to: "/settings/billing",
       featured: true,
     },
     {
-      name: "Enterprise",
-      price: "Sob consulta",
-      desc: "Plantas críticas e SLA dedicado.",
+      name: "Premium",
+      price: "R$ 1.000",
+      period: "/mês",
+      desc: "Para plantas críticas.",
       features: [
-        "On-prem / Air-gapped",
-        "SSO + auditoria",
-        "Validação normativa",
-        "Suporte 24/7",
-        "Account manager",
+        "Tudo do Pro",
+        "Créditos de IA ilimitados",
+        "Capacidade dedicada",
+        "SLA + integrações customizadas",
       ],
-      cta: "Falar com vendas",
-      to: "/signup",
+      cta: "Assinar Premium",
+      to: "/settings/billing",
     },
   ];
   return (
     <section id="pricing" className="py-32 px-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <p className="text-[11px] uppercase tracking-[0.2em] text-primary mb-3">Planos</p>
           <h2 className="text-4xl md:text-5xl font-semibold tracking-tight">
             Preços transparentes.
           </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {plans.map((p) => (
             <div
               key={p.name}
@@ -455,7 +476,10 @@ function Pricing() {
               )}
               <h3 className="text-lg font-semibold">{p.name}</h3>
               <p className="text-sm text-muted-foreground mt-1">{p.desc}</p>
-              <div className="mt-5 text-3xl font-semibold tracking-tight">{p.price}</div>
+              <div className="mt-5 text-3xl font-semibold tracking-tight">
+                {p.price}
+                <span className="text-sm font-normal text-muted-foreground">{p.period}</span>
+              </div>
               <ul className="mt-6 space-y-2.5">
                 {p.features.map((f) => (
                   <li key={f} className="text-sm flex items-start gap-2">
