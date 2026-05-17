@@ -1,0 +1,2300 @@
+# EletricAI — Especificação Completa de Engenharia para Desenvolvimento no Lovable
+
+> **Documento de referência para engenheiros de software.**
+> Siga as fases em ordem. Cada fase tem critérios de aceitação que devem ser atingidos antes de avançar.
+> Plataforma-alvo: **Lovable** (React 18 + TypeScript + Vite + Supabase + TailwindCSS + shadcn/ui)
+
+---
+
+## SUMÁRIO
+
+1. [Visão do Produto e Identidade](#1-visão-do-produto-e-identidade)
+2. [Stack Tecnológico Definitivo](#2-stack-tecnológico-definitivo)
+3. [Arquitetura do Sistema](#3-arquitetura-do-sistema)
+4. [Schema do Banco de Dados (Supabase)](#4-schema-do-banco-de-dados-supabase)
+5. [Design System e Identidade Visual](#5-design-system-e-identidade-visual)
+6. [FASE 1 — Fundação e Autenticação](#fase-1--fundação-e-autenticação)
+7. [FASE 2 — Dashboard e Gestão de Projetos](#fase-2--dashboard-e-gestão-de-projetos)
+8. [FASE 3 — Editor: Módulo Unifilar](#fase-3--editor-módulo-unifilar)
+9. [FASE 4 — Editor: Módulo Ladder](#fase-4--editor-módulo-ladder)
+10. [FASE 5 — Editor: Módulo SCADA](#fase-5--editor-módulo-scada)
+11. [FASE 6 — Assistente IA NexusMind](#fase-6--assistente-ia-nexusmind)
+12. [FASE 7 — Simulação e Telemetria](#fase-7--simulação-e-telemetria)
+13. [FASE 8 — Módulos FBD, Digital Twin e PLC](#fase-8--módulos-fbd-digital-twin-e-plc)
+14. [FASE 9 — Planos, Pagamentos e Créditos de IA](#fase-9--planos-pagamentos-e-créditos-de-ia)
+15. [FASE 10 — Exportação, Compartilhamento e Notificações](#fase-10--exportação-compartilhamento-e-notificações)
+16. [Segurança — Checklist Invariante](#16-segurança--checklist-invariante)
+17. [Testes e Qualidade](#17-testes-e-qualidade)
+18. [Deploy e DevOps](#18-deploy-e-devops)
+19. [Apêndice: Referências Técnicas e Normativas](#19-apêndice-referências-técnicas-e-normativas)
+
+---
+
+## 1. VISÃO DO PRODUTO E IDENTIDADE
+
+### 1.1 Nome e Posicionamento
+- **Nome do produto**: EletricAI
+- **Tagline**: *"Engenharia elétrica e automação industrial com inteligência artificial"*
+- **Público-alvo primário**: Engenheiros eletricistas e de automação, técnicos industriais, estudantes de engenharia elétrica no Brasil
+- **Diferencial**: Único SaaS em português com IA especializada em normas ABNT/IEC, que gera diagramas unifilares, Ladder, SCADA e faz análise normativa automaticamente
+
+### 1.2 Planos de Negócio
+
+| Plano   | Preço/mês | Projetos | Créditos IA | Tempo Real | Features Extras |
+|---------|-----------|----------|-------------|------------|-----------------|
+| Free    | Grátis    | 3        | 5           | Não        | IA básica, PDF export, comunidade |
+| Basic   | R$ 100    | 10       | 100         | Não        | IA padrão |
+| Pro     | R$ 580    | Ilimitado| 200         | Sim        | Digital Twin, OPC-UA/Modbus |
+| Premium | R$ 1.000  | Ilimitado| Ilimitado   | Sim        | IA avançada, suporte 24/7 |
+
+### 1.3 Custo de Créditos de IA por Operação
+
+| Operação                          | Custo (créditos) |
+|-----------------------------------|-----------------|
+| Geração de diagrama (simples)     | 1               |
+| Análise normativa                 | 3               |
+| Geração de diagrama (complexo)    | 5               |
+| Digital Twin                      | 10              |
+| Chat NexusMind (por resposta)     | 1               |
+| Análise de arquivo PDF/CSV        | 3               |
+
+---
+
+## 2. STACK TECNOLÓGICO DEFINITIVO
+
+### 2.1 Frontend (Lovable/React)
+```
+- React 18 + TypeScript 5.x (strict mode)
+- Vite 5.x (build tool padrão do Lovable)
+- TailwindCSS 3.x + shadcn/ui (componentes)
+- React Flow (XYFlow) v12+ — canvas de diagramas
+- Zustand — gerenciamento de estado global
+- TanStack Query v5 — server state, cache, mutations
+- React Router v6 — roteamento
+- Monaco Editor — editor de código SCADA/ST/Ladder
+- Three.js r160+ — módulo Digital Twin 3D
+- Framer Motion — animações e micro-interações
+- Zod — validação de schemas client-side
+- date-fns — manipulação de datas
+- Lucide React — ícones (consistentes, SVG)
+```
+
+### 2.2 Backend (Supabase)
+```
+- Supabase Auth — autenticação (email/senha + Google OAuth)
+- Supabase Database (PostgreSQL 15+) — dados principais
+- Supabase Storage — arquivos (diagramas, PDFs, modelos 3D)
+- Supabase Realtime — colaboração e simulação ao vivo
+- Supabase Edge Functions (Deno) — lógica de IA, webhooks Stripe
+- Row Level Security (RLS) — isolamento multi-tenant
+- pgvector — busca semântica de componentes (futuro)
+```
+
+### 2.3 Serviços Externos
+```
+- Anthropic Claude API — NexusMind AI Engine
+- Stripe — pagamentos e assinaturas
+- Resend — e-mails transacionais
+```
+
+### 2.4 Estrutura de Pastas (Lovable/Vite)
+```
+src/
+├── components/
+│   ├── ui/                     # shadcn/ui primitives
+│   ├── layout/                 # AppLayout, EditorLayout, Sidebar
+│   ├── auth/                   # LoginForm, SignupForm, OAuthButton
+│   ├── dashboard/              # ProjectCard, InsightCard, QuickActions
+│   ├── editor/
+│   │   ├── canvas/             # ReactFlowCanvas, CanvasToolbar
+│   │   ├── nodes/              # DisjuntorNode, MotorNode, ContatoreNode...
+│   │   ├── edges/              # PowerEdge, ControlEdge, SignalEdge
+│   │   ├── panels/             # PropertiesPanel, TelemetryPanel
+│   │   ├── ladder/             # LadderCanvas, Rung, LadderElement
+│   │   ├── scada/              # ScadaCanvas, ScadaWidget, MonacoPanel
+│   │   ├── fbd/                # FBDCanvas, FBDBlock
+│   │   └── digital-twin/       # TwinViewer, SensorOverlay
+│   ├── ai/                     # NexusMindChat, AIFab, CreditCounter
+│   ├── simulation/             # SimulationToolbar, WatchTable, Oscilloscope
+│   └── billing/                # PlanCard, UpgradeModal, CreditBar
+├── pages/
+│   ├── Landing.tsx
+│   ├── Auth.tsx
+│   ├── Dashboard.tsx
+│   ├── Editor.tsx              # Router para módulos
+│   ├── Profile.tsx
+│   └── Settings.tsx
+├── hooks/
+│   ├── useAuth.ts
+│   ├── useProject.ts
+│   ├── useEditor.ts
+│   ├── useSimulation.ts
+│   ├── useNexusMind.ts
+│   ├── useCredits.ts
+│   └── useRealtime.ts
+├── services/
+│   ├── supabase.ts             # Client configurado
+│   ├── projects.service.ts
+│   ├── components.service.ts
+│   ├── ai.service.ts
+│   ├── simulation.service.ts
+│   └── stripe.service.ts
+├── stores/
+│   ├── editorStore.ts          # Zustand: nós, edges, undo/redo, módulo ativo
+│   ├── simulationStore.ts
+│   └── authStore.ts
+├── types/
+│   ├── supabase.types.ts       # Tipos gerados pelo Supabase CLI
+│   ├── diagram.types.ts
+│   ├── components.types.ts
+│   ├── scada.types.ts
+│   └── ai.types.ts
+├── lib/
+│   ├── utils.ts
+│   ├── validators/             # Schemas Zod
+│   ├── electrical/             # Lógica de dimensionamento elétrico
+│   │   ├── nbr5410.ts
+│   │   ├── conductors.ts
+│   │   └── protection.ts
+│   └── simulation/             # Engine de simulação
+│       ├── powerFlow.ts
+│       ├── ladderExecutor.ts
+│       └── scadaEngine.ts
+└── constants/
+    ├── componentLibrary.ts     # Catálogo de componentes elétricos
+    ├── norms.ts                # Referências normativas
+    └── scadaTags.ts
+```
+
+---
+
+## 3. ARQUITETURA DO SISTEMA
+
+### 3.1 Diagrama de Camadas
+```
+┌─────────────────────────────────────────────────────────┐
+│                      FRONTEND (React)                   │
+│  Pages → Components → Hooks → Services → Supabase SDK  │
+└──────────────────────────┬──────────────────────────────┘
+                           │ HTTPS / WebSocket
+┌──────────────────────────▼──────────────────────────────┐
+│                    SUPABASE BACKEND                     │
+│  ┌─────────┐ ┌──────────┐ ┌────────────┐ ┌──────────┐ │
+│  │  Auth   │ │ Database │ │  Storage   │ │Realtime  │ │
+│  │ (JWT)   │ │(Postgres)│ │  (S3-like) │ │(WS/PG)   │ │
+│  └─────────┘ └──────────┘ └────────────┘ └──────────┘ │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │           Edge Functions (Deno/TypeScript)       │  │
+│  │  /ai-nexusmind  /stripe-webhook  /export-pdf    │  │
+│  └──────────────────────────────────────────────────┘  │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        ▼                  ▼                  ▼
+  Anthropic API       Stripe API         Resend API
+  (NexusMind)       (Pagamentos)         (E-mails)
+```
+
+### 3.2 Estado Global (Zustand)
+
+```typescript
+// editorStore.ts — Estado central do editor
+interface EditorStore {
+  // Módulo ativo
+  activeModule: 'unifilar' | 'ladder' | 'fbd' | 'scada' | 'digital-twin' | 'plc' | 'simulation';
+  setActiveModule: (module: ActiveModule) => void;
+
+  // React Flow state
+  nodes: Node<ComponentData>[];
+  edges: Edge<ConnectionData>[];
+  onNodesChange: OnNodesChange;
+  onEdgesChange: OnEdgesChange;
+  onConnect: OnConnect;
+
+  // Seleção
+  selectedNodeId: string | null;
+  setSelectedNodeId: (id: string | null) => void;
+
+  // Undo/Redo (história de comandos)
+  history: HistoryEntry[];
+  historyIndex: number;
+  undo: () => void;
+  redo: () => void;
+  pushHistory: (entry: HistoryEntry) => void;
+
+  // Projeto atual
+  projectId: string | null;
+  projectName: string;
+  saveStatus: 'saved' | 'saving' | 'unsaved';
+
+  // Ferramenta ativa (tipo de conexão a desenhar)
+  activeTool: 'select' | 'power-wire' | 'control-wire' | 'signal-wire' | 'pan';
+  setActiveTool: (tool: ActiveTool) => void;
+
+  // Ações de projeto
+  addNode: (type: string, position: XYPosition) => void;
+  updateNodeData: (id: string, data: Partial<ComponentData>) => void;
+  removeNode: (id: string) => void;
+  saveProject: () => Promise<void>;
+  loadProject: (projectId: string) => Promise<void>;
+}
+```
+
+### 3.3 Fluxo de Dados para IA
+
+```
+User input (chat / seleção no canvas)
+         │
+         ▼
+ai.service.ts → POST /functions/v1/ai-nexusmind
+         │      (com JWT do usuário, projectId, context)
+         │
+         ▼ (Edge Function)
+1. Verificar autenticação + créditos disponíveis
+2. Construir context: project state, normas, componente selecionado
+3. Chamar Anthropic Claude API (claude-sonnet-4-20250514)
+4. Decrementar créditos no banco
+5. Retornar resposta estruturada: { text, actions[], diagramPatch? }
+         │
+         ▼ (Frontend)
+6. Exibir texto no chat
+7. Se diagramPatch: aplicar nós/edges no canvas via editorStore
+```
+
+---
+
+## 4. SCHEMA DO BANCO DE DADOS (SUPABASE)
+
+Execute as migrations abaixo na ordem exata. Cada migration é um bloco completo.
+
+### Migration 001 — Tipos e Extensões
+```sql
+-- Habilitar extensões necessárias
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm"; -- busca fuzzy
+
+-- Enum: planos de assinatura
+CREATE TYPE subscription_plan AS ENUM ('free', 'basic', 'pro', 'premium');
+
+-- Enum: papéis dentro de um projeto/equipe
+CREATE TYPE team_role AS ENUM ('owner', 'admin', 'engineer', 'viewer');
+
+-- Enum: módulos do editor
+CREATE TYPE diagram_module AS ENUM ('unifilar', 'ladder', 'fbd', 'scada', 'digital_twin', 'plc');
+
+-- Enum: status de simulação
+CREATE TYPE simulation_status AS ENUM ('stopped', 'running', 'paused', 'error');
+
+-- Enum: tipo de conexão elétrica
+CREATE TYPE connection_type AS ENUM ('power', 'control', 'signal');
+```
+
+### Migration 002 — Profiles (Usuários)
+```sql
+CREATE TABLE profiles (
+  id              UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name       TEXT NOT NULL DEFAULT '',
+  avatar_url      TEXT,
+  email           TEXT NOT NULL,
+
+  -- Assinatura
+  plan            subscription_plan NOT NULL DEFAULT 'free',
+  stripe_customer_id TEXT UNIQUE,
+  stripe_subscription_id TEXT UNIQUE,
+  plan_expires_at TIMESTAMPTZ,
+
+  -- Créditos de IA
+  ai_credits      INTEGER NOT NULL DEFAULT 5 CHECK (ai_credits >= 0),
+  ai_credits_reset_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '30 days'),
+
+  -- Preferências
+  default_norm    TEXT NOT NULL DEFAULT 'NBR 5410',
+  default_voltage INTEGER NOT NULL DEFAULT 380,
+  theme           TEXT NOT NULL DEFAULT 'dark',
+  unit_system     TEXT NOT NULL DEFAULT 'metric',
+
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "User can read own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "User can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (
+    -- Impede que o usuário altere seu próprio plano ou créditos diretamente
+    NEW.plan = OLD.plan AND
+    NEW.ai_credits = OLD.ai_credits AND
+    NEW.stripe_customer_id = OLD.stripe_customer_id
+  );
+
+-- Trigger: criar profile automaticamente no signup
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO profiles (id, email, full_name, avatar_url)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    NEW.raw_user_meta_data->>'avatar_url'
+  );
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- Trigger: updated_at automático
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+$$;
+CREATE TRIGGER profiles_updated_at BEFORE UPDATE ON profiles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+```
+
+### Migration 003 — Projetos
+```sql
+CREATE TABLE projects (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  owner_id        UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+
+  name            TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 100),
+  description     TEXT DEFAULT '',
+  thumbnail_url   TEXT,
+
+  -- Configuração elétrica padrão
+  default_voltage INTEGER NOT NULL DEFAULT 380,
+  default_frequency INTEGER NOT NULL DEFAULT 60, -- Hz
+  norm_standard   TEXT NOT NULL DEFAULT 'NBR 5410',
+
+  -- Dados do diagrama (JSON completo serializado)
+  diagram_data    JSONB NOT NULL DEFAULT '{
+    "unifilar": {"nodes": [], "edges": []},
+    "ladder":   {"rungs": []},
+    "fbd":      {"nodes": [], "edges": []},
+    "scada":    {"widgets": [], "tags": []},
+    "plc":      {"variables": [], "programs": []}
+  }',
+
+  -- Metadados de simulação
+  simulation_status simulation_status NOT NULL DEFAULT 'stopped',
+  last_simulated_at TIMESTAMPTZ,
+
+  -- Controle
+  is_archived     BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_projects_owner ON projects(owner_id);
+CREATE INDEX idx_projects_updated ON projects(updated_at DESC);
+
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Owner can do everything" ON projects
+  USING (owner_id = auth.uid());
+
+-- Policy para membros de equipe (leitura)
+CREATE POLICY "Team members can read shared projects" ON projects FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM project_members
+      WHERE project_id = projects.id AND user_id = auth.uid()
+    )
+  );
+
+CREATE TRIGGER projects_updated_at BEFORE UPDATE ON projects
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+```
+
+### Migration 004 — Membros de Equipe
+```sql
+CREATE TABLE project_members (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  role       team_role NOT NULL DEFAULT 'viewer',
+  invited_by UUID REFERENCES profiles(id),
+  accepted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(project_id, user_id)
+);
+
+ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Owner manages members" ON project_members
+  USING (
+    EXISTS (SELECT 1 FROM projects WHERE id = project_id AND owner_id = auth.uid())
+  );
+CREATE POLICY "Member reads own membership" ON project_members FOR SELECT
+  USING (user_id = auth.uid());
+```
+
+### Migration 005 — Catálogo de Componentes Elétricos
+```sql
+CREATE TABLE electrical_components (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  module        diagram_module NOT NULL,
+  category      TEXT NOT NULL, -- 'protection', 'manobra', 'motor', 'sensor', 'plc', etc.
+  type_key      TEXT NOT NULL UNIQUE, -- 'disjuntor', 'contator', 'motor_trifasico', etc.
+  display_name  TEXT NOT NULL,
+  display_name_en TEXT,
+  symbol_svg    TEXT NOT NULL,  -- SVG do símbolo IEC 60617
+  default_props JSONB NOT NULL DEFAULT '{}',
+  prop_schema   JSONB NOT NULL DEFAULT '{}', -- Schema JSON dos campos editáveis
+  norm_refs     TEXT[] DEFAULT '{}',
+  is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order    INTEGER DEFAULT 0
+);
+
+CREATE INDEX idx_components_module ON electrical_components(module);
+CREATE INDEX idx_components_category ON electrical_components(category);
+
+-- Sem RLS — catálogo é público (read-only para usuários autenticados)
+ALTER TABLE electrical_components ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Authenticated users can read components" ON electrical_components
+  FOR SELECT USING (auth.role() = 'authenticated');
+```
+
+### Migration 006 — Histórico de Operações de IA
+```sql
+CREATE TABLE ai_operations (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id       UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  project_id    UUID REFERENCES projects(id) ON DELETE SET NULL,
+  operation_type TEXT NOT NULL, -- 'generate_diagram', 'analyze_norm', 'chat', 'read_file'
+  credits_used  INTEGER NOT NULL CHECK (credits_used > 0),
+  prompt_summary TEXT, -- Resumo sanitizado do prompt (sem dados sensíveis)
+  status        TEXT NOT NULL DEFAULT 'success', -- 'success', 'error', 'insufficient_credits'
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_ai_ops_user ON ai_operations(user_id, created_at DESC);
+
+ALTER TABLE ai_operations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "User reads own ai ops" ON ai_operations FOR SELECT USING (user_id = auth.uid());
+```
+
+### Migration 007 — Telemetria SCADA (Dados de Sensores)
+```sql
+CREATE TABLE scada_telemetry (
+  id            BIGSERIAL PRIMARY KEY,
+  project_id    UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  tag_name      TEXT NOT NULL,
+  value         DOUBLE PRECISION NOT NULL,
+  quality       TEXT NOT NULL DEFAULT 'good', -- 'good', 'uncertain', 'bad'
+  unit          TEXT,
+  recorded_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Particionamento por tempo (dados de série temporal)
+CREATE INDEX idx_telemetry_project_tag ON scada_telemetry(project_id, tag_name, recorded_at DESC);
+
+ALTER TABLE scada_telemetry ENABLE ROW LEVEL SECURITY;
+-- Escrita apenas por service_role (Edge Functions)
+CREATE POLICY "Project owner reads telemetry" ON scada_telemetry FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM projects WHERE id = project_id AND owner_id = auth.uid()
+    )
+  );
+
+-- Limpeza automática de dados antigos (60 dias)
+CREATE OR REPLACE FUNCTION cleanup_old_telemetry()
+RETURNS void LANGUAGE sql AS $$
+  DELETE FROM scada_telemetry WHERE recorded_at < NOW() - INTERVAL '60 days';
+$$;
+```
+
+### Migration 008 — Notificações
+```sql
+CREATE TABLE notifications (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL, -- 'simulation_complete', 'credits_low', 'team_invite', 'alarm'
+  title       TEXT NOT NULL,
+  message     TEXT NOT NULL,
+  data        JSONB DEFAULT '{}',
+  read_at     TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_notifications_user ON notifications(user_id, created_at DESC);
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "User manages own notifications" ON notifications USING (user_id = auth.uid());
+```
+
+### Migration 009 — Seed: Catálogo de Componentes
+```sql
+-- Módulo UNIFILAR — Proteção
+INSERT INTO electrical_components (module, category, type_key, display_name, symbol_svg, default_props, prop_schema) VALUES
+('unifilar', 'protection', 'disjuntor', 'Disjuntor (QF)',
+ '<svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="0" x2="20" y2="15" stroke="currentColor" stroke-width="2"/><rect x="10" y="15" width="20" height="30" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><text x="20" y="34" text-anchor="middle" font-size="8" font-family="monospace" fill="currentColor">QF</text><line x1="20" y1="45" x2="20" y2="60" stroke="currentColor" stroke-width="2"/></svg>',
+ '{"current_a": 16, "curve": "C", "breaking_capacity_ka": 6, "poles": 3, "voltage_v": 380}',
+ '{"current_a": {"label": "Corrente Nominal (A)", "type": "select", "options": [6,10,16,20,25,32,40,50,63,80,100,125,160,200,250,315,400,630]}, "curve": {"label": "Curva", "type": "select", "options": ["B","C","D"]}, "breaking_capacity_ka": {"label": "Poder de Corte (kA)", "type": "select", "options": [3,4.5,6,10,15,25,36,50]}, "poles": {"label": "Nº de Polos", "type": "select", "options": [1,2,3,4]}, "voltage_v": {"label": "Tensão (V)", "type": "select", "options": [127,220,380,440]}}'
+),
+('unifilar', 'protection', 'fusivel', 'Fusível (FU)',
+ '<svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="0" x2="20" y2="15" stroke="currentColor" stroke-width="2"/><rect x="10" y="15" width="20" height="30" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><line x1="10" y1="30" x2="30" y2="30" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3,2"/><line x1="20" y1="45" x2="20" y2="60" stroke="currentColor" stroke-width="2"/></svg>',
+ '{"current_a": 10, "voltage_v": 500, "type": "gG"}',
+ '{"current_a": {"label": "Corrente (A)", "type": "select", "options": [2,4,6,10,16,20,25,32,40,50,63,80,100,125,160,200]}, "type": {"label": "Tipo", "type": "select", "options": ["gG","aM","gF"]}}'
+),
+('unifilar', 'protection', 'dr', 'DR (Diferencial Residual)',
+ '<svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="0" x2="20" y2="12" stroke="currentColor" stroke-width="2"/><rect x="8" y="12" width="24" height="36" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><text x="20" y="30" text-anchor="middle" font-size="6" font-family="monospace" fill="currentColor">DR</text><circle cx="20" cy="36" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="20" y1="48" x2="20" y2="60" stroke="currentColor" stroke-width="2"/></svg>',
+ '{"current_a": 25, "sensitivity_ma": 30, "type": "AC", "poles": 2}',
+ '{"current_a": {"label": "Corrente (A)", "type": "select", "options": [16,25,40,63]}, "sensitivity_ma": {"label": "Sensibilidade (mA)", "type": "select", "options": [10,30,100,300]}, "type": {"label": "Tipo", "type": "select", "options": ["AC","A","B"]}}'
+),
+-- Módulo UNIFILAR — Manobra
+('unifilar', 'manobra', 'contator', 'Contator (KM)',
+ '<svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="0" x2="20" y2="12" stroke="currentColor" stroke-width="2"/><rect x="8" y="12" width="24" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="14" y1="22" x2="26" y2="22" stroke="currentColor" stroke-width="2"/><circle cx="14" cy="22" r="2" fill="currentColor"/><circle cx="26" cy="22" r="2" fill="currentColor"/><rect x="12" y="36" width="16" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="20" y="44" text-anchor="middle" font-size="5" font-family="monospace" fill="currentColor">A1 A2</text><line x1="20" y1="32" x2="20" y2="36" stroke="currentColor" stroke-width="1.5"/><line x1="20" y1="46" x2="20" y2="60" stroke="currentColor" stroke-width="2"/></svg>',
+ '{"current_a": 9, "coil_voltage_v": 220, "poles": 3, "utilization_category": "AC-3"}',
+ '{"current_a": {"label": "Corrente Nominal (A)", "type": "select", "options": [9,12,18,25,32,40,50,65,80,95,115]}, "coil_voltage_v": {"label": "Tensão da Bobina (V)", "type": "select", "options": [24,110,220,380]}, "poles": {"label": "Nº de Polos", "type": "select", "options": [3,4]}, "utilization_category": {"label": "Categoria de Utilização", "type": "select", "options": ["AC-1","AC-2","AC-3","AC-4"]}}'
+),
+('unifilar', 'manobra', 'rele_termico', 'Relé Térmico (FR)',
+ '<svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="0" x2="20" y2="10" stroke="currentColor" stroke-width="2"/><rect x="8" y="10" width="24" height="30" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M 14 20 Q 20 30 26 20" fill="none" stroke="currentColor" stroke-width="2"/><text x="20" y="36" text-anchor="middle" font-size="6" font-family="monospace" fill="currentColor">FR</text><line x1="20" y1="40" x2="20" y2="60" stroke="currentColor" stroke-width="2"/></svg>',
+ '{"current_min_a": 4, "current_max_a": 6, "reset": "manual"}',
+ '{"current_min_a": {"label": "Ajuste Mín (A)", "type": "number"}, "current_max_a": {"label": "Ajuste Máx (A)", "type": "number"}, "reset": {"label": "Reset", "type": "select", "options": ["manual","auto"]}}'
+),
+-- Módulo UNIFILAR — Motores
+('unifilar', 'motor', 'motor_trifasico', 'Motor Trifásico (M)',
+ '<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="24" fill="none" stroke="currentColor" stroke-width="2"/><text x="30" y="26" text-anchor="middle" font-size="10" font-family="monospace" fill="currentColor">M</text><text x="30" y="38" text-anchor="middle" font-size="7" font-family="monospace" fill="currentColor">3~</text><line x1="6" y1="30" x2="0" y2="30" stroke="currentColor" stroke-width="2"/></svg>',
+ '{"power_kw": 7.5, "power_cv": 10, "voltage_v": 380, "current_a": 15.5, "rpm": 1750, "efficiency": 92, "power_factor": 0.87, "service_factor": 1.15, "enclosure": "IP55", "insulation_class": "F"}',
+ '{"power_kw": {"label": "Potência (kW)", "type": "number"}, "voltage_v": {"label": "Tensão (V)", "type": "select", "options": [220,380,440,6900,13800]}, "current_a": {"label": "Corrente Nominal (A)", "type": "number"}, "rpm": {"label": "Rotação (RPM)", "type": "select", "options": [900,1200,1750,3500]}, "enclosure": {"label": "Grau de Proteção", "type": "select", "options": ["IP21","IP44","IP55","IP65"]}}'
+),
+('unifilar', 'motor', 'inversor_frequencia', 'Inversor de Frequência (VFD)',
+ '<svg viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="50" height="70" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><text x="30" y="30" text-anchor="middle" font-size="8" font-family="monospace" fill="currentColor">VFD</text><path d="M10 45 Q20 35 30 45 Q40 55 50 45" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="20" y1="5" x2="20" y2="0" stroke="currentColor" stroke-width="2"/><line x1="30" y1="5" x2="30" y2="0" stroke="currentColor" stroke-width="2"/><line x1="40" y1="5" x2="40" y2="0" stroke="currentColor" stroke-width="2"/><line x1="30" y1="75" x2="30" y2="80" stroke="currentColor" stroke-width="2"/></svg>',
+ '{"power_kw": 7.5, "input_voltage_v": 380, "output_voltage_v": 380, "protocol": "Modbus RTU", "ip": "IP20"}',
+ '{"power_kw": {"label": "Potência (kW)", "type": "number"}, "protocol": {"label": "Protocolo", "type": "select", "options": ["Modbus RTU","Modbus TCP","Profinet","EtherNet/IP","DeviceNet"]}}'
+);
+
+-- Componentes Ladder (IEC 61131-3)
+INSERT INTO electrical_components (module, category, type_key, display_name, symbol_svg, default_props, prop_schema, sort_order) VALUES
+('ladder', 'contact', 'contact_na', 'Contato NA', '<svg viewBox="0 0 40 30" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="15" x2="12" y2="15" stroke="currentColor" stroke-width="2"/><line x1="12" y1="5" x2="12" y2="25" stroke="currentColor" stroke-width="2"/><line x1="28" y1="5" x2="28" y2="25" stroke="currentColor" stroke-width="2"/><line x1="28" y1="15" x2="40" y2="15" stroke="currentColor" stroke-width="2"/></svg>', '{"operand": "%I0.0", "comment": ""}', '{"operand": {"label": "Operando", "type": "text"}, "comment": {"label": "Comentário", "type": "text"}}', 1),
+('ladder', 'contact', 'contact_nf', 'Contato NF', '<svg viewBox="0 0 40 30" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="15" x2="12" y2="15" stroke="currentColor" stroke-width="2"/><line x1="12" y1="5" x2="12" y2="25" stroke="currentColor" stroke-width="2"/><line x1="28" y1="5" x2="28" y2="25" stroke="currentColor" stroke-width="2"/><line x1="28" y1="15" x2="40" y2="15" stroke="currentColor" stroke-width="2"/><line x1="14" y1="8" x2="26" y2="22" stroke="currentColor" stroke-width="1.5"/></svg>', '{"operand": "%I0.1", "comment": ""}', '{"operand": {"label": "Operando", "type": "text"}}', 2),
+('ladder', 'coil', 'coil_simple', 'Bobina Simples', '<svg viewBox="0 0 40 30" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="15" x2="10" y2="15" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="15" r="10" fill="none" stroke="currentColor" stroke-width="2"/><line x1="30" y1="15" x2="40" y2="15" stroke="currentColor" stroke-width="2"/></svg>', '{"operand": "%Q0.0", "comment": ""}', '{"operand": {"label": "Operando", "type": "text"}}', 10),
+('ladder', 'coil', 'coil_set', 'Bobina Set (S)', '<svg viewBox="0 0 40 30" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="15" x2="10" y2="15" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="15" r="10" fill="none" stroke="currentColor" stroke-width="2"/><text x="20" y="19" text-anchor="middle" font-size="8" font-family="monospace" fill="currentColor">S</text><line x1="30" y1="15" x2="40" y2="15" stroke="currentColor" stroke-width="2"/></svg>', '{"operand": "%M0.0", "comment": ""}', '{"operand": {"label": "Operando", "type": "text"}}', 11),
+('ladder', 'coil', 'coil_reset', 'Bobina Reset (R)', '<svg viewBox="0 0 40 30" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="15" x2="10" y2="15" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="15" r="10" fill="none" stroke="currentColor" stroke-width="2"/><text x="20" y="19" text-anchor="middle" font-size="8" font-family="monospace" fill="currentColor">R</text><line x1="30" y1="15" x2="40" y2="15" stroke="currentColor" stroke-width="2"/></svg>', '{"operand": "%M0.0", "comment": ""}', '{"operand": {"label": "Operando", "type": "text"}}', 12),
+('ladder', 'timer', 'ton', 'Temporizador TON', '<svg viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="50" height="40" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><text x="30" y="18" text-anchor="middle" font-size="7" font-family="monospace" fill="currentColor">TON</text><text x="12" y="30" font-size="5" font-family="monospace" fill="currentColor">IN ─</text><text x="12" y="40" font-size="5" font-family="monospace" fill="currentColor">PT ─</text><text x="42" y="30" font-size="5" font-family="monospace" fill="currentColor">─ Q</text><text x="38" y="40" font-size="5" font-family="monospace" fill="currentColor">─ ET</text></svg>', '{"operand": "TON_01", "preset_ms": 1000, "comment": ""}', '{"operand": {"label": "Nome", "type": "text"}, "preset_ms": {"label": "Preset (ms)", "type": "number"}}', 20),
+('ladder', 'counter', 'ctu', 'Contador CTU (Up)', '<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="50" height="50" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><text x="30" y="20" text-anchor="middle" font-size="7" font-family="monospace" fill="currentColor">CTU</text><text x="12" y="33" font-size="5" font-family="monospace" fill="currentColor">CU ─</text><text x="12" y="43" font-size="5" font-family="monospace" fill="currentColor">R ─</text><text x="12" y="53" font-size="5" font-family="monospace" fill="currentColor">PV ─</text></svg>', '{"operand": "CTU_01", "preset": 10, "comment": ""}', '{"operand": {"label": "Nome", "type": "text"}, "preset": {"label": "Preset", "type": "number"}}', 30);
+```
+
+---
+
+## 5. DESIGN SYSTEM E IDENTIDADE VISUAL
+
+### 5.1 Paleta de Cores (CSS Variables em `globals.css`)
+```css
+:root {
+  /* Fundo industrial — tema escuro por padrão */
+  --bg-primary:    #0A0E1A;  /* Azul-preto profundo */
+  --bg-secondary:  #0F1629;  /* Painéis secundários */
+  --bg-elevated:   #161E35;  /* Cards, modais */
+  --bg-input:      #1C2640;  /* Inputs, selects */
+
+  /* Bordas */
+  --border-subtle: #1E2D4D;
+  --border-strong: #2A3F6A;
+
+  /* Texto */
+  --text-primary:   #E8EEFF;
+  --text-secondary: #8899CC;
+  --text-muted:     #4A5A80;
+
+  /* Cores de sinal elétrico (sistema) */
+  --color-power:   #EF4444;  /* Vermelho — alta tensão, potência */
+  --color-control: #F97316;  /* Laranja — controle */
+  --color-signal:  #3B82F6;  /* Azul — sinal/comunicação */
+  --color-earth:   #10B981;  /* Verde — terra/segurança */
+  --color-neutral: #94A3B8;  /* Cinza — neutro */
+
+  /* Status */
+  --status-energized: #22C55E;  /* Verde vibrante */
+  --status-warning:   #EAB308;  /* Amarelo */
+  --status-fault:     #EF4444;  /* Vermelho */
+  --status-offline:   #475569;  /* Cinza */
+
+  /* Accent primário do produto */
+  --accent-primary:  #00D4FF;  /* Ciano elétrico */
+  --accent-glow:     rgba(0, 212, 255, 0.15);
+
+  /* Simulação — glow dos nós energizados */
+  --glow-energized: 0 0 12px #22C55E, 0 0 24px rgba(34, 197, 94, 0.4);
+  --glow-fault:     0 0 12px #EF4444, 0 0 24px rgba(239, 68, 68, 0.4);
+
+  /* Canvas */
+  --canvas-bg:    #080C16;
+  --canvas-dot:   rgba(255,255,255,0.08);
+  --canvas-grid:  20px;
+}
+```
+
+### 5.2 Tipografia
+```css
+/* Importar no index.html */
+/* Display (títulos): Orbitron — futurista, industrial, técnico */
+/* Body (texto): JetBrains Mono — monospace técnico, legível */
+/* UI (componentes): DM Sans — limpo, neutro */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+.font-display { font-family: 'Orbitron', monospace; }
+.font-mono    { font-family: 'JetBrains Mono', monospace; }
+.font-ui      { font-family: 'DM Sans', sans-serif; }
+```
+
+### 5.3 Canvas de Diagramas — Regras Visuais
+```
+- Background: --canvas-bg com grid de pontos (dotted, 20px)
+- Nós em repouso: bg --bg-elevated, border --border-strong, texto --text-primary
+- Nó selecionado: border --accent-primary (2px), glow sutil --accent-glow
+- Nó energizado (simulação): border --status-energized, box-shadow --glow-energized
+- Nó em falha: border --status-fault, box-shadow --glow-fault, animação pulsar
+- Edge de potência: cor --color-power, strokeWidth 3, animado durante simulação
+- Edge de controle: cor --color-control, strokeWidth 1.5, strokeDasharray: '5 3'
+- Edge de sinal: cor --color-signal, strokeWidth 1, strokeDasharray: '3 3'
+- Labels de nós: fonte JetBrains Mono, tamanho 10px, cor --text-secondary
+```
+
+---
+
+## FASE 1 — FUNDAÇÃO E AUTENTICAÇÃO
+
+**Objetivo:** App funcional com auth, routing e shell do dashboard.
+**Duração estimada:** 3–5 dias de desenvolvimento.
+
+### Passo 1.1 — Setup Inicial no Lovable
+1. Criar novo projeto Lovable.
+2. Conectar ao repositório GitHub: `https://github.com/lendavira2020/eletric.git`
+3. Integrar Supabase ao projeto Lovable (Settings → Supabase).
+4. Configurar variáveis de ambiente:
+   ```
+   VITE_SUPABASE_URL=<seu-url>
+   VITE_SUPABASE_ANON_KEY=<sua-key>
+   ```
+5. Executar migrations 001–009 no Supabase SQL Editor.
+
+### Passo 1.2 — Configuração do Cliente Supabase
+```typescript
+// src/services/supabase.ts
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase.types';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase env vars missing. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+}
+
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+  realtime: {
+    params: { eventsPerSecond: 10 },
+  },
+});
+```
+
+### Passo 1.3 — Store de Autenticação
+```typescript
+// src/stores/authStore.ts
+import { create } from 'zustand';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/services/supabase';
+import type { Database } from '@/types/supabase.types';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
+
+interface AuthStore {
+  session: Session | null;
+  user: User | null;
+  profile: Profile | null;
+  isLoading: boolean;
+  setSession: (session: Session | null) => void;
+  setProfile: (profile: Profile | null) => void;
+  signOut: () => Promise<void>;
+  fetchProfile: () => Promise<void>;
+}
+
+export const useAuthStore = create<AuthStore>((set, get) => ({
+  session: null,
+  user: null,
+  profile: null,
+  isLoading: true,
+
+  setSession: (session) => set({
+    session,
+    user: session?.user ?? null,
+    isLoading: false,
+  }),
+
+  setProfile: (profile) => set({ profile }),
+
+  signOut: async () => {
+    await supabase.auth.signOut();
+    set({ session: null, user: null, profile: null });
+  },
+
+  fetchProfile: async () => {
+    const { user } = get();
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    if (data) set({ profile: data });
+  },
+}));
+```
+
+### Passo 1.4 — Hook de Autenticação com Listener
+```typescript
+// src/hooks/useAuth.ts
+import { useEffect } from 'react';
+import { supabase } from '@/services/supabase';
+import { useAuthStore } from '@/stores/authStore';
+
+export function useAuth() {
+  const { setSession, fetchProfile, session, user, profile, isLoading, signOut } = useAuthStore();
+
+  useEffect(() => {
+    // Inicializar sessão
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchProfile();
+    });
+
+    // Ouvir mudanças de sessão
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        if (session) fetchProfile();
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const signInWithEmail = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  };
+
+  const signUpWithEmail = async (email: string, password: string, fullName: string) => {
+    const { error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { full_name: fullName } },
+    });
+    if (error) throw error;
+  };
+
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    });
+    if (error) throw error;
+  };
+
+  return { session, user, profile, isLoading, signOut, signInWithEmail, signUpWithEmail, signInWithGoogle };
+}
+```
+
+### Passo 1.5 — Roteamento Protegido
+```typescript
+// src/components/layout/ProtectedRoute.tsx
+import { Navigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores/authStore';
+
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { session, isLoading } = useAuthStore();
+
+  if (isLoading) return <AppLoadingScreen />;
+  if (!session) return <Navigate to="/auth" replace />;
+  return <>{children}</>;
+}
+
+// src/App.tsx — Estrutura de rotas
+const router = createBrowserRouter([
+  { path: '/', element: <Landing /> },
+  { path: '/auth', element: <Auth /> },
+  {
+    path: '/dashboard',
+    element: <ProtectedRoute><Dashboard /></ProtectedRoute>,
+  },
+  {
+    path: '/editor/:projectId',
+    element: <ProtectedRoute><Editor /></ProtectedRoute>,
+  },
+  {
+    path: '/profile',
+    element: <ProtectedRoute><Profile /></ProtectedRoute>,
+  },
+]);
+```
+
+### Passo 1.6 — Página de Auth
+```typescript
+// src/pages/Auth.tsx
+// Design: dark industrial, formulário centrado com glow accent
+// Abas: "Entrar" / "Cadastrar"
+// Campos: Full Name (só no cadastro), Email, Senha
+// Botão Google OAuth com logo SVG
+// Link "Esqueci minha senha" → modal de reset
+// Animação de entrada: fade-in com slide-up (Framer Motion)
+// Background: canvas-bg com padrão de grade de circuito (SVG background)
+```
+
+**Critérios de Aceitação da Fase 1:**
+- [ ] Login com email/senha funcional
+- [ ] Login com Google OAuth funcional
+- [ ] Redirecionamento correto após login → /dashboard
+- [ ] Redirecionamento correto se não autenticado → /auth
+- [ ] Profile criado automaticamente via trigger
+- [ ] signOut limpa sessão completamente
+- [ ] Sem erros no console
+- [ ] `npm run build` sem erros
+
+---
+
+## FASE 2 — DASHBOARD E GESTÃO DE PROJETOS
+
+**Objetivo:** Dashboard funcional com CRUD de projetos.
+**Duração estimada:** 4–6 dias.
+
+### Passo 2.1 — Serviço de Projetos
+```typescript
+// src/services/projects.service.ts
+import { supabase } from './supabase';
+import type { Database } from '@/types/supabase.types';
+
+type Project = Database['public']['Tables']['projects']['Row'];
+type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
+
+export const projectsService = {
+  async getAll(userId: string): Promise<Project[]> {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('owner_id', userId)
+      .eq('is_archived', false)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw new Error(`Erro ao buscar projetos: ${error.message}`);
+    return data ?? [];
+  },
+
+  async create(payload: Omit<ProjectInsert, 'owner_id'>, userId: string): Promise<Project> {
+    // Verificar limite do plano Free (máx 3 projetos)
+    const { count } = await supabase
+      .from('projects')
+      .select('*', { count: 'exact', head: true })
+      .eq('owner_id', userId)
+      .eq('is_archived', false);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.plan === 'free' && (count ?? 0) >= 3) {
+      throw new Error('PLAN_LIMIT_REACHED');
+    }
+
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({ ...payload, owner_id: userId })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Erro ao criar projeto: ${error.message}`);
+    return data;
+  },
+
+  async update(id: string, payload: Partial<Project>): Promise<void> {
+    const { error } = await supabase
+      .from('projects')
+      .update(payload)
+      .eq('id', id);
+    if (error) throw new Error(`Erro ao atualizar projeto: ${error.message}`);
+  },
+
+  async duplicate(projectId: string, userId: string): Promise<Project> {
+    const { data: original, error: fetchError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', projectId)
+      .single();
+
+    if (fetchError || !original) throw new Error('Projeto não encontrado');
+
+    return projectsService.create({
+      name: `${original.name} (Cópia)`,
+      description: original.description,
+      default_voltage: original.default_voltage,
+      default_frequency: original.default_frequency,
+      norm_standard: original.norm_standard,
+      diagram_data: original.diagram_data,
+    }, userId);
+  },
+
+  async archive(id: string): Promise<void> {
+    await projectsService.update(id, { is_archived: true });
+  },
+
+  async saveDiagram(projectId: string, diagramData: object, module: string): Promise<void> {
+    const { error } = await supabase.rpc('update_diagram_module', {
+      p_project_id: projectId,
+      p_module: module,
+      p_data: diagramData,
+    });
+    if (error) throw new Error(`Erro ao salvar diagrama: ${error.message}`);
+  },
+};
+```
+
+### Passo 2.2 — Layout do Dashboard
+```
+ESTRUTURA DO DASHBOARD:
+┌─────────────────────────────────────────────────────────┐
+│ TOPBAR: Logo EletricAI | Busca global | Créditos | Perfil│
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                  │
+│  │Proj. │ │Comp. │ │Simul.│ │Econ. │  ← Cards resumo  │
+│  │Ativos│ │Model.│ │ Hoje │ │c/ IA │                  │
+│  └──────┘ └──────┘ └──────┘ └──────┘                  │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ 💡 NexusMind Insight — Sugestão proativa da IA    │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                          │
+│  PROJETOS RECENTES                        [+ Novo Projeto]│
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────────────┐  │
+│  │ Card 1 │ │ Card 2 │ │ Card 3 │ │ + Criar Projeto│  │
+│  └────────┘ └────────┘ └────────┘ └────────────────┘  │
+│                                                          │
+│  AÇÕES RÁPIDAS: [Novo Unifilar] [Novo Ladder] [SCADA]  │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Passo 2.3 — ProjectCard Component
+```typescript
+// src/components/dashboard/ProjectCard.tsx
+// Props: project, onOpen, onDuplicate, onDelete
+// Visual:
+//   - Thumbnail (se existir) ou placeholder com ícone do módulo
+//   - Nome do projeto (truncado)
+//   - Badges de módulos: ["Unifilar", "Ladder", "SCADA"] (apenas os que têm dados)
+//   - "há 2 dias" (date-fns formatDistanceToNow)
+//   - Status badge: Energizado | Parado | Erro (com cores de status)
+//   - Menu de ações (Dropdown): Abrir, Duplicar, Arquivar
+// Hover: elevação com box-shadow accent, leve scale(1.02)
+```
+
+### Passo 2.4 — Modal de Criação de Projeto
+```typescript
+// src/components/dashboard/NewProjectModal.tsx
+// Campos:
+//   - Nome (obrigatório, 1-100 chars)
+//   - Descrição (opcional)
+//   - Tensão padrão: Select [127V, 220V, 380V, 440V, 13.8kV]
+//   - Frequência: Radio [50Hz, 60Hz]
+//   - Norma: Select [NBR 5410, NBR 14039, IEC 60364, NR-10]
+//   - Módulo inicial: Cards visuais [Unifilar, Ladder, SCADA]
+// Validação: Zod schema antes do submit
+// Ao criar: navegar para /editor/:projectId
+// Se plano Free e limite atingido: mostrar UpgradeModal
+```
+
+**Critérios de Aceitação da Fase 2:**
+- [ ] Dashboard carrega projetos do usuário
+- [ ] Criar projeto funciona com validação Zod
+- [ ] Limite de 3 projetos no Free com UX de upgrade
+- [ ] Duplicar projeto cria cópia com dados corretos
+- [ ] Arquivar projeto remove do dashboard
+- [ ] Estado vazio com CTA para criar primeiro projeto
+- [ ] Cards de resumo com dados reais (TanStack Query)
+- [ ] Topbar com créditos restantes
+
+---
+
+## FASE 3 — EDITOR: MÓDULO UNIFILAR
+
+**Objetivo:** Editor funcional com canvas React Flow, biblioteca de componentes e painel de propriedades.
+**Duração estimada:** 7–10 dias.
+
+### Passo 3.1 — Layout do Editor
+```
+┌───────────────────────────────────────────────────────────┐
+│TOPBAR: [Abas: Unifilar|Ladder|FBD|SCADA|PLC|Sim] | Nome | │
+│        [Status: ⚡ Energizado / ■ Parado] | [Salvo ✓]    │
+├─────────────┬──────────────────────────────┬──────────────┤
+│ BIBLIOTECA  │                              │  PROPRIEDADES│
+│ (colapsável)│       CANVAS                 │  (colapsável)│
+│             │   React Flow + Grid          │              │
+│ [Proteção]  │                              │ Componente   │
+│ ▸ Disjuntor │     Nós arrastáveis          │ selecionado  │
+│ ▸ Fusível   │     Conexões coloridas       │              │
+│ ▸ DR        │                              │ Campo 1: ... │
+│             │                              │ Campo 2: ... │
+│ [Manobra]   │                              │ Campo 3: ... │
+│ ▸ Contator  │                              │              │
+│ ▸ Relé Tér. │                              │ [Norma Ref]  │
+│             │                              │ NBR 5410 §X  │
+│ [Motores]   │                              │              │
+│ ▸ Motor 3F  │                              │ ⚠ Alertas   │
+│ ▸ VFD       │                              │              │
+├─────────────┴──────────────────────────────┴──────────────┤
+│ STATUSBAR: Nós: 12 | Conexões: 8 | Escala: 100% | Ctrl+Z │
+└───────────────────────────────────────────────────────────┘
+```
+
+### Passo 3.2 — Editor Store (Zustand)
+```typescript
+// src/stores/editorStore.ts
+import { create } from 'zustand';
+import { temporal } from 'zundo'; // undo/redo via zundo
+import {
+  Node, Edge, Connection, addEdge, applyNodeChanges, applyEdgeChanges,
+  NodeChange, EdgeChange, XYPosition, OnNodesChange, OnEdgesChange
+} from '@xyflow/react';
+import type { ComponentData, ConnectionData } from '@/types/diagram.types';
+
+type ActiveModule = 'unifilar' | 'ladder' | 'fbd' | 'scada' | 'digital_twin' | 'plc' | 'simulation';
+type ActiveTool = 'select' | 'power-wire' | 'control-wire' | 'signal-wire' | 'pan';
+
+interface EditorState {
+  // Módulo e projeto
+  projectId: string | null;
+  projectName: string;
+  activeModule: ActiveModule;
+  saveStatus: 'saved' | 'saving' | 'unsaved';
+  activeTool: ActiveTool;
+
+  // Canvas state
+  nodes: Node<ComponentData>[];
+  edges: Edge<ConnectionData>[];
+
+  // Seleção
+  selectedNodeId: string | null;
+
+  // Ações
+  setProjectId: (id: string) => void;
+  setProjectName: (name: string) => void;
+  setActiveModule: (module: ActiveModule) => void;
+  setActiveTool: (tool: ActiveTool) => void;
+  setSaveStatus: (status: 'saved' | 'saving' | 'unsaved') => void;
+  setSelectedNodeId: (id: string | null) => void;
+
+  // Canvas actions
+  onNodesChange: (changes: NodeChange[]) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
+  onConnect: (connection: Connection) => void;
+
+  addNode: (typeKey: string, defaultProps: Record<string, unknown>, position: XYPosition) => void;
+  updateNodeData: (nodeId: string, data: Partial<ComponentData>) => void;
+  deleteSelected: () => void;
+
+  // Persistência
+  loadFromJSON: (data: Record<string, unknown>, module: ActiveModule) => void;
+  toJSON: () => { nodes: Node[]; edges: Edge[] };
+}
+
+export const useEditorStore = create<EditorState>()(
+  temporal(
+    (set, get) => ({
+      projectId: null,
+      projectName: 'Novo Projeto',
+      activeModule: 'unifilar',
+      saveStatus: 'saved',
+      activeTool: 'select',
+      nodes: [],
+      edges: [],
+      selectedNodeId: null,
+
+      setProjectId: (id) => set({ projectId: id }),
+      setProjectName: (name) => set({ projectName: name }),
+      setActiveModule: (module) => set({ activeModule: module }),
+      setActiveTool: (tool) => set({ activeTool: tool }),
+      setSaveStatus: (status) => set({ saveStatus: status }),
+      setSelectedNodeId: (id) => set({ selectedNodeId: id }),
+
+      onNodesChange: (changes) =>
+        set((s) => ({ nodes: applyNodeChanges(changes, s.nodes) })),
+
+      onEdgesChange: (changes) =>
+        set((s) => ({ edges: applyEdgeChanges(changes, s.edges) })),
+
+      onConnect: (connection) => {
+        const { activeTool } = get();
+        const type = activeTool === 'control-wire' ? 'control'
+          : activeTool === 'signal-wire' ? 'signal'
+          : 'power';
+
+        set((s) => ({
+          edges: addEdge({
+            ...connection,
+            type: 'electricEdge',
+            data: { connectionType: type } as ConnectionData,
+            animated: false,
+          }, s.edges),
+          saveStatus: 'unsaved',
+        }));
+      },
+
+      addNode: (typeKey, defaultProps, position) => {
+        const newNode: Node<ComponentData> = {
+          id: `${typeKey}-${Date.now()}`,
+          type: 'electricComponent',
+          position,
+          data: {
+            typeKey,
+            label: typeKey.toUpperCase().replace('_', '-'),
+            props: defaultProps,
+            isEnergized: false,
+            hasFault: false,
+          } as ComponentData,
+        };
+        set((s) => ({ nodes: [...s.nodes, newNode], saveStatus: 'unsaved' }));
+      },
+
+      updateNodeData: (nodeId, data) => {
+        set((s) => ({
+          nodes: s.nodes.map((n) =>
+            n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
+          ),
+          saveStatus: 'unsaved',
+        }));
+      },
+
+      deleteSelected: () => {
+        const { selectedNodeId } = get();
+        if (!selectedNodeId) return;
+        set((s) => ({
+          nodes: s.nodes.filter((n) => n.id !== selectedNodeId),
+          edges: s.edges.filter(
+            (e) => e.source !== selectedNodeId && e.target !== selectedNodeId
+          ),
+          selectedNodeId: null,
+          saveStatus: 'unsaved',
+        }));
+      },
+
+      loadFromJSON: (data, _module) => {
+        const raw = data as { nodes?: Node[]; edges?: Edge[] };
+        set({
+          nodes: raw.nodes ?? [],
+          edges: raw.edges ?? [],
+          saveStatus: 'saved',
+        });
+      },
+
+      toJSON: () => {
+        const { nodes, edges } = get();
+        return { nodes, edges };
+      },
+    }),
+    { limit: 50 } // Máximo 50 estados no histórico
+  )
+);
+```
+
+### Passo 3.3 — Nó Universal de Componente Elétrico
+```typescript
+// src/components/editor/nodes/ElectricComponentNode.tsx
+import { memo } from 'react';
+import { NodeProps, Handle, Position } from '@xyflow/react';
+import type { ComponentData } from '@/types/diagram.types';
+import { cn } from '@/lib/utils';
+
+export const ElectricComponentNode = memo(function ElectricComponentNode({
+  id,
+  data,
+  selected,
+}: NodeProps<ComponentData>) {
+  const { typeKey, label, isEnergized, hasFault, symbolSvg } = data;
+
+  return (
+    <div
+      className={cn(
+        'electric-node',
+        'relative flex flex-col items-center cursor-pointer',
+        'rounded-md border px-2 py-3 min-w-[60px]',
+        'transition-all duration-300',
+        // Estados visuais
+        selected && 'border-[--accent-primary] shadow-[0_0_12px_var(--accent-glow)]',
+        isEnergized && !hasFault && 'border-[--status-energized] shadow-[var(--glow-energized)]',
+        hasFault && 'border-[--status-fault] shadow-[var(--glow-fault)] animate-pulse',
+        !selected && !isEnergized && !hasFault && 'border-[--border-strong] bg-[--bg-elevated]',
+      )}
+    >
+      {/* Handles de conexão — topo (entrada) */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!w-3 !h-3 !bg-[--border-strong] !border-[--accent-primary]"
+      />
+
+      {/* Símbolo SVG do componente */}
+      <div
+        className="w-10 h-10 text-[--text-primary]"
+        dangerouslySetInnerHTML={{ __html: symbolSvg ?? '' }}
+      />
+
+      {/* Label de referência */}
+      <span className="font-mono text-[10px] text-[--text-secondary] mt-1 select-none">
+        {label}
+      </span>
+
+      {/* Indicador de status */}
+      {(isEnergized || hasFault) && (
+        <span
+          className={cn(
+            'absolute top-1 right-1 w-2 h-2 rounded-full',
+            isEnergized && !hasFault && 'bg-[--status-energized]',
+            hasFault && 'bg-[--status-fault]',
+          )}
+        />
+      )}
+
+      {/* Handle de saída — base */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!w-3 !h-3 !bg-[--border-strong] !border-[--accent-primary]"
+      />
+    </div>
+  );
+});
+```
+
+### Passo 3.4 — Edge Elétrico Colorido
+```typescript
+// src/components/editor/edges/ElectricEdge.tsx
+import { memo } from 'react';
+import { EdgeProps, getSmoothStepPath, EdgeLabelRenderer } from '@xyflow/react';
+import type { ConnectionData } from '@/types/diagram.types';
+
+const EDGE_COLORS = {
+  power:   'var(--color-power)',
+  control: 'var(--color-control)',
+  signal:  'var(--color-signal)',
+} as const;
+
+const EDGE_WIDTHS = { power: 3, control: 1.5, signal: 1 };
+
+export const ElectricEdge = memo(function ElectricEdge({
+  sourceX, sourceY, targetX, targetY,
+  sourcePosition, targetPosition,
+  data, selected,
+}: EdgeProps<ConnectionData>) {
+  const connType = data?.connectionType ?? 'power';
+  const color = EDGE_COLORS[connType];
+  const width = EDGE_WIDTHS[connType];
+
+  const [edgePath] = getSmoothStepPath({
+    sourceX, sourceY, targetX, targetY,
+    sourcePosition, targetPosition,
+    borderRadius: 8,
+  });
+
+  return (
+    <>
+      <path
+        d={edgePath}
+        stroke={color}
+        strokeWidth={selected ? width + 1 : width}
+        fill="none"
+        strokeDasharray={connType === 'signal' ? '5 3' : connType === 'control' ? '8 4' : undefined}
+        opacity={selected ? 1 : 0.8}
+        className="transition-all duration-200"
+      />
+      {/* Animação de fluxo durante simulação */}
+      {data?.isSimulating && (
+        <path
+          d={edgePath}
+          stroke={color}
+          strokeWidth={width}
+          fill="none"
+          strokeDasharray="10 20"
+          className="animate-[dash_1s_linear_infinite]"
+          opacity={0.6}
+        />
+      )}
+    </>
+  );
+});
+```
+
+### Passo 3.5 — Painel de Propriedades Dinâmico
+```typescript
+// src/components/editor/panels/PropertiesPanel.tsx
+// Lê o schema de prop_schema da tabela electrical_components
+// Renderiza campos dinamicamente:
+//   - type: "select" → <Select> com options
+//   - type: "number" → <Input type="number">
+//   - type: "text"   → <Input type="text">
+// Ao alterar qualquer campo: chama updateNodeData e setSaveStatus('unsaved')
+// Exibe referências normativas (norm_refs) como badges clicáveis
+// Exibe alertas de validação (ex: corrente do disjuntor menor que a do motor)
+```
+
+### Passo 3.6 — Autosave
+```typescript
+// src/hooks/useAutosave.ts
+import { useEffect, useRef } from 'react';
+import { useEditorStore } from '@/stores/editorStore';
+import { projectsService } from '@/services/projects.service';
+
+const AUTOSAVE_INTERVAL_MS = 3000; // 3 segundos após última mudança
+
+export function useAutosave() {
+  const { projectId, activeModule, saveStatus, setSaveStatus, toJSON } = useEditorStore();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (saveStatus !== 'unsaved' || !projectId) return;
+
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      setSaveStatus('saving');
+      try {
+        await projectsService.saveDiagram(projectId, toJSON(), activeModule);
+        setSaveStatus('saved');
+      } catch {
+        setSaveStatus('unsaved'); // Retry na próxima mudança
+      }
+    }, AUTOSAVE_INTERVAL_MS);
+
+    return () => clearTimeout(timerRef.current);
+  }, [saveStatus]);
+}
+```
+
+**Critérios de Aceitação da Fase 3:**
+- [ ] Canvas carrega com grid e zoom/pan funcional
+- [ ] Arrastar componentes da biblioteca para o canvas
+- [ ] Conectar componentes com wire tools (potência/controle/sinal)
+- [ ] Painel de propriedades edita campos do nó selecionado
+- [ ] Undo/Redo funcional (Ctrl+Z / Ctrl+Y)
+- [ ] Autosave cada 3s após mudança
+- [ ] Indicador de status (Salvo/Salvando/Não salvo)
+- [ ] Delete key remove nó selecionado
+- [ ] Canvas responsivo (zoom fit ao abrir)
+
+---
+
+## FASE 4 — EDITOR: MÓDULO LADDER
+
+**Objetivo:** Editor Ladder conforme IEC 61131-3 com rungs, compilação e simulação básica.
+**Duração estimada:** 6–8 dias.
+
+### Passo 4.1 — Estrutura de Dados do Ladder
+```typescript
+// src/types/diagram.types.ts — Ladder específico
+export interface LadderRung {
+  id: string;
+  elements: LadderElement[];  // sequência horizontal de elementos
+  comment: string;
+}
+
+export interface LadderElement {
+  id: string;
+  type: 'contact_na' | 'contact_nf' | 'contact_pos_edge' | 'contact_neg_edge'
+       | 'coil_simple' | 'coil_set' | 'coil_reset'
+       | 'ton' | 'tof' | 'tp'
+       | 'ctu' | 'ctd' | 'ctud'
+       | 'compare' | 'math'
+       | 'branch_start' | 'branch_end'; // Ramificações paralelas
+  operand: string;        // %I0.0, %Q0.2, %M5.1, TON_01, etc.
+  props: Record<string, unknown>;  // preset, base_time, etc.
+  isEnergized: boolean;  // Estado durante simulação
+}
+
+export interface LadderDiagram {
+  rungs: LadderRung[];
+  variables: PLCVariable[];  // Tabela de variáveis global
+}
+
+export interface PLCVariable {
+  name: string;
+  address: string;  // %I0.0, %Q0.0, %M0.0, %DB1.DBX0.0
+  type: 'BOOL' | 'INT' | 'WORD' | 'DINT' | 'REAL' | 'TIME';
+  comment: string;
+  value: unknown;  // Valor atual durante simulação
+}
+```
+
+### Passo 4.2 — Canvas Ladder
+```
+LAYOUT DO EDITOR LADDER:
+┌────────────────────────────────────────────────────────┐
+│ TOOLBAR: [+ Rung] [Compilar] [Simular] [Forçar E/S]   │
+├────────────────────────────────────────────────────────┤
+│ RUNG 001: [comentário clicável]              [✕ del]  │
+│ ┤├──[─/─]──[────────────────────────────────( )─]├    │
+│   %I0.0   %I0.1                             %Q0.0     │
+├────────────────────────────────────────────────────────┤
+│ RUNG 002:                                    [✕ del]  │
+│ ┤├──[─/─]──┬──[────]──┬──( TON )──( )─]├             │
+│   %I0.2    │ %M0.0    │  TON_01  %Q0.1               │
+│            └──────────┘                               │
+│               (ramo paralelo)                         │
+├────────────────────────────────────────────────────────┤
+│ [+ Adicionar Rung]                                     │
+├────────────────────────────────────────────────────────┤
+│ PAINEL INFERIOR: Código IL gerado | Tabela de Variáveis│
+└────────────────────────────────────────────────────────┘
+```
+
+### Passo 4.3 — Engine de Simulação Ladder
+```typescript
+// src/lib/simulation/ladderExecutor.ts
+
+interface SimState {
+  variables: Map<string, boolean | number>;  // %I0.0 → true/false
+  timers: Map<string, { accumulator: number; running: boolean; done: boolean }>;
+  counters: Map<string, { count: number; done: boolean }>;
+}
+
+export class LadderExecutor {
+  private state: SimState;
+  private intervalRef: ReturnType<typeof setInterval> | null = null;
+  private cycleTimeMs: number = 10; // 10ms de ciclo de varredura
+
+  constructor(initialVariables: Map<string, boolean | number>) {
+    this.state = {
+      variables: new Map(initialVariables),
+      timers: new Map(),
+      counters: new Map(),
+    };
+  }
+
+  // Executar um ciclo completo do programa ladder
+  executeCycle(rungs: LadderRung[]): SimState {
+    for (const rung of rungs) {
+      this.executeRung(rung);
+    }
+    this.updateTimers();
+    return { ...this.state };
+  }
+
+  private executeRung(rung: LadderRung): void {
+    // Lógica de avaliação de contatos em série e ramos paralelos
+    const result = this.evaluateElements(rung.elements);
+    // Atualizar bobinas com resultado
+    // ...implementação completa
+  }
+
+  private evaluateContact(element: LadderElement): boolean {
+    const varValue = this.state.variables.get(element.operand) ?? false;
+    if (element.type === 'contact_na') return Boolean(varValue);
+    if (element.type === 'contact_nf') return !Boolean(varValue);
+    return false;
+  }
+
+  private updateTimers(): void {
+    // Incrementar acumuladores de TON/TOF a cada ciclo
+    // ...
+  }
+
+  start(rungs: LadderRung[], onCycle: (state: SimState) => void): void {
+    this.intervalRef = setInterval(() => {
+      const newState = this.executeCycle(rungs);
+      onCycle(newState);
+    }, this.cycleTimeMs);
+  }
+
+  stop(): void {
+    if (this.intervalRef) {
+      clearInterval(this.intervalRef);
+      this.intervalRef = null;
+    }
+  }
+
+  forceVariable(address: string, value: boolean | number): void {
+    this.state.variables.set(address, value);
+  }
+}
+```
+
+**Critérios de Aceitação da Fase 4:**
+- [ ] Criação e exclusão de rungs
+- [ ] Arrastar elementos da biblioteca para rungs
+- [ ] Editar operando via clique inline
+- [ ] Ramos paralelos (OR lógico)
+- [ ] Compilação com detecção de erros de sintaxe
+- [ ] Simulação executa ciclo de 10ms
+- [ ] Elementos energizados ficam verdes durante simulação
+- [ ] Forçar valores de variáveis de entrada
+- [ ] Código IL/ST gerado e exibido no painel inferior
+
+---
+
+## FASE 5 — EDITOR: MÓDULO SCADA
+
+**Objetivo:** Editor SCADA com widgets, editor Monaco e mapeamento de tags.
+**Duração estimada:** 6–8 dias.
+
+### Passo 5.1 — Widgets SCADA
+```typescript
+// src/types/scada.types.ts
+export type ScadaWidgetType =
+  | 'gauge' | 'numeric_display' | 'level_indicator' | 'trend_chart'
+  | 'button' | 'switch' | 'slider' | 'text_input'
+  | 'alarm_banner' | 'alarm_table'
+  | 'motor_symbol' | 'pump_symbol' | 'valve_symbol'
+  | 'pipe' | 'tank' | 'label';
+
+export interface ScadaWidget {
+  id: string;
+  type: ScadaWidgetType;
+  position: { x: number; y: number };
+  size: { w: number; h: number };
+  tagName: string;           // Ex: "TANQUE_NIVEL"
+  unit: string;              // Ex: "%", "°C", "bar"
+  label: string;
+  minValue: number;
+  maxValue: number;
+  colorNormal: string;
+  colorAlert: string;
+  colorFault: string;
+  alertThreshold: number;
+  faultThreshold: number;
+  action?: 'SetTag' | 'ToggleTag' | 'Navigate';  // Para botões
+  actionTarget?: string;
+}
+```
+
+### Passo 5.2 — Editor Monaco para Scripts SCADA
+```typescript
+// src/components/editor/scada/MonacoScadaEditor.tsx
+// Usar @monaco-editor/react
+// Linguagem: JavaScript com TypeScript completions
+// Tema: vs-dark customizado com cores do EletricAI
+// Autocompletar: tags do projeto, funções setTag/getTag/alarm
+// Live update: ao digitar, avaliar script e refletir no canvas SCADA
+// Exemplos de script padrão fornecidos como snippets
+
+/* Exemplo de script SCADA no editor:
+// Tags e animações do projeto
+const nivel = getTag("TANQUE_NIVEL");    // Retorna 0–100
+const bombaStatus = getTag("BOMB_01_STATUS"); // true/false
+
+setColor("TANK_01", nivel > 80 ? "fault" : nivel > 60 ? "alert" : "normal");
+setVisible("ALARM_HIGH", nivel > 90);
+setRotation("BOMB_01_ICON", bombaStatus ? "running" : "stopped");
+
+// Alarme com ISA-18.2
+if (nivel > 95) {
+  triggerAlarm("TANQUE_NIVEL_HH", "CRITICAL", "Nível crítico: tanque transbordando!");
+}
+*/
+```
+
+### Passo 5.3 — Sistema de Alarmes (ISA-18.2)
+```typescript
+// src/lib/simulation/scadaEngine.ts
+export interface Alarm {
+  id: string;
+  tagName: string;
+  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  message: string;
+  triggeredAt: Date;
+  acknowledgedAt?: Date;
+  clearedAt?: Date;
+  isActive: boolean;
+}
+
+export class ScadaEngine {
+  private alarms: Map<string, Alarm> = new Map();
+  private tags: Map<string, number | boolean> = new Map();
+
+  setTag(name: string, value: number | boolean): void {
+    this.tags.set(name, value);
+  }
+
+  getTag(name: string): number | boolean | undefined {
+    return this.tags.get(name);
+  }
+
+  triggerAlarm(id: string, priority: Alarm['priority'], message: string): void {
+    if (!this.alarms.has(id)) {
+      this.alarms.set(id, {
+        id, priority, message,
+        tagName: id,
+        triggeredAt: new Date(),
+        isActive: true,
+      });
+    }
+  }
+
+  acknowledgeAlarm(id: string): void {
+    const alarm = this.alarms.get(id);
+    if (alarm) alarm.acknowledgedAt = new Date();
+  }
+
+  getActiveAlarms(): Alarm[] {
+    return Array.from(this.alarms.values())
+      .filter((a) => a.isActive)
+      .sort((a, b) => {
+        const priority = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+        return priority[a.priority] - priority[b.priority];
+      });
+  }
+}
+```
+
+**Critérios de Aceitação da Fase 5:**
+- [ ] Canvas SCADA livre com grade de alinhamento
+- [ ] Arrastar widgets da biblioteca para o canvas
+- [ ] Redimensionar widgets (resize handles)
+- [ ] Associar tag a cada widget
+- [ ] Monaco Editor funcional com syntax highlighting
+- [ ] Live preview: script reflete no canvas ao digitar
+- [ ] Banner de alarmes ativos exibido no topo
+- [ ] Reconhecer alarme (acknowledge)
+- [ ] Tags compartilhadas com Ladder/Unifilar
+
+---
+
+## FASE 6 — ASSISTENTE IA NEXUSMIND
+
+**Objetivo:** Chat de IA com geração de diagramas, análise normativa e consumo de créditos.
+**Duração estimada:** 5–7 dias.
+
+### Passo 6.1 — Edge Function: `/ai-nexusmind`
+```typescript
+// supabase/functions/ai-nexusmind/index.ts
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.20.0';
+
+const anthropic = new Anthropic({
+  apiKey: Deno.env.get('ANTHROPIC_API_KEY')!,
+});
+
+serve(async (req) => {
+  // 1. CORS
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      },
+    });
+  }
+
+  // 2. Autenticar usuário
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return new Response('Unauthorized', { status: 401 });
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(
+    authHeader.replace('Bearer ', '')
+  );
+  if (authError || !user) return new Response('Unauthorized', { status: 401 });
+
+  // 3. Verificar créditos
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('ai_credits, plan')
+    .eq('id', user.id)
+    .single();
+
+  const { operationType, projectContext, message, projectId } = await req.json();
+
+  const creditCosts: Record<string, number> = {
+    chat: 1,
+    generate_diagram: 5,
+    analyze_norm: 3,
+    read_file: 3,
+  };
+  const creditsNeeded = creditCosts[operationType] ?? 1;
+
+  if ((profile?.ai_credits ?? 0) < creditsNeeded) {
+    return new Response(
+      JSON.stringify({ error: 'INSUFFICIENT_CREDITS', creditsNeeded, creditsAvailable: profile?.ai_credits }),
+      { status: 402, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // 4. Construir system prompt com contexto do projeto
+  const systemPrompt = buildNexusMindSystemPrompt(projectContext);
+
+  // 5. Chamar Claude API
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4096,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: message }],
+  });
+
+  // 6. Parsear resposta e extrair actions (se houver patch de diagrama)
+  const { text, diagramPatch, normWarnings } = parseAIResponse(response.content);
+
+  // 7. Decrementar créditos (operação atômica)
+  await supabase.rpc('decrement_ai_credits', {
+    p_user_id: user.id,
+    p_credits: creditsNeeded,
+  });
+
+  // 8. Registrar operação
+  await supabase.from('ai_operations').insert({
+    user_id: user.id,
+    project_id: projectId,
+    operation_type: operationType,
+    credits_used: creditsNeeded,
+    prompt_summary: message.substring(0, 200),
+    status: 'success',
+  });
+
+  return new Response(
+    JSON.stringify({ text, diagramPatch, normWarnings, creditsUsed: creditsNeeded }),
+    { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+  );
+});
+
+function buildNexusMindSystemPrompt(ctx: Record<string, unknown>): string {
+  return `Você é o NexusMind, assistente de IA especialista em engenharia elétrica e automação industrial do EletricAI.
+Você possui conhecimento profundo em:
+- Normas ABNT: NBR 5410:2004, NBR 14039:2011, NBR 5419:2015, NBR 5418
+- Normas Regulamentadoras: NR-10, NR-12, NR-13
+- Normas IEC: IEC 60617 (símbolos), IEC 61131-3 (programação CLP), IEC 62061, ISO 13849
+- Dimensionamento de circuitos, cabos, disjuntores, transformadores
+- Automação: CLP Siemens S7, Schneider Modicon, Allen-Bradley
+- SCADA: ISA-18.2, OPC-UA, Modbus
+
+CONTEXTO DO PROJETO ATUAL:
+${JSON.stringify(ctx, null, 2)}
+
+REGRAS:
+1. Sempre referencie a norma aplicável ao dar uma recomendação técnica
+2. Ao gerar um diagrama, responda com JSON válido no campo "diagramPatch"
+3. Em caso de risco de segurança, inclua WARNING no início da resposta
+4. Responda em português brasileiro
+5. Seja objetivo e técnico; evite texto de marketing
+
+FORMATO DE RESPOSTA PARA GERAÇÃO DE DIAGRAMA:
+{
+  "text": "Explicação técnica clara...",
+  "diagramPatch": {
+    "module": "unifilar",
+    "nodes": [...],
+    "edges": [...]
+  },
+  "normWarnings": ["NBR 5410 §6.2.1: ..."]
+}`;
+}
+
+function parseAIResponse(content: Anthropic.ContentBlock[]) {
+  const fullText = content
+    .filter((b) => b.type === 'text')
+    .map((b) => (b as { type: 'text'; text: string }).text)
+    .join('');
+
+  // Tentar parsear como JSON estruturado
+  try {
+    const parsed = JSON.parse(fullText.replace(/```json|```/g, '').trim());
+    return {
+      text: parsed.text ?? fullText,
+      diagramPatch: parsed.diagramPatch ?? null,
+      normWarnings: parsed.normWarnings ?? [],
+    };
+  } catch {
+    // Se não for JSON, é texto puro (chat normal)
+    return { text: fullText, diagramPatch: null, normWarnings: [] };
+  }
+}
+```
+
+### Passo 6.2 — Componente do Chat NexusMind
+```typescript
+// src/components/ai/NexusMindChat.tsx
+// UI: painel lateral deslizante (sheet) ou modal, fundo escuro
+// Header: logo NexusMind + créditos restantes
+// Messages: lista scrollável com balões
+//   - Usuário: azul alinhado à direita
+//   - IA: dark elevado à esquerda, com renderização de Markdown
+// Input: textarea + botão enviar + botão de upload de arquivo
+// Operações:
+//   - Chat simples (1 crédito)
+//   - Gerar diagrama (detecta automaticamente pela intenção da mensagem)
+//   - Analisar norma (detecta quando usuário pergunta sobre conformidade)
+// Ao receber diagramPatch: botão "Aplicar ao Canvas" aparece na mensagem
+// Loading: skeleton animado enquanto aguarda resposta
+// Créditos: contador animado decrementando
+```
+
+### Passo 6.3 — Aplicar Patch de Diagrama
+```typescript
+// src/hooks/useNexusMind.ts
+export function useNexusMind() {
+  const { addNode, onConnect } = useEditorStore();
+
+  const applyDiagramPatch = useCallback((patch: DiagramPatch) => {
+    if (!patch?.nodes) return;
+
+    // Adicionar nós do patch ao canvas com posição auto-layout
+    patch.nodes.forEach((node, index) => {
+      addNode(node.typeKey, node.props, {
+        x: 100 + (index % 4) * 180,
+        y: 100 + Math.floor(index / 4) * 200,
+      });
+    });
+
+    // Conectar edges do patch
+    patch.edges?.forEach((edge) => {
+      // Map de IDs do patch para IDs reais criados
+      // ...lógica de mapping
+    });
+  }, [addNode]);
+
+  return { applyDiagramPatch };
+}
+```
+
+**Critérios de Aceitação da Fase 6:**
+- [ ] Chat abre e fecha via FAB
+- [ ] Mensagens enviadas e recebidas com visual correto
+- [ ] Créditos decrementados após cada operação
+- [ ] Erro de créditos insuficientes exibido com botão de upgrade
+- [ ] Resposta com diagramPatch aplica nós ao canvas
+- [ ] Upload de PDF processado e convertido em componentes
+- [ ] Rate limiting funcionando na Edge Function
+- [ ] Nenhum dado sensível exposto no cliente
+
+---
+
+## FASE 7 — SIMULAÇÃO E TELEMETRIA
+
+**Objetivo:** Engine de simulação integrada Unifilar+Ladder com animação visual.
+**Duração estimada:** 5–7 dias.
+
+### Passo 7.1 — Simulation Store
+```typescript
+// src/stores/simulationStore.ts
+interface SimulationStore {
+  isRunning: boolean;
+  speed: 1 | 10 | 100;
+  cycleCount: number;
+  watchTable: WatchEntry[];
+  oscData: OscilloscopeData[];
+
+  startSimulation: () => void;
+  pauseSimulation: () => void;
+  stopSimulation: () => void;
+  setSpeed: (speed: 1 | 10 | 100) => void;
+  addWatchVariable: (address: string) => void;
+  forceVariable: (address: string, value: boolean | number) => void;
+}
+```
+
+### Passo 7.2 — Animação de Simulação no Canvas
+```typescript
+// Durante simulação, o motor de simulação emite eventos:
+// { nodeId: string, isEnergized: boolean, current_a?: number, voltage_v?: number }
+
+// Hook para subscrever a eventos de simulação e atualizar nós
+export function useSimulationAnimation() {
+  const { updateNodeData } = useEditorStore();
+  const { isRunning } = useSimulationStore();
+
+  useEffect(() => {
+    if (!isRunning) {
+      // Reset todos os nós para estado não-energizado
+      // ...
+      return;
+    }
+
+    const subscription = simulationEventBus.subscribe((event) => {
+      updateNodeData(event.nodeId, {
+        isEnergized: event.isEnergized,
+        hasFault: event.hasFault ?? false,
+        telemetry: { current_a: event.current_a, voltage_v: event.voltage_v },
+      });
+    });
+
+    return () => subscription.unsubscribe();
+  }, [isRunning]);
+}
+```
+
+### Passo 7.3 — Watch Table e Osciloscópio
+```
+PAINEL DE SIMULAÇÃO (inferior):
+┌──────────────────────────────────────────────────────────┐
+│ [▶ Iniciar] [⏸ Pausar] [■ Parar] [1x][10x][100x]       │
+├─────────────────────────┬────────────────────────────────┤
+│   WATCH TABLE           │    OSCILOSCÓPIO                │
+│ Variável  │ Valor │ ↑↓  │  V ┤                           │
+│ %I0.0     │ TRUE  │ [F] │  ─ │   ┌──┐   ┌──┐   ┌──┐   │
+│ %Q0.0     │ FALSE │ [F] │    │   │  │   │  │   │  │    │
+│ %M0.1     │ FALSE │ [F] │  0 ┴───┘  └───┘  └───┘  └──  │
+│ TON_01.ET │ 0.5s  │     │      t (ms)                    │
+│ [+ Variável]          │                                  │
+└─────────────────────────┴────────────────────────────────┘
+```
+
+**Critérios de Aceitação da Fase 7:**
+- [ ] Iniciar/pausar/parar simulação
+- [ ] Nós energizados animam com glow verde
+- [ ] Falhas animam com glow vermelho pulsante
+- [ ] Saídas do Ladder acionam contatores no Unifilar
+- [ ] Sensores do Unifilar alimentam entradas do Ladder
+- [ ] Watch Table exibe valores em tempo real
+- [ ] Forçar variável via Watch Table
+- [ ] Osciloscópio atualiza a cada ciclo
+
+---
+
+## FASE 8 — MÓDULOS FBD, DIGITAL TWIN E PLC
+
+**Objetivo:** Implementar os módulos avançados restantes.
+**Duração estimada:** 8–12 dias.
+
+### Passo 8.1 — Módulo FBD
+- Canvas React Flow especializado para blocos funcionais
+- Blocos: AND, OR, NOT, XOR, SR, RS, TON, CTU, comparadores, matemática
+- Pinos tipados (BOOL, INT, REAL) com validação de tipo na conexão
+- Compilação para código ST (Structured Text)
+- Exportação de código para arquivo `.txt`
+
+### Passo 8.2 — Módulo Digital Twin
+```typescript
+// src/components/editor/digital-twin/TwinViewer.tsx
+// Three.js R3F (React Three Fiber) para renderização 3D
+// Import de modelos GLTF/GLB via Supabase Storage
+// Overlay de tags de sensor como sprites HTML em cima do modelo 3D
+// Ao clicar em overlay: popup com histórico da tag (gráfico de tendência)
+// Rotação, zoom, pan via OrbitControls
+// Dados de sensores via Supabase Realtime
+```
+
+### Passo 8.3 — Módulo PLC
+- Árvore de projeto (sidebar): Hardware Config, Tabela de Variáveis, Blocos de Programa
+- Cada bloco pode ser editado em Ladder, FBD ou ST (Monaco Editor)
+- Configuração de hardware: selecionar CPU, módulos de E/S
+- Tabela de variáveis global compartilhada com Ladder e SCADA
+- Compilação para código executável simulado
+
+---
+
+## FASE 9 — PLANOS, PAGAMENTOS E CRÉDITOS DE IA
+
+**Objetivo:** Integração Stripe funcional com upgrade/downgrade e renovação de créditos.
+**Duração estimada:** 4–5 dias.
+
+### Passo 9.1 — Edge Function: Stripe Webhook
+```typescript
+// supabase/functions/stripe-webhook/index.ts
+// Eventos tratados:
+//   customer.subscription.created → atualizar profiles.plan
+//   customer.subscription.updated → atualizar profiles.plan
+//   customer.subscription.deleted → rebaixar para 'free'
+//   invoice.payment_succeeded → renovar ai_credits conforme plano
+
+const PLAN_CREDITS: Record<string, number> = {
+  free: 5, basic: 100, pro: 200, premium: 999999,
+};
+
+// CRÍTICO: Verificar assinatura do webhook com stripe.webhooks.constructEvent()
+// NUNCA confiar no payload sem verificação de assinatura
+```
+
+### Passo 9.2 — Função SQL: Decrementar Créditos (Atômica)
+```sql
+-- Evita race condition ao decrementar créditos
+CREATE OR REPLACE FUNCTION decrement_ai_credits(p_user_id UUID, p_credits INT)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_current_credits INT;
+BEGIN
+  SELECT ai_credits INTO v_current_credits
+  FROM profiles WHERE id = p_user_id FOR UPDATE;
+
+  IF v_current_credits < p_credits THEN
+    RETURN FALSE;
+  END IF;
+
+  UPDATE profiles
+  SET ai_credits = ai_credits - p_credits,
+      updated_at = NOW()
+  WHERE id = p_user_id;
+
+  RETURN TRUE;
+END;
+$$;
+```
+
+### Passo 9.3 — UI de Planos
+```
+PÁGINA DE PLANOS (/profile → seção Assinatura):
+┌──────┐  ┌──────┐  ┌──────────┐  ┌──────────┐
+│ FREE │  │BASIC │  │   PRO    │  │ PREMIUM  │
+│Grátis│  │R$100 │  │  R$580   │  │ R$1.000  │
+│3 proj│  │10proj│  │ Ilimitado│  │ Ilimitado│
+│5 IA  │  │100 IA│  │  200 IA  │  │IA Infinit│
+│      │  │      │  │ Real-Time│  │Suporte 24│
+│ Atual│  │Upgrade│  │ Upgrade  │  │ Upgrade  │
+└──────┘  └──────┘  └──────────┘  └──────────┘
+```
+
+**Critérios de Aceitação da Fase 9:**
+- [ ] Checkout Stripe abre corretamente
+- [ ] Webhook atualiza plano no banco
+- [ ] Renovação de créditos automática
+- [ ] UI exibe plano atual e créditos corretos
+- [ ] Downgrade só ocorre no fim do ciclo
+- [ ] NUNCA o plano pode ser alterado pelo cliente diretamente
+
+---
+
+## FASE 10 — EXPORTAÇÃO, COMPARTILHAMENTO E NOTIFICAÇÕES
+
+**Objetivo:** Exportação de documentos técnicos e sistema de notificações.
+**Duração estimada:** 4–5 dias.
+
+### Passo 10.1 — Edge Function: Exportar PDF
+```typescript
+// supabase/functions/export-pdf/index.ts
+// Usar Puppeteer ou @react-pdf/renderer via Deno
+// Recebe: projectId, módulo, opções de relatório
+// Gera: relatório técnico com:
+//   - Capa (nome do projeto, engenheiro, data, normas aplicadas)
+//   - Diagrama renderizado (SVG → PDF)
+//   - Lista de Materiais (BOM)
+//   - Memória descritiva automática
+//   - Alertas e não-conformidades normativas
+// Salva no Supabase Storage e retorna URL assinada
+```
+
+### Passo 10.2 — Notificações In-App
+```typescript
+// Supabase Realtime subscription em 'notifications'
+// Badge no topbar com contagem de não-lidas
+// Dropdown de notificações com lista
+// Tipos de notificação:
+//   - simulation_complete: "Simulação concluída — 0 falhas detectadas"
+//   - credits_low: "Você tem apenas 5 créditos de IA restantes"
+//   - team_invite: "João convidou você para 'Subestação Industrial'"
+//   - alarm: "ALARME CRÍTICO: TANQUE_NIVEL_HH em 'Planta A'"
+```
+
+---
+
+## 16. SEGURANÇA — CHECKLIST INVARIANTE
+
+Execute este checklist antes de cada deploy e antes de fechar cada fase.
+
+### Autenticação e Autorização
+- [ ] Todas as rotas do cliente protegidas por `ProtectedRoute`
+- [ ] Todas as Edge Functions verificam JWT antes de qualquer operação
+- [ ] RLS habilitado em TODAS as tabelas — verificar via Supabase Dashboard
+- [ ] Papéis de equipe verificados no servidor para ações sensíveis
+
+### Dados e API
+- [ ] `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` são as únicas vars expostas no cliente
+- [ ] `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` apenas em Edge Functions
+- [ ] Nenhuma chave secreta em código-fonte ou `.env` commitado
+- [ ] `.gitignore` inclui `.env`, `.env.local`, `.env.*.local`
+- [ ] Validação Zod em TODOS os inputs de formulários
+- [ ] Todos os labels de componentes SVG têm escape HTML
+
+### Supabase RLS — Verificações Críticas
+- [ ] `profiles`: usuário só lê/atualiza seu próprio perfil; plano e créditos protegidos
+- [ ] `projects`: owner_id = auth.uid() em todas as operações de escrita
+- [ ] `scada_telemetry`: escrita apenas por service_role
+- [ ] `ai_operations`: leitura somente do próprio usuário
+- [ ] Nenhuma política `FOR ALL USING (true)` — verificar explicitamente
+
+### Frontend
+- [ ] Sem `console.log` com dados de usuário em produção
+- [ ] Sem `any` explícito em TypeScript — `strict: true` no tsconfig
+- [ ] Imagens com `alt` text
+- [ ] Sem IDs de projeto ou usuário expostos em URLs previsíveis (usar UUIDs)
+
+### Headers HTTP (configurar no Vercel/hosting)
+```
+X-Robots-Tag: noindex, nofollow  (páginas autenticadas)
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=63072000; includeSubDomains
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; ...
+```
+
+---
+
+## 17. TESTES E QUALIDADE
+
+### Passo a Passo por Fase
+
+**Antes de avançar para a próxima fase, executar:**
+```bash
+npm run build          # Zero erros de compilação
+npm run lint           # Zero erros ESLint
+npm run type-check     # Zero erros TypeScript
+```
+
+### Testes Manuais Críticos (antes de cada PR)
+1. Fluxo de autenticação completo (signup, login, logout, Google OAuth)
+2. CRUD de projetos com verificação de limite do plano Free
+3. Arrastar componente → conectar → editar propriedades → salvar
+4. Simulação: iniciar → animar → parar → verificar reset
+5. Chat NexusMind: enviar mensagem → receber resposta → aplicar diagrama
+6. Stripe: checkout → webhook → créditos atualizados
+7. RLS: criar dois usuários e verificar que um não acessa dados do outro
+
+### Testes Automatizados (implementar após Fase 3)
+```typescript
+// Prioridade de testes:
+// 1. ladderExecutor.test.ts — Lógica de simulação (casos de borda críticos)
+// 2. nbr5410.test.ts — Dimensionamento elétrico (segurança)
+// 3. projectsService.test.ts — CRUD com RLS
+// 4. aiService.test.ts — Parsing de resposta da IA (JSON válido)
+```
+
+---
+
+## 18. DEPLOY E DEVOPS
+
+### Configuração Vercel (recomendado para Lovable exports)
+```json
+// vercel.json
+{
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    }
+  ]
+}
+```
+
+### Variáveis de Ambiente por Ambiente
+```
+# .env.local (desenvolvimento — NUNCA commitar)
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+
+# Supabase Edge Functions Secrets (via CLI ou Dashboard)
+ANTHROPIC_API_KEY=sk-ant-...
+STRIPE_SECRET_KEY=sk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+RESEND_API_KEY=re_...
+```
+
+### CI/CD Checklist
+- [ ] Branch `main` → deploy automático em produção
+- [ ] Branch `develop` → deploy em staging
+- [ ] PR obrigatório para `main` com review
+- [ ] Migrations Supabase versionadas em `/supabase/migrations/`
+- [ ] Edge Functions em `/supabase/functions/`
+
+---
+
+## 19. APÊNDICE: REFERÊNCIAS TÉCNICAS E NORMATIVAS
+
+### Normas Mandatórias
+| Código | Título | Aplicação |
+|--------|--------|-----------|
+| NBR 5410:2004 | Instalações elétricas de baixa tensão | Residencial, comercial, industrial leve |
+| NBR 14039:2011 | Instalações elétricas de média tensão | 1kV a 36,2kV |
+| NBR 5419:2015 | Proteção contra descargas atmosféricas | SPDA/para-raios |
+| NR-10 | Segurança em instalações elétricas | Obrigatória por lei |
+| NR-12 | Segurança em máquinas | Automação industrial |
+| IEC 60617 | Símbolos gráficos para esquemas | Simbologia dos diagramas |
+| IEC 61131-3:2025 | Linguagens de programação CLP | Ladder, FBD, ST, SFC |
+| ISA-18.2 | Gestão de alarmes SCADA/HMI | Sistema de alarmes |
+| ISO 13849-1 | Segurança funcional de máquinas | PL/SIL categorias |
+
+### Tabela de Dimensionamento de Cabos (NBR 5410, Tabela 36)
+```
+Seção (mm²) | Corrente máx - método B1 | Corrente máx - método E
+1,5         | 13,5 A                    | 18,5 A
+2,5         | 18,0 A                    | 25,0 A
+4,0         | 24,0 A                    | 34,0 A
+6,0         | 31,0 A                    | 43,0 A
+10,0        | 42,0 A                    | 60,0 A
+16,0        | 56,0 A                    | 80,0 A
+25,0        | 73,0 A                    | 101,0 A
+35,0        | 89,0 A                    | 126,0 A
+50,0        | 108,0 A                   | 153,0 A
+```
+
+### Endereçamento de Memória CLP (Genérico IEC 61131-3)
+```
+%IX0.0 – %IX0.7   Entradas digitais (bits do byte 0)
+%QX0.0 – %QX0.7   Saídas digitais
+%MX0.0 – %MX...   Marcadores (memória interna)
+%IW0              Entrada analógica word 0
+%QW0              Saída analógica word 0
+%DB1.DBX0.0       Bloco de dados Siemens S7
+T#5s, T#100ms     Literais de tempo IEC
+```
+
+### Convenção de Identificação de Equipamentos (ABNT NBR 13403)
+```
+QG    Quadro Geral
+QD    Quadro de Distribuição
+QA    Quadro de Automação
+QF    Disjuntor (Quebra-Fusível)
+QS    Chave Seccionadora
+KM    Contator Principal
+KA    Relé Auxiliar
+FR    Relé de Sobrecarga (bimetálico)
+KT    Relé Temporizador
+M     Motor
+TR    Transformador
+FU    Fusível
+SB    Botão de Pulso
+SA    Seletor Rotativo
+HL    Indicador Luminoso
+```
+
+---
+
+## ORDEM DE IMPLEMENTAÇÃO RECOMENDADA
+
+```
+SPRINT 1 (Semana 1-2): Fase 1 + Fase 2
+  → App funcional com auth e dashboard
+
+SPRINT 2 (Semana 3-4): Fase 3 (Unifilar)
+  → Editor principal funcional
+
+SPRINT 3 (Semana 5-6): Fase 4 (Ladder) + início Fase 6 (IA)
+  → Dois módulos + IA básica
+
+SPRINT 4 (Semana 7-8): Fase 5 (SCADA) + Fase 7 (Simulação)
+  → SCADA + simulação integrada
+
+SPRINT 5 (Semana 9-10): Fase 9 (Pagamentos) + Fase 10 (Export)
+  → SaaS completo com monetização
+
+SPRINT 6 (Semana 11-12): Fase 8 (FBD/Twin/PLC) + Polish
+  → Módulos avançados + refinamento UX
+```
+
+---
+
+*Documento gerado para uso exclusivo da equipe de engenharia do EletricAI.*
+*Versão 1.0 — Maio 2026*
+*Repositório: https://github.com/lendavira2020/eletric.git*
