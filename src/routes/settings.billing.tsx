@@ -46,9 +46,7 @@ function BillingPage() {
     setBusy(`${provider}:${plan}`);
     try {
       const res =
-        provider === "stripe"
-          ? await stripeFn({ data: { plan } })
-          : await mpFn({ data: { plan } });
+        provider === "stripe" ? await stripeFn({ data: { plan } }) : await mpFn({ data: { plan } });
       window.location.href = res.url;
     } catch (e) {
       toast.error((e as Error).message);
@@ -83,14 +81,19 @@ function BillingPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6 max-w-5xl mx-auto">
-      <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+      <Link
+        to="/dashboard"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
+      >
         <ArrowLeft className="w-4 h-4" /> Dashboard
       </Link>
       <h1 className="text-2xl font-bold mb-1">Faturamento & Assinatura</h1>
       <p className="text-sm text-muted-foreground mb-6">
         Plano atual: <span className="font-medium text-foreground">{plan.name}</span>
         {data?.subscriptionStatus && (
-          <span className="ml-2 text-xs px-2 py-0.5 rounded bg-muted">{data.subscriptionStatus}</span>
+          <span className="ml-2 text-xs px-2 py-0.5 rounded bg-muted">
+            {data.subscriptionStatus}
+          </span>
         )}
       </p>
 
@@ -98,7 +101,7 @@ function BillingPage() {
       {error && <p className="text-sm text-destructive">{(error as Error).message}</p>}
 
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {(Object.values(SUBSCRIPTION_PLANS)).map((p) => {
+        {Object.values(SUBSCRIPTION_PLANS).map((p) => {
           const isCurrent = currentPlan === p.id;
           const creditsLabel =
             p.aiCreditsPerMonth === null
@@ -163,23 +166,32 @@ function BillingPage() {
       {isPlatformAdmin && (
         <section className="mb-8 border border-border rounded-lg p-4">
           <h2 className="font-semibold mb-3 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-yellow-500" /> Override de admin de plataforma (sem cobrança)
+            <AlertTriangle className="w-4 h-4 text-yellow-500" /> Override de admin de plataforma
+            (sem cobrança)
           </h2>
           <p className="text-xs text-muted-foreground mb-3">
             Visível apenas para administradores da plataforma. Para usuários, use o checkout.
           </p>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => handleManual("free")}>FREE</Button>
-            <Button size="sm" variant="outline" onClick={() => handleManual("basic")}>BASIC</Button>
-            <Button size="sm" variant="outline" onClick={() => handleManual("pro")}>PRO</Button>
-            <Button size="sm" variant="outline" onClick={() => handleManual("premium")}>PREMIUM</Button>
+            <Button size="sm" variant="outline" onClick={() => handleManual("free")}>
+              FREE
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleManual("basic")}>
+              BASIC
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleManual("pro")}>
+              PRO
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleManual("premium")}>
+              PREMIUM
+            </Button>
           </div>
         </section>
       )}
 
       <section>
         <h2 className="font-semibold mb-3">Faturas recentes</h2>
-        {(!data?.invoices || data.invoices.length === 0) ? (
+        {!data?.invoices || data.invoices.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma fatura ainda.</p>
         ) : (
           <div className="border border-border rounded-lg divide-y divide-border">

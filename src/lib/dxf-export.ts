@@ -1,7 +1,10 @@
 /**
- * Minimal AutoCAD DXF (R12) writer.
- * Produces ENTITIES section with LINE + TEXT, enough for AutoCAD/QCAD/LibreCAD
- * to open the unifilar with positions preserved. Not a full DXF spec impl.
+ * Minimal AutoCAD DXF (R12) writer with premium CAD symbol generators.
+ * Produces structured ENTITIES section with LINE + CIRCLE + TEXT in layers:
+ * - COMPONENTS (electrical housings and nodes)
+ * - WIRES (power, signal, or piping connection lines)
+ * - LABELS (technical tags, names, and parameters)
+ * - SYMBOLS (internal schematic representations like contact arms, coils, etc.)
  */
 
 type Vec2 = { x: number; y: number };
@@ -12,7 +15,9 @@ export interface DxfNode {
   label?: string;
   width?: number;
   height?: number;
+  type?: string;
 }
+
 export interface DxfEdge {
   id: string;
   from: Vec2;
@@ -31,6 +36,16 @@ function line(p1: Vec2, p2: Vec2, layer = "WIRES"): string {
     pair(20, (-p1.y).toFixed(3)) +
     pair(11, p2.x.toFixed(3)) +
     pair(21, (-p2.y).toFixed(3))
+  );
+}
+
+function circle(p: Vec2, r: number, layer = "COMPONENTS"): string {
+  return (
+    pair(0, "CIRCLE") +
+    pair(8, layer) +
+    pair(10, p.x.toFixed(3)) +
+    pair(20, (-p.y).toFixed(3)) +
+    pair(40, r.toFixed(3))
   );
 }
 
@@ -53,16 +68,73 @@ function text(p: Vec2, value: string, height = 8, layer = "LABELS"): string {
   );
 }
 
+// Draw standard electric symbols depending on node type
+function drawSymbol(n: DxfNode): string {
+  const w = n.width ?? 60;
+  const h = n.height ?? 30;
+  const p = n.position;
+  const type = (n.type ?? "").toLowerCase();
+
+  if (type.includes("motor") || type.includes("pump") || type.includes("conveyor")) {
+    // Motor symbol (Circle with an 'M')
+    const r = Math.min(w, h) / 2;
+    const center = { x: p.x + w / 2, y: p.y + h / 2 };
+    return (
+      circle(center, r, "COMPONENTS") +
+      text({ x: center.x - 3, y: center.y + 3 }, "M", 8, "SYMBOLS")
+    );
+  }
+
+  if (type.includes("transformer") || type.includes("trafo")) {
+    // Transformer symbol (Two overlapping circles)
+    const r = Math.min(w, h) * 0.35;
+    const center1 = { x: p.x + w * 0.35, y: p.y + h / 2 };
+    const center2 = { x: p.x + w * 0.65, y: p.y + h / 2 };
+    return circle(center1, r, "COMPONENTS") + circle(center2, r, "COMPONENTS");
+  }
+
+  if (type.includes("breaker") || type.includes("disjuntor")) {
+    // Breaker/switch symbol (box with diagonal contact arm)
+    return (
+      rect(p, w, h, "COMPONENTS") +
+      line(
+        { x: p.x + w * 0.2, y: p.y + h * 0.8 },
+        { x: p.x + w * 0.8, y: p.y + h * 0.2 },
+        "SYMBOLS"
+      )
+    );
+  }
+
+  if (type.includes("contactor") || type.includes("contator")) {
+    // Contactor symbol (box with parallel contacts)
+    return (
+      rect(p, w, h, "COMPONENTS") +
+      line({ x: p.x + w * 0.3, y: p.y + h * 0.5 }, { x: p.x + w * 0.7, y: p.y + h * 0.5 }, "SYMBOLS") +
+      line({ x: p.x + w * 0.5, y: p.y + h * 0.2 }, { x: p.x + w * 0.5, y: p.y + h * 0.8 }, "SYMBOLS")
+    );
+  }
+
+  // Fallback to beautiful box
+  return rect(p, w, h, "COMPONENTS");
+}
+
 export function buildDxf(nodes: DxfNode[], edges: DxfEdge[]): string {
   let body = "";
   body += pair(0, "SECTION") + pair(2, "ENTITIES");
+  
+  // Draw all components and symbols
   for (const n of nodes) {
-    const w = n.width ?? 60;
-    const h = n.height ?? 30;
-    body += rect(n.position, w, h);
-    if (n.label) body += text({ x: n.position.x + 4, y: n.position.y + 6 }, n.label);
+    body += drawSymbol(n);
+    if (n.label) {
+      body += text({ x: n.position.x + 4, y: n.position.y + (n.height ?? 30) + 10 }, n.label, 6, "LABELS");
+    }
   }
-  for (const e of edges) body += line(e.from, e.to);
+
+  // Draw connection wires
+  for (const e of edges) {
+    body += line(e.from, e.to, "WIRES");
+  }
+
   body += pair(0, "ENDSEC") + pair(0, "EOF");
   return body;
 }

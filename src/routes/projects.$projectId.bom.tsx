@@ -128,15 +128,21 @@ function BomPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6 max-w-6xl mx-auto">
-      <Link to="/projects" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+      <Link
+        to="/projects"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
+      >
         <ArrowLeft className="w-4 h-4" /> Projetos
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold mb-1">Lista de Materiais (BOM)</h1>
           <p className="text-sm text-muted-foreground">
-            Total estimado: <span className="font-semibold text-foreground">R$ {(data?.totalBRL ?? 0).toFixed(2)}</span> ·{" "}
-            {data?.items?.length ?? 0} itens
+            Total estimado:{" "}
+            <span className="font-semibold text-foreground">
+              R$ {(data?.totalBRL ?? 0).toFixed(2)}
+            </span>{" "}
+            · {data?.items?.length ?? 0} itens
           </p>
         </div>
         <div className="flex gap-2">
@@ -150,9 +156,7 @@ function BomPage() {
       </div>
 
       <div className="mb-6 border border-border rounded-lg p-4">
-        <label className="text-xs text-muted-foreground mb-2 block">
-          Adicionar do catálogo
-        </label>
+        <label className="text-xs text-muted-foreground mb-2 block">Adicionar do catálogo</label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -247,7 +251,9 @@ function BomPage() {
             </tbody>
             <tfoot className="bg-muted/30 font-semibold">
               <tr>
-                <td colSpan={5} className="px-3 py-2 text-right">Total</td>
+                <td colSpan={5} className="px-3 py-2 text-right">
+                  Total
+                </td>
                 <td className="px-3 py-2 text-right">R$ {(data?.totalBRL ?? 0).toFixed(2)}</td>
                 <td colSpan={2}></td>
               </tr>

@@ -4,9 +4,9 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
-  basic: "STRIPE_PRICE_BASIC",
-  pro: "STRIPE_PRICE_PRO",
-  premium: "STRIPE_PRICE_PREMIUM",
+  basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
+  pro: "VITE_STRIPE_PRICE_PRO_MONTHLY",
+  premium: "VITE_STRIPE_PRICE_PREMIUM_MONTHLY",
 };
 
 const PLAN_PRICE_BRL: Record<string, number> = {
@@ -37,12 +37,32 @@ export const getBillingOverview = createServerFn({ method: "GET" })
     const tenantId = profile?.tenant_id;
     if (!tenantId) throw new Error("no_tenant");
 
-    const [{ data: tenant }, { data: subs }, { data: invoices }, { data: usage }] = await Promise.all([
-      supabase.from("tenants").select("plan, stripe_customer_id, stripe_subscription_id, subscription_status").eq("id", tenantId).maybeSingle(),
-      supabase.from("subscriptions").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(5),
-      supabase.from("invoices").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(10),
-      supabase.from("usage_records").select("*").eq("tenant_id", tenantId).order("period", { ascending: false }).limit(1),
-    ]);
+    const [{ data: tenant }, { data: subs }, { data: invoices }, { data: usage }] =
+      await Promise.all([
+        supabase
+          .from("tenants")
+          .select("plan, stripe_customer_id, stripe_subscription_id, subscription_status")
+          .eq("id", tenantId)
+          .maybeSingle(),
+        supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("invoices")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        supabase
+          .from("usage_records")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .order("period", { ascending: false })
+          .limit(1),
+      ]);
 
     return {
       tenantId,
@@ -62,7 +82,9 @@ export const changePlanManual = createServerFn({ method: "POST" })
     z.object({ plan: z.enum(["free", "basic", "pro", "premium"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { error, data: res } = await context.supabase.rpc("change_tenant_plan", { p_plan: data.plan });
+    const { error, data: res } = await context.supabase.rpc("change_tenant_plan", {
+      p_plan: data.plan,
+    });
     if (error) throw new Error(error.message);
     return res as { tenant_id: string; plan: string };
   });
@@ -82,7 +104,7 @@ export const getIsPlatformAdmin = createServerFn({ method: "GET" })
  */
 export const createStripeCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ plan: z.enum(["pro", "premium"]) }).parse(input))
+  .inputValidator((input) => z.object({ plan: z.enum(["basic", "pro", "premium"]) }).parse(input))
   .handler(async ({ data, context }) => {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) throw new Error("billing_not_configured: missing STRIPE_SECRET_KEY");
@@ -132,10 +154,10 @@ export const createStripeCheckout = createServerFn({ method: "POST" })
  */
 export const createMpPreference = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ plan: z.enum(["pro", "premium"]) }).parse(input))
+  .inputValidator((input) => z.object({ plan: z.enum(["basic", "pro", "premium"]) }).parse(input))
   .handler(async ({ data, context }) => {
-    const token = process.env.MP_ACCESS_TOKEN;
-    if (!token) throw new Error("billing_not_configured: missing MP_ACCESS_TOKEN");
+    const token = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
+    if (!token) throw new Error("billing_not_configured: missing MERCADO_PAGO_ACCESS_TOKEN / MP_ACCESS_TOKEN");
 
     const { supabase, userId, claims } = context;
     const { data: profile } = await supabase
@@ -156,12 +178,14 @@ export const createMpPreference = createServerFn({ method: "POST" })
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        items: [{
-          title: `EletricAI ${data.plan.toUpperCase()} — assinatura mensal`,
-          quantity: 1,
-          currency_id: "BRL",
-          unit_price: price,
-        }],
+        items: [
+          {
+            title: `EletricAI ${data.plan.toUpperCase()} — assinatura mensal`,
+            quantity: 1,
+            currency_id: "BRL",
+            unit_price: price,
+          },
+        ],
         payer: { email: String(claims.email ?? "") },
         external_reference: `${tenantId}:${data.plan}`,
         metadata: { tenant_id: tenantId, plan: data.plan },

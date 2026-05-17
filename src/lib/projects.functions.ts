@@ -72,9 +72,17 @@ export const createProject = createServerFn({ method: "POST" })
     const tenant_id = await ensureTenant(supabase, userId);
 
     // Enforce plan_limits.max_projects per tenant
-    const { data: tenant } = await supabase.from("tenants").select("plan").eq("id", tenant_id).maybeSingle();
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .select("plan")
+      .eq("id", tenant_id)
+      .maybeSingle();
     const planName = tenant?.plan ?? "free";
-    const { data: limits } = await supabase.from("plan_limits").select("max_projects").eq("plan", planName).maybeSingle();
+    const { data: limits } = await supabase
+      .from("plan_limits")
+      .select("max_projects")
+      .eq("plan", planName)
+      .maybeSingle();
     const maxProjects = limits?.max_projects ?? 3;
     if (maxProjects >= 0) {
       const { count } = await supabase
@@ -85,7 +93,9 @@ export const createProject = createServerFn({ method: "POST" })
         if (planName === "free") {
           throw new Error("Limite de 3 projetos atingido. Faça upgrade para continuar.");
         }
-        throw new Error(`Limite de ${maxProjects} projetos atingido no plano ${planName}. Faça upgrade em /settings/billing.`);
+        throw new Error(
+          `Limite de ${maxProjects} projetos atingido no plano ${planName}. Faça upgrade em /settings/billing.`,
+        );
       }
     }
 
@@ -245,4 +255,38 @@ export const listProjectVersions = createServerFn({ method: "POST" })
       .limit(50);
     if (error) throw new Error(error.message);
     return { versions: rows ?? [] };
+  });
+
+export const restoreProjectVersion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({ projectId: z.string().uuid(), versionId: z.string().uuid() }),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context as any;
+    // Fetch the snapshot from the version record
+    const { data: ver, error: verErr } = await supabase
+      .from("project_versions")
+      .select("snapshot, version_number")
+      .eq("id", data.versionId)
+      .eq("project_id", data.projectId)
+      .maybeSingle();
+    if (verErr) throw new Error(verErr.message);
+    if (!ver) throw new Error("Versão não encontrada.");
+
+    // Overwrite the current diagram canvas_data with the old snapshot
+    const { data: diagram } = await supabase
+      .from("diagrams")
+      .select("id")
+      .eq("project_id", data.projectId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (diagram) {
+      await supabase
+        .from("diagrams")
+        .update({ canvas_data: ver.snapshot, updated_at: new Date().toISOString() })
+        .eq("id", diagram.id);
+    }
+    return { ok: true, restoredVersion: ver.version_number as number };
   });

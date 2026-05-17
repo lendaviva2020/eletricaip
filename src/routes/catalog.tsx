@@ -29,7 +29,10 @@ function CatalogPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6 max-w-6xl mx-auto">
-      <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+      <Link
+        to="/dashboard"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
+      >
         <ArrowLeft className="w-4 h-4" /> Dashboard
       </Link>
       <h1 className="text-2xl font-bold mb-1">Catálogo de componentes</h1>
@@ -54,7 +57,9 @@ function CatalogPage() {
         >
           <option value="">Todas as categorias</option>
           {(cats?.categories ?? []).map((c: any) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
           ))}
         </select>
       </div>
@@ -99,7 +104,10 @@ function CatalogPage() {
 
       <div className="mt-8 border-t border-border pt-6 text-sm text-muted-foreground">
         Para adicionar componentes ao seu projeto, abra o BOM em{" "}
-        <Link to="/projects" className="text-primary hover:underline">Projetos</Link>.
+        <Link to="/projects" className="text-primary hover:underline">
+          Projetos
+        </Link>
+        .
       </div>
     </div>
   );

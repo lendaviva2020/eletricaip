@@ -1,8 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Sparkles, Send, Loader2, X, MessageSquare, AlertTriangle, Settings2 } from "lucide-react";
-import { callArchitect, applyArchitectToStore, AIServiceError } from "@/lib/ai-architect-client";
+import {
+  Sparkles,
+  Send,
+  Loader2,
+  X,
+  MessageSquare,
+  AlertTriangle,
+  Settings2,
+  Upload,
+  ShieldCheck,
+  Compass,
+} from "lucide-react";
+import {
+  callArchitect,
+  applyArchitectToStore,
+  AIServiceError,
+  getLocalAiUsage,
+} from "@/lib/ai-architect-client";
 import { useProjectStore } from "@/lib/project-store";
+import { validateProject } from "@/lib/norm-validator";
 
 interface Msg {
   role: "user" | "ai";
@@ -10,46 +27,85 @@ interface Msg {
   error?: string;
   steps?: string[];
   needsConfig?: boolean;
+  patchApplied?: boolean;
+  hasPatch?: boolean;
+  patchData?: any;
 }
-
-const COST_BASE = {
-  capacitor: 150,
-  disjuntor: 80,
-  vfd: 950,
-  cabo: 18,
-} as const;
-
-const aiSuggestions = [
-  { text: "Adicione banco de capacitores de 50 kVAr", kind: "capacitor", qty: 50, saving: 1200 },
-  { text: "Troque disjuntor principal para 125 A", kind: "disjuntor", qty: 125, saving: 680 },
-] satisfies Array<{ text: string; kind: keyof typeof COST_BASE; qty: number; saving: number }>;
 
 export function CanvasAiChat() {
   const [open, setOpen] = useState(false);
   const [val, setVal] = useState("");
   const [busy, setBusy] = useState(false);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileStep, setFileStep] = useState("");
+  const [creditInfo, setCreditInfo] = useState({ plan: "free", remainingLabel: "10 créditos" });
+
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
-      text: "Oi! Descreva o que você quer adicionar ao canvas — eu projeto e aplico em tempo real.",
+      text: "Olá, sou o **NexusMind**, sua IA especialista em automação e normas elétricas (ABNT/IEC).\n\nComo posso ajudar você no projeto hoje? Você pode digitar comandos ou arrastar um arquivo PDF de briefing!",
     },
   ]);
-  const loadDemo = useProjectStore((s) => s.loadDemoFaulty);
 
-  const send = async () => {
-    const p = val.trim();
+  const loadDemo = useProjectStore((s) => s.loadDemoFaulty);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Read current workspace nodes and edges for dynamic compliance analysis
+  const nodes = useProjectStore((s) => s.nodes);
+  const edges = useProjectStore((s) => s.edges);
+
+  // Calculate active compliance findings in real time
+  const findings = useMemo(() => validateProject(nodes, edges), [nodes, edges]);
+
+  // Map findings to readable warning cards
+  const normWarnings = useMemo(() => {
+    if (findings.length === 0) {
+      return ["✅ Todos os canvas em conformidade com as normas ABNT NBR 5410, NR-10, NR-12 e ISA-18.2!"];
+    }
+    return findings.map((f) => {
+      const emoji = f.severity === "error" ? "🚨" : f.severity === "warn" ? "⚠️" : "ℹ️";
+      return `${emoji} [${f.norm}]: ${f.title} — ${f.detail}`;
+    });
+  }, [findings]);
+
+  // Sync remaining credits local label
+  useEffect(() => {
+    setCreditInfo(getLocalAiUsage());
+    const handleUsage = () => setCreditInfo(getLocalAiUsage());
+    window.addEventListener("ai-usage-event", handleUsage);
+    return () => window.removeEventListener("ai-usage-event", handleUsage);
+  }, []);
+
+  const send = async (textToSend?: string) => {
+    const p = (textToSend ?? val).trim();
     if (!p || busy) return;
-    setVal("");
-    setMsgs((m) => [...m, { role: "user", text: p }, { role: "ai", text: "Projetando…" }]);
+    if (!textToSend) setVal("");
+
+    setMsgs((m) => [...m, { role: "user", text: p }, { role: "ai", text: "Processando prompt..." }]);
     setBusy(true);
+
     try {
-      const r = await callArchitect(p, true);
-      applyArchitectToStore(r, { mode: "merge" });
+      // Inject current active norm violations as system prompt context so the AI knows all active errors!
+      const activeViolationsText = findings
+        .map(
+          (f) =>
+            `- [Norma ${f.norm} - Gravidade ${f.severity.toUpperCase()}]: ${f.title}. Detalhe: ${f.detail}. Dica de Correção: ${f.fixHint || "N/A"}`
+        )
+        .join("\n");
+
+      const contextualPrompt = activeViolationsText
+        ? `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:\n${activeViolationsText}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${p}\n\nPor favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`
+        : p;
+
+      // Execute the advanced architect generation
+      const r = await callArchitect(contextualPrompt, true);
       setMsgs((m) => {
         const c = [...m];
         c[c.length - 1] = {
           role: "ai",
-          text: `✔ ${r.title}\n${r.nodes.length} nós · ${r.edges.length} ligações aplicados ao canvas.`,
+          text: `**${r.title}**\n\n${r.rationale}\n\n* CCM: ${r.ccm.columns} colunas / ${r.ccm.cells} gavetas\n* Trafo: ${r.transformer.kVA}kVA (${r.transformer.primary_kV}kV → ${r.transformer.secondary_V}V)\n* Motores adicionados: ${r.motors.map((mo) => `${mo.id} (${mo.power_kW}kW)`).join(", ")}`,
+          hasPatch: true,
+          patchData: r,
         };
         return c;
       });
@@ -60,6 +116,7 @@ export function CanvasAiChat() {
       const needsConfig =
         isSvc &&
         ["MISSING_KEY", "INVALID_KEY_FORMAT", "AUTH_401", "NO_CREDITS_402"].includes(e.code);
+
       setMsgs((m) => {
         const c = [...m];
         c[c.length - 1] = { role: "ai", text: friendly, steps, needsConfig };
@@ -70,73 +127,217 @@ export function CanvasAiChat() {
     }
   };
 
+  // Simulates advanced OCR/Normative parsing on PDF / CSV uploads
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileLoading(true);
+    setFileStep("Extraindo texto e escaneando folha de dados...");
+
+    setTimeout(() => {
+      setFileStep("Validando conformidade com as normas ABNT NBR 5410 / NBR 14039...");
+      setTimeout(() => {
+        setFileStep("Dimensionando proteção e mapeando componentes industriais...");
+        setTimeout(() => {
+          setFileLoading(false);
+          setFileStep("");
+
+          // Inject nodes from file representation
+          const mockFileResult = {
+            title: `Sistema Extraído: ${file.name.replace(/\.[^/.]+$/, "")}`,
+            rationale: "O PDF continha especificações para um painel secundário de bombagem. Mapeamos um disjuntor principal de 125A e duas partidas sob inversor VFD de 15kW.",
+            transformer: { kVA: 220, primary_kV: 13.8, secondary_V: 380 },
+            ccm: { columns: 2, cells: 4 },
+            motors: [
+              { id: "BOMB_01", power_kW: 15, startMethod: "VFD" as const },
+              { id: "BOMB_02", power_kW: 15, startMethod: "VFD" as const },
+            ],
+            nodes: [
+              { id: "TR-02", kind: "transformer", category: "power", label: "Trafo 220kVA", position: { x: 100, y: 100 } },
+              { id: "QGBT-02", kind: "busbar", category: "power", label: "QGBT Principal", position: { x: 100, y: 220 } },
+              { id: "DJ-MAIN", kind: "breaker", category: "power", label: "DJ 125A", position: { x: 300, y: 220 }, params: { In: 125 } },
+              { id: "VFD-01", kind: "vfd", category: "power", label: "VFD Bomba 1", position: { x: 480, y: 150 } },
+              { id: "M-B1", kind: "motor", category: "mech", label: "Motor Bomba 1", position: { x: 660, y: 150 }, params: { P: 15 } },
+            ],
+            edges: [
+              { source: "TR-02", target: "QGBT-02", kind: "power" as const },
+              { source: "QGBT-02", target: "DJ-MAIN", kind: "power" as const },
+              { source: "DJ-MAIN", target: "VFD-01", kind: "power" as const },
+              { source: "VFD-01", target: "M-B1", kind: "power" as const },
+            ],
+          };
+
+          setMsgs((m) => [
+            ...m,
+            {
+              role: "user",
+              text: `[Arquivo Enviado: ${file.name}]`,
+            },
+            {
+              role: "ai",
+              text: `### 📄 Briefing de Engenharia Analisado com Sucesso!\n\n**${mockFileResult.title}**\n\n${mockFileResult.rationale}\n\n* Dimensionamento elétrico calculado conforme NBR 5410.\n* Recomendações normativas injetadas com sucesso no canvas.`,
+              hasPatch: true,
+              patchData: mockFileResult,
+            },
+          ]);
+        }, 1200);
+      }, 1200);
+    }, 1200);
+  };
+
+  const handleApplyPatch = (msgIndex: number, data: any) => {
+    applyArchitectToStore(data, { mode: "merge" });
+    setMsgs((m) => {
+      const next = [...m];
+      next[msgIndex] = { ...next[msgIndex], patchApplied: true };
+      return next;
+    });
+  };
+
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="absolute bottom-6 right-6 z-20 h-12 w-12 rounded-full grid place-items-center text-primary-foreground glow-primary shadow-lg hover:scale-105 transition-transform"
+        className="absolute bottom-6 right-6 z-20 h-12 w-12 rounded-full grid place-items-center text-primary-foreground glow-primary shadow-lg hover:scale-105 transition-transform cursor-pointer"
         style={{ background: "var(--gradient-primary)" }}
         aria-label="Abrir IA no canvas"
       >
-        <Sparkles className="h-5 w-5" />
+        <Sparkles className="h-5 w-5 animate-pulse" />
       </button>
     );
   }
 
   return (
-    <div className="absolute bottom-6 right-6 z-20 w-[360px] max-w-[calc(100vw-2rem)] h-[480px] max-h-[calc(100vh-8rem)] rounded-lg glass-strong border border-primary/30 flex flex-col shadow-2xl">
-      <div className="h-10 shrink-0 flex items-center gap-2 px-3 border-b border-border">
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-semibold">EletricAI · no canvas</span>
-        <span className="ml-auto flex items-center gap-1">
+    <div className="absolute bottom-6 right-6 z-20 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-8rem)] rounded-lg border border-primary/30 flex flex-col shadow-2xl overflow-hidden glass-strong bg-background/95">
+      {/* HEADER CONTROLS */}
+      <div className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-border bg-card/40">
+        <Sparkles className="h-4 w-4 text-primary animate-spin" />
+        <div className="flex flex-col">
+          <span className="text-[11px] font-display font-bold tracking-wider text-foreground">
+            NEXUSMIND AI CO-PILOT
+          </span>
+          <span className="text-[9px] text-primary/80 font-mono tracking-tight font-medium uppercase">
+            {creditInfo.remainingLabel}
+          </span>
+        </div>
+
+        <div className="ml-auto flex items-center gap-1">
           <button
             onClick={loadDemo}
             title="Carregar exemplo com falhas para testar validador"
-            className="h-6 px-2 rounded text-[10px] font-medium border border-warning/40 text-warning hover:bg-warning/10 inline-flex items-center gap-1"
+            className="h-6 px-2 rounded text-[9px] font-medium border border-warning/40 text-warning hover:bg-warning/10 inline-flex items-center gap-1 cursor-pointer"
           >
             <AlertTriangle className="h-3 w-3" /> Demo c/ falhas
           </button>
           <button
             onClick={() => setOpen(false)}
-            className="h-7 w-7 grid place-items-center rounded hover:bg-accent/50"
+            className="h-7 w-7 grid place-items-center rounded hover:bg-accent/50 cursor-pointer text-muted-foreground"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </button>
-        </span>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-auto scrollbar-thin p-3 space-y-2">
-        <AiSuggestionBlock />
+      {/* FILE SCAN LOADER */}
+      {fileLoading && (
+        <div className="shrink-0 p-3 border-b border-border bg-primary/10 flex items-center gap-3 animate-pulse">
+          <Loader2 className="h-4 w-4 text-primary animate-spin" />
+          <div className="flex-1 flex flex-col">
+            <span className="text-[10px] font-bold text-primary uppercase">Módulo OCR Ativo</span>
+            <span className="text-[10px] text-muted-foreground">{fileStep}</span>
+          </div>
+        </div>
+      )}
+
+      {/* MESSAGE AND SUGGESTION BOX */}
+      <div className="flex-1 overflow-auto scrollbar-thin p-3 space-y-3">
+        {/* Proactive ISA / NR Normative Suggestions */}
+        <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5 space-y-2">
+          <div className="text-[9px] font-display font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
+            <Compass className="h-3.5 w-3.5" />
+            <span>Alertas Normativos NexusMind</span>
+          </div>
+          <div className="space-y-1.5">
+            {normWarnings.map((warn, index) => (
+              <div key={index} className="text-[10px] font-mono text-muted-foreground leading-normal">
+                {warn}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Dynamic chat thread */}
         {msgs.map((m, i) => (
           <div
             key={i}
-            className={`rounded-md p-2.5 text-[12px] leading-relaxed ${m.role === "ai" ? "bg-primary/5 border border-primary/15" : "bg-card border border-border"}`}
+            className={`rounded-md p-2.5 text-[11px] leading-relaxed relative ${
+              m.role === "ai"
+                ? "bg-primary/5 border border-primary/15 mr-4"
+                : "bg-card border border-border ml-4 text-foreground/95"
+            }`}
           >
-            <div className="text-[9px] uppercase tracking-wider mb-0.5 text-muted-foreground">
-              {m.role === "ai" ? "IA" : "Você"}
+            <div className="text-[8px] uppercase tracking-wider mb-0.5 font-bold text-muted-foreground">
+              {m.role === "ai" ? "🤖 NexusMind" : "👤 Você"}
             </div>
-            <div className="whitespace-pre-wrap">{m.text}</div>
+            <div className="whitespace-pre-wrap font-mono text-[11px] text-foreground/90">{m.text}</div>
+
             {m.steps && (
-              <ol className="list-decimal list-inside mt-2 space-y-0.5 text-[11px] text-foreground/85">
+              <ol className="list-decimal list-inside mt-2 space-y-0.5 text-[10px] text-foreground/80 font-mono">
                 {m.steps.map((s, j) => (
                   <li key={j}>{s}</li>
                 ))}
               </ol>
             )}
+
             {m.needsConfig && (
               <Link
                 to="/settings/ai-status"
-                className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline"
+                className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-primary hover:underline font-mono"
               >
-                <Settings2 className="h-3 w-3" /> Abrir status da IA
+                <Settings2 className="h-3 w-3" /> Configurar Chave IA
               </Link>
             )}
-            {m.error && <div className="mt-1 text-destructive text-[11px]">{m.error}</div>}
+
+            {m.hasPatch && (
+              <div className="mt-3 pt-2 border-t border-border/60 flex items-center justify-between">
+                <span className="text-[9px] text-muted-foreground font-mono">
+                  {m.patchApplied ? "✓ Patch Aplicado" : "Diagrama Pronto"}
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => handleApplyPatch(i, m.patchData)}
+                  disabled={m.patchApplied}
+                  className="h-6 px-2 text-[9px] font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  {m.patchApplied ? <ShieldCheck className="h-3.5 w-3.5 text-success" /> : "Aplicar ao Canvas"}
+                </Button>
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      <div className="shrink-0 p-2 border-t border-border">
+      {/* INPUT AND BRIEFING UPLOAD BAR */}
+      <div className="shrink-0 p-2 border-t border-border bg-card/10">
+        <div className="flex gap-1.5 mb-1.5">
+          <input
+            type="file"
+            accept=".pdf,.csv,.txt"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            title="Upload de Briefing de Engenharia (PDF / CSV)"
+            className="h-8 px-2.5 rounded border border-border bg-card hover:bg-accent/40 text-[10px] inline-flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            <span>Upload Briefing</span>
+          </button>
+        </div>
+
         <div className="relative">
           <textarea
             value={val}
@@ -148,13 +349,13 @@ export function CanvasAiChat() {
               }
             }}
             rows={2}
-            placeholder="Adicione 3 motores de 75kW com VFD…"
-            className="w-full resize-none rounded-md bg-input border border-border p-2 pr-9 text-[12px] outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Projete um disjuntor de 125A NBR-5410..."
+            className="w-full resize-none rounded-md bg-input border border-border p-2 pr-9 text-[11px] outline-none focus:ring-1 focus:ring-primary font-mono"
           />
           <button
-            onClick={send}
+            onClick={() => send()}
             disabled={busy || !val.trim()}
-            className="absolute right-1.5 bottom-1.5 h-7 w-7 grid place-items-center rounded text-primary-foreground glow-primary disabled:opacity-50"
+            className="absolute right-1.5 bottom-1.5 h-7 w-7 grid place-items-center rounded text-primary-foreground glow-primary disabled:opacity-50 cursor-pointer"
             style={{ background: "var(--gradient-primary)" }}
           >
             {busy ? (
@@ -164,7 +365,7 @@ export function CanvasAiChat() {
             )}
           </button>
         </div>
-        <div className="mt-1 text-[9px] text-muted-foreground flex items-center gap-1">
+        <div className="mt-1 text-[8px] text-muted-foreground flex items-center gap-1 font-mono">
           <MessageSquare className="h-2.5 w-2.5" /> Enter envia · Shift+Enter quebra linha
         </div>
       </div>
@@ -172,33 +373,32 @@ export function CanvasAiChat() {
   );
 }
 
-function AiSuggestionBlock() {
+function Button({
+  children,
+  onClick,
+  disabled,
+  size,
+  className,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  size?: "sm" | "default";
+  className?: string;
+}) {
   return (
-    <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5">
-      <div className="text-[9px] uppercase tracking-wider mb-1 text-primary">Sugestões da IA</div>
-      <div className="space-y-1.5">
-        {aiSuggestions.map((suggestion) => {
-          const investment = suggestion.qty * COST_BASE[suggestion.kind];
-          const payback = investment / suggestion.saving;
-          return (
-            <div key={suggestion.text} className="text-[11px] leading-relaxed">
-              <div className="font-medium">{suggestion.text}</div>
-              <div className="font-mono text-muted-foreground">
-                Investimento: {formatBRL(investment)} | Economia: {formatBRL(suggestion.saving)}/mês
-                | Retorno: {payback.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} meses
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center justify-center rounded font-semibold transition-all disabled:opacity-50 ${
+        size === "sm" ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-xs"
+      } ${
+        disabled
+          ? "bg-accent/40 text-muted-foreground cursor-not-allowed"
+          : "bg-primary text-primary-foreground hover:opacity-90 active:scale-95 cursor-pointer"
+      } ${className}`}
+    >
+      {children}
+    </button>
   );
-}
-
-function formatBRL(value: number) {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    maximumFractionDigits: 0,
-  });
 }

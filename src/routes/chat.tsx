@@ -47,7 +47,8 @@ function ChatPage() {
 
   const { data: messages = [] } = useQuery({
     queryKey: ["chat-msgs", activeId],
-    queryFn: () => (activeId ? fetchMessages({ data: { conversationId: activeId } }) : Promise.resolve([])),
+    queryFn: () =>
+      activeId ? fetchMessages({ data: { conversationId: activeId } }) : Promise.resolve([]),
     enabled: !!activeId,
   });
 
@@ -160,7 +161,9 @@ function ChatPage() {
         <div ref={scrollerRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {messages.length === 0 && !streamingText && (
             <div className="text-center text-muted-foreground mt-20">
-              <p className="text-lg font-medium">Pergunte algo sobre engenharia elétrica industrial</p>
+              <p className="text-lg font-medium">
+                Pergunte algo sobre engenharia elétrica industrial
+              </p>
               <p className="text-sm mt-2">NBR 5410, dimensionamento, NR-12, IoT…</p>
             </div>
           )}
@@ -208,9 +211,7 @@ function Bubble({
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[85%] rounded-lg px-4 py-2 text-sm ${
-          isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground"
+          isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
         }`}
       >
         {isUser ? (

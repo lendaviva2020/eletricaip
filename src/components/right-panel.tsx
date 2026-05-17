@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { Sparkles, ShieldCheck, Wrench, Settings2, Send } from "lucide-react";
+import { Sparkles, ShieldCheck, Wrench, Settings2, Send, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/lib/project-store";
 import { useVoltaiStore } from "@/lib/voltai/store";
 import { useEditorStore } from "@/lib/editor/store";
 import { RightPropertyPanel } from "@/components/editor/right-property-panel";
+import { RevisionHistory } from "@/components/revision-history";
 
 const TABS = [
   { id: "props", label: "Propriedades", icon: Settings2 },
   { id: "ai", label: "IA", icon: Sparkles },
   { id: "norms", label: "Normas", icon: ShieldCheck },
+  { id: "versions", label: "Versões", icon: GitBranch },
   { id: "maint", label: "Manutenção", icon: Wrench },
 ] as const;
 
@@ -45,6 +47,7 @@ export function RightPanel() {
         {tab === "props" && <PropsPanel />}
         {tab === "ai" && <AiPanel />}
         {tab === "norms" && <NormsPanel />}
+        {tab === "versions" && <VersionsPanel />}
         {tab === "maint" && <MaintPanel />}
       </div>
     </aside>
@@ -196,6 +199,23 @@ function NormsPanel() {
           <p className="text-[11px] text-muted-foreground mt-1">{i.note}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function VersionsPanel() {
+  return (
+    <div className="p-4 space-y-3">
+      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+        Histórico & Auditoria
+      </div>
+      <RevisionHistory />
+      <div className="rounded-md border border-border bg-card p-3 text-[10px] text-muted-foreground">
+        <p>
+          Cada snapshot é um registro imutável de auditoria normativa. Para compliance com NR-10 e ISO 9001,
+          salve revisões antes de cada entrega ou modificação significativa.
+        </p>
+      </div>
     </div>
   );
 }

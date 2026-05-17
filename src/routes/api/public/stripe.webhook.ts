@@ -55,7 +55,11 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
   const obj = event.data.object as Record<string, unknown>;
   switch (event.type) {
     case "checkout.session.completed": {
-      const tenantId = String(obj.client_reference_id ?? (obj.metadata as Record<string, string> | undefined)?.tenant_id ?? "");
+      const tenantId = String(
+        obj.client_reference_id ??
+          (obj.metadata as Record<string, string> | undefined)?.tenant_id ??
+          "",
+      );
       const plan = String((obj.metadata as Record<string, string> | undefined)?.plan ?? "pro");
       const customerId = obj.customer ? String(obj.customer) : null;
       const subId = obj.subscription ? String(obj.subscription) : null;
@@ -76,12 +80,18 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
     }
     case "customer.subscription.created":
     case "customer.subscription.updated": {
-      const tenantId = String((obj.metadata as Record<string, string> | undefined)?.tenant_id ?? "");
+      const tenantId = String(
+        (obj.metadata as Record<string, string> | undefined)?.tenant_id ?? "",
+      );
       if (!tenantId) return;
       const status = String(obj.status ?? "active");
       const plan = String((obj.metadata as Record<string, string> | undefined)?.plan ?? "pro");
-      const periodStart = obj.current_period_start ? new Date(Number(obj.current_period_start) * 1000).toISOString() : null;
-      const periodEnd = obj.current_period_end ? new Date(Number(obj.current_period_end) * 1000).toISOString() : null;
+      const periodStart = obj.current_period_start
+        ? new Date(Number(obj.current_period_start) * 1000).toISOString()
+        : null;
+      const periodEnd = obj.current_period_end
+        ? new Date(Number(obj.current_period_end) * 1000).toISOString()
+        : null;
       const subId = String(obj.id);
 
       await supabaseAdmin.from("subscriptions").upsert(
@@ -107,12 +117,18 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
       break;
     }
     case "customer.subscription.deleted": {
-      const tenantId = String((obj.metadata as Record<string, string> | undefined)?.tenant_id ?? "");
+      const tenantId = String(
+        (obj.metadata as Record<string, string> | undefined)?.tenant_id ?? "",
+      );
       const subId = String(obj.id);
       if (tenantId) {
         await supabaseAdmin
           .from("tenants")
-          .update({ plan: "free", subscription_status: "canceled", updated_at: new Date().toISOString() })
+          .update({
+            plan: "free",
+            subscription_status: "canceled",
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", tenantId);
       }
       await supabaseAdmin
@@ -123,7 +139,9 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
     }
     case "invoice.paid":
     case "invoice.payment_failed": {
-      const tenantId = String((obj.metadata as Record<string, string> | undefined)?.tenant_id ?? "");
+      const tenantId = String(
+        (obj.metadata as Record<string, string> | undefined)?.tenant_id ?? "",
+      );
       if (!tenantId) return;
       await supabaseAdmin.from("invoices").upsert(
         {
@@ -142,7 +160,12 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
 }
 
 /** Verify Stripe webhook signature (v1 scheme). */
-async function verifyStripeSig(payload: string, header: string, secret: string, toleranceSec: number): Promise<boolean> {
+async function verifyStripeSig(
+  payload: string,
+  header: string,
+  secret: string,
+  toleranceSec: number,
+): Promise<boolean> {
   const parts = Object.fromEntries(
     header.split(",").map((kv) => {
       const [k, ...rest] = kv.split("=");

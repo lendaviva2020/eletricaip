@@ -62,6 +62,7 @@ function ExportPage() {
             label: n.data?.label ?? n.data?.partNumber ?? n.type,
             width: n.width ?? 80,
             height: n.height ?? 40,
+            type: n.data?.type || n.type || "default",
           };
           nodes.push(node);
           nodeIndex.set(n.id, node);
@@ -93,7 +94,10 @@ function ExportPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6 max-w-4xl mx-auto">
-      <Link to="/projects" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+      <Link
+        to="/projects"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
+      >
         <ArrowLeft className="w-4 h-4" /> Projetos
       </Link>
       <h1 className="text-2xl font-bold mb-1">Exportar projeto</h1>

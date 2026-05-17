@@ -4,9 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const listBom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ projectId: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context as any;
     const { data: items, error } = await supabase
@@ -18,8 +16,7 @@ export const listBom = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const totalBRL = (items ?? []).reduce(
-      (sum: number, it: any) =>
-        sum + (Number(it.unit_price_brl ?? 0) * Number(it.quantity ?? 0)),
+      (sum: number, it: any) => sum + Number(it.unit_price_brl ?? 0) * Number(it.quantity ?? 0),
       0,
     );
     return { items: items ?? [], totalBRL };
@@ -87,10 +84,7 @@ export const updateBomItem = createServerFn({ method: "POST" })
     if (data.unitPriceBRL !== undefined) patch.unit_price_brl = data.unitPriceBRL;
     if (data.notes !== undefined) patch.notes = data.notes;
     if (data.reference !== undefined) patch.reference = data.reference;
-    const { error } = await supabase
-      .from("project_bom_items")
-      .update(patch)
-      .eq("id", data.id);
+    const { error } = await supabase.from("project_bom_items").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -100,25 +94,19 @@ export const deleteBomItem = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context as any;
-    const { error } = await supabase
-      .from("project_bom_items")
-      .delete()
-      .eq("id", data.id);
+    const { error } = await supabase.from("project_bom_items").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 export const generateBomFromCanvas = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ projectId: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context as any;
-    const { data: result, error } = await supabase.rpc(
-      "generate_bom_from_canvas",
-      { p_project_id: data.projectId },
-    );
+    const { data: result, error } = await supabase.rpc("generate_bom_from_canvas", {
+      p_project_id: data.projectId,
+    });
     if (error) throw new Error(error.message);
     return { itemsAdded: (result?.[0]?.items_added ?? 0) as number };
   });

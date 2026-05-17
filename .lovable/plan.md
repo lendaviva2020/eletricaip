@@ -28,6 +28,7 @@ src/routes/
 **Meta**: extrair `EditorBibliotecaSidebar` e `EditorLadderSidebar` do `industrial-workspace.tsx` para componentes próprios e garantir isolamento de estado entre os dois módulos.
 
 Arquivos:
+
 - **criar** `src/components/editor/sidebars/editor-unifilar-sidebar.tsx` (move código atual de `EditorBibliotecaSidebar`)
 - **criar** `src/components/editor/sidebars/editor-ladder-sidebar.tsx` (move código atual de `EditorLadderSidebar`)
 - **criar** `src/components/editor/sidebars/editor-scada-sidebar.tsx` (move código atual de `EditorScadaSidebar`)
@@ -45,6 +46,7 @@ Validação: trocar de aba Unifilar↔Ladder não mistura nós; refresh mantém 
 **Meta**: clique em nó (Unifilar ou bloco Ladder) abre painel direito com campos específicos validados por Zod.
 
 Arquivos:
+
 - **criar** `src/lib/editor/property-schemas.ts`
   - `disjuntorSchema` (corrente A, curva B/C/D, kA)
   - `motorSchema` (cv/kW, V, A, RPM, FS)
@@ -63,6 +65,7 @@ Validação: clicar em QF mostra campos corretos; alterar A salva no estado; val
 **Meta**: substituir o canvas Ladder atual por uma grade de rungs IEC 61131-3 com rails verticais.
 
 Arquivos:
+
 - **criar** `src/components/canvases/ladder/rung-grid.tsx` (matriz de células, rails L/R)
 - **criar** `src/components/canvases/ladder/rung-row.tsx`
 - **criar** `src/components/canvases/ladder/ladder-element.tsx` (XIC, XIO, OTE, OTL, OTU, TON, CTU…)
@@ -83,6 +86,7 @@ Validação: rung XIC(`%I0.0`) → OTE(`%Q0.0`); simular força I0.0=true e Q0.0
 **Meta**: canvas SCADA dividido — esquerda widgets (drag), direita editor Monaco que define mapeamento de tags e scripts; alterações refletem em tempo real.
 
 Arquivos:
+
 - **adicionar dep** `@monaco-editor/react`
 - **criar** `src/components/canvases/scada/scada-stage.tsx` (canvas com widgets posicionáveis)
 - **criar** `src/components/canvases/scada/widgets/` (Gauge, NumericDisplay, Trend, Button, Switch, Tank, Pipe, Motor, Valve)
@@ -102,12 +106,14 @@ Validação: arrastar Gauge → definir tag `LT_01` → no editor escrever `GAUG
 **Meta**: cada módulo abre, carrega sua sidebar e renderiza canvas mínimo navegável (não um placeholder vazio).
 
 ### FBD
+
 - **criar** `src/components/editor/sidebars/editor-fbd-sidebar.tsx` (AND, OR, NOT, XOR, SR, RS, TON, TOF, CTU, CTD, FB customizado)
 - **criar** `src/components/canvases/fbd/fbd-block-node.tsx` (pinos in/out tipados)
 - **editar** `src/components/canvases/fbd-canvas.tsx` → React Flow real (não reusa Unifilar)
 - **criar** `src/lib/fbd/st-codegen.ts` (FBD → ST)
 
 ### Digital Twin
+
 - **adicionar dep** `three`, `@react-three/fiber`, `@react-three/drei`
 - **criar** `src/components/editor/sidebars/editor-twin-sidebar.tsx` (importar GLB, listar tags vinculadas)
 - **criar** `src/components/canvases/twin/twin-scene.tsx` (R3F Canvas, OrbitControls)
@@ -115,6 +121,7 @@ Validação: arrastar Gauge → definir tag `LT_01` → no editor escrever `GAUG
 - **editar** `src/components/canvases/twin-canvas.tsx` → renderiza `TwinScene`
 
 ### PLC
+
 - **criar** `src/components/editor/sidebars/editor-plc-sidebar.tsx` (árvore: Hardware/Tags/Blocos)
 - **criar** `src/components/canvases/plc/plc-block-host.tsx` (escolhe Ladder/FBD/ST/SFC por bloco)
 - **criar** `src/lib/plc/virtual-runtime.ts` (executa bloco compilado)
@@ -129,6 +136,7 @@ Validação: cada aba abre com sidebar correta + canvas operacional mínimo, sem
 **Meta**: aba Simulação coordena execução conjunta usando registry de tags compartilhado.
 
 Arquivos:
+
 - **criar** `src/components/editor/sidebars/editor-sim-sidebar.tsx` (modos: Unifilar/Ladder/Conjunta; speed 1x/10x/100x; watch table com force-value)
 - **criar** `src/components/canvases/sim/sim-overlay.tsx` (renderiza canvas ativo + animação)
 - **criar** `src/components/canvases/sim/oscilloscope-panel.tsx` (gráficos V/I via Recharts)
@@ -151,13 +159,13 @@ Validação: criar QF+KM+M no Unifilar com tag `K1_CMD`; Ladder com OTE(`K1_CMD`
 
 ## Estimativa de escopo
 
-| Fase | Arquivos novos | Arquivos editados | Risco |
-|------|---------------:|------------------:|-------|
-| 1    | 5              | 2                 | baixo |
-| 2    | 4              | 2                 | médio |
-| 3    | 6              | 2                 | alto (compilador Ladder) |
-| 4    | 6 + 1 dep      | 2                 | alto (parser seguro) |
-| 5    | 9 + 3 deps     | 3                 | médio |
-| 6    | 5              | 2                 | alto (sincronização) |
+| Fase | Arquivos novos | Arquivos editados | Risco                    |
+| ---- | -------------: | ----------------: | ------------------------ |
+| 1    |              5 |                 2 | baixo                    |
+| 2    |              4 |                 2 | médio                    |
+| 3    |              6 |                 2 | alto (compilador Ladder) |
+| 4    |      6 + 1 dep |                 2 | alto (parser seguro)     |
+| 5    |     9 + 3 deps |                 3 | médio                    |
+| 6    |              5 |                 2 | alto (sincronização)     |
 
 **Pré-requisito antes de começar**: confirmar se quer que eu renomeie `/workspace` → `/editor` (com redirect) ou mantenha o path atual.

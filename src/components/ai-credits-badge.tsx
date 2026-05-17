@@ -30,9 +30,10 @@ export function AiCreditsBadge() {
   const low = !unlimited && remaining <= Math.max(1, Math.floor(max_credits * 0.1));
   return (
     <div
-      className={`hidden lg:flex h-8 items-center gap-1.5 rounded border px-2 text-[11px] font-mono ${
+      onClick={() => window.dispatchEvent(new Event("trigger-upgrade-modal"))}
+      className={`hidden lg:flex h-8 items-center gap-1.5 rounded border px-2 text-[11px] font-mono cursor-pointer hover:border-primary/40 hover:bg-accent/40 transition-colors ${
         low
-          ? "border-destructive/40 bg-destructive/10 text-destructive"
+          ? "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
           : "border-border bg-card text-muted-foreground"
       }`}
       title={`Plano ${plan} · ${unlimited ? "ilimitado" : `${remaining}/${max_credits} créditos restantes`}`}

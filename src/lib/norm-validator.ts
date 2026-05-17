@@ -129,6 +129,19 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
     });
   }
 
+  // ── NR-10 — Lockout/Tagout (LOTO) e Seccionamento de Segurança ──
+  const hasLocalSwitch = nodes.some((n) => n.kind === "switch" || /seccionadora|isole|lockout|loto/i.test(n.label + JSON.stringify(n.params)));
+  if (motors.length > 0 && !hasLocalSwitch) {
+    f.push({
+      id: "nr10-loto",
+      norm: "NR-10",
+      severity: "warn",
+      title: "Ponto de seccionamento para bloqueio (LOTO) ausente",
+      detail: "NR-10 §10.5.1 exige dispositivo de seccionamento passível de bloqueio para manutenção segura.",
+      fixHint: "Adicione uma Chave Seccionadora (QS) rotativa bloqueável por cadeado próximo aos circuitos alimentadores.",
+    });
+  }
+
   // ── NR-12 — Segurança em máquinas ──
   if (motors.length >= 1 && estops.length === 0) {
     f.push({
@@ -155,18 +168,47 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
   }
 
   // ── ISA-18.2 — Alarmes ──
-  const hasAlarms = nodes.some(
-    (n) => n.category === "inst" && /alarm|alarme/i.test(JSON.stringify(n.params)),
-  );
-  if (motors.length >= 3 && !hasAlarms) {
-    f.push({
-      id: "isa18-2",
-      norm: "ISA-18.2",
-      severity: "info",
-      title: "Sem racionalização de alarmes",
-      detail:
-        "Sistemas com múltiplos motores devem definir prioridades e setpoints conforme ISA-18.2 (master alarm DB).",
-    });
+  const alarmSensors = nodes.filter((n) => n.category === "inst" || /sensor|alarm|transmissor/i.test(n.label + n.kind));
+  for (const s of alarmSensors) {
+    const hasPriority = s.params.priority || s.params.prioridade || s.params.level;
+    if (!hasPriority) {
+      f.push({
+        id: `isa18-priority-${s.id}`,
+        norm: "ISA-18.2",
+        severity: "warn",
+        nodeId: s.id,
+        title: `Alarme sem prioridade definida em ${s.label}`,
+        detail: "ISA-18.2 §10.2 exige que todo alarme tenha nível de prioridade (Alta, Média, Baixa) para evitar fadiga do operador.",
+        fixHint: "Configure o parâmetro 'priority' (High/Medium/Low) nas propriedades do sensor.",
+      });
+    }
+
+    const hasDeadband = s.params.deadband || s.params.histerese;
+    if (!hasDeadband) {
+      f.push({
+        id: `isa18-deadband-${s.id}`,
+        norm: "ISA-18.2",
+        severity: "info",
+        nodeId: s.id,
+        title: `Histerese/Deadband não configurada em ${s.label}`,
+        detail: "ISA-18.2 §14.3 recomenda o uso de histerese (deadband) para evitar oscilações contínuas de alarmes (alarms chattering).",
+        fixHint: "Adicione um percentual de histerese (ex: 2% a 5%) para estabilizar o disparo.",
+      });
+    }
+  }
+
+  if (alarmSensors.length > 5) {
+    const filtersUsed = alarmSensors.every((s) => s.params.deadband || s.params.filter);
+    if (!filtersUsed) {
+      f.push({
+        id: "isa18-flood",
+        norm: "ISA-18.2",
+        severity: "warn",
+        title: "Alto risco de Avalanche de Alarmes (Alarm Flooding)",
+        detail: "ISA-18.2 §14.1 alerta que mais de 5 alarmes sem tratamento de delay ou deadband podem saturar o operador durante distúrbios.",
+        fixHint: "Aplique atraso de disparo (delay-on) ou histerese em todos os canais analógicos.",
+      });
+    }
   }
 
   // ── IEC 61131 — PLC ──
@@ -189,7 +231,7 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
       severity: "info",
       title: "Curva do disjuntor não especificada",
       detail:
-        "Defina curva (B/C/D/K/Z) em todos os disjuntores para representação correta IEC 60617.",
+        "Defina curva (B/C/D/K/Z) in todos os disjuntores para representação correta IEC 60617.",
     });
   }
 

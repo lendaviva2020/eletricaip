@@ -27,16 +27,22 @@ export const Route = createFileRoute("/api/public/iot/ingest")({
         const auth = request.headers.get("authorization") || "";
         const apiKey = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
         if (!apiKey || apiKey.length < 16) {
-          return new Response(JSON.stringify({ ok: false, error: "missing_api_key" }), { status: 401, headers: cors() });
+          return new Response(JSON.stringify({ ok: false, error: "missing_api_key" }), {
+            status: 401,
+            headers: cors(),
+          });
         }
         let body: z.infer<typeof Body>;
         try {
           body = Body.parse(await request.json());
         } catch (e) {
-          return new Response(JSON.stringify({ ok: false, error: "bad_input", detail: (e as Error).message }), {
-            status: 400,
-            headers: cors(),
-          });
+          return new Response(
+            JSON.stringify({ ok: false, error: "bad_input", detail: (e as Error).message }),
+            {
+              status: 400,
+              headers: cors(),
+            },
+          );
         }
         const { data, error } = await supabaseAdmin.rpc("ingest_iot_reading", {
           p_api_key: apiKey,
@@ -52,7 +58,10 @@ export const Route = createFileRoute("/api/public/iot/ingest")({
           const isAuthErr = /unauthorized|invalid_api_key/.test(error.message);
           const status = isAuthErr ? 401 : 400;
           const safeCode = isAuthErr ? "unauthorized" : "ingest_error";
-          return new Response(JSON.stringify({ ok: false, error: safeCode }), { status, headers: cors() });
+          return new Response(JSON.stringify({ ok: false, error: safeCode }), {
+            status,
+            headers: cors(),
+          });
         }
         return new Response(JSON.stringify(data ?? { ok: true }), { status: 200, headers: cors() });
       },

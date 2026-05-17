@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
 import {
   VOLTAI_COLORS,
@@ -25,7 +26,7 @@ function handleOffset(terminals: VoltaiTerminal[], terminal: VoltaiTerminal) {
     : { left: `${percent}%` };
 }
 
-export function VoltaiFlowNode({ data, selected }: NodeProps<VoltaiDiagramComponent>) {
+export const VoltaiFlowNode = memo(function VoltaiFlowNode({ data, selected }: NodeProps<VoltaiDiagramComponent>) {
   const definition = VOLTAI_COMPONENT_BY_TYPE[data.type];
   const status =
     data.simulationState.tripped || data.simulationState.failed || data.simulationState.blown;
@@ -60,7 +61,8 @@ export function VoltaiFlowNode({ data, selected }: NodeProps<VoltaiDiagramCompon
 
       <div className="flex items-center gap-2">
         <div
-          className="h-11 w-14 shrink-0 [&_svg]:h-full [&_svg]:w-full"
+          className="h-11 w-14 shrink-0 [&_svg]:h-full [&_svg]:w-full transition-transform duration-300 ease-out"
+          style={{ transform: `rotate(${data.rotation ?? 0}deg)` }}
           dangerouslySetInnerHTML={{ __html: getComponentSymbol(data.type) }}
         />
         <div className="min-w-0">
@@ -89,4 +91,4 @@ export function VoltaiFlowNode({ data, selected }: NodeProps<VoltaiDiagramCompon
       </div>
     </div>
   );
-}
+});

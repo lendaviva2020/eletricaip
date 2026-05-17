@@ -7,7 +7,11 @@ import {
 // Escape any user/DB-controlled string before inlining into SVG markup.
 // Prevents stored-XSS via crafted `type` values rendered through dangerouslySetInnerHTML.
 const esc = (v: string) =>
-  String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  String(v)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
 const base = (content: string) =>
   `<svg viewBox="0 0 96 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">${content}</svg>`;

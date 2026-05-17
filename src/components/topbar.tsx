@@ -80,6 +80,7 @@ export function Topbar() {
           size="sm"
           variant="ghost"
           className="hidden md:inline-flex h-8 px-2 gap-1.5 text-xs"
+          onClick={() => window.dispatchEvent(new Event("trigger-share-modal"))}
         >
           <Share2 className="h-3.5 w-3.5" /> Compartilhar
         </Button>
@@ -91,7 +92,7 @@ export function Topbar() {
           <Bell className="h-4 w-4" />
           <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-warning energized" />
         </Button>
-        <div className="h-7 w-7 rounded-full ring-1 ring-border bg-gradient-to-br from-primary/60 to-info/60" />
+        <div className="h-7 w-7 rounded-full ring-1 ring-border bg-linear-to-br from-primary/60 to-info/60" />
       </div>
     </header>
   );

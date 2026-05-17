@@ -17,7 +17,12 @@ export const listIotDevices = createServerFn({ method: "GET" })
 export const getLatestReadings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({ deviceId: z.string().uuid().optional(), limit: z.number().min(1).max(500).default(100) }).parse(i),
+    z
+      .object({
+        deviceId: z.string().uuid().optional(),
+        limit: z.number().min(1).max(500).default(100),
+      })
+      .parse(i),
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
@@ -95,7 +100,11 @@ export const createIotApiKey = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: profile } = await supabase.from("profiles").select("tenant_id").eq("id", userId).single();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("tenant_id")
+      .eq("id", userId)
+      .single();
     if (!profile?.tenant_id) return { ok: false as const, error: "no_tenant" };
 
     const raw = `iot_${crypto.randomUUID().replace(/-/g, "")}${crypto.randomUUID().replace(/-/g, "")}`;

@@ -6,7 +6,18 @@ import { scanRungs, resetRuntimeState, type ScanResult } from "@/lib/ladder/runt
 import { useEditorStore } from "@/lib/editor/store";
 import { LadderCellView } from "./ladder-cell";
 import { Button } from "@/components/ui/button";
-import { Plus, Play, Square, Code2, Rows3, X, Download, History, Pause, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Play,
+  Square,
+  Code2,
+  Rows3,
+  X,
+  Download,
+  History,
+  Pause,
+  Trash2,
+} from "lucide-react";
 
 interface HistoryEntry {
   ts: number;
@@ -21,9 +32,18 @@ interface HistoryEntry {
 const MAX_HISTORY = 200;
 
 export function RungGrid() {
-  const [rungs, setRungs] = useState<LadderRung[]>([newRung(0)]);
+  const rungs = useEditorStore((s) => s.rungs);
+  const setRungs = useEditorStore((s) => s.setRungs);
+
+  useEffect(() => {
+    if (rungs.length === 0) {
+      setRungs([newRung(0)]);
+    }
+  }, [rungs, setRungs]);
+
   const [running, setRunning] = useState(false);
   const [showIL, setShowIL] = useState(false);
+  const [compileFormat, setCompileFormat] = useState<"IL" | "ST">("ST");
   const [showHistory, setShowHistory] = useState(false);
   const [historyPaused, setHistoryPaused] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -116,14 +136,15 @@ export function RungGrid() {
     setRungs((rs) => rs.filter((r) => r.id !== rungId));
   };
 
-  const il = useMemo(() => compileProgram(rungs), [rungs]);
+  const compiledCode = useMemo(() => compileProgram(rungs, compileFormat), [rungs, compileFormat]);
 
-  const downloadIL = () => {
-    const blob = new Blob([il], { type: "text/plain;charset=utf-8" });
+  const downloadCode = () => {
+    const blob = new Blob([compiledCode], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ladder-${new Date().toISOString().replace(/[:.]/g, "-")}.il`;
+    const ext = compileFormat.toLowerCase();
+    a.download = `ladder-${new Date().toISOString().replace(/[:.]/g, "-")}.${ext}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -133,7 +154,11 @@ export function RungGrid() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-border bg-card/40 px-4 py-2">
-        <Button size="sm" variant="outline" onClick={() => setRungs((r) => [...r, newRung(r.length)])}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setRungs((r) => [...r, newRung(r.length)])}
+        >
           <Plus className="mr-1 h-3 w-3" /> Rung
         </Button>
         <Button
@@ -154,7 +179,7 @@ export function RungGrid() {
           {running ? "Parar scan" : "Simular"}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setShowIL((v) => !v)}>
-          <Code2 className="mr-1 h-3 w-3" /> {showIL ? "Ocultar IL" : "Compilar"}
+          <Code2 className="mr-1 h-3 w-3" /> {showIL ? "Ocultar Código" : "Compilar"}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setShowHistory((v) => !v)}>
           <History className="mr-1 h-3 w-3" /> {showHistory ? "Ocultar histórico" : "Histórico"}
@@ -258,16 +283,42 @@ export function RungGrid() {
 
         {showIL && (
           <aside className="w-80 shrink-0 border-l border-border bg-background/80 backdrop-blur flex flex-col">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <div className="text-[11px] font-mono uppercase text-muted-foreground">
-                IEC 61131-3 · IL
+            <div className="flex flex-col border-b border-border bg-card/20 p-2 gap-2">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                  Compilador IEC 61131-3
+                </div>
+                <Button size="sm" variant="ghost" onClick={downloadCode} className="h-6 px-2 text-[10px] gap-1">
+                  <Download className="h-3 w-3" /> .{compileFormat.toLowerCase()}
+                </Button>
               </div>
-              <Button size="sm" variant="ghost" onClick={downloadIL} className="h-6 px-2">
-                <Download className="mr-1 h-3 w-3" /> .il
-              </Button>
+
+              <div className="grid grid-cols-2 gap-1 bg-muted/40 p-1 rounded-md border border-border/50">
+                <button
+                  onClick={() => setCompileFormat("ST")}
+                  className={`py-1 text-[10px] font-mono font-bold rounded-sm transition-all cursor-pointer ${
+                    compileFormat === "ST"
+                      ? "bg-background text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Structured Text (ST)
+                </button>
+                <button
+                  onClick={() => setCompileFormat("IL")}
+                  className={`py-1 text-[10px] font-mono font-bold rounded-sm transition-all cursor-pointer ${
+                    compileFormat === "IL"
+                      ? "bg-background text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Instruction List (IL)
+                </button>
+              </div>
             </div>
-            <pre className="flex-1 overflow-auto p-3 text-[11px] font-mono leading-relaxed text-foreground">
-{il}
+            
+            <pre className="flex-1 overflow-auto p-3 text-[11px] font-mono leading-relaxed text-foreground select-text whitespace-pre scrollbar-thin">
+              {compiledCode}
             </pre>
           </aside>
         )}
@@ -285,7 +336,11 @@ export function RungGrid() {
                   onClick={() => setHistoryPaused((v) => !v)}
                   className="h-6 px-2"
                 >
-                  {historyPaused ? <Play className="mr-1 h-3 w-3" /> : <Pause className="mr-1 h-3 w-3" />}
+                  {historyPaused ? (
+                    <Play className="mr-1 h-3 w-3" />
+                  ) : (
+                    <Pause className="mr-1 h-3 w-3" />
+                  )}
                   {historyPaused ? "Retomar" : "Pausar"}
                 </Button>
                 <Button
@@ -315,11 +370,7 @@ export function RungGrid() {
                       <span className="text-muted-foreground">
                         #{h.scan} · R{String(rIdx + 1).padStart(3, "0")}
                       </span>
-                      <span
-                        className={
-                          h.poweredOut ? "text-success" : "text-muted-foreground"
-                        }
-                      >
+                      <span className={h.poweredOut ? "text-success" : "text-muted-foreground"}>
                         {h.poweredOut ? "ON" : "off"}
                       </span>
                     </div>

@@ -39,16 +39,39 @@ function AcceptInvitePage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
       <div className="max-w-md w-full text-center space-y-4">
-        {status === "loading" && (<><Loader2 className="w-8 h-8 animate-spin mx-auto" /><p>Processando convite…</p></>)}
+        {status === "loading" && (
+          <>
+            <Loader2 className="w-8 h-8 animate-spin mx-auto" />
+            <p>Processando convite…</p>
+          </>
+        )}
         {status === "needs-auth" && (
           <>
             <h1 className="text-xl font-semibold">Faça login para aceitar o convite</h1>
-            <p className="text-sm text-muted-foreground">Use o e-mail para o qual o convite foi enviado.</p>
-            <Button onClick={() => navigate({ to: "/login", search: { redirect: `/invite/${token}` } as never })}>Entrar</Button>
+            <p className="text-sm text-muted-foreground">
+              Use o e-mail para o qual o convite foi enviado.
+            </p>
+            <Button
+              onClick={() =>
+                navigate({ to: "/login", search: { redirect: `/invite/${token}` } as never })
+              }
+            >
+              Entrar
+            </Button>
           </>
         )}
-        {status === "ok" && (<><h1 className="text-xl font-semibold">Convite aceito!</h1><p className="text-sm text-muted-foreground">Redirecionando…</p></>)}
-        {status === "error" && (<><h1 className="text-xl font-semibold text-destructive">Não foi possível aceitar</h1><p className="text-sm">{error}</p></>)}
+        {status === "ok" && (
+          <>
+            <h1 className="text-xl font-semibold">Convite aceito!</h1>
+            <p className="text-sm text-muted-foreground">Redirecionando…</p>
+          </>
+        )}
+        {status === "error" && (
+          <>
+            <h1 className="text-xl font-semibold text-destructive">Não foi possível aceitar</h1>
+            <p className="text-sm">{error}</p>
+          </>
+        )}
       </div>
     </div>
   );

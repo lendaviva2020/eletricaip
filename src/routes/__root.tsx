@@ -63,12 +63,32 @@ export const Route = createRootRoute({
           "Sistema operacional industrial unificado com IA nativa: unifilar, ladder, FBD, SCADA, Digital Twin, PLC e simulação em tempo real.",
       },
       { property: "og:title", content: "EletricAI Industrial OS — IA, PLC, SCADA, Digital Twin" },
-      { property: "og:description", content: "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation." },
+      {
+        property: "og:description",
+        content:
+          "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation.",
+      },
       { name: "twitter:title", content: "EletricAI Industrial OS — IA, PLC, SCADA, Digital Twin" },
-      { name: "description", content: "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation." },
-      { name: "twitter:description", content: "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9fa077a7-5eb2-4895-a097-d0eb22bf3c1e/id-preview-cc9cc264--85619baf-31cc-4353-8b05-f9173122588d.lovable.app-1778865522986.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9fa077a7-5eb2-4895-a097-d0eb22bf3c1e/id-preview-cc9cc264--85619baf-31cc-4353-8b05-f9173122588d.lovable.app-1778865522986.png" },
+      {
+        name: "description",
+        content:
+          "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9fa077a7-5eb2-4895-a097-d0eb22bf3c1e/id-preview-cc9cc264--85619baf-31cc-4353-8b05-f9173122588d.lovable.app-1778865522986.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9fa077a7-5eb2-4895-a097-d0eb22bf3c1e/id-preview-cc9cc264--85619baf-31cc-4353-8b05-f9173122588d.lovable.app-1778865522986.png",
+      },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
@@ -147,12 +167,17 @@ function useEffect_redirect(
   }, [loading, user, isPublic, path, router]);
 }
 
+import { UpgradeModal } from "@/components/upgrade-modal";
+import { ShareModal } from "@/components/share-modal";
+
 function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AuthGate />
         <Toaster />
+        <UpgradeModal />
+        <ShareModal />
       </AuthProvider>
     </QueryClientProvider>
   );

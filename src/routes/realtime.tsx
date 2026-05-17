@@ -22,7 +22,10 @@ export const Route = createFileRoute("/realtime")({
   head: () => ({
     meta: [
       { title: "Realtime · EletricAI Industrial" },
-      { name: "description", content: "Telemetria ao vivo, alarmes e comandos para PLCs/CLPs conectados." },
+      {
+        name: "description",
+        content: "Telemetria ao vivo, alarmes e comandos para PLCs/CLPs conectados.",
+      },
     ],
   }),
 });
@@ -49,7 +52,11 @@ function RealtimePage() {
 
   const qc = useQueryClient();
   const feature = useQuery({ queryKey: ["iot", "feature"], queryFn: () => fetchFeature() });
-  const devices = useQuery({ queryKey: ["iot", "devices"], queryFn: () => fetchDevices(), refetchInterval: 30_000 });
+  const devices = useQuery({
+    queryKey: ["iot", "devices"],
+    queryFn: () => fetchDevices(),
+    refetchInterval: 30_000,
+  });
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,7 +71,11 @@ function RealtimePage() {
     enabled: !!activeId,
   });
 
-  const alerts = useQuery({ queryKey: ["iot", "alerts"], queryFn: () => fetchAlerts(), refetchInterval: 15_000 });
+  const alerts = useQuery({
+    queryKey: ["iot", "alerts"],
+    queryFn: () => fetchAlerts(),
+    refetchInterval: 15_000,
+  });
 
   const [live, setLive] = useState<Reading[]>([]);
   const [connected, setConnected] = useState(false);
@@ -79,7 +90,12 @@ function RealtimePage() {
       .channel(`iot-readings-${activeId ?? "all"}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "iot_readings", ...(activeId ? { filter: `device_id=eq.${activeId}` } : {}) },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "iot_readings",
+          ...(activeId ? { filter: `device_id=eq.${activeId}` } : {}),
+        },
         (payload) => {
           const r = payload.new as Reading;
           setLive((prev) => [...prev.slice(-199), r]);
@@ -107,7 +123,8 @@ function RealtimePage() {
           <Lock className="h-10 w-10 mx-auto text-muted-foreground" />
           <h1 className="text-2xl font-bold">Realtime / IoT é um recurso Pro</h1>
           <p className="text-muted-foreground">
-            Telemetria ao vivo, alarmes em tempo real e comandos para PLCs estão disponíveis nos planos Pro e Premium.
+            Telemetria ao vivo, alarmes em tempo real e comandos para PLCs estão disponíveis nos
+            planos Pro e Premium.
           </p>
           <Button asChild>
             <Link to="/settings/billing">Fazer upgrade</Link>
@@ -124,10 +141,14 @@ function RealtimePage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Activity className="h-6 w-6 text-primary" /> Realtime / IoT
           </h1>
-          <p className="text-sm text-muted-foreground">Telemetria ao vivo, alarmes e comandos para PLCs/CLPs.</p>
+          <p className="text-sm text-muted-foreground">
+            Telemetria ao vivo, alarmes e comandos para PLCs/CLPs.
+          </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <Radio className={`h-3.5 w-3.5 ${connected ? "text-success animate-pulse" : "text-muted-foreground"}`} />
+          <Radio
+            className={`h-3.5 w-3.5 ${connected ? "text-success animate-pulse" : "text-muted-foreground"}`}
+          />
           {connected ? "Stream conectado" : "Conectando…"}
         </div>
       </header>
@@ -135,13 +156,16 @@ function RealtimePage() {
       <div className="grid lg:grid-cols-[260px_1fr] gap-4">
         {/* Devices sidebar */}
         <Card className="p-3 space-y-2 h-fit">
-          <div className="text-xs font-semibold uppercase text-muted-foreground px-2">Dispositivos</div>
+          <div className="text-xs font-semibold uppercase text-muted-foreground px-2">
+            Dispositivos
+          </div>
           <ApiKeyCreator onCreate={(name) => newKey({ data: { name } })} />
           {!devices.data || !devices.data.ok ? (
             <div className="p-2 text-xs text-muted-foreground">Carregando…</div>
           ) : devices.data.devices.length === 0 ? (
             <div className="p-3 text-xs text-muted-foreground">
-              Nenhum dispositivo. Use uma API key acima e POST em <code>/api/public/iot/ingest</code> para enviar leituras.
+              Nenhum dispositivo. Use uma API key acima e POST em{" "}
+              <code>/api/public/iot/ingest</code> para enviar leituras.
             </div>
           ) : (
             devices.data.devices.map((d) => (
@@ -153,7 +177,9 @@ function RealtimePage() {
                 }`}
               >
                 <div className="font-medium truncate">{d.name}</div>
-                <div className="text-[10px] font-mono text-muted-foreground truncate">{d.device_external_id}</div>
+                <div className="text-[10px] font-mono text-muted-foreground truncate">
+                  {d.device_external_id}
+                </div>
               </button>
             ))
           )}
@@ -164,7 +190,9 @@ function RealtimePage() {
           <LiveChart readings={live} />
           <CommandPanel
             deviceExternalId={
-              devices.data?.ok ? devices.data.devices.find((d) => d.id === activeId)?.device_external_id ?? "" : ""
+              devices.data?.ok
+                ? (devices.data.devices.find((d) => d.id === activeId)?.device_external_id ?? "")
+                : ""
             }
             onSend={(p) => sendCmd({ data: p })}
           />
@@ -181,7 +209,9 @@ function RealtimePage() {
                   <div
                     key={a.id}
                     className={`flex items-center gap-3 text-xs p-2 rounded border ${
-                      a.is_resolved ? "border-border bg-muted/30 opacity-60" : "border-warning/40 bg-warning/5"
+                      a.is_resolved
+                        ? "border-border bg-muted/30 opacity-60"
+                        : "border-warning/40 bg-warning/5"
                     }`}
                   >
                     <span className="font-mono text-[10px] text-muted-foreground">
@@ -191,7 +221,12 @@ function RealtimePage() {
                     <span className="flex-1 truncate">{a.message}</span>
                     {a.value != null && <span className="font-mono">{a.value.toFixed(2)}</span>}
                     {!a.is_resolved && (
-                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => ackMut.mutate(a.id)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2"
+                        onClick={() => ackMut.mutate(a.id)}
+                      >
                         <CheckCircle2 className="h-3 w-3" />
                       </Button>
                     )}
@@ -243,8 +278,12 @@ function LiveChart({ readings }: { readings: Reading[] }) {
             Aguardando leituras…
           </div>
         )}
-        <div className="absolute top-1 left-2 text-[10px] font-mono text-muted-foreground">{max.toFixed(2)}</div>
-        <div className="absolute bottom-1 left-2 text-[10px] font-mono text-muted-foreground">{min.toFixed(2)}</div>
+        <div className="absolute top-1 left-2 text-[10px] font-mono text-muted-foreground">
+          {max.toFixed(2)}
+        </div>
+        <div className="absolute bottom-1 left-2 text-[10px] font-mono text-muted-foreground">
+          {min.toFixed(2)}
+        </div>
       </div>
     </Card>
   );
@@ -255,7 +294,12 @@ function CommandPanel({
   onSend,
 }: {
   deviceExternalId: string;
-  onSend: (p: { deviceExternalId: string; command: string; payload: Record<string, unknown>; watchdogMs: number }) => Promise<{ ok: boolean; error?: string }>;
+  onSend: (p: {
+    deviceExternalId: string;
+    command: string;
+    payload: Record<string, unknown>;
+    watchdogMs: number;
+  }) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [cmd, setCmd] = useState("start");
   const [watchdog, setWatchdog] = useState(5000);
@@ -284,7 +328,11 @@ function CommandPanel({
       <div className="grid sm:grid-cols-[1fr_140px_auto] gap-2 items-end">
         <div>
           <label className="text-xs text-muted-foreground">Comando</label>
-          <Input value={cmd} onChange={(e) => setCmd(e.target.value)} placeholder="start, stop, reset…" />
+          <Input
+            value={cmd}
+            onChange={(e) => setCmd(e.target.value)}
+            placeholder="start, stop, reset…"
+          />
         </div>
         <div>
           <label className="text-xs text-muted-foreground">Watchdog (ms)</label>
@@ -308,7 +356,11 @@ function CommandPanel({
   );
 }
 
-function ApiKeyCreator({ onCreate }: { onCreate: (name: string) => Promise<{ ok: boolean; apiKey?: string; error?: string }> }) {
+function ApiKeyCreator({
+  onCreate,
+}: {
+  onCreate: (name: string) => Promise<{ ok: boolean; apiKey?: string; error?: string }>;
+}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("PLC linha 03");
   const [issued, setIssued] = useState<string | null>(null);
@@ -322,18 +374,34 @@ function ApiKeyCreator({ onCreate }: { onCreate: (name: string) => Promise<{ ok:
   return (
     <div className="px-2">
       {!open && (
-        <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1" onClick={() => setOpen(true)}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full h-7 text-xs gap-1"
+          onClick={() => setOpen(true)}
+        >
           <Key className="h-3 w-3" /> Nova API key (ingest)
         </Button>
       )}
       {open && !issued && (
         <div className="space-y-2 p-2 border border-border rounded">
-          <Input ref={inputRef} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome" className="h-7 text-xs" />
+          <Input
+            ref={inputRef}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nome"
+            className="h-7 text-xs"
+          />
           <div className="flex gap-1">
             <Button size="sm" className="h-6 text-xs flex-1" onClick={create}>
               Criar
             </Button>
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setOpen(false)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs"
+              onClick={() => setOpen(false)}
+            >
               X
             </Button>
           </div>
@@ -341,8 +409,12 @@ function ApiKeyCreator({ onCreate }: { onCreate: (name: string) => Promise<{ ok:
       )}
       {issued && (
         <div className="space-y-2 p-2 border border-warning/50 bg-warning/5 rounded">
-          <div className="text-[10px] font-semibold text-warning">⚠ Copie agora — não será exibida de novo</div>
-          <code className="block text-[10px] break-all bg-background p-1 rounded font-mono">{issued}</code>
+          <div className="text-[10px] font-semibold text-warning">
+            ⚠ Copie agora — não será exibida de novo
+          </div>
+          <code className="block text-[10px] break-all bg-background p-1 rounded font-mono">
+            {issued}
+          </code>
           <Button
             size="sm"
             variant="ghost"

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { WorkspaceMode } from "@/lib/workspace-data";
+import type { LadderRung } from "@/lib/ladder/types";
 
 export type EditorTagType = "BOOL" | "INT" | "REAL" | "STRING";
 
@@ -15,6 +16,9 @@ interface EditorState {
   activeMode: WorkspaceMode;
   selectedNodeId: string | null;
   tags: Record<string, EditorTag>;
+  rungs: LadderRung[];
+  fbdNodes: any[];
+  fbdEdges: any[];
 
   setActiveMode: (mode: WorkspaceMode) => void;
   setSelectedNode: (id: string | null) => void;
@@ -24,12 +28,20 @@ interface EditorState {
   setTagValue: (id: string, value: EditorTag["value"]) => void;
   forceTagValue: (id: string, value: EditorTag["value"]) => void;
   releaseTag: (id: string) => void;
+  setRungs: (rungs: LadderRung[] | ((prev: LadderRung[]) => LadderRung[])) => void;
+  setFbdAll: (
+    nodes: any[] | ((prev: any[]) => any[]),
+    edges: any[] | ((prev: any[]) => any[])
+  ) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
   activeMode: "unifilar",
   selectedNodeId: null,
   tags: {},
+  rungs: [],
+  fbdNodes: [],
+  fbdEdges: [],
 
   setActiveMode: (mode) => set({ activeMode: mode, selectedNodeId: null }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
@@ -59,4 +71,11 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!tag) return s;
       return { tags: { ...s.tags, [id]: { ...tag, forced: false } } };
     }),
+  setRungs: (rungs) =>
+    set((s) => ({ rungs: typeof rungs === "function" ? rungs(s.rungs) : rungs })),
+  setFbdAll: (nodes, edges) =>
+    set((s) => ({
+      fbdNodes: typeof nodes === "function" ? nodes(s.fbdNodes) : nodes,
+      fbdEdges: typeof edges === "function" ? edges(s.fbdEdges) : edges,
+    })),
 }));

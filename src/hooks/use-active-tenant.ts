@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  listMyTenants,
-  switchActiveTenant,
-  type TenantSummary,
-} from "@/lib/tenants.functions";
+import { listMyTenants, switchActiveTenant, type TenantSummary } from "@/lib/tenants.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useActiveTenant() {

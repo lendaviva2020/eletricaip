@@ -46,11 +46,13 @@ export const listMyTenants = createServerFn({ method: "GET" })
       .select("role, tenant_id, tenants(id, name, slug, plan)")
       .eq("user_id", userId);
     if (error) throw new Error(error.message);
-    return ((memberships ?? []) as Array<{
-      role: string;
-      tenant_id: string;
-      tenants: { id: string; name: string; slug: string; plan: string } | null;
-    }>)
+    return (
+      (memberships ?? []) as Array<{
+        role: string;
+        tenant_id: string;
+        tenants: { id: string; name: string; slug: string; plan: string } | null;
+      }>
+    )
       .filter((m) => m.tenants)
       .map((m) => ({
         id: m.tenants!.id,
@@ -110,12 +112,12 @@ export const listTenantMembers = createServerFn({ method: "GET" })
     }>;
     if (rows.length === 0) return [];
     const ids = rows.map((r) => r.user_id);
-    const { data: profs } = await supabase
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", ids);
+    const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
     const nameById = new Map(
-      ((profs ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [p.id, p.full_name]),
+      ((profs ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [
+        p.id,
+        p.full_name,
+      ]),
     );
     return rows.map((r) => ({
       user_id: r.user_id,

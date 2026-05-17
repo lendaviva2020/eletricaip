@@ -18,13 +18,19 @@ function SettingsPage() {
 
         <Section title="Conta & Workspace">
           <Row k="Faturamento & Assinatura">
-            <Link to="/settings/billing" className="text-primary hover:underline text-sm">Abrir →</Link>
+            <Link to="/settings/billing" className="text-primary hover:underline text-sm">
+              Abrir →
+            </Link>
           </Row>
           <Row k="Equipe & Convites">
-            <Link to="/settings/team" className="text-primary hover:underline text-sm">Abrir →</Link>
+            <Link to="/settings/team" className="text-primary hover:underline text-sm">
+              Abrir →
+            </Link>
           </Row>
           <Row k="Status da IA">
-            <Link to="/settings/ai-status" className="text-primary hover:underline text-sm">Abrir →</Link>
+            <Link to="/settings/ai-status" className="text-primary hover:underline text-sm">
+              Abrir →
+            </Link>
           </Row>
         </Section>
 

@@ -69,7 +69,10 @@ export const deleteConversation = createServerFn({ method: "POST" })
     const { supabase } = context;
     // Cascade delete messages first (no FK cascade defined).
     await supabase.from("ai_messages").delete().eq("conversation_id", data.conversationId);
-    const { error } = await supabase.from("ai_conversations").delete().eq("id", data.conversationId);
+    const { error } = await supabase
+      .from("ai_conversations")
+      .delete()
+      .eq("id", data.conversationId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
@@ -120,9 +123,12 @@ export const streamChat = createServerFn({ method: "POST" })
       yield { type: "error" as const, message: "Não foi possível verificar a cota." };
       return;
     }
-    const q = (Array.isArray(quota) ? quota[0] : quota) as
-      | { allowed: boolean; used: number; max_tokens: number; plan: string }
-      | null;
+    const q = (Array.isArray(quota) ? quota[0] : quota) as {
+      allowed: boolean;
+      used: number;
+      max_tokens: number;
+      plan: string;
+    } | null;
     if (q && q.allowed === false) {
       yield {
         type: "error" as const,
@@ -167,11 +173,17 @@ export const streamChat = createServerFn({ method: "POST" })
     });
 
     if (upstream.status === 429) {
-      yield { type: "error" as const, message: "Limite de requisições atingido. Aguarde alguns segundos." };
+      yield {
+        type: "error" as const,
+        message: "Limite de requisições atingido. Aguarde alguns segundos.",
+      };
       return;
     }
     if (upstream.status === 402) {
-      yield { type: "error" as const, message: "Créditos do gateway de IA esgotados. Adicione créditos no workspace." };
+      yield {
+        type: "error" as const,
+        message: "Créditos do gateway de IA esgotados. Adicione créditos no workspace.",
+      };
       return;
     }
     if (!upstream.ok || !upstream.body) {

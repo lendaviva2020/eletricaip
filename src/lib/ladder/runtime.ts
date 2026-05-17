@@ -141,7 +141,10 @@ export interface ScanResult {
   poweredOut: boolean;
   perCell: boolean[][];
   /** Per-cell diagnostics for TON/CTU display */
-  diagnostics?: Record<string, { kind: "TON" | "CTU"; value: number; preset: number; done: boolean }>;
+  diagnostics?: Record<
+    string,
+    { kind: "TON" | "CTU"; value: number; preset: number; done: boolean }
+  >;
 }
 
 export const scanRungs = (rungs: LadderRung[]): ScanResult[] => {
@@ -151,7 +154,10 @@ export const scanRungs = (rungs: LadderRung[]): ScanResult[] => {
 
   for (const rung of rungs) {
     const perCell: boolean[][] = [];
-    const diagnostics: Record<string, { kind: "TON" | "CTU"; value: number; preset: number; done: boolean }> = {};
+    const diagnostics: Record<
+      string,
+      { kind: "TON" | "CTU"; value: number; preset: number; done: boolean }
+    > = {};
     let powered = false;
 
     for (let ri = 0; ri < rung.cells.length; ri++) {

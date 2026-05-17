@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Lock, Unlock } from "lucide-react";
 import { getVoltaiCompDef } from "@/lib/voltai/component-definitions";
@@ -86,7 +86,10 @@ export function RightPropertyPanel() {
 }
 
 function TagsSection({ nodeId }: { nodeId: string }) {
-  const tags = useEditorStore((s) => Object.values(s.tags).filter((t) => t.id.startsWith(nodeId)));
+  const tagsObj = useEditorStore((s) => s.tags);
+  const tags = useMemo(() => {
+    return Object.values(tagsObj).filter((t) => t.id.startsWith(nodeId));
+  }, [tagsObj, nodeId]);
   const upsertTag = useEditorStore((s) => s.upsertTag);
   const removeTag = useEditorStore((s) => s.removeTag);
   const forceTagValue = useEditorStore((s) => s.forceTagValue);

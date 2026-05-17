@@ -25,9 +25,7 @@ export function useProjectPersistence(projectId: string | null) {
         const snap = res.snapshot;
         useProjectStore.getState().setAll(snap.project.nodes ?? [], snap.project.edges ?? []);
         useProjectStore.getState().setProjectId(projectId);
-        useVoltaiStore
-          .getState()
-          .setAll(snap.voltai.components ?? [], snap.voltai.edges ?? []);
+        useVoltaiStore.getState().setAll(snap.voltai.components ?? [], snap.voltai.edges ?? []);
       })
       .catch((e: any) => {
         toast.error(`Falha ao carregar projeto: ${e.message ?? e}`);

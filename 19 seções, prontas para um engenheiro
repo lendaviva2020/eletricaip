@@ -27,6 +27,7 @@
 17. [Testes e Qualidade](#17-testes-e-qualidade)
 18. [Deploy e DevOps](#18-deploy-e-devops)
 19. [Apêndice: Referências Técnicas e Normativas](#19-apêndice-referências-técnicas-e-normativas)
+20. [PLANO DE CRESCIMENTO E EXPANSÃO TECNOLÓGICA (VISÃO FUTURA)](#20-plano-de-crescimento-e-expansão-tecnológica-visão-futura)
 
 ---
 
@@ -92,7 +93,7 @@
 
 ### 2.3 Serviços Externos
 ```
-- Anthropic Claude API — NexusMind AI Engine
+- DeepSeek API — NexusMind AI Engine
 - Stripe — pagamentos e assinaturas
 - Resend — e-mails transacionais
 ```
@@ -1733,16 +1734,27 @@ serve(async (req) => {
   // 4. Construir system prompt com contexto do projeto
   const systemPrompt = buildNexusMindSystemPrompt(projectContext);
 
-  // 5. Chamar Claude API
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: message }],
+  // 5. Chamar DeepSeek API
+  const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")}`
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message }
+      ],
+      temperature: 0.2
+    })
   });
+  const resJson = await response.json();
+  const fullText = resJson.choices?.[0]?.message?.content ?? "";
 
   // 6. Parsear resposta e extrair actions (se houver patch de diagrama)
-  const { text, diagramPatch, normWarnings } = parseAIResponse(response.content);
+  const { text, diagramPatch, normWarnings } = parseAIResponse(fullText);
 
   // 7. Decrementar créditos (operação atômica)
   await supabase.rpc('decrement_ai_credits', {
@@ -1798,11 +1810,7 @@ FORMATO DE RESPOSTA PARA GERAÇÃO DE DIAGRAMA:
 }`;
 }
 
-function parseAIResponse(content: Anthropic.ContentBlock[]) {
-  const fullText = content
-    .filter((b) => b.type === 'text')
-    .map((b) => (b as { type: 'text'; text: string }).text)
-    .join('');
+function parseAIResponse(fullText: string) {
 
   // Tentar parsear como JSON estruturado
   try {
@@ -2295,6 +2303,102 @@ SPRINT 6 (Semana 11-12): Fase 8 (FBD/Twin/PLC) + Polish
 
 ---
 
+## 20. PLANO DE CRESCIMENTO E EXPANSÃO TECNOLÓGICA (VISÃO FUTURA)
+
+Este plano apresenta as melhorias arquiteturais e funcionais identificadas como o maior potencial de crescimento para tornar a EletricAI a plataforma líder absoluta do mercado global de engenharia elétrica assistida por IA.
+
+### 20.1 Multi-Agent Agentic Workflow (NexusMind v2)
+Atualmente, a geração e análise dependem de uma única chamada LLM em estilo sequencial. A versão v2 evolui para uma arquitetura de múltiplos agentes especialistas cooperando de forma síncrona:
+
+1. **Agente Orquestrador**: Interpreta a intenção do usuário e distribui as tarefas.
+2. **Agente Construtor de Diagramas**: Focado exclusivamente na topologia e lógica do circuito (nós e caminhos de cabos).
+3. **Agente Validador de Conformidade (Compliance Guard)**: Analisa o diagrama gerado em tempo real contra as normas ABNT NBR 5410 e NR-12 e insere relatórios de violação.
+4. **Agente de Layout e Roteamento**: Executa algoritmos de posicionamento visual automático (ex: force-directed ou baseados em grid) para garantir que os desenhos apareçam organizados, legíveis e esteticamente perfeitos no canvas.
+
+#### Exemplo de Resposta Estruturada (JSON Consolidado):
+```json
+{
+  "status": "compliant | warnings_found",
+  "text": "Explicação detalhada dos dimensionamentos elétricos baseados na NBR 5410...",
+  "diagramPatch": {
+    "module": "unifilar",
+    "nodes": [
+      {
+        "id": "QF-motor-vfd",
+        "typeKey": "disjuntor",
+        "props": { "current_a": 32, "curve": "C", "poles": 3 }
+      }
+    ],
+    "edges": [
+      { "source": "QF-motor-vfd", "target": "VFD-motor", "role": "power" }
+    ]
+  },
+  "complianceReport": {
+    "checkedNorms": ["NBR 5410:2004 §6.2.1", "NR-12 §12.2"],
+    "violations": []
+  }
+}
+```
+
+### 20.2 Sincronização Local-First e Resiliência (Offline Operation)
+Considerando que engenheiros trabalham frequentemente em subestações isoladas, salas de máquinas subterrâneas ou áreas industriais com sinal de internet inexistente ou instável, a EletricAI deve suportar operação **offline-first**.
+
+#### Mecanismo de Sincronização:
+* **Banco Local**: Substituição do estado simples de memória por um banco local IndexedDB persistido via RxDB/Yjs.
+* **Edição Colaborativa (CRDT)**: Uso de Y.js para resolver conflitos de alteração no canvas ou nos rungs do Ladder de forma automática quando a conexão for restabelecida.
+* **Fila de Sincronização**: Todas as mutações e logs de simulação são inseridos em uma fila de prioridade local com retentativa exponencial.
+
+### 20.3 Automação Bidirecional & Loop de Controle IoT Seguro (IoT Loop)
+Permitir que o EletricAI interaja diretamente com CLP e sensores reais, permitindo não apenas ler dados (telemetria), mas também enviar comandos diretos do SCADA e do Digital Twin de forma segura e auditável.
+
+#### Protocolo de Segurança e Controle de Acesso (Loop IoT):
+```sql
+-- Tabela para rastrear e auditar comandos de escrita via SCADA
+CREATE TABLE scada_write_commands (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id       UUID NOT NULL REFERENCES profiles(id),
+  project_id    UUID NOT NULL REFERENCES projects(id),
+  tag_name      TEXT NOT NULL,
+  value         DOUBLE PRECISION NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'approved', 'executed', 'rejected'
+  authorized_by UUID REFERENCES profiles(id),    -- Dupla autorização para comandos industriais
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- RLS: Apenas membros com papel 'engineer' ou superior podem gravar comandos
+CREATE POLICY "Engineers can write commands" ON scada_write_commands
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM project_members
+      WHERE project_id = scada_write_commands.project_id
+        AND user_id = auth.uid()
+        AND role IN ('owner', 'admin', 'engineer')
+    )
+  );
+```
+
+### 20.4 AI Blueprint Vectorizer (Importação Inteligente de CAD/DWG)
+Gargalo comum: engenheiros já possuem milhares de quilômetros de plantas elétricas legadas em arquivos DWG ou PDFs de projetos antigos. O **AI Blueprint Vectorizer** é um microsserviço de Visão Computacional que processa imagens ou arquivos vetoriais de diagramas antigos e os recria como componentes editáveis no canvas.
+
+#### Pipeline do Vectorizer:
+1. **Extração de Vetores**: Leitura de linhas e polilinhas do arquivo DWG.
+2. **Classificação por Visão Computacional**: Um modelo YOLOv8 treinado em símbolos elétricos (IEC 60617) classifica os blocos (ex: disjuntor, motor, contator).
+3. **Conexões Topológicas**: Identificação das interseções de linhas para mapear os caminhos dos cabos (`edges`).
+4. **Reconstrução Automática**: O sistema exporta o `diagramPatch` correspondente inserindo diretamente no banco de dados do projeto.
+
+### 20.5 IA Preditiva de Autocomplete de Circuitos (Next-Node Recommendation)
+Enquanto o engenheiro desenha manualmente no canvas do Unifilar ou Ladder, a IA atua silenciosamente prevendo o próximo nó baseado em padrões estatísticos e normativos da base de conhecimento da EletricAI.
+
+#### Exemplo de Fluxo:
+* Engenheiro insere um **Motor Trifásico de 15kW**.
+* O painel lateral sugere imediatamente em destaque translúcido:
+  1. *Falta de proteção térmica de sobrecarga: Sugerido Relé Térmico (FR) com ajuste [28.0 - 40.0] A.*
+  2. *Sugerido Contator principal KM de 40A para manobra.*
+  3. *Cabo recomendado: 6 mm² (método B1) conforme NBR 5410.*
+* Um único clique em "Adicionar Proteção Sugerida" posiciona e conecta os 3 elementos no canvas de forma ordenada.
+
+---
+
 *Documento gerado para uso exclusivo da equipe de engenharia do EletricAI.*
-*Versão 1.0 — Maio 2026*
+*Versão 1.1 — Plano de Crescimento Adicionado — Maio 2026*
 *Repositório: https://github.com/lendavira2020/eletric.git*

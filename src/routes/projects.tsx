@@ -4,11 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Cpu, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  listProjects,
-  createProject,
-  deleteProject,
-} from "@/lib/projects.functions";
+import { listProjects, createProject, deleteProject } from "@/lib/projects.functions";
 import {
   Dialog,
   DialogContent,
@@ -76,7 +72,10 @@ function Projects() {
               {isLoading ? "Carregando..." : `${projects.length} projeto(s)`}
             </p>
           </div>
-          <CreateProjectDialog onCreate={(v) => createMut.mutate(v)} pending={createMut.isPending} />
+          <CreateProjectDialog
+            onCreate={(v) => createMut.mutate(v)}
+            pending={createMut.isPending}
+          />
         </div>
 
         {isLoading ? (
@@ -101,11 +100,7 @@ function Projects() {
                 key={p.id}
                 className="group relative rounded-xl border border-border bg-card p-4 hover:border-primary/50 hover:bg-accent/30 transition-all"
               >
-                <Link
-                  to="/workspace"
-                  search={{ projectId: p.id }}
-                  className="block"
-                >
+                <Link to="/workspace" search={{ projectId: p.id }} className="block">
                   <div className="flex items-start justify-between">
                     <div className="h-9 w-9 rounded-md grid place-items-center bg-primary/15 text-primary">
                       <Cpu className="h-4 w-4" />

@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Vary": "Origin",
+  Vary: "Origin",
 };
 
 // Verify the caller's Supabase JWT. Returns user id + an authed client (RLS as user) or null.
@@ -60,24 +60,94 @@ const SCHEMA = {
   properties: {
     title: { type: "string" },
     rationale: { type: "string" },
-    transformer: { type: "object", properties: { kVA: { type: "number" }, primary_kV: { type: "number" }, secondary_V: { type: "number" } }, required: ["kVA", "primary_kV", "secondary_V"] },
-    ccm: { type: "object", properties: { columns: { type: "number" }, cells: { type: "number" } }, required: ["columns", "cells"] },
-    motors: { type: "array", items: { type: "object", properties: { id: { type: "string" }, power_kW: { type: "number" }, voltage_V: { type: "number" }, startMethod: { type: "string", enum: ["DOL", "SOFT", "VFD"] }, role: { type: "string" } }, required: ["id", "power_kW"] } },
-    nodes: { type: "array", items: { type: "object", properties: { id: { type: "string" }, kind: { type: "string" }, category: { type: "string", enum: ["power", "mech", "inst", "logic"] }, label: { type: "string" }, params: { type: "object", additionalProperties: true }, position: { type: "object", properties: { x: { type: "number" }, y: { type: "number" } }, required: ["x", "y"] } }, required: ["id", "kind", "category", "label", "position"] } },
-    edges: { type: "array", items: { type: "object", properties: { source: { type: "string" }, target: { type: "string" }, kind: { type: "string", enum: ["power", "signal", "pipe"] } }, required: ["source", "target", "kind"] } },
+    transformer: {
+      type: "object",
+      properties: {
+        kVA: { type: "number" },
+        primary_kV: { type: "number" },
+        secondary_V: { type: "number" },
+      },
+      required: ["kVA", "primary_kV", "secondary_V"],
+    },
+    ccm: {
+      type: "object",
+      properties: { columns: { type: "number" }, cells: { type: "number" } },
+      required: ["columns", "cells"],
+    },
+    motors: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          power_kW: { type: "number" },
+          voltage_V: { type: "number" },
+          startMethod: { type: "string", enum: ["DOL", "SOFT", "VFD"] },
+          role: { type: "string" },
+        },
+        required: ["id", "power_kW"],
+      },
+    },
+    nodes: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          kind: { type: "string" },
+          category: { type: "string", enum: ["power", "mech", "inst", "logic"] },
+          label: { type: "string" },
+          params: { type: "object", additionalProperties: true },
+          position: {
+            type: "object",
+            properties: { x: { type: "number" }, y: { type: "number" } },
+            required: ["x", "y"],
+          },
+        },
+        required: ["id", "kind", "category", "label", "position"],
+      },
+    },
+    edges: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          source: { type: "string" },
+          target: { type: "string" },
+          kind: { type: "string", enum: ["power", "signal", "pipe"] },
+        },
+        required: ["source", "target", "kind"],
+      },
+    },
   },
   required: ["title", "rationale", "transformer", "ccm", "motors", "nodes", "edges"],
 };
 
-const TOOL = { type: "function", function: { name: "design_industrial_system", description: "Devolve o sistema elétrico industrial completo estruturado.", parameters: SCHEMA } };
+const TOOL = {
+  type: "function",
+  function: {
+    name: "design_industrial_system",
+    description: "Devolve o sistema elétrico industrial completo estruturado.",
+    parameters: SCHEMA,
+  },
+};
 
 // Standard error codes consumed by the client.
-type ErrCode = "MISSING_KEY" | "INVALID_KEY_FORMAT" | "AUTH_401" | "RATE_LIMIT_429" | "NO_CREDITS_402" | "UPSTREAM_5XX" | "BAD_RESPONSE" | "BAD_INPUT";
+type ErrCode =
+  | "MISSING_KEY"
+  | "INVALID_KEY_FORMAT"
+  | "AUTH_401"
+  | "RATE_LIMIT_429"
+  | "NO_CREDITS_402"
+  | "UPSTREAM_5XX"
+  | "BAD_RESPONSE"
+  | "BAD_INPUT";
 
 function err(code: ErrCode, message: string, status = 200, extra: Record<string, unknown> = {}) {
   // Always 200 to the client (so non-2xx doesn't crash the page); client checks `ok`/`error`.
   return new Response(JSON.stringify({ ok: false, error: { code, message, ...extra } }), {
-    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
@@ -94,23 +164,34 @@ async function healthCheck(): Promise<Response> {
       const r = await fetch("https://api.deepseek.com/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "deepseek-chat", messages: [{ role: "user", content: "ping" }], max_tokens: 1 }),
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [{ role: "user", content: "ping" }],
+          max_tokens: 1,
+        }),
       });
       pingStatus = r.status;
       pingOk = r.ok;
       if (!r.ok) pingError = (await r.text()).slice(0, 200);
-    } catch (e) { pingError = (e as Error).message; }
+    } catch (e) {
+      pingError = (e as Error).message;
+    }
   }
-  return new Response(JSON.stringify({
-    ok: v.ok && pingOk,
-    keyConfigured: !!key,
-    keyFormatValid: v.ok,
-    keyFormatReason: v.reason,
-    pingOk, pingStatus, pingError,
-    provider: "deepseek",
-    model: "deepseek-chat",
-    checkedAt: new Date().toISOString(),
-  }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  return new Response(
+    JSON.stringify({
+      ok: v.ok && pingOk,
+      keyConfigured: !!key,
+      keyFormatValid: v.ok,
+      keyFormatReason: v.reason,
+      pingOk,
+      pingStatus,
+      pingError,
+      provider: "deepseek",
+      model: "deepseek-chat",
+      checkedAt: new Date().toISOString(),
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 }
 
 Deno.serve(async (req) => {
@@ -121,7 +202,10 @@ Deno.serve(async (req) => {
   const auth = await requireUser(req);
   if (!auth) {
     return new Response(
-      JSON.stringify({ ok: false, error: { code: "AUTH_REQUIRED", message: "Sessão necessária. Faça login para usar a IA." } }),
+      JSON.stringify({
+        ok: false,
+        error: { code: "AUTH_REQUIRED", message: "Sessão necessária. Faça login para usar a IA." },
+      }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -184,7 +268,10 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [{ role: "system", content: SYSTEM }, { role: "user", content: userMsg }],
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: userMsg },
+        ],
         tools: [TOOL],
         tool_choice: { type: "function", function: { name: "design_industrial_system" } },
         temperature: 0.3,
@@ -192,12 +279,23 @@ Deno.serve(async (req) => {
     });
 
     if (resp.status === 401) {
-      return err("AUTH_401",
+      return err(
+        "AUTH_401",
         "Chave de IA inválida ou revogada. Atualize DEEPSEEK_API_KEY no painel de secrets do Supabase e gere uma nova em platform.deepseek.com/api_keys.",
-        200, { provider: "deepseek" });
+        200,
+        { provider: "deepseek" },
+      );
     }
-    if (resp.status === 429) return err("RATE_LIMIT_429", "Muitas requisições à IA. Aguarde alguns segundos e tente novamente.");
-    if (resp.status === 402) return err("NO_CREDITS_402", "Créditos da conta DeepSeek esgotados. Adicione créditos em platform.deepseek.com.");
+    if (resp.status === 429)
+      return err(
+        "RATE_LIMIT_429",
+        "Muitas requisições à IA. Aguarde alguns segundos e tente novamente.",
+      );
+    if (resp.status === 402)
+      return err(
+        "NO_CREDITS_402",
+        "Créditos da conta DeepSeek esgotados. Adicione créditos em platform.deepseek.com.",
+      );
     if (resp.status >= 500) {
       const t = await resp.text();
       console.error("DeepSeek 5xx:", resp.status, t);
@@ -217,8 +315,9 @@ Deno.serve(async (req) => {
     }
 
     let parsed: any;
-    try { parsed = JSON.parse(call.function.arguments); }
-    catch (e) {
+    try {
+      parsed = JSON.parse(call.function.arguments);
+    } catch (e) {
       console.error("DeepSeek JSON parse error:", e);
       return err("BAD_RESPONSE", "JSON inválido devolvido pela IA. Tente novamente.");
     }
@@ -226,13 +325,18 @@ Deno.serve(async (req) => {
     // Server-side usage tracking (best effort).
     const tokensUsed = Number(data?.usage?.total_tokens) || 0;
     if (tokensUsed > 0) {
-      const { error: incErr } = await auth.supabase.rpc("increment_ai_tokens", { p_tokens: tokensUsed });
+      const { error: incErr } = await auth.supabase.rpc("increment_ai_tokens", {
+        p_tokens: tokensUsed,
+      });
       if (incErr) console.error("increment_ai_tokens failed:", incErr);
     }
 
-    return new Response(JSON.stringify({ ok: true, system: parsed, provider: "deepseek", tokensUsed }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ ok: true, system: parsed, provider: "deepseek", tokensUsed }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (e) {
     console.error("ai-industrial-architect erro inesperado:", e);
     return err("BAD_RESPONSE", "Erro inesperado. Tente novamente.");

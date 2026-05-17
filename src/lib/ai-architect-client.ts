@@ -10,6 +10,15 @@ import {
 import { useCurrentProject } from "@/lib/current-project";
 import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
 
+import { useVoltaiStore } from "@/lib/voltai/store";
+import { useEditorStore } from "@/lib/editor/store";
+import {
+  getVoltaiFactoryParams,
+  createVoltaiDefaultState,
+  type VoltaiComponentType,
+} from "@/lib/voltai/component-definitions";
+import type { LadderRung } from "@/lib/ladder/types";
+
 export interface ArchitectResult {
   title: string;
   rationale: string;
@@ -61,17 +70,18 @@ function mapError(code: string, message: string): AIServiceError {
         ],
       );
     case "INSUFFICIENT_CREDITS":
-      return new AIServiceError(
-        code,
-        message,
-        "Créditos de IA insuficientes neste mês.",
-        ["Faça upgrade do plano em Configurações → Cobrança.", "Ou aguarde o próximo ciclo mensal."],
-      );
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("trigger-upgrade-modal"));
+      }
+      return new AIServiceError(code, message, "Créditos de IA insuficientes neste mês.", [
+        "Faça upgrade do plano em Configurações → Cobrança.",
+        "Ou aguarde o próximo ciclo mensal.",
+      ]);
     case "RATE_LIMIT_429":
       return new AIServiceError(code, message, "Muitas requisições à IA. Aguarde alguns segundos.");
     case "NO_CREDITS_402":
       return new AIServiceError(code, message, "Créditos da conta DeepSeek esgotados.", [
-        "Adicione créditos em platform.deepseek.com/usage.",
+        "Adicione créditos in platform.deepseek.com/usage.",
         "Recarregue a página e tente novamente.",
       ]);
     case "UPSTREAM_5XX":
@@ -179,6 +189,7 @@ export function applyArchitectToStore(
   result: ArchitectResult,
   opts: { mode: "replace" | "merge" } = { mode: "replace" },
 ) {
+  // 1. Map and update SCADA / Physical Twin (useProjectStore)
   const nodes: IndustrialNode[] = result.nodes.map((n) => ({
     id: n.id,
     kind: (n.kind as NodeKind) || "motor",
@@ -213,6 +224,193 @@ export function applyArchitectToStore(
       ...s.logs,
     ].slice(0, 200),
   }));
+
+  // 2. Map and deploy to Unifilar Canvas (useVoltaiStore)
+  const voltaiComponents = result.nodes.map((n) => {
+    let type: VoltaiComponentType = "QF";
+    const kindLower = n.kind.toLowerCase();
+    if (kindLower.includes("breaker") || kindLower.includes("disjuntor")) type = "QF";
+    else if (kindLower.includes("contactor") || kindLower.includes("contator")) type = "KM";
+    else if (kindLower.includes("thermal") || kindLower.includes("termico") || kindLower.includes("rele")) type = "FR";
+    else if (kindLower.includes("motor")) type = "M";
+    else if (kindLower.includes("transformer") || kindLower.includes("trafo")) type = "TR";
+    else if (kindLower.includes("plc") || kindLower.includes("clp")) type = "PLC";
+    else if (kindLower.includes("source") || kindLower.includes("fonte")) type = "PS";
+    else if (kindLower.includes("bus") || kindLower.includes("barramento")) type = "BC";
+    else if (kindLower.includes("soft") || kindLower.includes("starter")) type = "SS";
+    else if (kindLower.includes("vfd") || kindLower.includes("inversor")) type = "VFD";
+    else if (kindLower.includes("switch") || kindLower.includes("seccionadora")) type = "QS";
+
+    return {
+      id: n.id,
+      type,
+      label: n.label || n.id,
+      position: n.position || { x: 100, y: 100 },
+      rotation: 0,
+      params: getVoltaiFactoryParams(type),
+      simulationState: createVoltaiDefaultState(type),
+    };
+  });
+
+  const voltaiEdges = result.edges.map((e, index) => ({
+    id: `ve-ai-${Date.now()}-${index}`,
+    source: e.source,
+    target: e.target,
+    sourceHandle: null,
+    targetHandle: null,
+    role: (e.kind === "power" ? "power" : e.kind === "signal" ? "signal" : "control") as any,
+  }));
+
+  useVoltaiStore.getState().setAll(voltaiComponents, voltaiEdges);
+
+  // 3. Map and deploy standard compliant Ladder rungs & Shared tags (useEditorStore)
+  const ladderRungs: LadderRung[] = [];
+  const motorList = result.motors && result.motors.length > 0
+    ? result.motors
+    : result.nodes.filter((n) => n.kind.toLowerCase().includes("motor")).map((n) => ({ id: n.id, startMethod: "DOL" }));
+
+  motorList.forEach((motor, i) => {
+    const motorId = motor.id || `M${i + 1}`;
+    const kmId = `KM${i + 1}`;
+
+    // Rung 1: Direct-on-Line (DOL) Command & Seal contact
+    const r1: LadderRung = {
+      id: `rung-ai-${Date.now()}-motor-${i}-cmd`,
+      label: `Partida do Motor ${motorId} (Selo de KM)`,
+      cells: [
+        [
+          { kind: "XIC", operand: `%I0.${i * 4}` },      // Motor Overload/Breaker OK
+          { kind: "XIC", operand: `%I0.${i * 4 + 1}` },  // Start Push-Button
+          { kind: "XIO", operand: `%I0.${i * 4 + 2}` },  // Stop Push-Button
+          { kind: "EMPTY", operand: "" },
+          { kind: "EMPTY", operand: "" },
+          { kind: "OTE", operand: `%Q0.${i * 2}` }       // Contactor command
+        ],
+        [
+          { kind: "EMPTY", operand: "" },
+          { kind: "XIC", operand: `%Q0.${i * 2}` },      // Seal contact
+          { kind: "EMPTY", operand: "" },
+          { kind: "EMPTY", operand: "" },
+          { kind: "EMPTY", operand: "" },
+          { kind: "EMPTY", operand: "" }
+        ]
+      ]
+    };
+    ladderRungs.push(r1);
+
+    // Rung 2: Motor Protection Tripped Alarm Lamp
+    const r2: LadderRung = {
+      id: `rung-ai-${Date.now()}-motor-${i}-fault`,
+      label: `Alarme de Disparo / Falha ${motorId}`,
+      cells: [
+        [
+          { kind: "XIO", operand: `%I0.${i * 4}` },      // NC contact of overload
+          { kind: "EMPTY", operand: "" },
+          { kind: "EMPTY", operand: "" },
+          { kind: "EMPTY", operand: "" },
+          { kind: "EMPTY", operand: "" },
+          { kind: "OTE", operand: `%Q0.${i * 2 + 1}` }   // Alarm Lamp
+        ]
+      ]
+    };
+    ladderRungs.push(r2);
+
+    // Register IO Tags in editor store
+    useEditorStore.getState().upsertTag({
+      id: `%I0.${i * 4}`,
+      name: `${motorId}_PROT_OK`,
+      type: "BOOL",
+      value: true,
+      forced: false
+    });
+    useEditorStore.getState().upsertTag({
+      id: `%I0.${i * 4 + 1}`,
+      name: `${motorId}_START`,
+      type: "BOOL",
+      value: false,
+      forced: false
+    });
+    useEditorStore.getState().upsertTag({
+      id: `%I0.${i * 4 + 2}`,
+      name: `${motorId}_STOP`,
+      type: "BOOL",
+      value: false,
+      forced: false
+    });
+    useEditorStore.getState().upsertTag({
+      id: `%Q0.${i * 2}`,
+      name: `${kmId}_CMD`,
+      type: "BOOL",
+      value: false,
+      forced: false
+    });
+    useEditorStore.getState().upsertTag({
+      id: `%Q0.${i * 2 + 1}`,
+      name: `${motorId}_FAULT_LAMP`,
+      type: "BOOL",
+      value: false,
+      forced: false
+    });
+  });
+
+  useEditorStore.getState().setRungs(ladderRungs);
+
+  // 4. Map and deploy logical FBD blocks (useEditorStore.fbdNodes / fbdEdges)
+  const fbdNodes: any[] = [];
+  const fbdEdges: any[] = [];
+
+  motorList.forEach((motor, i) => {
+    const motorId = motor.id || `M${i + 1}`;
+
+    // Place an AND block for Protection and Start Buttons
+    fbdNodes.push({
+      id: `AND_${i + 1}`,
+      type: "fbdBlock",
+      position: { x: 100, y: 150 + i * 200 },
+      data: {
+        label: `AND_${i + 1}`,
+        type: "AND",
+        inputs: [
+          { id: "in1", label: "IN1", type: "BOOL" },
+          { id: "in2", label: "IN2", type: "BOOL" },
+        ],
+        outputs: [{ id: "out", label: "OUT", type: "BOOL" }],
+        params: undefined,
+      },
+    });
+
+    // Place a Timer TON block for delayed start/stop
+    fbdNodes.push({
+      id: `TON_${i + 1}`,
+      type: "fbdBlock",
+      position: { x: 340, y: 150 + i * 200 },
+      data: {
+        label: `TON_${i + 1}`,
+        type: "TON",
+        inputs: [
+          { id: "in", label: "IN", type: "BOOL" },
+          { id: "pt", label: "PT", type: "INT" },
+        ],
+        outputs: [
+          { id: "q", label: "Q", type: "BOOL" },
+          { id: "et", label: "ET", type: "INT" },
+        ],
+        params: { PT: "T#5s" },
+      },
+    });
+
+    // Connect the AND output to the TON input
+    fbdEdges.push({
+      id: `fbd-edge-${Date.now()}-${i}`,
+      source: `AND_${i + 1}`,
+      target: `TON_${i + 1}`,
+      sourceHandle: "out",
+      targetHandle: "in",
+      style: { stroke: "oklch(0.78 0.17 200)", strokeWidth: 2 },
+    });
+  });
+
+  useEditorStore.getState().setFbdAll(fbdNodes, fbdEdges);
 
   void autoSaveVersion(result, nodes, edges);
   return { nodes: nodes.length, edges: edges.length };
