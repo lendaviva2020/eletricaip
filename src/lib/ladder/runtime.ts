@@ -76,39 +76,62 @@ export const resetRuntimeState = () => {
   counterState.clear();
 };
 
-const tickTimer = (key: string, input: boolean, presetMs: number, now: number): { done: boolean; accum: number } => {
+// IEC 61131-3 TON:
+//   IN ↑ (rising edge): ET starts from 0, DN=false, begins accumulating elapsed time.
+//   IN held true:       ET += dt; when ET >= PT → ET clamped to PT, DN=true.
+//   IN ↓ (falling/EN false): ET=0, DN=false (immediate reset).
+const tickTimer = (
+  key: string,
+  input: boolean,
+  presetMs: number,
+  now: number,
+): { done: boolean; accum: number } => {
   let st = timerState.get(key);
   if (!st) {
     st = { accum: 0, done: false, prevIn: false, lastTick: now };
     timerState.set(key, st);
   }
-  const dt = Math.max(0, now - st.lastTick);
-  st.lastTick = now;
-  if (input) {
+  if (input && !st.prevIn) {
+    // Rising edge: (re)start timing from this scan.
+    st.accum = 0;
+    st.done = false;
+    st.lastTick = now;
+  } else if (input) {
+    const dt = Math.max(0, now - st.lastTick);
     st.accum += dt;
+    st.lastTick = now;
     if (presetMs > 0 && st.accum >= presetMs) {
       st.accum = presetMs;
       st.done = true;
     }
   } else {
+    // IN false → DN false and ET reset to 0 (immediate, every scan).
     st.accum = 0;
     st.done = false;
+    st.lastTick = now;
   }
   st.prevIn = input;
   return { done: st.done, accum: st.accum };
 };
 
-const tickCounter = (key: string, input: boolean, preset: number): { done: boolean; count: number } => {
+// IEC 61131-3 CTU:
+//   CU ↑ (rising edge): CV += 1 (no reset on falling edge — CTD is separate).
+//   DN reflects current CV >= PV each scan (not sticky).
+//   Reset is performed externally (e.g. OTU on the DN tag or an explicit R input).
+const tickCounter = (
+  key: string,
+  input: boolean,
+  preset: number,
+): { done: boolean; count: number } => {
   let st = counterState.get(key);
   if (!st) {
     st = { count: 0, done: false, prevIn: false };
     counterState.set(key, st);
   }
-  // Rising edge increments
   if (input && !st.prevIn) {
     st.count += 1;
-    if (preset > 0 && st.count >= preset) st.done = true;
   }
+  st.done = preset > 0 && st.count >= preset;
   st.prevIn = input;
   return { done: st.done, count: st.count };
 };
