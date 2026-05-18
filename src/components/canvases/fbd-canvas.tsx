@@ -42,7 +42,6 @@ const nodeTypes = { fbdBlock: FbdBlockNode };
 
 function FbdBlockNode({ id, data }: { id: string; data: FbdNodeData }) {
   const [showConfig, setShowConfig] = useState(false);
-  const connected = data.connectedInputs ?? {};
 
   return (
     <div className="rounded border border-primary/40 bg-card/95 min-w-[160px] shadow-lg overflow-hidden select-none">
@@ -147,7 +146,7 @@ function FbdBlockNode({ id, data }: { id: string; data: FbdNodeData }) {
       {showConfig && data.params && data.onParamChange && (
         <div className="border-t border-border p-2 bg-background/50 flex flex-col gap-1.5">
           {Object.entries(data.params).map(([key, val]) => {
-            const def = DEF_MAP.get(data.type);
+            const def = DEF_MAP.get(data.type as any);
             const paramDef = def?.params?.find((p) => p.key === key);
             return (
               <div key={key} className="flex flex-col gap-1">
@@ -390,7 +389,6 @@ export function FbdCanvas() {
           outputs: def.outputs.map((o) => ({ label: o.label, type: o.type })),
           params,
           onParamChange: handleParamChange,
-          connectedInputs: {},
         },
       };
 

@@ -20,7 +20,7 @@ export function IndustrialFlowNode({ data, selected }: NodeProps<IndustrialNode>
         data.energized && "energized",
       )}
     >
-      <Handle type="target" position={Position.Left} className="!bg-primary !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="bg-primary! w-2! h-2!" />
       <div className="flex items-center gap-2">
         <div
           className={cn(
@@ -40,7 +40,7 @@ export function IndustrialFlowNode({ data, selected }: NodeProps<IndustrialNode>
           </div>
         </div>
       </div>
-      <Handle type="source" position={Position.Right} className="!bg-primary !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="bg-primary! w-2! h-2!" />
     </div>
   );
 }

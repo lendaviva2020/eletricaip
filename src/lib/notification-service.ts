@@ -27,7 +27,7 @@ export async function pushNotification(
 
   if (_tenantId && _userId) {
     try {
-      await supabase.from("notifications").insert({
+      await (supabase.from("notifications") as any).insert({
         tenant_id: _tenantId,
         user_id: _userId,
         type,

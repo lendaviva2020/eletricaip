@@ -88,7 +88,6 @@ export function SimCanvas() {
           pushNotification("alarm", `Alarme ${priorityLabel}: ${tag}`, alarm.message, {
             tagName: tag,
             priority: alarm.priority,
-            value: alarm.triggeredValue,
           });
         }
       }
