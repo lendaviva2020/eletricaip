@@ -27,6 +27,14 @@ export function TwinCanvas() {
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [sensorHistory, setSensorHistory] = useState<Record<string, TelemetryHistory[]>>({});
 
+  // ===== "What-If" Simulation Mode =====
+  const [whatIfOpen, setWhatIfOpen] = useState(false);
+  const [whatIfActive, setWhatIfActive] = useState(false);
+  const [loadDelta, setLoadDelta] = useState(10); // % delta on load (drives speed↓, current↑)
+  const [voltageDelta, setVoltageDelta] = useState(0); // % delta on supply voltage
+  const [ambientDelta, setAmbientDelta] = useState(0); // °C above 25°C nominal
+  const [horizonH, setHorizonH] = useState(8); // hours of projected wear
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const projectTags = useProjectStore((s) => s.tags);
