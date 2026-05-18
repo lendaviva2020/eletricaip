@@ -593,3 +593,258 @@ function buildSvgPath(values: number[], width: number, height: number): string {
     })
     .join(" ");
 }
+
+// ============= "What-If" Scenario Panel =============
+interface WhatIfMetrics {
+  speed: number;
+  current: number;
+  temperature: number;
+  efficiency: number;
+  lifeConsumedH: number;
+  failureRisk: string;
+}
+interface BaselineMetrics {
+  speed: number;
+  current: number;
+  temperature: number;
+  efficiency: number;
+}
+
+function WhatIfPanel(props: {
+  loadDelta: number;
+  setLoadDelta: (n: number) => void;
+  voltageDelta: number;
+  setVoltageDelta: (n: number) => void;
+  ambientDelta: number;
+  setAmbientDelta: (n: number) => void;
+  horizonH: number;
+  setHorizonH: (n: number) => void;
+  whatIf: WhatIfMetrics;
+  baseline: BaselineMetrics;
+  active: boolean;
+  onRun: () => void;
+  onReset: () => void;
+  onClose: () => void;
+}) {
+  const { whatIf, baseline, active } = props;
+  return (
+    <div className="absolute left-6 top-28 z-30 w-[320px] rounded-lg border border-primary/30 bg-background/95 shadow-2xl glass-strong flex flex-col gap-3 p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-mono font-bold text-primary uppercase flex items-center gap-1.5">
+          <FlaskConical className="h-3.5 w-3.5" />
+          Cenário · E se?
+        </span>
+        <button
+          onClick={props.onClose}
+          className="text-muted-foreground hover:text-foreground cursor-pointer"
+          title="Fechar"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <p className="text-[10px] text-muted-foreground leading-snug font-mono">
+        Ajuste parâmetros operacionais e veja o impacto previsto sem afetar o
+        processo real. O modelo combina equações de máquina, curva de bomba e
+        termodinâmica do enrolamento.
+      </p>
+
+      <ScenarioSlider
+        label="Carga mecânica"
+        unit="%"
+        value={props.loadDelta}
+        min={-30}
+        max={50}
+        step={5}
+        onChange={props.setLoadDelta}
+        hint="Δ sobre a carga nominal do eixo"
+      />
+      <ScenarioSlider
+        label="Tensão de alimentação"
+        unit="%"
+        value={props.voltageDelta}
+        min={-15}
+        max={10}
+        step={1}
+        onChange={props.setVoltageDelta}
+        hint="Δ sobre 380 V nominal"
+      />
+      <ScenarioSlider
+        label="Temperatura ambiente"
+        unit="°C"
+        value={props.ambientDelta}
+        min={-10}
+        max={25}
+        step={1}
+        onChange={props.setAmbientDelta}
+        hint="Δ sobre 25 °C nominal"
+      />
+      <ScenarioSlider
+        label="Horizonte"
+        unit="h"
+        value={props.horizonH}
+        min={1}
+        max={72}
+        step={1}
+        onChange={props.setHorizonH}
+        hint="Janela de projeção"
+      />
+
+      {/* COMPARISON TABLE: REAL vs WHAT-IF */}
+      <div className="rounded border border-border/80 bg-card/40 overflow-hidden">
+        <div className="grid grid-cols-[1fr_70px_70px_60px] text-[9px] font-mono uppercase text-muted-foreground bg-card/60 px-2 py-1 border-b border-border/60">
+          <span>Métrica</span>
+          <span className="text-right">Atual</span>
+          <span className="text-right">Cenário</span>
+          <span className="text-right">Δ</span>
+        </div>
+        <CompareRow label="Velocidade" unit="rpm" real={baseline.speed} sim={whatIf.speed} />
+        <CompareRow label="Corrente" unit="A" real={baseline.current} sim={whatIf.current} decimals={1} />
+        <CompareRow
+          label="Temp. enrol."
+          unit="°C"
+          real={baseline.temperature}
+          sim={whatIf.temperature}
+          decimals={1}
+        />
+        <CompareRow
+          label="Eficiência"
+          unit="%"
+          real={baseline.efficiency}
+          sim={whatIf.efficiency}
+          decimals={1}
+          inverse
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+        <div className="rounded border border-border/80 bg-card/40 px-2 py-1.5 flex flex-col">
+          <span className="text-[8px] text-muted-foreground uppercase">Vida útil consumida</span>
+          <span className="text-foreground font-bold">
+            {whatIf.lifeConsumedH.toFixed(3)} h <span className="text-muted-foreground">L10</span>
+          </span>
+        </div>
+        <div
+          className={`rounded border px-2 py-1.5 flex flex-col ${
+            whatIf.failureRisk === "CRÍTICO"
+              ? "border-destructive/60 bg-destructive/10 text-destructive"
+              : whatIf.failureRisk === "ALTO"
+                ? "border-warning/60 bg-warning/10 text-warning"
+                : whatIf.failureRisk === "MÉDIO"
+                  ? "border-warning/40 bg-warning/5 text-warning"
+                  : "border-success/40 bg-success/5 text-success"
+          }`}
+        >
+          <span className="text-[8px] text-muted-foreground uppercase">Risco de falha</span>
+          <span className="font-bold">{whatIf.failureRisk}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={props.onRun}
+          className={`flex-1 h-8 rounded text-[10px] font-mono font-bold uppercase tracking-wide flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${
+            active
+              ? "bg-primary/20 border border-primary text-primary"
+              : "bg-primary text-primary-foreground hover:bg-primary/90"
+          }`}
+        >
+          <Play className="h-3 w-3" />
+          {active ? "Cenário ativo" : "Executar simulação"}
+        </button>
+        <button
+          onClick={props.onReset}
+          title="Restaurar valores"
+          className="h-8 px-2 rounded border border-border bg-card/60 hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+        >
+          <ResetIcon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ScenarioSlider({
+  label,
+  unit,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  hint,
+}: {
+  label: string;
+  unit: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (n: number) => void;
+  hint?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[10px] font-mono text-muted-foreground">{label}</span>
+        <span className="text-[10px] font-mono font-bold text-foreground tabular-nums">
+          {value > 0 ? "+" : ""}
+          {value}
+          {unit}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-1.5 w-full accent-primary cursor-pointer"
+      />
+      {hint && <span className="text-[9px] text-muted-foreground/70 font-mono">{hint}</span>}
+    </div>
+  );
+}
+
+function CompareRow({
+  label,
+  unit,
+  real,
+  sim,
+  decimals = 0,
+  inverse = false,
+}: {
+  label: string;
+  unit: string;
+  real: number;
+  sim: number;
+  decimals?: number;
+  inverse?: boolean;
+}) {
+  const delta = sim - real;
+  const deltaPct = real !== 0 ? (delta / Math.abs(real)) * 100 : 0;
+  // Inverse=true means a positive delta is BAD (e.g. efficiency drop is bad
+  // when delta<0, so flipping logic)
+  const worse = inverse ? delta < 0 : delta > 0;
+  const color =
+    Math.abs(deltaPct) < 1
+      ? "text-muted-foreground"
+      : worse
+        ? "text-warning"
+        : "text-success";
+  return (
+    <div className="grid grid-cols-[1fr_70px_70px_60px] text-[10px] font-mono px-2 py-1 border-b border-border/40 last:border-b-0">
+      <span className="text-foreground">
+        {label} <span className="text-muted-foreground">({unit})</span>
+      </span>
+      <span className="text-right text-muted-foreground tabular-nums">{real.toFixed(decimals)}</span>
+      <span className="text-right text-foreground font-bold tabular-nums">
+        {sim.toFixed(decimals)}
+      </span>
+      <span className={`text-right font-bold tabular-nums ${color}`}>
+        {delta > 0 ? "+" : ""}
+        {delta.toFixed(decimals)}
+      </span>
+    </div>
+  );
+}
