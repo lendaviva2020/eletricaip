@@ -638,24 +638,6 @@ function NodeShape({
             strokeWidth={1}
           />
         )}
-            <Circle
-              x={tagValue === true || tagValue === "true" ? 38 : 12}
-              y={12}
-              radius={10}
-              fill="#fff"
-              shadowBlur={3}
-            />
-            <Text
-              y={28}
-              width={50}
-              align="center"
-              text={String(node.params.labelText || "Auto")}
-              fontFamily="sans-serif"
-              fontSize={8}
-              fill="#8a99b3"
-            />
-          </Group>
-        )}
 
         {/* SLIDER CONTROLLER WIDGET */}
         {node.kind === "slider" && (
