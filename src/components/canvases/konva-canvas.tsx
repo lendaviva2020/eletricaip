@@ -44,12 +44,15 @@ export function KonvaCanvas({ variant }: { variant: Variant }) {
   const tags = useProjectStore((s) => s.tags);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
     const ro = new ResizeObserver(() => {
-      const r = containerRef.current!.getBoundingClientRect();
+      const node = containerRef.current;
+      if (!node) return;
+      const r = node.getBoundingClientRect();
       setSize({ w: r.width, h: r.height });
     });
-    ro.observe(containerRef.current);
+    ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
