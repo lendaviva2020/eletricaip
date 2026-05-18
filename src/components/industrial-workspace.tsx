@@ -66,7 +66,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
     <div className="flex-1 flex min-h-0 relative">
       {/* Painel Esquerdo */}
       {!leftCollapsed ? (
-        <div className="relative flex shrink-0 z-10">
+        <div className="hidden lg:flex relative shrink-0 z-10">
           <LeftSidebarHost
             mode={mode}
             unifilar={{ dragValidation, onValidate: validateDraggedBreaker }}
@@ -84,7 +84,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         /* Alça elegante para expandir o painel esquerdo */
         <button
           onClick={() => setLeftCollapsed(false)}
-          className="flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
+          className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
           title="Expandir painel esquerdo"
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -113,7 +113,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
 
       {/* Painel Direito */}
       {!rightCollapsed ? (
-        <div className="relative flex shrink-0 z-10">
+        <div className="hidden lg:flex relative shrink-0 z-10">
           {/* Botão para recolher o painel direito */}
           <button
             onClick={() => setRightCollapsed(true)}
@@ -128,7 +128,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         /* Alça elegante para expandir o painel direito */
         <button
           onClick={() => setRightCollapsed(false)}
-          className="flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
+          className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
           title="Expandir painel direito"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
