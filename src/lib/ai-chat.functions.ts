@@ -105,7 +105,7 @@ export const streamChat = createServerFn({ method: "POST" })
     z
       .object({
         conversationId: z.string().uuid(),
-        prompt: z.string().min(1).max(4000),
+        prompt: z.string().min(1).max(32000),
       })
       .parse(input),
   )
