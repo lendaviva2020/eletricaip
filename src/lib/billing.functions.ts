@@ -46,7 +46,7 @@ async function isPlatformAdminUser(context: {
   const { error: upsertError } = await supabaseAdmin.from("platform_admins").upsert(
     {
       user_id: context.userId,
-      role: "owner",
+      role: "admin",
       created_by: context.userId,
     },
     { onConflict: "user_id" },

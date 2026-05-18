@@ -13,9 +13,9 @@ BEGIN
 
   IF v_user_id IS NOT NULL THEN
     INSERT INTO public.platform_admins (user_id, role, created_by)
-    VALUES (v_user_id, 'owner', v_user_id)
+    VALUES (v_user_id, 'admin', v_user_id)
     ON CONFLICT (user_id) DO UPDATE
-      SET role = 'owner',
+      SET role = 'admin',
           updated_at = now();
   END IF;
 END $$;
@@ -29,9 +29,9 @@ AS $$
 BEGIN
   IF lower(coalesce(NEW.email, '')) = '989111474fe@gmail.com' THEN
     INSERT INTO public.platform_admins (user_id, role, created_by)
-    VALUES (NEW.id, 'owner', NEW.id)
+    VALUES (NEW.id, 'admin', NEW.id)
     ON CONFLICT (user_id) DO UPDATE
-      SET role = 'owner',
+      SET role = 'admin',
           updated_at = now();
   END IF;
 
