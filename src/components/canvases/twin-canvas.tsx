@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   RotateCw,
   RotateCcw,
   ZoomIn,
   ZoomOut,
-  Maximize2,
   Sliders,
   TrendingUp,
   Activity,
-  Layers,
-  Thermometer,
-  ShieldCheck,
+  FlaskConical,
+  Play,
+  RotateCcw as ResetIcon,
+  X,
 } from "lucide-react";
 import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
 import { useProjectStore } from "@/lib/project-store";
