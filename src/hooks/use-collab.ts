@@ -82,13 +82,15 @@ export function useCollab(projectId: string | null) {
 
     channelRef.current = channel;
 
-    // Presence events
+    // CRITICAL: ALL .on() callbacks MUST be registered BEFORE .subscribe().
+    // Supabase Realtime rejects callbacks added after subscribe() with:
+    // "cannot add `presence` callbacks after subscribe()"
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         const activeUsers: CollabUser[] = [];
         Object.keys(state).forEach((key) => {
-          const presence = state[key]?.[0] as any;
+          const presence = (state as any)[key]?.[0];
           if (presence) {
             activeUsers.push({
               userId: key,
@@ -101,21 +103,18 @@ export function useCollab(projectId: string | null) {
         setUsers(activeUsers);
       })
       .on("presence", { event: "join" }, ({ key, newPresences }) => {
-        const presence = newPresences?.[0] as any;
+        const presence = (newPresences as any)?.[0];
         if (presence && key !== userId) {
           toast.success(`${presence.userName || "Um colaborador"} entrou no workspace.`);
         }
       })
       .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
-        const presence = leftPresences?.[0] as any;
+        const presence = (leftPresences as any)?.[0];
         if (presence && key !== userId) {
           toast.info(`${presence.userName || "Um colaborador"} saiu.`);
           setCursors((prev) => prev.filter((c) => c.userId !== key));
         }
-      });
-
-    // Broadcast messages (Cursors & state updates)
-    channel
+      })
       .on("broadcast", { event: "cursor" }, (payload: any) => {
         const data = payload.payload as CollabCursor;
         if (data.userId === userId) return;
@@ -127,17 +126,17 @@ export function useCollab(projectId: string | null) {
       .on("broadcast", { event: "canvas-change" }, (payload: any) => {
         const data = payload.payload;
         if (data.senderId === userId) return;
-        
-        // Silently update both stores!
         if (data.project) {
           useProjectStore.getState().setAll(data.project.nodes ?? [], data.project.edges ?? []);
         }
         if (data.voltai) {
-          useVoltaiStore.getState().setAll(data.voltai.components ?? [], data.voltai.edges ?? []);
+          useVoltaiStore
+            .getState()
+            .setAll(data.voltai.components ?? [], data.voltai.edges ?? []);
         }
       });
 
-    // Subscribe and track
+    // Subscribe LAST — after every .on() is registered.
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         await channel.track({
@@ -149,12 +148,14 @@ export function useCollab(projectId: string | null) {
       }
     });
 
-    // Automatically auto-broadcast updates when stores become dirty
     const unsubProject = useProjectStore.subscribe((state, prev) => {
       if (state.dirty && state.dirty !== prev.dirty) {
         broadcastStateChange(
           { nodes: state.nodes, edges: state.edges },
-          { components: useVoltaiStore.getState().components, edges: useVoltaiStore.getState().edges }
+          {
+            components: useVoltaiStore.getState().components,
+            edges: useVoltaiStore.getState().edges,
+          },
         );
       }
     });
@@ -162,17 +163,27 @@ export function useCollab(projectId: string | null) {
     const unsubVoltai = useVoltaiStore.subscribe((state, prev) => {
       if (state.dirty && state.dirty !== prev.dirty) {
         broadcastStateChange(
-          { nodes: useProjectStore.getState().nodes, edges: useProjectStore.getState().edges },
-          { components: state.components, edges: state.edges }
+          {
+            nodes: useProjectStore.getState().nodes,
+            edges: useProjectStore.getState().edges,
+          },
+          { components: state.components, edges: state.edges },
         );
       }
     });
 
     return () => {
-      supabase.removeChannel(channel);
-      channelRef.current = null;
       unsubProject();
       unsubVoltai();
+      try {
+        channel.untrack();
+      } catch {
+        // ignore
+      }
+      supabase.removeChannel(channel);
+      if (channelRef.current === channel) {
+        channelRef.current = null;
+      }
     };
   }, [projectId, userId, userName]);
 
