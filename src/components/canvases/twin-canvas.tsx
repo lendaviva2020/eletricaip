@@ -59,6 +59,59 @@ export function TwinCanvas() {
   const currentVal = getActiveTag("CURRENT") || (speedVal > 0 ? 14.5 + Math.abs(Math.sin(Date.now() / 900)) * 2 : 0);
   const levelVal = getActiveTag("NIVEL") || getActiveTag("LEVEL") || (isLive ? 62 + Math.sin(Date.now() / 3000) * 10 : 50);
 
+  // ===== "What-If" physical model =====
+  // Simplified induction-motor + thermal model: keeping torque ∝ load, the
+  // pump-curve gives speed drop ≈ slip_nom * (load/100), and current rises
+  // ≈ load% above no-load current. Voltage sag depresses torque ∝ V².
+  // Temperature ≈ I² * R rise above ambient.
+  const whatIf = useMemo(() => {
+    const loadFactor = 1 + loadDelta / 100;
+    const vFactor = 1 + voltageDelta / 100;
+    // Speed: nominal 1450 rpm, slip ~3% at full load, scales with load and 1/V²
+    const slipNom = 0.03;
+    const predictedSpeed = 1500 * (1 - slipNom * loadFactor / (vFactor * vFactor));
+    // Current rises ~linear with load, inverse with voltage
+    const predictedCurrent = Math.max(0, (currentVal || 14.5) * loadFactor) / vFactor;
+    // Winding temp = 25°C ambient + ambientDelta + I²·k over horizon
+    const predictedTemp =
+      25 +
+      ambientDelta +
+      Math.pow(predictedCurrent, 2) * 0.18 +
+      Math.min(15, horizonH * 0.6);
+    // Efficiency drops ~quadratic with load far from optimum (~80% load)
+    const predictedEff = Math.max(
+      60,
+      94.2 - Math.pow(Math.abs(loadFactor - 0.8) * 100, 1.3) * 0.06 - Math.max(0, predictedTemp - 70) * 0.2,
+    );
+    // Bearing life (L10) consumed per scenario hour, exponential with load
+    const lifeConsumedPctPerH = 0.012 * Math.pow(loadFactor, 3.33);
+    const lifeConsumedH = lifeConsumedPctPerH * horizonH;
+    // Failure risk score
+    const failureRisk =
+      predictedTemp > 95 || predictedCurrent > 22
+        ? "CRÍTICO"
+        : predictedTemp > 80 || predictedCurrent > 19
+          ? "ALTO"
+          : predictedTemp > 65
+            ? "MÉDIO"
+            : "BAIXO";
+    return {
+      speed: predictedSpeed,
+      current: predictedCurrent,
+      temperature: predictedTemp,
+      efficiency: predictedEff,
+      lifeConsumedH,
+      failureRisk,
+    };
+  }, [loadDelta, voltageDelta, ambientDelta, horizonH, currentVal]);
+
+  // Real-time baseline metrics for comparison
+  const baseline = useMemo(() => {
+    const eff = speedVal > 0 ? 94.2 - currentVal / 10 : 0;
+    const temp = 25 + Math.pow(currentVal, 2) * 0.18;
+    return { speed: speedVal, current: currentVal, temperature: temp, efficiency: eff };
+  }, [speedVal, currentVal]);
+
   // Update telemetry history buffers
   useEffect(() => {
     const interval = setInterval(() => {
