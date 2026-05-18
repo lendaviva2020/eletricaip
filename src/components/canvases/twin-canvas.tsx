@@ -266,11 +266,11 @@ export function TwinCanvas() {
   return (
     <div className="relative h-full w-full bg-[--canvas-bg] overflow-hidden">
       <FloatingLegend
-        title="Gêmeo Digital 3D · Estação de Recalque"
+        title="Gêmeo Digital 3D · Inteligência Industrial"
         items={[
-          "Trigonometria Ortho 3D",
-          `Status: ${speedVal > 0 ? "OPERANDO" : "STANDBY"}`,
-          isLive ? "Telemetria LIVE" : "Offline",
+          "Análise Preditiva Ativa",
+          `Eficiência: ${speedVal > 0 ? (94.2 - currentVal / 10).toFixed(1) : "0.0"}%`,
+          `Risco de Falha: ${currentVal > 18 ? "ALTO" : "BAIXO"}`,
         ]}
       />
 
