@@ -45,7 +45,17 @@ import { Button } from "@/components/ui/button";
 import { NeuralBg } from "@/components/premium/neural-bg";
 import { MetricCard } from "@/components/premium/metric-card";
 import { ActivityTimeline } from "@/components/premium/activity-timeline";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
 
 export const Route = createFileRoute("/settings/ai-status")({
   head: () => ({
@@ -61,11 +71,56 @@ type StatusTone = "ok" | "warn" | "err";
 type DemoEvent = { ts: number; ok: boolean; code?: string; ms: number };
 
 const agentData = [
-  { id: "supervisor", name: "Supervisão", status: "online" as const, icon: Eye, consumption: 28, uptime: "14d 7h", priority: "Alta", function: "Monitora parâmetros da planta" },
-  { id: "diagnostic", name: "Diagnóstico", status: "online" as const, icon: Activity, consumption: 22, uptime: "14d 7h", priority: "Alta", function: "Análise de falhas e anomalias" },
-  { id: "plc", name: "PLC", status: "online" as const, icon: Cpu, consumption: 18, uptime: "12d 3h", priority: "Média", function: "Otimização de controladores lógicos" },
-  { id: "security", name: "Segurança", status: "online" as const, icon: ShieldAlert, consumption: 15, uptime: "14d 7h", priority: "Crítica", function: "Monitoramento de segurança cibernética" },
-  { id: "predictive", name: "Predictive", status: "degraded" as const, icon: TrendingUp, consumption: 12, uptime: "10d 2h", priority: "Média", function: "Manutenção preditiva via ML" },
+  {
+    id: "supervisor",
+    name: "Supervisão",
+    status: "online" as const,
+    icon: Eye,
+    consumption: 28,
+    uptime: "14d 7h",
+    priority: "Alta",
+    function: "Monitora parâmetros da planta",
+  },
+  {
+    id: "diagnostic",
+    name: "Diagnóstico",
+    status: "online" as const,
+    icon: Activity,
+    consumption: 22,
+    uptime: "14d 7h",
+    priority: "Alta",
+    function: "Análise de falhas e anomalias",
+  },
+  {
+    id: "plc",
+    name: "PLC",
+    status: "online" as const,
+    icon: Cpu,
+    consumption: 18,
+    uptime: "12d 3h",
+    priority: "Média",
+    function: "Otimização de controladores lógicos",
+  },
+  {
+    id: "security",
+    name: "Segurança",
+    status: "online" as const,
+    icon: ShieldAlert,
+    consumption: 15,
+    uptime: "14d 7h",
+    priority: "Crítica",
+    function: "Monitoramento de segurança cibernética",
+  },
+  {
+    id: "predictive",
+    name: "Predictive",
+    status: "degraded" as const,
+    icon: TrendingUp,
+    consumption: 12,
+    uptime: "10d 2h",
+    priority: "Média",
+    function: "Manutenção preditiva via ML",
+  },
 ];
 
 function AiStatusPage() {
@@ -81,9 +136,17 @@ function AiStatusPage() {
     setBusy(true);
     try {
       const result: any = await pingArchitectHealth();
-      if (result && !result.error) { setHealth(result); setBackendError(false); }
-      else { setHealth(getFallbackHealth()); setBackendError(true); }
-    } catch { setHealth(getFallbackHealth()); setBackendError(true); }
+      if (result && !result.error) {
+        setHealth(result);
+        setBackendError(false);
+      } else {
+        setHealth(getFallbackHealth());
+        setBackendError(true);
+      }
+    } catch {
+      setHealth(getFallbackHealth());
+      setBackendError(true);
+    }
     setEvents(getStatusEvents());
     setBusy(false);
   }, []);
@@ -96,7 +159,7 @@ function AiStatusPage() {
   }, [refresh]);
 
   const isDemo = backendError || !health;
-  const displayEvents = events.length > 0 ? events : (isDemo ? demoEvents : []);
+  const displayEvents = events.length > 0 ? events : isDemo ? demoEvents : [];
   const last24h = displayEvents.filter((e: any) => Date.now() - e.ts < 24 * 60 * 60 * 1000);
   const auth401Count = last24h.filter((e: any) => e.code === "AUTH_401").length;
   const successCount = last24h.filter((e: any) => e.ok).length;
@@ -115,19 +178,77 @@ function AiStatusPage() {
     }));
   }, []);
 
-  const timelineEntries = useMemo(() => [
-    { id: "tl1", icon: <Bot className="h-2.5 w-2.5" />, label: "IA detectou falha no PLC", desc: "CLP-07 · Corrente fora do padrão", time: "2 min", status: "err" as const },
-    { id: "tl2", icon: <Activity className="h-2.5 w-2.5" />, label: "IA criou OS automática", desc: "Ordem de Serviço #1042 gerada", time: "5 min", status: "ok" as const },
-    { id: "tl3", icon: <Zap className="h-2.5 w-2.5" />, label: "IA enviou alerta", desc: "Temperatura elevada no motor M-03", time: "9 min", status: "warn" as const },
-    { id: "tl4", icon: <CheckCircle2 className="h-2.5 w-2.5" />, label: "IA corrigiu variável", desc: "Pressão da bomba P-02 ajustada", time: "14 min", status: "ok" as const },
-    { id: "tl5", icon: <Cpu className="h-2.5 w-2.5" />, label: "Edge node sincronizado", desc: "Firmware SCADA atualizado", time: "22 min", status: "ok" as const },
-  ], []);
+  const timelineEntries = useMemo(
+    () => [
+      {
+        id: "tl1",
+        icon: <Bot className="h-2.5 w-2.5" />,
+        label: "IA detectou falha no PLC",
+        desc: "CLP-07 · Corrente fora do padrão",
+        time: "2 min",
+        status: "err" as const,
+      },
+      {
+        id: "tl2",
+        icon: <Activity className="h-2.5 w-2.5" />,
+        label: "IA criou OS automática",
+        desc: "Ordem de Serviço #1042 gerada",
+        time: "5 min",
+        status: "ok" as const,
+      },
+      {
+        id: "tl3",
+        icon: <Zap className="h-2.5 w-2.5" />,
+        label: "IA enviou alerta",
+        desc: "Temperatura elevada no motor M-03",
+        time: "9 min",
+        status: "warn" as const,
+      },
+      {
+        id: "tl4",
+        icon: <CheckCircle2 className="h-2.5 w-2.5" />,
+        label: "IA corrigiu variável",
+        desc: "Pressão da bomba P-02 ajustada",
+        time: "14 min",
+        status: "ok" as const,
+      },
+      {
+        id: "tl5",
+        icon: <Cpu className="h-2.5 w-2.5" />,
+        label: "Edge node sincronizado",
+        desc: "Firmware SCADA atualizado",
+        time: "22 min",
+        status: "ok" as const,
+      },
+    ],
+    [],
+  );
 
   const alertEntries = [
-    { id: "al1", severity: "crit" as const, label: "Erro na inferência do agente PLC", time: "5 min atrás" },
-    { id: "al2", severity: "warn" as const, label: "Latência alta na API DeepSeek", time: "12 min atrás" },
-    { id: "al3", severity: "warn" as const, label: "Falha em automação de diagnóstico", time: "28 min atrás" },
-    { id: "al4", severity: "info" as const, label: "Conexão restabelecida: edge-node-03", time: "45 min atrás" },
+    {
+      id: "al1",
+      severity: "crit" as const,
+      label: "Erro na inferência do agente PLC",
+      time: "5 min atrás",
+    },
+    {
+      id: "al2",
+      severity: "warn" as const,
+      label: "Latência alta na API DeepSeek",
+      time: "12 min atrás",
+    },
+    {
+      id: "al3",
+      severity: "warn" as const,
+      label: "Falha em automação de diagnóstico",
+      time: "28 min atrás",
+    },
+    {
+      id: "al4",
+      severity: "info" as const,
+      label: "Conexão restabelecida: edge-node-03",
+      time: "45 min atrás",
+    },
   ];
 
   return (
@@ -139,8 +260,11 @@ function AiStatusPage() {
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => navigate({ to: "/settings" })}
-                  className="flex items-center justify-center h-8 w-8 rounded-lg border border-border/40 hover:bg-muted/40 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: "/settings" })}
+                  className="flex items-center justify-center h-8 w-8 rounded-lg border border-border/40 hover:bg-muted/40 transition-colors"
+                >
                   <ArrowLeft className="h-4 w-4 text-muted-foreground" />
                 </button>
                 <div>
@@ -154,11 +278,20 @@ function AiStatusPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Badge variant={isHealthy === false ? "destructive" : "default"} className="h-7 gap-1.5 text-[10px]">
-                  <span className={`h-1.5 w-1.5 rounded-full ${isHealthy === false ? "bg-red-500" : "bg-emerald-500"} animate-pulse`} />
+                <Badge
+                  variant={isHealthy === false ? "destructive" : "default"}
+                  className="h-7 gap-1.5 text-[10px]"
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${isHealthy === false ? "bg-red-500" : "bg-emerald-500"} animate-pulse`}
+                  />
                   {isHealthy === false ? "Sistema degradado" : "Operacional"}
                 </Badge>
-                {isDemo && <Badge variant="secondary" className="h-6 text-[9px] gap-1"><Cpu className="h-2.5 w-2.5" /> Simulação</Badge>}
+                {isDemo && (
+                  <Badge variant="secondary" className="h-6 text-[9px] gap-1">
+                    <Cpu className="h-2.5 w-2.5" /> Simulação
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -190,12 +323,29 @@ function AiStatusPage() {
 
       <div className="flex-1 overflow-auto scrollbar-thin">
         <div className="max-w-6xl mx-auto p-6 space-y-8">
-
           {/* ─── Grid de Telemetria ─── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <MetricCard icon={<Bot className="h-4 w-4" />} label="Processamento" value="12.4K" sub="tokens/min · pico 18.2K" trend={{ value: 8, positive: true }} />
-            <MetricCard icon={<Gauge className="h-4 w-4" />} label="Inferências" value="847" sub="última hora" trend={{ value: 3, positive: true }} />
-            <MetricCard icon={<Wifi className="h-4 w-4" />} label="Filas" value="3" sub="2 pendentes · 1 processando" trend={{ value: 12, positive: false }} />
+            <MetricCard
+              icon={<Bot className="h-4 w-4" />}
+              label="Processamento"
+              value="12.4K"
+              sub="tokens/min · pico 18.2K"
+              trend={{ value: 8, positive: true }}
+            />
+            <MetricCard
+              icon={<Gauge className="h-4 w-4" />}
+              label="Inferências"
+              value="847"
+              sub="última hora"
+              trend={{ value: 3, positive: true }}
+            />
+            <MetricCard
+              icon={<Wifi className="h-4 w-4" />}
+              label="Filas"
+              value="3"
+              sub="2 pendentes · 1 processando"
+              trend={{ value: 12, positive: false }}
+            />
           </div>
 
           {/* ─── Chart ─── */}
@@ -204,14 +354,27 @@ function AiStatusPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-primary" />
-                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium">Atividade neural (24h)</span>
+                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium">
+                    Atividade neural (24h)
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={() => setNeuralAnimating(!neuralAnimating)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[10px] gap-1"
+                    onClick={() => setNeuralAnimating(!neuralAnimating)}
+                  >
                     {neuralAnimating ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                     {neuralAnimating ? "Pausar" : "Animação"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={refresh} disabled={busy} className="h-7 text-xs gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={refresh}
+                    disabled={busy}
+                    className="h-7 text-xs gap-1"
+                  >
                     <RefreshCw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} /> Revalidar
                   </Button>
                 </div>
@@ -224,12 +387,46 @@ function AiStatusPage() {
                       <stop offset="100%" stopColor="#3fb6d6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
-                  <XAxis dataKey="hour" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={3} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                    strokeOpacity={0.3}
+                  />
+                  <XAxis
+                    dataKey="hour"
+                    tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={3}
+                  />
                   <YAxis hide />
-                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }} />
-                  <Area type="monotone" dataKey="tokens" stroke="#3fb6d6" strokeWidth={2} fill="url(#tokensGrad)" dot={false} activeDot={{ r: 3, fill: "#3fb6d6" }} />
-                  <Area type="monotone" dataKey="latency" stroke="#f59e0b" strokeWidth={1.5} fill="none" dot={false} strokeDasharray="4 2" />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 8,
+                      fontSize: 11,
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="tokens"
+                    stroke="#3fb6d6"
+                    strokeWidth={2}
+                    fill="url(#tokensGrad)"
+                    dot={false}
+                    activeDot={{ r: 3, fill: "#3fb6d6" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="latency"
+                    stroke="#f59e0b"
+                    strokeWidth={1.5}
+                    fill="none"
+                    dot={false}
+                    strokeDasharray="4 2"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </CardContent>
@@ -274,9 +471,17 @@ function AiStatusPage() {
               <div className="space-y-2">
                 {agentData.map((a) => {
                   const AgentIcon = a.icon;
-                  const statusDot = a.status === "online" ? "bg-emerald-500" : a.status === "degraded" ? "bg-amber-500" : "bg-red-500";
+                  const statusDot =
+                    a.status === "online"
+                      ? "bg-emerald-500"
+                      : a.status === "degraded"
+                        ? "bg-amber-500"
+                        : "bg-red-500";
                   return (
-                    <div key={a.id} className="group rounded-xl border border-border/40 p-3 hover:border-primary/20 transition-all duration-200">
+                    <div
+                      key={a.id}
+                      className="group rounded-xl border border-border/40 p-3 hover:border-primary/20 transition-all duration-200"
+                    >
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/5">
                           <AgentIcon className="h-4 w-4 text-primary/70" />
@@ -286,7 +491,9 @@ function AiStatusPage() {
                             <p className="text-xs font-semibold">{a.name}</p>
                             <span className={`h-1.5 w-1.5 rounded-full ${statusDot}`} />
                           </div>
-                          <p className="text-[10px] text-muted-foreground/50 truncate">{a.function}</p>
+                          <p className="text-[10px] text-muted-foreground/50 truncate">
+                            {a.function}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="text-[11px] font-mono text-primary/80">{a.consumption}%</p>
@@ -304,14 +511,36 @@ function AiStatusPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Status Diagnostics */}
             <div className="space-y-3">
-              <StatusCard icon={Key} label="Chave DeepSeek" tone={keyOk ? "ok" : "err"} value={keyOk ? "Configurada" : "Ausente"} hint={keyOk ? "sk-... válida" : "Configure a DEEPSEEK_API_KEY"} />
-              <StatusCard icon={pingOk ? Wifi : WifiOff} label="Conexão API" tone={pingOk ? "ok" : health == null ? "warn" : "err"} value={pingOk ? "200 OK" : "Sem conexão"} hint={health?.pingError?.slice(0, 80) || (pingOk ? "API respondendo" : "Sem conexão")} />
-              <StatusCard icon={ShieldAlert} label="Erros 401 (24h)" tone={auth401Count === 0 ? "ok" : "err"} value={String(auth401Count)} hint={`${successCount} sucessos · ${last24h.length} chamadas`} />
+              <StatusCard
+                icon={Key}
+                label="Chave DeepSeek"
+                tone={keyOk ? "ok" : "err"}
+                value={keyOk ? "Configurada" : "Ausente"}
+                hint={keyOk ? "sk-... válida" : "Configure a DEEPSEEK_API_KEY"}
+              />
+              <StatusCard
+                icon={pingOk ? Wifi : WifiOff}
+                label="Conexão API"
+                tone={pingOk ? "ok" : health == null ? "warn" : "err"}
+                value={pingOk ? "200 OK" : "Sem conexão"}
+                hint={
+                  health?.pingError?.slice(0, 80) || (pingOk ? "API respondendo" : "Sem conexão")
+                }
+              />
+              <StatusCard
+                icon={ShieldAlert}
+                label="Erros 401 (24h)"
+                tone={auth401Count === 0 ? "ok" : "err"}
+                value={String(auth401Count)}
+                hint={`${successCount} sucessos · ${last24h.length} chamadas`}
+              />
             </div>
 
             {/* Historical Table */}
             <div className="lg:col-span-2">
-              <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium block mb-3">Histórico de chamadas</span>
+              <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium block mb-3">
+                Histórico de chamadas
+              </span>
               <Card>
                 <CardContent className="p-0">
                   {displayEvents.length === 0 ? (
@@ -324,10 +553,18 @@ function AiStatusPage() {
                       <table className="w-full text-[11px]">
                         <thead>
                           <tr className="border-b border-border/40 bg-muted/20">
-                            <th className="text-left font-medium text-muted-foreground/60 px-4 py-2.5 uppercase tracking-[0.05em]">Quando</th>
-                            <th className="text-left font-medium text-muted-foreground/60 px-4 py-2.5 uppercase tracking-[0.05em]">Resultado</th>
-                            <th className="text-left font-medium text-muted-foreground/60 px-4 py-2.5 uppercase tracking-[0.05em]">Código</th>
-                            <th className="text-right font-medium text-muted-foreground/60 px-4 py-2.5 uppercase tracking-[0.05em]">Latência</th>
+                            <th className="text-left font-medium text-muted-foreground/60 px-4 py-2.5 uppercase tracking-[0.05em]">
+                              Quando
+                            </th>
+                            <th className="text-left font-medium text-muted-foreground/60 px-4 py-2.5 uppercase tracking-[0.05em]">
+                              Resultado
+                            </th>
+                            <th className="text-left font-medium text-muted-foreground/60 px-4 py-2.5 uppercase tracking-[0.05em]">
+                              Código
+                            </th>
+                            <th className="text-right font-medium text-muted-foreground/60 px-4 py-2.5 uppercase tracking-[0.05em]">
+                              Latência
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/20">
@@ -340,12 +577,19 @@ function AiStatusPage() {
                                 </div>
                               </td>
                               <td className="px-4 py-2">
-                                <Badge variant={e.ok ? "default" : "destructive"} className="text-[8px] h-4 font-mono">
+                                <Badge
+                                  variant={e.ok ? "default" : "destructive"}
+                                  className="text-[8px] h-4 font-mono"
+                                >
                                   {e.ok ? "✓ OK" : "✗ Falha"}
                                 </Badge>
                               </td>
-                              <td className="px-4 py-2 font-mono text-[10px] text-muted-foreground/80">{e.code ?? "—"}</td>
-                              <td className="px-4 py-2 text-right font-mono text-muted-foreground/70">{e.ms} ms</td>
+                              <td className="px-4 py-2 font-mono text-[10px] text-muted-foreground/80">
+                                {e.code ?? "—"}
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono text-muted-foreground/70">
+                                {e.ms} ms
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -363,11 +607,30 @@ function AiStatusPage() {
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <h2 className="text-sm font-semibold text-destructive mb-2">Ação necessária para reativar a IA</h2>
+                  <h2 className="text-sm font-semibold text-destructive mb-2">
+                    Ação necessária para reativar a IA
+                  </h2>
                   <ol className="list-decimal list-inside space-y-1 text-xs text-foreground/80">
-                    <li>Gere uma nova chave em <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer" className="underline text-primary inline-flex items-center gap-1">platform.deepseek.com <ExternalLink className="h-2.5 w-2.5" /></a></li>
-                    <li>No Supabase, atualize a secret <code className="px-1 py-0.5 rounded bg-muted text-[10px]">DEEPSEEK_API_KEY</code></li>
-                    <li>Volte aqui e clique em <strong>Revalidar</strong></li>
+                    <li>
+                      Gere uma nova chave em{" "}
+                      <a
+                        href="https://platform.deepseek.com/api_keys"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline text-primary inline-flex items-center gap-1"
+                      >
+                        platform.deepseek.com <ExternalLink className="h-2.5 w-2.5" />
+                      </a>
+                    </li>
+                    <li>
+                      No Supabase, atualize a secret{" "}
+                      <code className="px-1 py-0.5 rounded bg-muted text-[10px]">
+                        DEEPSEEK_API_KEY
+                      </code>
+                    </li>
+                    <li>
+                      Volte aqui e clique em <strong>Revalidar</strong>
+                    </li>
                   </ol>
                 </div>
               </div>
@@ -386,21 +649,45 @@ function HealthItem({ label, value, max }: { label: string; value: number; max: 
     <div>
       <div className="flex items-center justify-between text-[11px] mb-1">
         <span className="text-muted-foreground/70">{label}</span>
-        <span className="font-mono text-foreground/80">{value}{max > 100 ? "%" : ""}{max <= 100 ? "" : `/${max}`}</span>
+        <span className="font-mono text-foreground/80">
+          {value}
+          {max > 100 ? "%" : ""}
+          {max <= 100 ? "" : `/${max}`}
+        </span>
       </div>
       <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
-        <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
+        <div
+          className={`h-full rounded-full ${color} transition-all duration-500`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   );
 }
 
-function StatusCard({ icon: Icon, label, value, tone, hint }: {
-  icon: any; label: string; value: string; tone: StatusTone; hint?: string;
+function StatusCard({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  tone: StatusTone;
+  hint?: string;
 }) {
-  const borderColor = tone === "ok" ? "border-emerald-500/30" : tone === "warn" ? "border-amber-500/30" : "border-red-500/30";
-  const bgColor = tone === "ok" ? "bg-emerald-500/5" : tone === "warn" ? "bg-amber-500/5" : "bg-red-500/5";
-  const iconColor = tone === "ok" ? "text-emerald-500" : tone === "warn" ? "text-amber-500" : "text-red-500";
+  const borderColor =
+    tone === "ok"
+      ? "border-emerald-500/30"
+      : tone === "warn"
+        ? "border-amber-500/30"
+        : "border-red-500/30";
+  const bgColor =
+    tone === "ok" ? "bg-emerald-500/5" : tone === "warn" ? "bg-amber-500/5" : "bg-red-500/5";
+  const iconColor =
+    tone === "ok" ? "text-emerald-500" : tone === "warn" ? "text-amber-500" : "text-red-500";
   return (
     <Card className={`border ${borderColor} ${bgColor}`}>
       <CardContent className="p-4">
@@ -427,9 +714,15 @@ function generateDemoEvents(): DemoEvent[] {
 
 function getFallbackHealth() {
   return {
-    ok: false, keyConfigured: false, keyFormatValid: false, pingOk: false,
-    pingStatus: null, pingError: "Ambiente de demonstração — servidor não configurado",
-    provider: "deepseek", model: "deepseek-chat", checkedAt: new Date().toISOString(),
+    ok: false,
+    keyConfigured: false,
+    keyFormatValid: false,
+    pingOk: false,
+    pingStatus: null,
+    pingError: "Ambiente de demonstração — servidor não configurado",
+    provider: "deepseek",
+    model: "deepseek-chat",
+    checkedAt: new Date().toISOString(),
   };
 }
 

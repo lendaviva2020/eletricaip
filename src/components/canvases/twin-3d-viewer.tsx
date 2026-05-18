@@ -280,48 +280,48 @@ function Scene({
 
       {/* Hotspots from mappings */}
       {viewMode !== "alarms-only" &&
-        mappings.flatMap((m) => m.hotspots).map((h) => {
-          const buf = telemetryBuffers[h.tag];
-          const latestVal = buf?.samples[buf.samples.length - 1]?.value;
-          const isSelected = selectedHotspotId === h.id;
-          const scale = isSelected ? 1.3 : 1;
-          return (
-            <Html
-              key={h.id}
-              position={[h.position.x, h.position.y, h.position.z]}
-              center
-              onClick={() => onHotspotClick?.(h.id)}
-              style={{ pointerEvents: "auto", cursor: "pointer" }}
-            >
-              <div
-                className={`transition-all duration-200 ${
-                  isSelected ? "scale-110" : "hover:scale-105"
-                }`}
-                style={{ pointerEvents: "auto" }}
+        mappings
+          .flatMap((m) => m.hotspots)
+          .map((h) => {
+            const buf = telemetryBuffers[h.tag];
+            const latestVal = buf?.samples[buf.samples.length - 1]?.value;
+            const isSelected = selectedHotspotId === h.id;
+            const scale = isSelected ? 1.3 : 1;
+            return (
+              <Html
+                key={h.id}
+                position={[h.position.x, h.position.y, h.position.z]}
+                center
+                onClick={() => onHotspotClick?.(h.id)}
+                style={{ pointerEvents: "auto", cursor: "pointer" }}
               >
                 <div
-                  className={`rounded-md px-2 py-1 flex items-center gap-1.5 border whitespace-nowrap ${
-                    isSelected
-                      ? "border-primary bg-primary/20"
-                      : "border-border/60 bg-black/70"
+                  className={`transition-all duration-200 ${
+                    isSelected ? "scale-110" : "hover:scale-105"
                   }`}
+                  style={{ pointerEvents: "auto" }}
                 >
-                  <span
-                    className="h-2 w-2 rounded-full animate-pulse shrink-0"
-                    style={{ background: h.color }}
-                  />
-                  <span className="text-[9px] font-mono text-foreground/90">{h.label}</span>
-                  {latestVal !== undefined && (
-                    <span className="text-[9px] font-mono font-bold" style={{ color: h.color }}>
-                      {latestVal.toFixed(1)}
-                      <span className="text-[8px] text-muted-foreground ml-0.5">{h.unit}</span>
-                    </span>
-                  )}
+                  <div
+                    className={`rounded-md px-2 py-1 flex items-center gap-1.5 border whitespace-nowrap ${
+                      isSelected ? "border-primary bg-primary/20" : "border-border/60 bg-black/70"
+                    }`}
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full animate-pulse shrink-0"
+                      style={{ background: h.color }}
+                    />
+                    <span className="text-[9px] font-mono text-foreground/90">{h.label}</span>
+                    {latestVal !== undefined && (
+                      <span className="text-[9px] font-mono font-bold" style={{ color: h.color }}>
+                        {latestVal.toFixed(1)}
+                        <span className="text-[8px] text-muted-foreground ml-0.5">{h.unit}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Html>
-          );
-        })}
+              </Html>
+            );
+          })}
     </>
   );
 }

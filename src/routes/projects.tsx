@@ -183,7 +183,11 @@ function Projects() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm(`Excluir permanentemente "${p.name}"?\n\nEsta ação não pode ser desfeita.`))
+                      if (
+                        confirm(
+                          `Excluir permanentemente "${p.name}"?\n\nEsta ação não pode ser desfeita.`,
+                        )
+                      )
                         deleteMut.mutate(p.id);
                     }}
                     className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"

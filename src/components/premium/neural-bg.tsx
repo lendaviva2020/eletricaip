@@ -71,9 +71,6 @@ export function NeuralBg({ className = "" }: { className?: string }) {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={`pointer-events-none absolute inset-0 z-0 ${className}`}
-    />
+    <canvas ref={canvasRef} className={`pointer-events-none absolute inset-0 z-0 ${className}`} />
   );
 }

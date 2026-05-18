@@ -3,7 +3,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { requireAiQuota, requireBurstLimit } from "@/integrations/supabase/ai-rate-limit-middleware";
+import {
+  requireAiQuota,
+  requireBurstLimit,
+} from "@/integrations/supabase/ai-rate-limit-middleware";
 
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
 

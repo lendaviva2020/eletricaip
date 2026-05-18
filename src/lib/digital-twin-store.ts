@@ -88,8 +88,7 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
       realtimeConnected: false,
       lastRealtimeUpdate: null,
 
-      addMapping: (mapping) =>
-        set((s) => ({ mappings: [...s.mappings, mapping] })),
+      addMapping: (mapping) => set((s) => ({ mappings: [...s.mappings, mapping] })),
 
       removeMapping: (equipmentId) =>
         set((s) => ({
@@ -99,9 +98,7 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
       addHotspot: (equipmentId, hotspot) =>
         set((s) => ({
           mappings: s.mappings.map((m) =>
-            m.equipmentId === equipmentId
-              ? { ...m, hotspots: [...m.hotspots, hotspot] }
-              : m,
+            m.equipmentId === equipmentId ? { ...m, hotspots: [...m.hotspots, hotspot] } : m,
           ),
         })),
 
@@ -120,9 +117,7 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
             m.equipmentId === equipmentId
               ? {
                   ...m,
-                  hotspots: m.hotspots.map((h) =>
-                    h.id === partial.id ? { ...h, ...partial } : h,
-                  ),
+                  hotspots: m.hotspots.map((h) => (h.id === partial.id ? { ...h, ...partial } : h)),
                 }
               : m,
           ),
@@ -137,9 +132,7 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
         set((s) => {
           const existing = s.telemetryBuffers[tag];
           const sample: TwinTelemetrySample = { ts: Date.now(), value };
-          const samples = existing
-            ? [...existing.samples, sample].slice(-MAX_SAMPLES)
-            : [sample];
+          const samples = existing ? [...existing.samples, sample].slice(-MAX_SAMPLES) : [sample];
           return {
             telemetryBuffers: { ...s.telemetryBuffers, [tag]: { tag, samples } },
             lastRealtimeUpdate: Date.now(),

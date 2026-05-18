@@ -50,9 +50,7 @@ export function CircularProgress({
           className="transition-all duration-700 ease-out"
         />
       </svg>
-      {label && (
-        <span className="text-[9px] font-mono text-muted-foreground/70">{label}</span>
-      )}
+      {label && <span className="text-[9px] font-mono text-muted-foreground/70">{label}</span>}
     </div>
   );
 }

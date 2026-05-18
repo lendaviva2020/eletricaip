@@ -1,8 +1,18 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useProjectStore } from "@/lib/project-store";
-import { connectOpcua, disconnectOpcua, getOpcuaStatus, writeOpcuaTag } from "@/lib/opcua-server.functions";
-import { connectModbus, disconnectModbus, getModbusStatus, writeModbusRegister } from "@/lib/modbus-server.functions";
+import {
+  connectOpcua,
+  disconnectOpcua,
+  getOpcuaStatus,
+  writeOpcuaTag,
+} from "@/lib/opcua-server.functions";
+import {
+  connectModbus,
+  disconnectModbus,
+  getModbusStatus,
+  writeModbusRegister,
+} from "@/lib/modbus-server.functions";
 import type { OpcuaTagValue } from "@/lib/opcua-server.functions";
 import type { ModbusRegisterValue } from "@/lib/modbus-server.functions";
 
@@ -51,13 +61,25 @@ export function useOpcuaBridge() {
     // Log connection errors once per transition.
     if (opcua?.status === "error" && opcua.error && opcua.error !== lastOpcuaError.current) {
       lastOpcuaError.current = opcua.error;
-      pushLog({ t: new Date().toLocaleTimeString(), tag: "OPCUA", msg: opcua.error, lvl: "err", channel: "OPC-UA" });
+      pushLog({
+        t: new Date().toLocaleTimeString(),
+        tag: "OPCUA",
+        msg: opcua.error,
+        lvl: "err",
+        channel: "OPC-UA",
+      });
     }
     if (opcua?.status !== "error") lastOpcuaError.current = undefined;
 
     if (modbus?.status === "error" && modbus.error && modbus.error !== lastModbusError.current) {
       lastModbusError.current = modbus.error;
-      pushLog({ t: new Date().toLocaleTimeString(), tag: "MB", msg: modbus.error, lvl: "err", channel: "Modbus" });
+      pushLog({
+        t: new Date().toLocaleTimeString(),
+        tag: "MB",
+        msg: modbus.error,
+        lvl: "err",
+        channel: "Modbus",
+      });
     }
     if (modbus?.status !== "error") lastModbusError.current = undefined;
   }, [opcuaStatus.data, modbusStatus.data, applyTick, pushLog]);
@@ -74,11 +96,13 @@ export function useOpcuaBridge() {
   });
 
   const opcuaWrite = useMutation({
-    mutationFn: (params: { nodeId: string; value: number | boolean | string }) => writeOpcuaTag({ data: params }),
+    mutationFn: (params: { nodeId: string; value: number | boolean | string }) =>
+      writeOpcuaTag({ data: params }),
   });
 
   const modbusConnect = useMutation({
-    mutationFn: (config: { host: string; port: number; unitId: number }) => connectModbus({ data: config }),
+    mutationFn: (config: { host: string; port: number; unitId: number }) =>
+      connectModbus({ data: config }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["modbus", "status"] }),
   });
 

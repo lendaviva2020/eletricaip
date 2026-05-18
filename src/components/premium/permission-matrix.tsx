@@ -28,9 +28,7 @@ export function PermissionMatrix({
   ];
 
   function toggle(rowIdx: number, colKey: keyof PermissionRow) {
-    const next = rows.map((r, i) =>
-      i === rowIdx ? { ...r, [colKey]: !r[colKey] } : r,
-    );
+    const next = rows.map((r, i) => (i === rowIdx ? { ...r, [colKey]: !r[colKey] } : r));
     setRows(next);
     onUpdate?.(next);
   }
@@ -65,9 +63,7 @@ export function PermissionMatrix({
                       type="button"
                       onClick={() => toggle(ri, col.key)}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border transition-colors duration-200 focus:outline-none ${
-                        val
-                          ? "border-primary/50 bg-primary/20"
-                          : "border-border/40 bg-muted/30"
+                        val ? "border-primary/50 bg-primary/20" : "border-border/40 bg-muted/30"
                       }`}
                     >
                       <span

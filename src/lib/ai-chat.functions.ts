@@ -2,7 +2,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { requireAiQuota, requireBurstLimit } from "@/integrations/supabase/ai-rate-limit-middleware";
+import {
+  requireAiQuota,
+  requireBurstLimit,
+} from "@/integrations/supabase/ai-rate-limit-middleware";
 
 export type ChatConversation = {
   id: string;

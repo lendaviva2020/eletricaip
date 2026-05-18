@@ -63,9 +63,7 @@ function SettingsPage() {
             <Settings2 className="h-5 w-5 text-primary" />
             Configurações
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Preferências do Industrial OS
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Preferências do Industrial OS</p>
         </div>
 
         <section>
@@ -109,10 +107,7 @@ function SettingsPage() {
               {PROTOCOLS.map((p) => {
                 const on = protocols[p.name];
                 return (
-                  <div
-                    key={p.name}
-                    className="flex items-center justify-between px-5 py-3.5"
-                  >
+                  <div key={p.name} className="flex items-center justify-between px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
                         {on ? (
@@ -126,10 +121,7 @@ function SettingsPage() {
                         <p className="text-xs text-muted-foreground">{p.desc}</p>
                       </div>
                     </div>
-                    <Switch
-                      checked={on}
-                      onCheckedChange={() => toggleProtocol(p.name)}
-                    />
+                    <Switch checked={on} onCheckedChange={() => toggleProtocol(p.name)} />
                   </div>
                 );
               })}
@@ -144,10 +136,7 @@ function SettingsPage() {
               {NORMAS.map((n) => {
                 const on = normas[n.name];
                 return (
-                  <div
-                    key={n.name}
-                    className="flex items-center justify-between px-5 py-3.5"
-                  >
+                  <div key={n.name} className="flex items-center justify-between px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
                         <Ruler className="h-4 w-4 text-primary" />
@@ -157,10 +146,7 @@ function SettingsPage() {
                         <p className="text-xs text-muted-foreground">{n.desc}</p>
                       </div>
                     </div>
-                    <Switch
-                      checked={on}
-                      onCheckedChange={() => toggleNorma(n.name)}
-                    />
+                    <Switch checked={on} onCheckedChange={() => toggleNorma(n.name)} />
                   </div>
                 );
               })}
@@ -228,11 +214,7 @@ function SettingsLinkCard({
 }) {
   const navigate = useNavigate();
   return (
-    <button
-      type="button"
-      onClick={() => navigate({ to })}
-      className="w-full text-left block"
-    >
+    <button type="button" onClick={() => navigate({ to })} className="w-full text-left block">
       <Card className="group hover:bg-accent/50 transition-colors cursor-pointer">
         <CardContent className="flex items-center gap-4 p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted group-hover:bg-primary/10 transition-colors">
@@ -241,7 +223,11 @@ function SettingsLinkCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <CardTitle className="text-sm">{title}</CardTitle>
-              {badge && <Badge variant="secondary" className="text-[10px] h-5">{badge}</Badge>}
+              {badge && (
+                <Badge variant="secondary" className="text-[10px] h-5">
+                  {badge}
+                </Badge>
+              )}
             </div>
             <CardDescription className="text-xs mt-0.5">{desc}</CardDescription>
           </div>

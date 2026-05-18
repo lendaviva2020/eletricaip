@@ -112,13 +112,13 @@ export function seedDigitalTwinDemo() {
   // Push some initial telemetry
   const now = Date.now();
   const startVal: Record<string, () => number> = {
-    "MOTOR_01_TEMP": () => 65 + Math.sin(now / 5000) * 8 + Math.random() * 2,
-    "MOTOR_01_CURRENT": () => 14.2 + Math.sin(now / 3000) * 1.5 + Math.random() * 0.3,
-    "MOTOR_01_VIB": () => 4.5 + Math.sin(now / 2000) * 1.5 + Math.random() * 0.5,
-    "LT_01_LEVEL": () => 62 + Math.sin(now / 8000) * 8 + Math.random() * 1,
-    "LT_01_PRESSURE": () => 1.8 + Math.sin(now / 6000) * 0.3 + Math.random() * 0.05,
-    "PUMP_01_STATUS": () => (Math.sin(now / 10000) > 0 ? 1 : 0),
-    "PUMP_01_FLOW": () => 28 + Math.sin(now / 4000) * 5 + Math.random() * 1,
+    MOTOR_01_TEMP: () => 65 + Math.sin(now / 5000) * 8 + Math.random() * 2,
+    MOTOR_01_CURRENT: () => 14.2 + Math.sin(now / 3000) * 1.5 + Math.random() * 0.3,
+    MOTOR_01_VIB: () => 4.5 + Math.sin(now / 2000) * 1.5 + Math.random() * 0.5,
+    LT_01_LEVEL: () => 62 + Math.sin(now / 8000) * 8 + Math.random() * 1,
+    LT_01_PRESSURE: () => 1.8 + Math.sin(now / 6000) * 0.3 + Math.random() * 0.05,
+    PUMP_01_STATUS: () => (Math.sin(now / 10000) > 0 ? 1 : 0),
+    PUMP_01_FLOW: () => 28 + Math.sin(now / 4000) * 5 + Math.random() * 1,
   };
 
   Object.entries(startVal).forEach(([tag, fn]) => {

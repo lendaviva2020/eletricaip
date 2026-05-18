@@ -44,7 +44,9 @@ const SEED: Record<
   Eventos: [{ t: "—", tag: "EVT", msg: "Nenhum evento registrado", lvl: "info" }],
   "OPC-UA": [{ t: "—", tag: "OPC", msg: "Servidor OPC-UA desconectado", lvl: "warn" }],
   Modbus: [{ t: "—", tag: "MB", msg: "Gateway Modbus TCP: 192.168.1.100:502", lvl: "info" }],
-  Runtime: [{ t: "—", tag: "RT", msg: "Runtime parado. Conecte para iniciar simulação.", lvl: "warn" }],
+  Runtime: [
+    { t: "—", tag: "RT", msg: "Runtime parado. Conecte para iniciar simulação.", lvl: "warn" },
+  ],
 };
 
 const lvlColor = {
@@ -113,7 +115,11 @@ export function BottomPanel() {
                   <span
                     className={cn(
                       "ml-0.5 inline-block h-1.5 w-1.5 rounded-full",
-                      bridge.opcua.status === "connected" ? "bg-success" : bridge.opcua.status === "error" ? "bg-destructive" : "bg-muted-foreground/40",
+                      bridge.opcua.status === "connected"
+                        ? "bg-success"
+                        : bridge.opcua.status === "error"
+                          ? "bg-destructive"
+                          : "bg-muted-foreground/40",
                     )}
                   />
                 )}
@@ -121,7 +127,11 @@ export function BottomPanel() {
                   <span
                     className={cn(
                       "ml-0.5 inline-block h-1.5 w-1.5 rounded-full",
-                      bridge.modbus.status === "connected" ? "bg-success" : bridge.modbus.status === "error" ? "bg-destructive" : "bg-muted-foreground/40",
+                      bridge.modbus.status === "connected"
+                        ? "bg-success"
+                        : bridge.modbus.status === "error"
+                          ? "bg-destructive"
+                          : "bg-muted-foreground/40",
                     )}
                   />
                 )}
@@ -135,9 +145,7 @@ export function BottomPanel() {
               {runtime.cycleMs ?? 0}ms
             </span>
           )}
-          {tab === "Modbus" && (
-            <Wifi className="h-3 w-3 text-muted-foreground" />
-          )}
+          {tab === "Modbus" && <Wifi className="h-3 w-3 text-muted-foreground" />}
           <button
             onClick={() => {
               const store = useProjectStore.getState();
@@ -172,7 +180,9 @@ export function BottomPanel() {
               {runtime.lastTick && (
                 <span className="text-muted-foreground">
                   Último tick:{" "}
-                  <span className="text-foreground">{new Date(runtime.lastTick).toLocaleTimeString()}</span>
+                  <span className="text-foreground">
+                    {new Date(runtime.lastTick).toLocaleTimeString()}
+                  </span>
                 </span>
               )}
               {runtime.cycleMs && (
@@ -189,15 +199,30 @@ export function BottomPanel() {
               </span>
               <span className="text-muted-foreground">
                 Status:{" "}
-                <span className={cn(
-                  bridge.opcua.status === "connected" ? "text-success" : bridge.opcua.status === "error" ? "text-destructive" : "text-warning",
-                )}>
-                  {bridge.opcua.status === "connected" ? "Conectado" : bridge.opcua.status === "connecting" ? "Conectando..." : bridge.opcua.status === "error" ? bridge.opcua.error : "Desconectado"}
+                <span
+                  className={cn(
+                    bridge.opcua.status === "connected"
+                      ? "text-success"
+                      : bridge.opcua.status === "error"
+                        ? "text-destructive"
+                        : "text-warning",
+                  )}
+                >
+                  {bridge.opcua.status === "connected"
+                    ? "Conectado"
+                    : bridge.opcua.status === "connecting"
+                      ? "Conectando..."
+                      : bridge.opcua.status === "error"
+                        ? bridge.opcua.error
+                        : "Desconectado"}
                 </span>
               </span>
               {bridge.opcua.connectedAt && (
                 <span className="text-muted-foreground">
-                  Desde: <span className="text-foreground">{new Date(bridge.opcua.connectedAt).toLocaleTimeString()}</span>
+                  Desde:{" "}
+                  <span className="text-foreground">
+                    {new Date(bridge.opcua.connectedAt).toLocaleTimeString()}
+                  </span>
                 </span>
               )}
               {bridge.opcua.tags.length > 0 && (
@@ -229,19 +254,37 @@ export function BottomPanel() {
           {tab === "Modbus" && (
             <div className="flex gap-4 mb-2 pb-2 border-b border-border/40 text-[10px]">
               <span className="text-muted-foreground">
-                Gateway: <span className="text-foreground">{bridge.modbus.host}:{bridge.modbus.port}</span>
+                Gateway:{" "}
+                <span className="text-foreground">
+                  {bridge.modbus.host}:{bridge.modbus.port}
+                </span>
               </span>
               <span className="text-muted-foreground">
                 Status:{" "}
-                <span className={cn(
-                  bridge.modbus.status === "connected" ? "text-success" : bridge.modbus.status === "error" ? "text-destructive" : "text-warning",
-                )}>
-                  {bridge.modbus.status === "connected" ? "Conectado" : bridge.modbus.status === "connecting" ? "Conectando..." : bridge.modbus.status === "error" ? bridge.modbus.error : "Desconectado"}
+                <span
+                  className={cn(
+                    bridge.modbus.status === "connected"
+                      ? "text-success"
+                      : bridge.modbus.status === "error"
+                        ? "text-destructive"
+                        : "text-warning",
+                  )}
+                >
+                  {bridge.modbus.status === "connected"
+                    ? "Conectado"
+                    : bridge.modbus.status === "connecting"
+                      ? "Conectando..."
+                      : bridge.modbus.status === "error"
+                        ? bridge.modbus.error
+                        : "Desconectado"}
                 </span>
               </span>
               {bridge.modbus.connectedAt && (
                 <span className="text-muted-foreground">
-                  Desde: <span className="text-foreground">{new Date(bridge.modbus.connectedAt).toLocaleTimeString()}</span>
+                  Desde:{" "}
+                  <span className="text-foreground">
+                    {new Date(bridge.modbus.connectedAt).toLocaleTimeString()}
+                  </span>
                 </span>
               )}
               {bridge.modbus.values.length > 0 && (
@@ -254,7 +297,11 @@ export function BottomPanel() {
                   if (bridge.modbus.status === "connected") {
                     bridge.modbus.disconnect();
                   } else {
-                    bridge.modbus.connect({ host: bridge.modbus.host, port: bridge.modbus.port, unitId: 1 });
+                    bridge.modbus.connect({
+                      host: bridge.modbus.host,
+                      port: bridge.modbus.port,
+                      unitId: 1,
+                    });
                   }
                 }}
                 className="ml-auto h-6 px-2 rounded text-[10px] font-medium transition-colors hover:bg-accent text-muted-foreground hover:text-foreground flex items-center gap-1"

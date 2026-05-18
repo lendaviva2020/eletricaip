@@ -110,7 +110,15 @@ export function ScadaCanvas() {
         };
 
         const tagNames = getTagNames();
-        const suggestions = tagNames.map((name) => ({
+        interface CompletionItem {
+          label: string;
+          kind: any;
+          insertText: string;
+          range: typeof range;
+          detail?: string;
+          insertTextRules?: any;
+        }
+        const suggestions: CompletionItem[] = tagNames.map((name) => ({
           label: name,
           kind: monaco.languages.CompletionItemKind.Variable,
           insertText: name,
@@ -134,7 +142,7 @@ export function ScadaCanvas() {
             range,
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
             detail: "Log no console",
-          } as any,
+          },
           {
             label: "Math.round",
             kind: monaco.languages.CompletionItemKind.Function,
@@ -142,21 +150,21 @@ export function ScadaCanvas() {
             range,
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
             detail: "Arredondar número",
-          } as any,
+          },
           {
             label: "Math.min",
             kind: monaco.languages.CompletionItemKind.Function,
             insertText: "Math.min($1, $2)",
             range,
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          } as any,
+          },
           {
             label: "Math.max",
             kind: monaco.languages.CompletionItemKind.Function,
             insertText: "Math.max($1, $2)",
             range,
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          } as any,
+          },
         );
 
         // If typing inside tags["...", suggest tag names
@@ -320,14 +328,19 @@ export function ScadaCanvas() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
-                  <RefreshCw className={`h-3 w-3 ${livePreview ? "text-primary" : "text-muted-foreground"}`} />
+                  <RefreshCw
+                    className={`h-3 w-3 ${livePreview ? "text-primary" : "text-muted-foreground"}`}
+                  />
                   <Switch
                     id="live-preview"
                     checked={livePreview}
                     onCheckedChange={setLivePreview}
                     className="h-4 w-7"
                   />
-                  <Label htmlFor="live-preview" className="text-[10px] text-muted-foreground cursor-pointer">
+                  <Label
+                    htmlFor="live-preview"
+                    className="text-[10px] text-muted-foreground cursor-pointer"
+                  >
                     Live
                   </Label>
                 </div>

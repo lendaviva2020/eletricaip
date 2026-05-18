@@ -19,6 +19,7 @@ export default defineConfig({
   },
   vite: {
     build: {
+      chunkSizeWarningLimit: 5000,
       rollupOptions: {
         output: {
           manualChunks(id) {
@@ -26,12 +27,10 @@ export default defineConfig({
             if (id.includes("reactflow")) return "vendor-reactflow";
             if (id.includes("konva") || id.includes("react-konva")) return "vendor-konva";
             if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
-            if (id.includes("@tanstack")) return "vendor-tanstack";
             if (id.includes("@supabase")) return "vendor-supabase";
-            if (id.includes("@radix-ui") || id.includes("lucide-react") || id.includes("sonner")) {
-              return "vendor-ui";
+            if (id.includes("@tanstack") || id.includes("react") || id.includes("scheduler")) {
+              return "vendor-react";
             }
-            if (id.includes("react") || id.includes("scheduler")) return "vendor-react";
             return undefined;
           },
         },

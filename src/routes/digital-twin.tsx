@@ -25,11 +25,7 @@ import {
   PanelRightClose,
 } from "lucide-react";
 import { Twin3DViewer } from "@/components/canvases/twin-3d-viewer";
-import {
-  useDigitalTwinStore,
-  type HotspotConfig,
-  type TwinAlarm,
-} from "@/lib/digital-twin-store";
+import { useDigitalTwinStore, type HotspotConfig, type TwinAlarm } from "@/lib/digital-twin-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,7 +123,11 @@ function DigitalTwinPage() {
             onClick={() => setSidebarOpen((o) => !o)}
             className="h-7 w-7 rounded flex items-center justify-center hover:bg-accent text-muted-foreground"
           >
-            {sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+            {sidebarOpen ? (
+              <PanelRightClose className="h-4 w-4" />
+            ) : (
+              <PanelRightOpen className="h-4 w-4" />
+            )}
           </button>
           <button
             type="button"
@@ -220,9 +220,7 @@ function DigitalTwinPage() {
                       type="button"
                       onClick={() => {
                         selectEquipment(
-                          selectedEquipmentId === mapping.equipmentId
-                            ? null
-                            : mapping.equipmentId,
+                          selectedEquipmentId === mapping.equipmentId ? null : mapping.equipmentId,
                         );
                         selectHotspot(null);
                       }}
@@ -395,9 +393,7 @@ function AlarmBanner({
   return (
     <Card
       className={`border-l-2 ${
-        alarm.severity === "critical"
-          ? "border-l-destructive"
-          : "border-l-warning"
+        alarm.severity === "critical" ? "border-l-destructive" : "border-l-warning"
       } animate-in slide-in-from-right`}
     >
       <CardContent className="p-2.5 flex items-start gap-2">

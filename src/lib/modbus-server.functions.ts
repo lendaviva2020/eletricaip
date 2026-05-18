@@ -1,7 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import net from "net";
+
+interface AuthCtx {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  claims: Record<string, unknown>;
+}
 
 export type ModbusConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
@@ -26,6 +34,7 @@ interface ModbusSession {
   error?: string;
   connectedAt?: string;
   socket?: net.Socket;
+  _simInterval?: ReturnType<typeof setInterval>;
 }
 
 const sessions = new Map<string, ModbusSession>();
@@ -55,11 +64,10 @@ export const connectModbus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => ConnectSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const userId = (context as any).userId as string;
+    const { userId, supabase } = context as unknown as AuthCtx;
     const session = ensureSession(userId, data);
     session.status = "connecting";
 
-    const supabase = (context as any).supabase;
     await supabase.from("runtime_logs").insert({
       user_id: userId,
       tag: "MB",
@@ -87,10 +95,10 @@ export const connectModbus = createServerFn({ method: "POST" })
 export const disconnectModbus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const userId = (context as any).userId as string;
+    const { userId } = context as unknown as AuthCtx;
     const session = sessions.get(userId);
     if (session) {
-      const interval = (session as any)._simInterval;
+      const interval = session._simInterval;
       if (interval) clearInterval(interval);
       if (session.socket) {
         session.socket.destroy();
@@ -107,7 +115,7 @@ export const disconnectModbus = createServerFn({ method: "POST" })
 export const getModbusStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const userId = (context as any).userId as string;
+    const { userId } = context as unknown as AuthCtx;
     const session = getSession(userId);
     if (!session) {
       return {
@@ -133,17 +141,22 @@ export const getModbusStatus = createServerFn({ method: "GET" })
 const ReadRegistersSchema = z.object({
   address: z.number().int().min(0).max(65535),
   count: z.number().int().min(1).max(125).default(10),
-  type: z.enum(["holding_register", "input_register", "coil", "discrete_input"]).default("holding_register"),
+  type: z
+    .enum(["holding_register", "input_register", "coil", "discrete_input"])
+    .default("holding_register"),
 });
 
 export const readModbusRegisters = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => ReadRegistersSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const userId = (context as any).userId as string;
+    const { userId } = context as unknown as AuthCtx;
     const session = getSession(userId);
     if (!session || session.status !== "connected") {
-      return { ok: false as const, error: { code: "NOT_CONNECTED", message: "Modbus desconectado." } };
+      return {
+        ok: false as const,
+        error: { code: "NOT_CONNECTED", message: "Modbus desconectado." },
+      };
     }
 
     const results: ModbusRegisterValue[] = [];
@@ -178,10 +191,13 @@ export const writeModbusRegister = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => WriteRegisterSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const userId = (context as any).userId as string;
+    const { userId } = context as unknown as AuthCtx;
     const session = getSession(userId);
     if (!session || session.status !== "connected") {
-      return { ok: false as const, error: { code: "NOT_CONNECTED", message: "Modbus desconectado." } };
+      return {
+        ok: false as const,
+        error: { code: "NOT_CONNECTED", message: "Modbus desconectado." },
+      };
     }
 
     const key = `${data.type}:${data.address}`;
@@ -241,7 +257,7 @@ function startSimulatedModbus(session: ModbusSession, userId: string, supabase: 
     }
   }, 250);
 
-  (session as any)._simInterval = interval;
+  session._simInterval = interval;
 }
 
 async function connectRealModbus(session: ModbusSession, userId: string, supabase: any) {

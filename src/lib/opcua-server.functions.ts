@@ -1,6 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+interface AuthCtx {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  claims: Record<string, unknown>;
+}
 
 export type OpcuaConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
@@ -27,6 +35,7 @@ interface OpcuaSession {
   tags: Map<string, OpcuaTagValue>;
   error?: string;
   connectedAt?: string;
+  _simInterval?: ReturnType<typeof setInterval>;
 }
 
 const sessions = new Map<string, OpcuaSession>();
@@ -38,7 +47,11 @@ function getSession(userId: string): OpcuaSession | undefined {
 function ensureSession(userId: string): OpcuaSession {
   let s = sessions.get(userId);
   if (!s) {
-    s = { config: { endpoint: "opc.tcp://localhost:4840" }, status: "disconnected", tags: new Map() };
+    s = {
+      config: { endpoint: "opc.tcp://localhost:4840" },
+      status: "disconnected",
+      tags: new Map(),
+    };
     sessions.set(userId, s);
   }
   return s;
@@ -56,12 +69,11 @@ export const connectOpcua = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => ConnectSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const userId = (context as any).userId as string;
+    const { userId, supabase } = context as unknown as AuthCtx;
     const session = ensureSession(userId);
     session.config = data;
     session.status = "connecting";
 
-    const supabase = (context as any).supabase;
     await supabase.from("runtime_logs").insert({
       user_id: userId,
       tag: "OPCUA",
@@ -96,7 +108,7 @@ export const connectOpcua = createServerFn({ method: "POST" })
 export const disconnectOpcua = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const userId = (context as any).userId as string;
+    const { userId } = context as unknown as AuthCtx;
     const session = sessions.get(userId);
     if (session) {
       session.status = "disconnected";
@@ -110,7 +122,7 @@ export const disconnectOpcua = createServerFn({ method: "POST" })
 export const getOpcuaStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const userId = (context as any).userId as string;
+    const { userId } = context as unknown as AuthCtx;
     const session = getSession(userId);
     if (!session) {
       return {
@@ -138,10 +150,13 @@ export const readOpcuaTags = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => ReadTagsSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const userId = (context as any).userId as string;
+    const { userId } = context as unknown as AuthCtx;
     const session = getSession(userId);
     if (!session || session.status !== "connected") {
-      return { ok: false as const, error: { code: "NOT_CONNECTED", message: "OPC-UA desconectado." } };
+      return {
+        ok: false as const,
+        error: { code: "NOT_CONNECTED", message: "OPC-UA desconectado." },
+      };
     }
 
     const results: OpcuaTagValue[] = [];
@@ -161,17 +176,25 @@ export const writeOpcuaTag = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => WriteTagSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const userId = (context as any).userId as string;
+    const { userId } = context as unknown as AuthCtx;
     const session = getSession(userId);
     if (!session || session.status !== "connected") {
-      return { ok: false as const, error: { code: "NOT_CONNECTED", message: "OPC-UA desconectado." } };
+      return {
+        ok: false as const,
+        error: { code: "NOT_CONNECTED", message: "OPC-UA desconectado." },
+      };
     }
 
     session.tags.set(data.nodeId, {
       nodeId: data.nodeId,
       displayName: data.nodeId.split(".").pop() ?? data.nodeId,
       value: data.value,
-      dataType: typeof data.value === "number" ? "Double" : typeof data.value === "boolean" ? "Boolean" : "String",
+      dataType:
+        typeof data.value === "number"
+          ? "Double"
+          : typeof data.value === "boolean"
+            ? "Boolean"
+            : "String",
       timestamp: new Date().toISOString(),
       quality: "good",
     });
@@ -226,7 +249,7 @@ function startSimulatedSession(session: OpcuaSession, userId: string, supabase: 
   }, 200);
 
   // Store the interval for cleanup
-  (session as any)._simInterval = interval;
+  session._simInterval = interval;
 }
 
 async function connectRealOpcua(session: OpcuaSession, userId: string, supabase: any) {
@@ -243,7 +266,7 @@ async function connectRealOpcua(session: OpcuaSession, userId: string, supabase:
 if (typeof process !== "undefined" && typeof process.on === "function") {
   process.on("exit", () => {
     for (const [, s] of sessions) {
-      const interval = (s as any)._simInterval;
+      const interval = s._simInterval;
       if (interval) clearInterval(interval);
     }
   });

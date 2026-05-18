@@ -39,7 +39,9 @@ export function ActivityTimeline({
           return (
             <div key={e.id} className="relative flex items-start gap-3 pb-3 last:pb-0">
               <div className="relative z-10 mt-0.5">
-                <div className={`flex h-[22px] w-[22px] items-center justify-center rounded-full border border-border/40 bg-background ${dotColor === "bg-emerald-500" ? "text-emerald-500" : dotColor === "bg-amber-500" ? "text-amber-500" : "text-red-500"}`}>
+                <div
+                  className={`flex h-[22px] w-[22px] items-center justify-center rounded-full border border-border/40 bg-background ${dotColor === "bg-emerald-500" ? "text-emerald-500" : dotColor === "bg-amber-500" ? "text-amber-500" : "text-red-500"}`}
+                >
                   {e.icon}
                 </div>
               </div>

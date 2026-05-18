@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
   basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
@@ -82,11 +83,50 @@ export const changePlanManual = createServerFn({ method: "POST" })
     z.object({ plan: z.enum(["free", "basic", "pro", "premium"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { error, data: res } = await context.supabase.rpc("change_tenant_plan", {
-      p_plan: data.plan,
+    const { userId } = context;
+    const { data: adminFlag, error: adminError } = await supabaseAdmin
+      .from("platform_admins")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (adminError) throw new Error(adminError.message);
+    if (!adminFlag) throw new Error("forbidden");
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("tenant_id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (profileError) throw new Error(profileError.message);
+    if (!profile?.tenant_id) throw new Error("no_tenant");
+
+    const { data: tenant, error: tenantError } = await supabaseAdmin
+      .from("tenants")
+      .select("plan")
+      .eq("id", profile.tenant_id)
+      .maybeSingle();
+    if (tenantError) throw new Error(tenantError.message);
+
+    const oldPlan = (tenant?.plan ?? "free").toLowerCase();
+    const oldPlanType = oldPlan === "premium" ? "INDUSTRIAL" : oldPlan === "basic" || oldPlan === "pro" ? "PRO" : "FREE";
+    const newPlanType = data.plan === "premium" ? "INDUSTRIAL" : data.plan === "basic" || data.plan === "pro" ? "PRO" : "FREE";
+
+    const { error: updateError } = await supabaseAdmin
+      .from("tenants")
+      .update({ plan: data.plan, updated_at: new Date().toISOString() })
+      .eq("id", profile.tenant_id);
+    if (updateError) throw new Error(updateError.message);
+
+    const { error: auditError } = await supabaseAdmin.from("subscription_audit_log").insert({
+      user_id: userId,
+      action: "manual_change",
+      old_plan_type: oldPlanType,
+      new_plan_type: newPlanType,
+      reason: "platform_admin_override",
     });
-    if (error) throw new Error(error.message);
-    return res as { tenant_id: string; plan: string };
+    if (auditError) throw new Error(auditError.message);
+
+    return { tenant_id: profile.tenant_id, plan: data.plan };
   });
 
 /** Returns whether the current user is a platform admin. */

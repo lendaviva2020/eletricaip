@@ -2,6 +2,14 @@ import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getPlan } from "@/lib/plans";
 import { requireSupabaseAuth } from "./auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./types";
+
+interface AuthCtx {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  claims: Record<string, unknown>;
+}
 
 // ── In-memory sliding-window burst limiter ──────────────────────
 const BURST_WINDOW_MS = 60_000;
