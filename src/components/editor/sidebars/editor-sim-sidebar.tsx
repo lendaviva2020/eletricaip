@@ -9,8 +9,8 @@ const SPEEDS = [1, 10, 100] as const;
 const MODES = ["Unifilar", "Ladder", "SCADA Conjunta"] as const;
 
 export function EditorSimSidebar() {
-  const [activeMode, setActiveMode] = useState<typeof MODES[number]>("SCADA Conjunta");
-  const [activeSpeed, setActiveSpeed] = useState<typeof SPEEDS[number]>(1);
+  const [activeMode, setActiveMode] = useState<(typeof MODES)[number]>("SCADA Conjunta");
+  const [activeSpeed, setActiveSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [running, setRunning] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -80,7 +80,7 @@ export function EditorSimSidebar() {
 
   // Filter tags by search query
   const filteredTags = allTags.filter((t) =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleToggleBool = (tagId: string, currentVal: boolean, source: "plc" | "scada") => {
@@ -227,12 +227,19 @@ export function EditorSimSidebar() {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-mono font-bold tracking-tight text-foreground truncate max-w-[130px]" title={tag.name}>
+                      <span
+                        className="text-[11px] font-mono font-bold tracking-tight text-foreground truncate max-w-[130px]"
+                        title={tag.name}
+                      >
                         {tag.name}
                       </span>
-                      <span className={`text-[8px] font-mono font-semibold px-1 rounded uppercase ${
-                        tag.source === "plc" ? "bg-primary/20 text-primary" : "bg-success/20 text-success"
-                      }`}>
+                      <span
+                        className={`text-[8px] font-mono font-semibold px-1 rounded uppercase ${
+                          tag.source === "plc"
+                            ? "bg-primary/20 text-primary"
+                            : "bg-success/20 text-success"
+                        }`}
+                      >
                         {tag.source}
                       </span>
                     </div>
@@ -256,7 +263,9 @@ export function EditorSimSidebar() {
                             min="0"
                             max="100"
                             value={numVal}
-                            onChange={(e) => handleSliderChange(tag.id, Number(e.target.value), tag.source)}
+                            onChange={(e) =>
+                              handleSliderChange(tag.id, Number(e.target.value), tag.source)
+                            }
                             className="flex-1 accent-primary h-1 bg-input rounded-lg appearance-none cursor-pointer"
                           />
                           <span className="text-[10px] font-mono text-muted-foreground min-w-[30px] text-right">

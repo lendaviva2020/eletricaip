@@ -11,10 +11,13 @@ import {
   Play,
   RotateCcw as ResetIcon,
   X,
+  Box,
+  Monitor,
 } from "lucide-react";
 import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
+import { Twin3DViewer } from "./twin-3d-viewer";
 
 interface TelemetryHistory {
   t: number;
@@ -28,6 +31,7 @@ export function TwinCanvas() {
   const [sensorHistory, setSensorHistory] = useState<Record<string, TelemetryHistory[]>>({});
 
   // ===== "What-If" Simulation Mode =====
+  const [view3d, setView3d] = useState(false);
   const [whatIfOpen, setWhatIfOpen] = useState(false);
   const [whatIfActive, setWhatIfActive] = useState(false);
   const [loadDelta, setLoadDelta] = useState(10); // % delta on load (drives speed↓, current↑)
@@ -56,8 +60,12 @@ export function TwinCanvas() {
   };
 
   const speedVal = getActiveTag("SPEED") || (isLive ? 1420 + Math.sin(Date.now() / 600) * 30 : 0);
-  const currentVal = getActiveTag("CURRENT") || (speedVal > 0 ? 14.5 + Math.abs(Math.sin(Date.now() / 900)) * 2 : 0);
-  const levelVal = getActiveTag("NIVEL") || getActiveTag("LEVEL") || (isLive ? 62 + Math.sin(Date.now() / 3000) * 10 : 50);
+  const currentVal =
+    getActiveTag("CURRENT") || (speedVal > 0 ? 14.5 + Math.abs(Math.sin(Date.now() / 900)) * 2 : 0);
+  const levelVal =
+    getActiveTag("NIVEL") ||
+    getActiveTag("LEVEL") ||
+    (isLive ? 62 + Math.sin(Date.now() / 3000) * 10 : 50);
 
   // ===== "What-If" physical model =====
   // Simplified induction-motor + thermal model: keeping torque ∝ load, the
@@ -69,19 +77,18 @@ export function TwinCanvas() {
     const vFactor = 1 + voltageDelta / 100;
     // Speed: nominal 1450 rpm, slip ~3% at full load, scales with load and 1/V²
     const slipNom = 0.03;
-    const predictedSpeed = 1500 * (1 - slipNom * loadFactor / (vFactor * vFactor));
+    const predictedSpeed = 1500 * (1 - (slipNom * loadFactor) / (vFactor * vFactor));
     // Current rises ~linear with load, inverse with voltage
     const predictedCurrent = Math.max(0, (currentVal || 14.5) * loadFactor) / vFactor;
     // Winding temp = 25°C ambient + ambientDelta + I²·k over horizon
     const predictedTemp =
-      25 +
-      ambientDelta +
-      Math.pow(predictedCurrent, 2) * 0.18 +
-      Math.min(15, horizonH * 0.6);
+      25 + ambientDelta + Math.pow(predictedCurrent, 2) * 0.18 + Math.min(15, horizonH * 0.6);
     // Efficiency drops ~quadratic with load far from optimum (~80% load)
     const predictedEff = Math.max(
       60,
-      94.2 - Math.pow(Math.abs(loadFactor - 0.8) * 100, 1.3) * 0.06 - Math.max(0, predictedTemp - 70) * 0.2,
+      94.2 -
+        Math.pow(Math.abs(loadFactor - 0.8) * 100, 1.3) * 0.06 -
+        Math.max(0, predictedTemp - 70) * 0.2,
     );
     // Bearing life (L10) consumed per scenario hour, exponential with load
     const lifeConsumedPctPerH = 0.012 * Math.pow(loadFactor, 3.33);
@@ -285,7 +292,7 @@ export function TwinCanvas() {
           tPos.x - 30,
           tPos.y - fluidHeight,
           tPos.x + 30,
-          tPos.y
+          tPos.y,
         );
         fGrad.addColorStop(0, "rgba(0, 140, 255, 0.7)"); // Electric Blue fluid
         fGrad.addColorStop(1, "rgba(0, 50, 150, 0.9)");
@@ -310,7 +317,7 @@ export function TwinCanvas() {
           tPos.x + 15,
           tPos.y - fluidHeight + 2 + Math.sin(Date.now() / 250) * 1.5,
           tPos.x + 29,
-          tPos.y - fluidHeight + Math.sin(Date.now() / 250) * 1.5
+          tPos.y - fluidHeight + Math.sin(Date.now() / 250) * 1.5,
         );
         ctx.stroke();
       }
@@ -336,8 +343,22 @@ export function TwinCanvas() {
         ]}
       />
 
-      {/* 3D VIEWPORT CONTROLS */}
+      {/* VIEWPORT CONTROLS */}
       <div className="absolute top-16 left-6 z-10 flex gap-1.5">
+        {/* 2D / 3D toggle */}
+        <button
+          onClick={() => setView3d((v) => !v)}
+          title={view3d ? "Visão 2D Isométrica" : "Visão 3D (Three.js)"}
+          className={`h-8 rounded border flex items-center gap-1.5 px-2 cursor-pointer text-[10px] font-mono transition-colors ${
+            view3d
+              ? "border-primary bg-primary/15 text-primary"
+              : "border-border bg-card/75 text-muted-foreground hover:bg-accent hover:text-foreground"
+          }`}
+        >
+          {view3d ? <Box className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
+          {view3d ? "3D" : "2D"}
+        </button>
+        <div className="w-px h-6 bg-border mx-0.5 align-middle self-center" />
         <button
           onClick={() => setAngle((a) => a - 10)}
           title="Girar p/ Esquerda"
@@ -377,11 +398,8 @@ export function TwinCanvas() {
               : "border-border bg-card/75 text-muted-foreground hover:bg-accent hover:text-foreground"
           }`}
         >
-          <FlaskConical className="h-3.5 w-3.5" />
-          E se?
-          {whatIfActive && (
-            <span className="h-1.5 w-1.5 rounded-full bg-primary energized" />
-          )}
+          <FlaskConical className="h-3.5 w-3.5" />E se?
+          {whatIfActive && <span className="h-1.5 w-1.5 rounded-full bg-primary energized" />}
         </button>
       </div>
 
@@ -411,17 +429,22 @@ export function TwinCanvas() {
         />
       )}
 
-      {/* THE DRAWING CANVAS */}
-      <div className="absolute inset-0 grid place-items-center opacity-10 pointer-events-none">
-        <div className="w-[80%] h-[80%] border border-primary/20 rounded-full animate-ping" />
-      </div>
-      
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={500}
-        className="w-full h-full block cursor-grab active:cursor-grabbing"
-      />
+      {/* THE DRAWING CANVAS — 3D or 2D */}
+      {view3d ? (
+        <Twin3DViewer />
+      ) : (
+        <>
+          <div className="absolute inset-0 grid place-items-center opacity-10 pointer-events-none">
+            <div className="w-[80%] h-[80%] border border-primary/20 rounded-full animate-ping" />
+          </div>
+          <canvas
+            ref={canvasRef}
+            width={800}
+            height={500}
+            className="w-full h-full block cursor-grab active:cursor-grabbing"
+          />
+        </>
+      )}
 
       {/* FLOATING TELEMETRY SENSOR OVERLAYS */}
       <div className="absolute inset-0 pointer-events-none select-none">
@@ -521,7 +544,7 @@ export function TwinCanvas() {
                   d={buildSvgPath(
                     sensorHistory[selectedSensor].map((h) => h.val),
                     220,
-                    65
+                    65,
                   )}
                   fill="none"
                   stroke="oklch(0.78 0.17 200)"
@@ -643,9 +666,8 @@ function WhatIfPanel(props: {
         </button>
       </div>
       <p className="text-[10px] text-muted-foreground leading-snug font-mono">
-        Ajuste parâmetros operacionais e veja o impacto previsto sem afetar o
-        processo real. O modelo combina equações de máquina, curva de bomba e
-        termodinâmica do enrolamento.
+        Ajuste parâmetros operacionais e veja o impacto previsto sem afetar o processo real. O
+        modelo combina equações de máquina, curva de bomba e termodinâmica do enrolamento.
       </p>
 
       <ScenarioSlider
@@ -698,7 +720,13 @@ function WhatIfPanel(props: {
           <span className="text-right">Δ</span>
         </div>
         <CompareRow label="Velocidade" unit="rpm" real={baseline.speed} sim={whatIf.speed} />
-        <CompareRow label="Corrente" unit="A" real={baseline.current} sim={whatIf.current} decimals={1} />
+        <CompareRow
+          label="Corrente"
+          unit="A"
+          real={baseline.current}
+          sim={whatIf.current}
+          decimals={1}
+        />
         <CompareRow
           label="Temp. enrol."
           unit="°C"
@@ -827,17 +855,15 @@ function CompareRow({
   // when delta<0, so flipping logic)
   const worse = inverse ? delta < 0 : delta > 0;
   const color =
-    Math.abs(deltaPct) < 1
-      ? "text-muted-foreground"
-      : worse
-        ? "text-warning"
-        : "text-success";
+    Math.abs(deltaPct) < 1 ? "text-muted-foreground" : worse ? "text-warning" : "text-success";
   return (
     <div className="grid grid-cols-[1fr_70px_70px_60px] text-[10px] font-mono px-2 py-1 border-b border-border/40 last:border-b-0">
       <span className="text-foreground">
         {label} <span className="text-muted-foreground">({unit})</span>
       </span>
-      <span className="text-right text-muted-foreground tabular-nums">{real.toFixed(decimals)}</span>
+      <span className="text-right text-muted-foreground tabular-nums">
+        {real.toFixed(decimals)}
+      </span>
       <span className="text-right text-foreground font-bold tabular-nums">
         {sim.toFixed(decimals)}
       </span>

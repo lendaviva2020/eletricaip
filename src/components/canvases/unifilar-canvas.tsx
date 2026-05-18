@@ -66,7 +66,7 @@ function Inner() {
       const y = e.clientY - rect.top;
       broadcastCursor(x, y);
     },
-    [broadcastCursor]
+    [broadcastCursor],
   );
 
   const components = useVoltaiStore((store) => store.components);

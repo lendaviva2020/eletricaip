@@ -157,7 +157,10 @@ export const createMpPreference = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ plan: z.enum(["basic", "pro", "premium"]) }).parse(input))
   .handler(async ({ data, context }) => {
     const token = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
-    if (!token) throw new Error("billing_not_configured: missing MERCADO_PAGO_ACCESS_TOKEN / MP_ACCESS_TOKEN");
+    if (!token)
+      throw new Error(
+        "billing_not_configured: missing MERCADO_PAGO_ACCESS_TOKEN / MP_ACCESS_TOKEN",
+      );
 
     const { supabase, userId, claims } = context;
     const { data: profile } = await supabase

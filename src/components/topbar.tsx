@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Search, Bell, Save, Share2, GitBranch, Loader2, Check } from "lucide-react";
+import { Search, Save, Share2, GitBranch, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RuntimeStatus } from "@/components/runtime-status";
 import { MobileMenu } from "@/components/mobile-menu";
 import { AiCreditsBadge } from "@/components/ai-credits-badge";
+import { NotificationDropdown } from "@/components/ui/notification-dropdown";
 import { saveManualVersion } from "@/lib/ai-architect-client";
+import { useNotifications } from "@/hooks/use-notifications";
 
 export function Topbar() {
+  useNotifications();
   const [saving, setSaving] = useState<"idle" | "busy" | "ok" | "err">("idle");
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
@@ -88,10 +91,7 @@ export function Topbar() {
         <RuntimeStatus />
         <AiCreditsBadge />
         <div className="hidden sm:block h-5 w-px bg-border mx-1" />
-        <Button size="icon" variant="ghost" className="h-8 w-8 relative">
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-warning energized" />
-        </Button>
+        <NotificationDropdown />
         <div className="h-7 w-7 rounded-full ring-1 ring-border bg-linear-to-br from-primary/60 to-info/60" />
       </div>
     </header>

@@ -60,7 +60,9 @@ export function CanvasAiChat() {
   // Map findings to readable warning cards
   const normWarnings = useMemo(() => {
     if (findings.length === 0) {
-      return ["✅ Todos os canvas em conformidade com as normas ABNT NBR 5410, NR-10, NR-12 e ISA-18.2!"];
+      return [
+        "✅ Todos os canvas em conformidade com as normas ABNT NBR 5410, NR-10, NR-12 e ISA-18.2!",
+      ];
     }
     return findings.map((f) => {
       const emoji = f.severity === "error" ? "🚨" : f.severity === "warn" ? "⚠️" : "ℹ️";
@@ -81,7 +83,11 @@ export function CanvasAiChat() {
     if (!p || busy) return;
     if (!textToSend) setVal("");
 
-    setMsgs((m) => [...m, { role: "user", text: p }, { role: "ai", text: "Processando prompt..." }]);
+    setMsgs((m) => [
+      ...m,
+      { role: "user", text: p },
+      { role: "ai", text: "Processando prompt..." },
+    ]);
     setBusy(true);
 
     try {
@@ -89,7 +95,7 @@ export function CanvasAiChat() {
       const activeViolationsText = findings
         .map(
           (f) =>
-            `- [Norma ${f.norm} - Gravidade ${f.severity.toUpperCase()}]: ${f.title}. Detalhe: ${f.detail}. Dica de Correção: ${f.fixHint || "N/A"}`
+            `- [Norma ${f.norm} - Gravidade ${f.severity.toUpperCase()}]: ${f.title}. Detalhe: ${f.detail}. Dica de Correção: ${f.fixHint || "N/A"}`,
         )
         .join("\n");
 
@@ -146,7 +152,8 @@ export function CanvasAiChat() {
           // Inject nodes from file representation
           const mockFileResult = {
             title: `Sistema Extraído: ${file.name.replace(/\.[^/.]+$/, "")}`,
-            rationale: "O PDF continha especificações para um painel secundário de bombagem. Mapeamos um disjuntor principal de 125A e duas partidas sob inversor VFD de 15kW.",
+            rationale:
+              "O PDF continha especificações para um painel secundário de bombagem. Mapeamos um disjuntor principal de 125A e duas partidas sob inversor VFD de 15kW.",
             transformer: { kVA: 220, primary_kV: 13.8, secondary_V: 380 },
             ccm: { columns: 2, cells: 4 },
             motors: [
@@ -154,11 +161,43 @@ export function CanvasAiChat() {
               { id: "BOMB_02", power_kW: 15, startMethod: "VFD" as const },
             ],
             nodes: [
-              { id: "TR-02", kind: "transformer", category: "power", label: "Trafo 220kVA", position: { x: 100, y: 100 } },
-              { id: "QGBT-02", kind: "busbar", category: "power", label: "QGBT Principal", position: { x: 100, y: 220 } },
-              { id: "DJ-MAIN", kind: "breaker", category: "power", label: "DJ 125A", position: { x: 300, y: 220 }, params: { In: 125 } },
-              { id: "VFD-01", kind: "vfd", category: "power", label: "VFD Bomba 1", position: { x: 480, y: 150 } },
-              { id: "M-B1", kind: "motor", category: "mech", label: "Motor Bomba 1", position: { x: 660, y: 150 }, params: { P: 15 } },
+              {
+                id: "TR-02",
+                kind: "transformer",
+                category: "power",
+                label: "Trafo 220kVA",
+                position: { x: 100, y: 100 },
+              },
+              {
+                id: "QGBT-02",
+                kind: "busbar",
+                category: "power",
+                label: "QGBT Principal",
+                position: { x: 100, y: 220 },
+              },
+              {
+                id: "DJ-MAIN",
+                kind: "breaker",
+                category: "power",
+                label: "DJ 125A",
+                position: { x: 300, y: 220 },
+                params: { In: 125 },
+              },
+              {
+                id: "VFD-01",
+                kind: "vfd",
+                category: "power",
+                label: "VFD Bomba 1",
+                position: { x: 480, y: 150 },
+              },
+              {
+                id: "M-B1",
+                kind: "motor",
+                category: "mech",
+                label: "Motor Bomba 1",
+                position: { x: 660, y: 150 },
+                params: { P: 15 },
+              },
             ],
             edges: [
               { source: "TR-02", target: "QGBT-02", kind: "power" as const },
@@ -260,7 +299,10 @@ export function CanvasAiChat() {
           </div>
           <div className="space-y-1.5">
             {normWarnings.map((warn, index) => (
-              <div key={index} className="text-[10px] font-mono text-muted-foreground leading-normal">
+              <div
+                key={index}
+                className="text-[10px] font-mono text-muted-foreground leading-normal"
+              >
                 {warn}
               </div>
             ))}
@@ -280,7 +322,9 @@ export function CanvasAiChat() {
             <div className="text-[8px] uppercase tracking-wider mb-0.5 font-bold text-muted-foreground">
               {m.role === "ai" ? "🤖 NexusMind" : "👤 Você"}
             </div>
-            <div className="whitespace-pre-wrap font-mono text-[11px] text-foreground/90">{m.text}</div>
+            <div className="whitespace-pre-wrap font-mono text-[11px] text-foreground/90">
+              {m.text}
+            </div>
 
             {m.steps && (
               <ol className="list-decimal list-inside mt-2 space-y-0.5 text-[10px] text-foreground/80 font-mono">
@@ -310,7 +354,11 @@ export function CanvasAiChat() {
                   disabled={m.patchApplied}
                   className="h-6 px-2 text-[9px] font-bold uppercase tracking-wider cursor-pointer"
                 >
-                  {m.patchApplied ? <ShieldCheck className="h-3.5 w-3.5 text-success" /> : "Aplicar ao Canvas"}
+                  {m.patchApplied ? (
+                    <ShieldCheck className="h-3.5 w-3.5 text-success" />
+                  ) : (
+                    "Aplicar ao Canvas"
+                  )}
                 </Button>
               </div>
             )}

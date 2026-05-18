@@ -259,9 +259,7 @@ export const listProjectVersions = createServerFn({ method: "POST" })
 
 export const restoreProjectVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({ projectId: z.string().uuid(), versionId: z.string().uuid() }),
-  )
+  .inputValidator(z.object({ projectId: z.string().uuid(), versionId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const { supabase } = context as any;
     // Fetch the snapshot from the version record

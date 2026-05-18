@@ -130,9 +130,7 @@ export function useCollab(projectId: string | null) {
           useProjectStore.getState().setAll(data.project.nodes ?? [], data.project.edges ?? []);
         }
         if (data.voltai) {
-          useVoltaiStore
-            .getState()
-            .setAll(data.voltai.components ?? [], data.voltai.edges ?? []);
+          useVoltaiStore.getState().setAll(data.voltai.components ?? [], data.voltai.edges ?? []);
         }
       });
 
@@ -185,6 +183,7 @@ export function useCollab(projectId: string | null) {
         channelRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, userId, userName]);
 
   // Function to broadcast own cursor position

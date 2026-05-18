@@ -50,10 +50,7 @@ export function SidebarShell({
   footer?: ReactNode;
 }) {
   return (
-    <div
-      className="flex shrink-0 flex-col border-r border-border bg-panel/50"
-      style={{ width }}
-    >
+    <div className="flex shrink-0 flex-col border-r border-border bg-panel/50" style={{ width }}>
       {children}
       {footer && (
         <div className="mt-auto p-3 border-t border-border text-[10px] text-muted-foreground">

@@ -2,12 +2,7 @@ import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { CheckCircle2, Sparkles } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { createStripeCheckout, createMpPreference } from "@/lib/billing.functions";
 import { SUBSCRIPTION_PLANS } from "@/lib/plans";
@@ -31,9 +26,7 @@ export function UpgradeModal() {
     setBusy(`${provider}:${plan}`);
     try {
       const res =
-        provider === "stripe"
-          ? await stripeFn({ data: { plan } })
-          : await mpFn({ data: { plan } });
+        provider === "stripe" ? await stripeFn({ data: { plan } }) : await mpFn({ data: { plan } });
       window.location.href = res.url;
     } catch (e) {
       toast.error((e as Error).message);
@@ -50,7 +43,8 @@ export function UpgradeModal() {
             <span>Fazer Upgrade do seu Plano</span>
           </DialogTitle>
           <p className="text-xs text-muted-foreground">
-            Desbloqueie mais créditos de inteligência artificial, projetos ilimitados e monitoramento OPC-UA / Modbus em tempo real.
+            Desbloqueie mais créditos de inteligência artificial, projetos ilimitados e
+            monitoramento OPC-UA / Modbus em tempo real.
           </p>
         </DialogHeader>
 
@@ -63,9 +57,7 @@ export function UpgradeModal() {
                 <div
                   key={p.id}
                   className={`relative flex flex-col rounded-xl border p-5 transition-all duration-300 bg-background/50 hover:bg-background/80 ${
-                    isPremium
-                      ? "border-primary/60 shadow-glow bg-primary/5"
-                      : "border-border"
+                    isPremium ? "border-primary/60 shadow-glow bg-primary/5" : "border-border"
                   }`}
                 >
                   {isPremium && (
@@ -91,7 +83,9 @@ export function UpgradeModal() {
                     <li className="flex items-start gap-1.5">
                       <CheckCircle2 className="h-3 w-3 text-primary shrink-0 mt-0.5" />
                       <span>
-                        {p.maxProjects < 0 ? "Projetos ilimitados" : `Até ${p.maxProjects} projetos`}
+                        {p.maxProjects < 0
+                          ? "Projetos ilimitados"
+                          : `Até ${p.maxProjects} projetos`}
                       </span>
                     </li>
                     {p.realtime && (

@@ -287,6 +287,7 @@ function NodeShape({
   ].includes(node.kind);
 
   const groupRef = useRef<Konva.Group>(null);
+  const resizeRef = useRef<Konva.Group>(null);
   const accent =
     node.category === "power"
       ? "#3fb6d6"
@@ -306,13 +307,24 @@ function NodeShape({
     syncTag(tagName, percentage);
   };
 
+  // Handles widget resize via bottom-right corner handle
+  const handleResizeDrag = (e: Konva.KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true;
+    const newW = Math.max(80, Math.round(e.target.x()));
+    const newH = Math.max(50, Math.round(e.target.y()));
+    useProjectStore.getState().updateNodeParam(node.id, "w", newW);
+    useProjectStore.getState().updateNodeParam(node.id, "h", newH);
+  };
+
   if (variant === "scada" && isHmiWidget) {
-    const width = node.kind === "trend" || node.kind === "alarm_table" ? 180 : 120;
-    const height = node.kind === "trend" || node.kind === "alarm_table" ? 100 : 70;
+    const defaultW = node.kind === "trend" || node.kind === "alarm_table" ? 180 : 120;
+    const defaultH = node.kind === "trend" || node.kind === "alarm_table" ? 100 : 70;
+    const width = Number(node.params.w) || defaultW;
+    const height = Number(node.params.h) || defaultH;
 
     // Get current value of the bound tag
     const boundTagName = String(node.params.tag || "");
-    const tagValue = boundTagName ? tags[boundTagName] ?? 0 : 0;
+    const tagValue = boundTagName ? (tags[boundTagName] ?? 0) : 0;
 
     return (
       <Group
@@ -773,6 +785,41 @@ function NodeShape({
               fontSize={8}
               fill="#8a99b3"
             />
+          </Group>
+        )}
+
+        {/* RESIZE HANDLE (bottom-right corner) */}
+        {selected && (
+          <Group
+            ref={resizeRef}
+            x={width}
+            y={height}
+            draggable
+            dragBoundFunc={(pos) => ({
+              x: Math.max(80, pos.x),
+              y: Math.max(50, pos.y),
+            })}
+            onDragMove={handleResizeDrag}
+            onDragEnd={(e) => {
+              e.cancelBubble = true;
+            }}
+          >
+            <Rect
+              x={-8}
+              y={-8}
+              width={16}
+              height={16}
+              cornerRadius={3}
+              fill="#3fb6d6"
+              stroke="#fff"
+              strokeWidth={1}
+              opacity={0.9}
+              shadowColor="black"
+              shadowBlur={4}
+              shadowOpacity={0.5}
+              cursor="nwse-resize"
+            />
+            <Rect x={-2} y={-2} width={4} height={4} fill="#fff" opacity={0.7} />
           </Group>
         )}
       </Group>

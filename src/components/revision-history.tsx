@@ -28,7 +28,11 @@ export function RevisionHistory() {
   const versions = data?.versions ?? [];
 
   async function handleRestore(versionId: string, versionNumber: number) {
-    if (!confirm(`Restaurar o projeto para a versão v${versionNumber}? A versão atual será sobrescrita.`))
+    if (
+      !confirm(
+        `Restaurar o projeto para a versão v${versionNumber}? A versão atual será sobrescrita.`,
+      )
+    )
       return;
     setRestoring(versionId);
     try {
@@ -69,9 +73,7 @@ export function RevisionHistory() {
           {!isLoading && versions.length === 0 && (
             <div className="p-4 text-center">
               <Clock className="h-6 w-6 mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-[10px] text-muted-foreground">
-                Nenhuma revisão salva ainda.
-              </p>
+              <p className="text-[10px] text-muted-foreground">Nenhuma revisão salva ainda.</p>
               <p className="text-[9px] text-muted-foreground/60 mt-1">
                 Use o botão "Salvar" no topbar para criar snapshots auditáveis.
               </p>

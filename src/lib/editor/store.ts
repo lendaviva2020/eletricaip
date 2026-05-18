@@ -31,7 +31,7 @@ interface EditorState {
   setRungs: (rungs: LadderRung[] | ((prev: LadderRung[]) => LadderRung[])) => void;
   setFbdAll: (
     nodes: any[] | ((prev: any[]) => any[]),
-    edges: any[] | ((prev: any[]) => any[])
+    edges: any[] | ((prev: any[]) => any[]),
   ) => void;
 }
 

@@ -212,8 +212,8 @@ function VersionsPanel() {
       <RevisionHistory />
       <div className="rounded-md border border-border bg-card p-3 text-[10px] text-muted-foreground">
         <p>
-          Cada snapshot é um registro imutável de auditoria normativa. Para compliance com NR-10 e ISO 9001,
-          salve revisões antes de cada entrega ou modificação significativa.
+          Cada snapshot é um registro imutável de auditoria normativa. Para compliance com NR-10 e
+          ISO 9001, salve revisões antes de cada entrega ou modificação significativa.
         </p>
       </div>
     </div>
