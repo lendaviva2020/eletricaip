@@ -2,6 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAiQuota, requireBurstLimit } from "@/integrations/supabase/ai-rate-limit-middleware";
 
 export type ChatConversation = {
   id: string;
@@ -100,7 +101,7 @@ function parseSSEDelta(chunk: string): string[] {
 }
 
 export const streamChat = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuth, requireAiQuota, requireBurstLimit])
   .inputValidator((input) =>
     z
       .object({

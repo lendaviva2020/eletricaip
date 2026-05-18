@@ -27,7 +27,7 @@ export function UpgradeModal() {
     try {
       const res =
         provider === "stripe" ? await stripeFn({ data: { plan } }) : await mpFn({ data: { plan } });
-      window.location.href = res.url;
+      window.open(res.url, "_blank");
     } catch (e) {
       toast.error((e as Error).message);
       setBusy(null);

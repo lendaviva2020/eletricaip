@@ -1054,8 +1054,8 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
 - [x] Versionamento completo (listar, salvar, restaurar versões)
 - [x] Topbar global com créditos restantes (`AiCreditsBadge` + `getAiCredits`)
 - [x] Sidebar com navegação entre Dashboard, Projetos, Workspace, IA, etc.
-- [ ] Duplicar projeto (pendente)
-- [ ] Arquivar projeto (não implementado — usar delete com cascade)
+- [x] Duplicar projeto (server function + botão na UI com ícone Copy)
+- [x] Arquivar projeto (soft-delete via status="archived", botão Archive + confirmação)
 
 ---
 
@@ -1387,8 +1387,8 @@ export const VoltaiFlowNode = memo(function VoltaiFlowNode({ data, selected }: N
 - [x] Simulação embutida (disjuntores I²t, fusíveis, contatores, motores, relés, temporizadores, contadores, UPS)
 - [x] Multiplayer cursors via BroadcastChannel (useCollab)
 - [x] 8 módulos (Unifilar, Ladder, FBD, SCADA, Twin, PLC, Sim, Alarmes) com ModeTabs
-- [ ] Barra inferior com logs, alarmes, IA, terminal, eventos, OPC-UA, Modbus, runtime
-- [ ] Canvas responsivo (zoom fit ao abrir)
+- [x] Barra inferior com logs, alarmes, IA, terminal, eventos, OPC-UA, Modbus, runtime (8 abas com ícones, status ao vivo, runtime status, conexões OPC-UA/Modbus)
+- [x] Canvas responsivo (zoom fit ao abrir via `fitView` prop + useEffect com timeout para fit após carregamento de nós)
 
 ---
 
@@ -1564,7 +1564,7 @@ compileProgram(rungs, format): string  // → programa completo
 - [x] Código compilado baixável como .st ou .il
 - [x] Tags compartilhadas via useEditorStore (cross-module com Unifilar/Simulação)
 - [x] Paleta com 37+ elementos em 10 categorias (Contatos, Bobinas, Temporizadores, Contadores, Comparação, Matemáticos, Lógicos, Movimentação, Trilhos, Controle)
-- [ ] Drag-and-drop da sidebar para o canvas (pendente — dados preparados "application/ladder-element")
+- [x] Drag-and-drop da sidebar para o canvas (cada célula aceita drop de "application/ladder-element", mapeia para LadderCellKind, auto-incrementa operando %I0.x/%Q0.x, mostra toast com validação de tipo)
 
 ---
 
@@ -1675,8 +1675,8 @@ if (newAlarm) pushLog({ channel: "Alarmes" });   // bottom panel
 - [x] Widgets interativos: button toggle, switch toggle, slider drag
 - [x] Animações: motor fan, pump impeller, tank liquid, trend chart, pipe flow
 - [x] Tabela de alarmes ISA-18.2 (módulo AlarmsCanvas)
-- [ ] Autocomplete de tags do projeto no Monaco (pendente)
-- [ ] Live preview ao digitar (pendente — execução com botão)
+- [x] Autocomplete de tags do projeto no Monaco (completion provider registrado via `beforeMount`, sugere nomes de tags de `useProjectStore` + `useEditorStore`, autocomplete contextual dentro de `tags["..."`)
+- [x] Live preview ao digitar (toggle "Live" com Switch, execução debounced a 600ms, exibe resultado formatado no console, não interfere com o loop de runtime)
 
 ---
 

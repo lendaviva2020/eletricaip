@@ -4,6 +4,7 @@ import { OrbitControls, Text, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
+import { useDigitalTwinStore, type HotspotConfig } from "@/lib/digital-twin-store";
 
 /* ─── helpers ─── */
 function getTag(name: string): number {
@@ -216,12 +217,24 @@ function Pipe({
 }
 
 /* ─── Scene ─── */
-function Scene() {
+function Scene({
+  selectedHotspotId,
+  onHotspotClick,
+  viewMode,
+  showFlowLines,
+}: {
+  selectedHotspotId: string | null;
+  onHotspotClick?: (id: string) => void;
+  viewMode: string;
+  showFlowLines: boolean;
+}) {
   // Live values from stores
   const speedVal = getTag("SPEED") || Date.now() / 600;
   const levelVal = getTag("NIVEL") || getTag("LEVEL") || 62 + Math.sin(Date.now() / 3000) * 10;
   const motorOn = speedVal > 50;
   const pumpOn = getTag("PUMP") > 0.5;
+  const mappings = useDigitalTwinStore.getState().mappings;
+  const telemetryBuffers = useDigitalTwinStore.getState().telemetryBuffers;
 
   return (
     <>
@@ -264,12 +277,67 @@ function Scene() {
           💧 Bomba Centrífuga
         </div>
       </Html>
+
+      {/* Hotspots from mappings */}
+      {viewMode !== "alarms-only" &&
+        mappings.flatMap((m) => m.hotspots).map((h) => {
+          const buf = telemetryBuffers[h.tag];
+          const latestVal = buf?.samples[buf.samples.length - 1]?.value;
+          const isSelected = selectedHotspotId === h.id;
+          const scale = isSelected ? 1.3 : 1;
+          return (
+            <Html
+              key={h.id}
+              position={[h.position.x, h.position.y, h.position.z]}
+              center
+              onClick={() => onHotspotClick?.(h.id)}
+              style={{ pointerEvents: "auto", cursor: "pointer" }}
+            >
+              <div
+                className={`transition-all duration-200 ${
+                  isSelected ? "scale-110" : "hover:scale-105"
+                }`}
+                style={{ pointerEvents: "auto" }}
+              >
+                <div
+                  className={`rounded-md px-2 py-1 flex items-center gap-1.5 border whitespace-nowrap ${
+                    isSelected
+                      ? "border-primary bg-primary/20"
+                      : "border-border/60 bg-black/70"
+                  }`}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full animate-pulse shrink-0"
+                    style={{ background: h.color }}
+                  />
+                  <span className="text-[9px] font-mono text-foreground/90">{h.label}</span>
+                  {latestVal !== undefined && (
+                    <span className="text-[9px] font-mono font-bold" style={{ color: h.color }}>
+                      {latestVal.toFixed(1)}
+                      <span className="text-[8px] text-muted-foreground ml-0.5">{h.unit}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Html>
+          );
+        })}
     </>
   );
 }
 
 /* ─── Exported 3D Viewer ─── */
-export function Twin3DViewer() {
+export function Twin3DViewer({
+  selectedHotspotId,
+  onHotspotClick,
+  viewMode = "normal",
+  showFlowLines = true,
+}: {
+  selectedHotspotId?: string | null;
+  onHotspotClick?: (id: string) => void;
+  viewMode?: string;
+  showFlowLines?: boolean;
+}) {
   return (
     <div className="relative h-full w-full bg-[--canvas-bg]">
       <Canvas
@@ -279,7 +347,12 @@ export function Twin3DViewer() {
           gl.setClearColor(BG);
         }}
       >
-        <Scene />
+        <Scene
+          selectedHotspotId={selectedHotspotId ?? null}
+          onHotspotClick={onHotspotClick}
+          viewMode={viewMode}
+          showFlowLines={showFlowLines}
+        />
       </Canvas>
     </div>
   );

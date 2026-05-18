@@ -1,10 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Cpu, Trash2, Loader2 } from "lucide-react";
+import { Plus, Cpu, Copy, Archive, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { listProjects, createProject, deleteProject } from "@/lib/projects.functions";
+import {
+  listProjects,
+  createProject,
+  duplicateProject,
+  archiveProject,
+  deleteProject,
+} from "@/lib/projects.functions";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +37,8 @@ export const Route = createFileRoute("/projects")({
 function Projects() {
   const list = useServerFn(listProjects);
   const create = useServerFn(createProject);
+  const dup = useServerFn(duplicateProject);
+  const arch = useServerFn(archiveProject);
   const del = useServerFn(deleteProject);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -51,10 +59,28 @@ function Projects() {
     onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
   });
 
+  const duplicateMut = useMutation({
+    mutationFn: (id: string) => dup({ data: { projectId: id } }),
+    onSuccess: (p: any) => {
+      toast.success(`Projeto duplicado como "${p.name}"`);
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
+    onError: (e: any) => toast.error(`Falha ao duplicar: ${e.message ?? e}`),
+  });
+
+  const archiveMut = useMutation({
+    mutationFn: (id: string) => arch({ data: { projectId: id } }),
+    onSuccess: () => {
+      toast.success("Projeto arquivado");
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
+    onError: (e: any) => toast.error(`Falha ao arquivar: ${e.message ?? e}`),
+  });
+
   const deleteMut = useMutation({
     mutationFn: (id: string) => del({ data: { projectId: id } }),
     onSuccess: () => {
-      toast.success("Projeto excluído");
+      toast.success("Projeto excluído permanentemente");
       qc.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
@@ -133,16 +159,40 @@ function Projects() {
                     Exportar
                   </Link>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm(`Excluir "${p.name}"?`)) deleteMut.mutate(p.id);
-                  }}
-                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
-                  aria-label="Excluir"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                  <button
+                    type="button"
+                    onClick={() => duplicateMut.mutate(p.id)}
+                    className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition"
+                    aria-label="Duplicar"
+                    title="Duplicar projeto"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Arquivar "${p.name}"?`)) archiveMut.mutate(p.id);
+                    }}
+                    className="p-1 rounded hover:bg-warning/10 text-muted-foreground hover:text-warning transition"
+                    aria-label="Arquivar"
+                    title="Arquivar projeto"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Excluir permanentemente "${p.name}"?\n\nEsta ação não pode ser desfeita.`))
+                        deleteMut.mutate(p.id);
+                    }}
+                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
+                    aria-label="Excluir"
+                    title="Excluir permanentemente"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

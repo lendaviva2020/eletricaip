@@ -3,6 +3,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAiQuota, requireBurstLimit } from "@/integrations/supabase/ai-rate-limit-middleware";
 
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
 
@@ -197,7 +198,7 @@ async function fetchNormativeContext(
 }
 
 export const generateArchitecture = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuth, requireAiQuota, requireBurstLimit])
   .inputValidator((input) => InputSchema.parse(input))
   .handler(async ({ data, context }): Promise<ArchitectOk | ArchitectError> => {
     const { supabase } = context;

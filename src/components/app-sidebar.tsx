@@ -8,6 +8,7 @@ import {
   Sparkles,
   Settings,
   FolderOpen,
+  Box,
 } from "lucide-react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { useEffect } from "react";
@@ -18,6 +19,7 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Projetos", url: "/projects", icon: FolderKanban },
   { title: "Industrial Workspace", url: "/workspace", icon: Cpu, accent: true },
+  { title: "Digital Twin", url: "/digital-twin", icon: Box, accent: true },
   { title: "IA Industrial", url: "/ai", icon: Sparkles, core: true },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Clientes", url: "/clients", icon: Users },

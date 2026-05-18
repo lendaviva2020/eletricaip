@@ -230,6 +230,97 @@ export const saveProject = createServerFn({ method: "POST" })
     return { diagramId, version, savedAt: new Date().toISOString() };
   });
 
+export const duplicateProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    const tenant_id = await ensureTenant(supabase, userId);
+
+    // Fetch original project
+    const { data: original, error: pErr } = await supabase
+      .from("projects")
+      .select("id, name, description, metadata")
+      .eq("id", data.projectId)
+      .maybeSingle();
+    if (pErr) throw new Error(pErr.message);
+    if (!original) throw new Error("Projeto não encontrado");
+
+    // Enforce plan_limits.max_projects
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .select("plan")
+      .eq("id", tenant_id)
+      .maybeSingle();
+    const planName = tenant?.plan ?? "free";
+    const { data: limits } = await supabase
+      .from("plan_limits")
+      .select("max_projects")
+      .eq("plan", planName)
+      .maybeSingle();
+    const maxProjects = limits?.max_projects ?? 3;
+    if (maxProjects >= 0) {
+      const { count } = await supabase
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenant_id);
+      if ((count ?? 0) >= maxProjects) {
+        throw new Error(
+          planName === "free"
+            ? "Limite de 3 projetos atingido. Faça upgrade para continuar."
+            : `Limite de ${maxProjects} projetos atingido.`,
+        );
+      }
+    }
+
+    // Fetch original diagram
+    const { data: diagram } = await supabase
+      .from("diagrams")
+      .select("canvas_data")
+      .eq("project_id", data.projectId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const newName = `${original.name} (cópia)`;
+
+    // Create duplicate project
+    const { data: row, error } = await supabase
+      .from("projects")
+      .insert({
+        name: newName,
+        description: original.description,
+        created_by: userId,
+        tenant_id,
+        metadata: original.metadata,
+      })
+      .select("id, name")
+      .single();
+    if (error) throw new Error(error.message);
+
+    // Copy diagram snapshot
+    await supabase.from("diagrams").insert({
+      project_id: row.id,
+      name: "main",
+      canvas_data: (diagram?.canvas_data ?? EMPTY_SNAPSHOT) as any,
+    });
+
+    return { id: row.id as string, name: row.name as string };
+  });
+
+export const archiveProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context as any;
+    const { error } = await supabase
+      .from("projects")
+      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .eq("id", data.projectId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const deleteProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ projectId: z.string().uuid() }))
