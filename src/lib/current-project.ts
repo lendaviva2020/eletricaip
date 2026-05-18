@@ -1,5 +1,8 @@
 import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  createProject as createProjectOnServer,
+  listProjects as listProjectsOnServer,
+} from "@/lib/projects.functions";
 
 export interface CurrentProject {
   id: string;
@@ -36,20 +39,17 @@ export const useCurrentProject = create<State>((set) => ({
 }));
 
 export async function listMyProjects(): Promise<CurrentProject[]> {
-  const { data, error } = await supabase
-    .from("projects")
-    .select("id, name, metadata")
-    .order("updated_at", { ascending: false })
-    .limit(50);
-  if (error) {
-    console.warn("listMyProjects error:", error.message);
+  try {
+    const result = await listProjectsOnServer();
+    return (result.projects ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      client: p.client ?? null,
+    }));
+  } catch (error) {
+    console.warn("listMyProjects error:", (error as Error).message);
     return [];
   }
-  return (data ?? []).map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    client: (p.metadata as any)?.client ?? null,
-  }));
 }
 
 export async function createProject(input: {
@@ -57,40 +57,21 @@ export async function createProject(input: {
   client?: string;
   description?: string;
 }): Promise<CurrentProject | null> {
-  const { data: tid, error: bErr } = await supabase.rpc("bootstrap_personal_tenant_if_missing");
-  if (bErr) console.warn("bootstrap_personal_tenant_if_missing:", bErr.message);
-
-  const { data: u } = await supabase.auth.getUser();
-  if (!u.user) return null;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("tenant_id")
-    .eq("id", u.user.id)
-    .maybeSingle();
-  const tenantId = (profile as any)?.tenant_id ?? tid;
-
-  const payload: any = {
-    name: input.name,
-    description: input.description ?? null,
-    created_by: u.user.id,
-    tenant_id: tenantId,
-    metadata: input.client ? { client: input.client } : {},
-  };
-  const { data, error } = await supabase
-    .from("projects")
-    .insert(payload)
-    .select("id, name, metadata")
-    .maybeSingle();
-  if (error) {
-    console.error("createProject error:", error.message);
+  try {
+    const project = await createProjectOnServer({
+      data: {
+        name: input.name,
+        description: input.description,
+        client: input.client,
+      },
+    });
+    return {
+      id: project.id,
+      name: project.name,
+      client: project.client ?? null,
+    };
+  } catch (error) {
+    console.error("createProject error:", (error as Error).message);
     return null;
   }
-  return data
-    ? {
-        id: (data as any).id,
-        name: (data as any).name,
-        client: ((data as any).metadata as any)?.client ?? null,
-      }
-    : null;
 }

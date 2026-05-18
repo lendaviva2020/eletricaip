@@ -3,6 +3,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   requireAiQuota,
   requireBurstLimit,
@@ -204,7 +205,7 @@ export const generateArchitecture = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth, requireAiQuota, requireBurstLimit])
   .inputValidator((input) => InputSchema.parse(input))
   .handler(async ({ data, context }): Promise<ArchitectOk | ArchitectError> => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       return {
@@ -223,7 +224,8 @@ export const generateArchitecture = createServerFn({ method: "POST" })
     }
 
     // Atomic credit gate: deduct BEFORE calling provider.
-    const { data: gate, error: gateErr } = await supabase.rpc("consume_ai_credits", {
+    const { data: gate, error: gateErr } = await supabaseAdmin.rpc("consume_ai_credits_for_user", {
+      p_user_id: userId,
       p_operation: "generate_panel",
     });
     if (gateErr) {
@@ -356,8 +358,10 @@ export const generateArchitecture = createServerFn({ method: "POST" })
 export const getAiCredits = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase } = context;
-    const { data, error } = await supabase.rpc("get_ai_credits_remaining");
+    const { userId } = context;
+    const { data, error } = await supabaseAdmin.rpc("get_ai_credits_remaining_for_user", {
+      p_user_id: userId,
+    });
     if (error) return { ok: false as const, error: error.message };
     const row = (Array.isArray(data) ? data[0] : data) as {
       plan: string;

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const SnapshotSchema = z.object({
   project: z
@@ -24,16 +25,66 @@ const EMPTY_SNAPSHOT: ProjectSnapshot = {
   voltai: { components: [], edges: [] },
 };
 
-async function ensureTenant(supabase: any, userId: string): Promise<string> {
+function slugifyTenantLabel(value: string) {
+  const base = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return base || "workspace";
+}
+
+async function ensureTenant(
+  supabase: any,
+  userId: string,
+  claims?: Record<string, unknown>,
+): Promise<string> {
   const { data: profile } = await supabase
     .from("profiles")
     .select("tenant_id")
     .eq("id", userId)
     .maybeSingle();
   if (profile?.tenant_id) return profile.tenant_id as string;
-  const { data: tid, error } = await supabase.rpc("bootstrap_personal_tenant_if_missing");
-  if (error) throw new Error(error.message);
-  return tid as string;
+
+  const label =
+    String(claims?.full_name ?? claims?.name ?? claims?.email ?? "").trim() ||
+    `Usuario ${userId.slice(0, 8)}`;
+  const tenantName = `Workspace de ${label}`;
+  const tenantSlug = `${slugifyTenantLabel(label)}-${userId.slice(0, 8)}`;
+
+  const { data: tenant, error: tenantError } = await supabaseAdmin
+    .from("tenants")
+    .insert({
+      name: tenantName,
+      slug: tenantSlug,
+      plan: "free",
+      status: "active",
+    })
+    .select("id")
+    .single();
+  if (tenantError) throw new Error(tenantError.message);
+
+  const tenantId = tenant.id as string;
+
+  const { error: membershipError } = await supabaseAdmin.from("tenant_memberships").upsert(
+    {
+      tenant_id: tenantId,
+      user_id: userId,
+      role: "owner",
+      accepted_at: new Date().toISOString(),
+    },
+    { onConflict: "tenant_id,user_id" },
+  );
+  if (membershipError) throw new Error(membershipError.message);
+
+  const { error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .update({ tenant_id: tenantId, updated_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (profileError) throw new Error(profileError.message);
+
+  return tenantId;
 }
 
 export const listProjects = createServerFn({ method: "POST" })
@@ -68,8 +119,8 @@ export const createProject = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as any;
-    const tenant_id = await ensureTenant(supabase, userId);
+    const { supabase, userId, claims } = context as any;
+    const tenant_id = await ensureTenant(supabase, userId, claims);
 
     // Enforce plan_limits.max_projects per tenant
     const { data: tenant } = await supabase
@@ -234,8 +285,8 @@ export const duplicateProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ projectId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as any;
-    const tenant_id = await ensureTenant(supabase, userId);
+    const { supabase, userId, claims } = context as any;
+    const tenant_id = await ensureTenant(supabase, userId, claims);
 
     // Fetch original project
     const { data: original, error: pErr } = await supabase
