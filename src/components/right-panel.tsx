@@ -21,7 +21,7 @@ export function RightPanel() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("ai");
 
   return (
-    <aside className="hidden lg:flex w-[340px] shrink-0 flex-col border-l border-border bg-panel">
+    <aside className="flex w-[340px] shrink-0 flex-col border-l border-border bg-panel">
       <div className="h-9 flex items-center px-2 border-b border-border">
         {TABS.map((t) => {
           const Icon = t.icon;

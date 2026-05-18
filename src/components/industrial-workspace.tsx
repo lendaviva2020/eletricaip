@@ -66,7 +66,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
     <div className="flex-1 flex min-h-0 relative">
       {/* Painel Esquerdo */}
       {!leftCollapsed ? (
-        <div className="relative flex shrink-0 z-10">
+        <div className="hidden lg:flex relative shrink-0 z-10">
           <LeftSidebarHost
             mode={mode}
             unifilar={{ dragValidation, onValidate: validateDraggedBreaker }}
@@ -74,7 +74,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           {/* Botão para recolher o painel esquerdo */}
           <button
             onClick={() => setLeftCollapsed(true)}
-            className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
+            className="flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
             title="Recolher painel esquerdo"
           >
             <ChevronLeft className="h-3 w-3" />
@@ -113,11 +113,11 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
 
       {/* Painel Direito */}
       {!rightCollapsed ? (
-        <div className="relative flex shrink-0 z-10">
+        <div className="hidden lg:flex relative shrink-0 z-10">
           {/* Botão para recolher o painel direito */}
           <button
             onClick={() => setRightCollapsed(true)}
-            className="hidden lg:flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
+            className="flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
             title="Recolher painel direito"
           >
             <ChevronRight className="h-3 w-3" />

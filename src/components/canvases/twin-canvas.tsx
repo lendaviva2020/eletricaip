@@ -10,6 +10,7 @@ import {
   Activity,
   Layers,
   Thermometer,
+  ShieldCheck,
 } from "lucide-react";
 import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
 import { useProjectStore } from "@/lib/project-store";
@@ -266,11 +267,11 @@ export function TwinCanvas() {
   return (
     <div className="relative h-full w-full bg-[--canvas-bg] overflow-hidden">
       <FloatingLegend
-        title="Gêmeo Digital 3D · Estação de Recalque"
+        title="Gêmeo Digital 3D · Inteligência Industrial"
         items={[
-          "Trigonometria Ortho 3D",
-          `Status: ${speedVal > 0 ? "OPERANDO" : "STANDBY"}`,
-          isLive ? "Telemetria LIVE" : "Offline",
+          "Análise Preditiva Ativa",
+          `Eficiência: ${speedVal > 0 ? (94.2 - currentVal / 10).toFixed(1) : "0.0"}%`,
+          `Risco de Falha: ${currentVal > 18 ? "ALTO" : "BAIXO"}`,
         ]}
       />
 
@@ -308,6 +309,10 @@ export function TwinCanvas() {
       </div>
 
       {/* THE DRAWING CANVAS */}
+      <div className="absolute inset-0 grid place-items-center opacity-10 pointer-events-none">
+        <div className="w-[80%] h-[80%] border border-primary/20 rounded-full animate-ping" />
+      </div>
+      
       <canvas
         ref={canvasRef}
         width={800}
@@ -366,6 +371,26 @@ export function TwinCanvas() {
             color="oklch(0.72 0.16 250)"
             onClick={() => setSelectedSensor(selectedSensor === "LEVEL" ? null : "LEVEL")}
           />
+        </div>
+
+        {/* Predictive Maintenance Marker */}
+        <div
+          className="absolute pointer-events-auto group"
+          style={{
+            left: `calc(50% + 20px * ${zoom})`,
+            top: `calc(50% + 40px * ${zoom})`,
+          }}
+        >
+          <div className="relative">
+            <Activity className="h-5 w-5 text-warning animate-pulse" />
+            <div className="absolute left-6 top-0 hidden group-hover:block w-32 p-2 bg-background/95 border border-border rounded text-[9px] font-mono shadow-xl">
+              <span className="text-warning font-bold">ALERTA PREDITIVO:</span>
+              <br />
+              Vibração anômala detectada no eixo principal.
+              <br />
+              Confiança: 88%
+            </div>
+          </div>
         </div>
       </div>
 

@@ -276,6 +276,11 @@ function NodeShape({
     "alarm_banner",
     "alarm_table",
     "label",
+    "motor",
+    "pump",
+    "valve",
+    "tank",
+    "pipe",
   ].includes(node.kind);
 
   const groupRef = useRef<Konva.Group>(null);
@@ -502,23 +507,136 @@ function NodeShape({
               }}
               cursor="pointer"
             />
-            <Circle
-              x={tagValue === true || tagValue === "true" ? 38 : 12}
-              y={12}
-              radius={10}
+            <Rect
+              x={tagValue === true || tagValue === "true" ? 28 : 2}
+              y={2}
+              width={20}
+              height={20}
+              cornerRadius={10}
               fill="#fff"
-              shadowBlur={3}
+              shadowBlur={2}
             />
             <Text
-              y={28}
+              y={30}
               width={50}
               align="center"
-              text={String(node.params.labelText || "Auto")}
-              fontFamily="sans-serif"
+              text={boundTagName || "Switch"}
+              fontFamily="JetBrains Mono, monospace"
+              fontSize={7}
+              fill="#8a99b3"
+            />
+          </Group>
+        )}
+
+        {/* MOTOR WIDGET (SCADA STYLE) */}
+        {node.kind === "motor" && (
+          <Group x={width / 2} y={height / 2}>
+            {/* Base Motor casing */}
+            <Rect
+              x={-25}
+              y={-15}
+              width={50}
+              height={30}
+              fill={tagValue ? "#22c55e" : "#475569"}
+              stroke="#1e293b"
+              strokeWidth={1.5}
+              cornerRadius={2}
+            />
+            {/* Spinning Fan */}
+            <Group x={15} y={0} rotation={tagValue ? (tick * 20) % 360 : 0}>
+              <Circle radius={10} fill="#334155" />
+              <Rect x={-1} y={-10} width={2} height={20} fill="#cbd5e1" />
+              <Rect x={-10} y={-1} width={20} height={2} fill="#cbd5e1" />
+            </Group>
+            <Text
+              y={20}
+              x={-50}
+              width={100}
+              align="center"
+              text={boundTagName || "Motor"}
+              fontFamily="JetBrains Mono, monospace"
               fontSize={8}
               fill="#8a99b3"
             />
           </Group>
+        )}
+
+        {/* TANK WIDGET (SCADA STYLE) */}
+        {node.kind === "tank" && (
+          <Group x={width / 2 - 30} y={10}>
+            {/* Metal casing */}
+            <Rect width={60} height={50} cornerRadius={4} stroke="#475569" strokeWidth={2} />
+            {/* Liquid Level */}
+            <Rect
+              x={2}
+              y={48 - (Number(tagValue) / 100) * 46}
+              width={56}
+              height={(Number(tagValue) / 100) * 46}
+              fill="#3fb6d6"
+              opacity={0.6}
+            />
+            <Text
+              y={55}
+              width={60}
+              align="center"
+              text={`${tagValue}%`}
+              fontFamily="JetBrains Mono, monospace"
+              fontSize={9}
+              fill="#3fb6d6"
+              fontStyle="bold"
+            />
+          </Group>
+        )}
+
+        {/* PUMP WIDGET (SCADA STYLE) */}
+        {node.kind === "pump" && (
+          <Group x={width / 2} y={height / 2}>
+            <Circle radius={25} fill="#334155" stroke="#475569" strokeWidth={2} />
+            {/* Impeller animation */}
+            <Group rotation={tagValue ? (tick * 15) % 360 : 0}>
+              <Line points={[-15, 0, 15, 0]} stroke="#94a3b8" strokeWidth={3} />
+              <Line points={[0, -15, 0, 15]} stroke="#94a3b8" strokeWidth={3} />
+            </Group>
+            <Text
+              y={28}
+              x={-50}
+              width={100}
+              align="center"
+              text={boundTagName || "Bomba"}
+              fontFamily="JetBrains Mono, monospace"
+              fontSize={8}
+              fill={tagValue ? "#22c55e" : "#8a99b3"}
+            />
+          </Group>
+        )}
+
+        {/* ALARM BANNER WIDGET */}
+        {node.kind === "alarm_banner" && tags["ALARM_ACTIVE"] && (
+          <Group x={0} y={0}>
+            <Rect width={width} height={height} fill="#7f1d1d" opacity={0.9} cornerRadius={6} />
+            <Text
+              x={10}
+              y={10}
+              width={width - 20}
+              text={`⚠️ ${tags["ALARM_MSG"] || "Alarme Ativo!"}`}
+              fontFamily="sans-serif"
+              fontSize={10}
+              fill="#fef2f2"
+              fontStyle="bold"
+            />
+          </Group>
+        )}
+
+        {/* PIPE WIDGET */}
+        {node.kind === "pipe" && (
+          <Rect
+            width={width}
+            height={10}
+            y={height / 2 - 5}
+            fill="#475569"
+            stroke="#1e293b"
+            strokeWidth={1}
+          />
         )}
 
         {/* SLIDER CONTROLLER WIDGET */}

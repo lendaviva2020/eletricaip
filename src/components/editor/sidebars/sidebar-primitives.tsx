@@ -51,7 +51,7 @@ export function SidebarShell({
 }) {
   return (
     <div
-      className="hidden lg:flex shrink-0 flex-col border-r border-border bg-panel/50"
+      className="flex shrink-0 flex-col border-r border-border bg-panel/50"
       style={{ width }}
     >
       {children}

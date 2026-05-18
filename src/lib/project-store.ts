@@ -22,6 +22,7 @@ export type NodeKind =
   | "tank"
   | "reactor"
   | "cylinder"
+  | "pipe"
   // inst
   | "pt100"
   | "pressure"
@@ -428,6 +429,7 @@ export const KIND_GLYPH: Record<NodeKind, string> = {
   tank: "⌷",
   reactor: "◍",
   cylinder: "▭",
+  pipe: "═",
   pt100: "T°",
   pressure: "P",
   flow: "Q",
