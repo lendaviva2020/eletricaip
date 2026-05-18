@@ -134,7 +134,7 @@ export function ScadaCanvas() {
             range,
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
             detail: "Log no console",
-          },
+          } as any,
           {
             label: "Math.round",
             kind: monaco.languages.CompletionItemKind.Function,
@@ -142,21 +142,21 @@ export function ScadaCanvas() {
             range,
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
             detail: "Arredondar número",
-          },
+          } as any,
           {
             label: "Math.min",
             kind: monaco.languages.CompletionItemKind.Function,
             insertText: "Math.min($1, $2)",
             range,
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          },
+          } as any,
           {
             label: "Math.max",
             kind: monaco.languages.CompletionItemKind.Function,
             insertText: "Math.max($1, $2)",
             range,
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          },
+          } as any,
         );
 
         // If typing inside tags["...", suggest tag names

@@ -12,8 +12,8 @@ export function useOpcuaBridge() {
   const queryClient = useQueryClient();
   const pushLog = useProjectStore((s) => s.pushLog);
   const applyTick = useProjectStore((s) => s.applyTick);
-  const lastOpcuaError = useRef<string | undefined>();
-  const lastModbusError = useRef<string | undefined>();
+  const lastOpcuaError = useRef<string | undefined>(undefined);
+  const lastModbusError = useRef<string | undefined>(undefined);
 
   const opcuaStatus = useQuery({
     queryKey: ["opcua", "status"],
@@ -64,32 +64,32 @@ export function useOpcuaBridge() {
 
   const opcuaConnect = useMutation({
     mutationFn: (config: { endpoint: string; securityMode?: "None" | "Sign" | "SignAndEncrypt" }) =>
-      connectOpcua(config),
+      connectOpcua({ data: config }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["opcua", "status"] }),
   });
 
   const opcuaDisconnect = useMutation({
-    mutationFn: () => disconnectOpcua(),
+    mutationFn: () => disconnectOpcua({}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["opcua", "status"] }),
   });
 
   const opcuaWrite = useMutation({
-    mutationFn: (params: { nodeId: string; value: number | boolean | string }) => writeOpcuaTag(params),
+    mutationFn: (params: { nodeId: string; value: number | boolean | string }) => writeOpcuaTag({ data: params }),
   });
 
   const modbusConnect = useMutation({
-    mutationFn: (config: { host: string; port: number; unitId: number }) => connectModbus(config),
+    mutationFn: (config: { host: string; port: number; unitId: number }) => connectModbus({ data: config }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["modbus", "status"] }),
   });
 
   const modbusDisconnect = useMutation({
-    mutationFn: () => disconnectModbus(),
+    mutationFn: () => disconnectModbus({}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["modbus", "status"] }),
   });
 
   const modbusWrite = useMutation({
     mutationFn: (params: { address: number; value: number; type?: "coil" | "holding_register" }) =>
-      writeModbusRegister(params),
+      writeModbusRegister({ data: params }),
   });
 
   return {
