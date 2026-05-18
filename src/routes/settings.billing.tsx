@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
@@ -66,6 +66,12 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/settings/billing")({
+  beforeLoad: async () => {
+    const { isPlatformAdmin } = await getIsPlatformAdmin();
+    if (!isPlatformAdmin) {
+      throw redirect({ to: "/settings" });
+    }
+  },
   head: () => ({ meta: [{ title: "Central Financeira · EletricAI" }] }),
   component: BillingPage,
 });

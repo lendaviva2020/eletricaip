@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import {
   Settings2,
   CreditCard,
@@ -19,6 +21,7 @@ import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/c
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useSettingsStore } from "@/lib/settings-store";
+import { getIsPlatformAdmin } from "@/lib/billing.functions";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -50,6 +53,12 @@ const NORMAS: { name: string; desc: string }[] = [
 ];
 
 function SettingsPage() {
+  const adminFn = useServerFn(getIsPlatformAdmin);
+  const { data: adminInfo } = useQuery({
+    queryKey: ["settings", "is-platform-admin"],
+    queryFn: () => adminFn({}),
+  });
+  const isPlatformAdmin = !!adminInfo?.isPlatformAdmin;
   const protocols = useSettingsStore((s) => s.protocols);
   const normas = useSettingsStore((s) => s.normas);
   const toggleProtocol = useSettingsStore((s) => s.toggleProtocol);
@@ -69,13 +78,15 @@ function SettingsPage() {
         <section>
           <SectionLabel icon={Users} title="Conta & Workspace" />
           <div className="grid gap-3">
-            <SettingsLinkCard
-              icon={CreditCard}
-              title="Faturamento & Assinatura"
-              desc="Gerencie seu plano, forma de pagamento e faturas"
-              to="/settings/billing"
-              badge={null}
-            />
+            {isPlatformAdmin && (
+              <SettingsLinkCard
+                icon={CreditCard}
+                title="Faturamento & Assinatura"
+                desc="Gerencie seu plano, forma de pagamento e faturas"
+                to="/settings/billing"
+                badge="Admin"
+              />
+            )}
             <SettingsLinkCard
               icon={Users}
               title="Equipe & Convites"

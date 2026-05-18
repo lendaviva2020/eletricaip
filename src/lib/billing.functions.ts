@@ -4,6 +4,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+const PLATFORM_ADMIN_EMAILS = new Set(["989111474fe@gmail.com"]);
+
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
   basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
   pro: "VITE_STRIPE_PRICE_PRO_MONTHLY",
@@ -23,6 +25,35 @@ function originFromHeader(): string {
   } catch {
     return process.env.PUBLIC_APP_URL || "";
   }
+}
+
+async function isPlatformAdminUser(context: {
+  userId: string;
+  claims?: Record<string, unknown>;
+}): Promise<boolean> {
+  const email = String(context.claims?.email ?? "").trim().toLowerCase();
+
+  const { data: adminFlag, error } = await supabaseAdmin
+    .from("platform_admins")
+    .select("user_id")
+    .eq("user_id", context.userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (adminFlag) return true;
+
+  if (!PLATFORM_ADMIN_EMAILS.has(email)) return false;
+
+  const { error: upsertError } = await supabaseAdmin.from("platform_admins").upsert(
+    {
+      user_id: context.userId,
+      role: "owner",
+      created_by: context.userId,
+    },
+    { onConflict: "user_id" },
+  );
+  if (upsertError) throw new Error(upsertError.message);
+
+  return true;
 }
 
 /** Read current billing snapshot for the active tenant. */
@@ -83,14 +114,8 @@ export const changePlanManual = createServerFn({ method: "POST" })
     z.object({ plan: z.enum(["free", "basic", "pro", "premium"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { userId } = context;
-    const { data: adminFlag, error: adminError } = await supabaseAdmin
-      .from("platform_admins")
-      .select("user_id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (adminError) throw new Error(adminError.message);
-    if (!adminFlag) throw new Error("forbidden");
+    const { userId, claims } = context;
+    if (!(await isPlatformAdminUser({ userId, claims }))) throw new Error("forbidden");
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -133,9 +158,8 @@ export const changePlanManual = createServerFn({ method: "POST" })
 export const getIsPlatformAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase.rpc("is_platform_admin");
-    if (error) return { isPlatformAdmin: false };
-    return { isPlatformAdmin: !!data };
+    const { userId, claims } = context;
+    return { isPlatformAdmin: await isPlatformAdminUser({ userId, claims }) };
   });
 
 /**
