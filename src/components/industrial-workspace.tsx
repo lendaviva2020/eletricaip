@@ -74,7 +74,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           {/* Botão para recolher o painel esquerdo */}
           <button
             onClick={() => setLeftCollapsed(true)}
-            className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
+            className="flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
             title="Recolher painel esquerdo"
           >
             <ChevronLeft className="h-3 w-3" />
@@ -84,7 +84,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         /* Alça elegante para expandir o painel esquerdo */
         <button
           onClick={() => setLeftCollapsed(false)}
-          className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
+          className="flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
           title="Expandir painel esquerdo"
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -117,7 +117,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           {/* Botão para recolher o painel direito */}
           <button
             onClick={() => setRightCollapsed(true)}
-            className="hidden lg:flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
+            className="flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
             title="Recolher painel direito"
           >
             <ChevronRight className="h-3 w-3" />
@@ -128,7 +128,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         /* Alça elegante para expandir o painel direito */
         <button
           onClick={() => setRightCollapsed(false)}
-          className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
+          className="flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
           title="Expandir painel direito"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
