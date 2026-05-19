@@ -21,11 +21,6 @@ import {
   Shield,
   Palette,
   Plug,
-  HardDrive,
-  BookText,
-  Ruler,
-  ToggleLeft,
-  Box,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
