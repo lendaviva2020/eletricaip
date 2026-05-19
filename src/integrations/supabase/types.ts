@@ -668,6 +668,66 @@ export type Database = {
         }
         Relationships: []
       }
+      clients: {
+        Row: {
+          address: string
+          cnpj: string
+          contact_name: string
+          created_at: string
+          created_by: string
+          email: string
+          id: string
+          logo_url: string | null
+          name: string
+          notes: string
+          phone: string
+          sector: string
+          sla_pct: number
+          status: Database["public"]["Enums"]["client_status"]
+          tenant_id: string
+          updated_at: string
+          website: string
+        }
+        Insert: {
+          address?: string
+          cnpj?: string
+          contact_name?: string
+          created_at?: string
+          created_by: string
+          email?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          notes?: string
+          phone?: string
+          sector?: string
+          sla_pct?: number
+          status?: Database["public"]["Enums"]["client_status"]
+          tenant_id: string
+          updated_at?: string
+          website?: string
+        }
+        Update: {
+          address?: string
+          cnpj?: string
+          contact_name?: string
+          created_at?: string
+          created_by?: string
+          email?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          notes?: string
+          phone?: string
+          sector?: string
+          sla_pct?: number
+          status?: Database["public"]["Enums"]["client_status"]
+          tenant_id?: string
+          updated_at?: string
+          website?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
@@ -1673,6 +1733,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          client_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -1685,6 +1746,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -1697,6 +1759,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -1709,6 +1772,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_folder_id_fkey"
             columns: ["folder_id"]
@@ -2695,6 +2765,7 @@ export type Database = {
       alarm_severity: "critical" | "high" | "medium" | "low" | "info"
       alarm_state: "active" | "acknowledged" | "cleared" | "suppressed"
       alert_level: "critical" | "warning" | "info"
+      client_status: "active" | "prospect" | "inactive"
       iot_command_state:
         | "PENDING"
         | "DELIVERED"
@@ -2845,6 +2916,7 @@ export const Constants = {
       alarm_severity: ["critical", "high", "medium", "low", "info"],
       alarm_state: ["active", "acknowledged", "cleared", "suppressed"],
       alert_level: ["critical", "warning", "info"],
+      client_status: ["active", "prospect", "inactive"],
       iot_command_state: [
         "PENDING",
         "DELIVERED",
