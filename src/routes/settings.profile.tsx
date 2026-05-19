@@ -47,7 +47,7 @@ function ProfilePage() {
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ full_name: fullName, job_title: jobTitle, phone })
+      .update({ full_name: fullName, job_title: jobTitle, phone } as never)
       .eq("id", userId);
     setSaving(false);
     if (error) toast.error(error.message);
