@@ -1795,6 +1795,36 @@ export type Database = {
           },
         ]
       }
+      runtime_logs: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          level: string
+          message: string
+          tag: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          level?: string
+          message?: string
+          tag?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          level?: string
+          message?: string
+          tag?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       simulation_tags: {
         Row: {
           created_at: string
