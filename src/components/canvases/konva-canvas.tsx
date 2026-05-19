@@ -14,7 +14,7 @@ const syncTag = (name: string, value: any) => {
   store.applyTick({ tags: { [name]: value } });
 
   const editorState = useEditorStore.getState();
-  const existing = Object.values(editorState.tags).find((t) => t.name === name);
+  const existing = Object.values(editorState.editorTags).find((t) => t.name === name);
   if (existing) {
     editorState.setTagValue(existing.id, value);
   } else {

@@ -4,7 +4,7 @@ import { useProjectStore } from "@/lib/project-store";
 import { Eye, Lock, Unlock, Search, XCircle, RefreshCw } from "lucide-react";
 
 export function WatchTable() {
-  const editorTags = useEditorStore((s) => s.tags);
+  const editorTags = useEditorStore((s) => s.editorTags);
   const forceTagValue = useEditorStore((s) => s.forceTagValue);
   const releaseTag = useEditorStore((s) => s.releaseTag);
   const projectTags = useProjectStore((s) => s.tags);

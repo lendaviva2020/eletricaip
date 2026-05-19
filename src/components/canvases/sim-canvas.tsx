@@ -27,7 +27,7 @@ export function SimCanvas() {
   const [showAlarms, setShowAlarms] = useState(false);
 
   const projectTags = useProjectStore((s) => s.tags);
-  const editorTags = useEditorStore((s) => s.tags);
+  const editorTags = useEditorStore((s) => s.editorTags);
 
   const engineRef = useRef<ScadaEngine | null>(null);
   const notifiedAlarmsRef = useRef<Set<string>>(new Set());
@@ -103,7 +103,7 @@ export function SimCanvas() {
 
     const interval = setInterval(() => {
       const flatEditor: Record<string, { value: number | boolean | string }> = {};
-      Object.values(useEditorStore.getState().tags).forEach((t) => {
+      Object.values(useEditorStore.getState().editorTags).forEach((t) => {
         flatEditor[t.name] = { value: t.value };
       });
       const flatProject: Record<string, { value: number | boolean | string }> = {};

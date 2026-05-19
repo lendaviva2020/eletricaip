@@ -5,13 +5,12 @@ import {
   type VoltaiComponentDefinition,
 } from "@/lib/voltai/component-definitions";
 import { PaletteGroup, SidebarSearch, SidebarShell } from "./sidebar-primitives";
+import { useEditorStore } from "@/lib/editor/store";
 
-interface Props {
-  dragValidation: string;
-  onValidate: (component: VoltaiComponentDefinition) => boolean;
-}
+export function EditorUnifilarSidebar() {
+  const dragValidation = useEditorStore((s) => s.dragValidation);
+  const validateComponent = useEditorStore((s) => s.validateComponent);
 
-export function EditorUnifilarSidebar({ dragValidation, onValidate }: Props) {
   const protectionComponents = VOLTAI_COMPONENT_DEFINITIONS.filter(
     (c) => c.category === "Protecao",
   );
@@ -31,22 +30,22 @@ export function EditorUnifilarSidebar({ dragValidation, onValidate }: Props) {
       <div className="px-2 pb-3 space-y-3 overflow-auto scrollbar-thin">
         <PaletteGroup icon={Cable} title="Proteção">
           {protectionComponents.map((c) => (
-            <PaletteItem key={c.type} component={c} onValidate={onValidate} />
+            <PaletteItem key={c.type} component={c} />
           ))}
         </PaletteGroup>
         <PaletteGroup icon={Boxes} title="Potência">
           {powerComponents.map((c) => (
-            <PaletteItem key={c.type} component={c} onValidate={onValidate} />
+            <PaletteItem key={c.type} component={c} />
           ))}
         </PaletteGroup>
         <PaletteGroup icon={Gauge} title="Controle">
           {controlComponents.map((c) => (
-            <PaletteItem key={c.type} component={c} onValidate={onValidate} />
+            <PaletteItem key={c.type} component={c} />
           ))}
         </PaletteGroup>
         <PaletteGroup icon={Gauge} title="Medição e Sinal">
           {signalComponents.map((c) => (
-            <PaletteItem key={c.type} component={c} onValidate={onValidate} />
+            <PaletteItem key={c.type} component={c} />
           ))}
         </PaletteGroup>
       </div>
@@ -54,18 +53,14 @@ export function EditorUnifilarSidebar({ dragValidation, onValidate }: Props) {
   );
 }
 
-function PaletteItem({
-  component,
-  onValidate,
-}: {
-  component: VoltaiComponentDefinition;
-  onValidate: (component: VoltaiComponentDefinition) => boolean;
-}) {
+function PaletteItem({ component }: { component: VoltaiComponentDefinition }) {
+  const validateComponent = useEditorStore((s) => s.validateComponent);
+
   return (
     <button
       draggable
       onDragStart={(event) => {
-        onValidate(component);
+        validateComponent?.(component.type);
         event.dataTransfer.setData("application/voltai-component", component.type);
         event.dataTransfer.effectAllowed = "move";
       }}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, memo } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -9,7 +9,8 @@ import ReactFlow, {
   Handle,
   Position,
   type Connection,
-  type Node,
+  type NodeChange,
+  type EdgeChange,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
@@ -23,7 +24,7 @@ import {
   Sigma,
 } from "lucide-react";
 import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
-import { useEditorStore } from "@/lib/editor/store";
+import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
 import { BLOCK_DEFINITIONS, type FbdBlockKind } from "@/lib/fbd/types";
 import { scanFbd, createInitialState, type FbdRuntimeState } from "@/lib/fbd/runtime";
 import { compileFbdToSt, compileFbdToIL } from "@/lib/fbd/compiler";
@@ -40,17 +41,34 @@ const PIN_COLORS: Record<string, string> = {
 
 const nodeTypes = { fbdBlock: FbdBlockNode };
 
-function FbdBlockNode({ id, data }: { id: string; data: FbdNodeData }) {
+interface PinInfo {
+  label: string;
+  type: string;
+}
+
+interface FbdNodeData {
+  label: string;
+  type: string;
+  inputs: PinInfo[];
+  outputs: PinInfo[];
+  params: Record<string, string | number>;
+  onParamChange?: (nodeId: string, key: string, val: string | number) => void;
+  pinValues?: Record<string, unknown>;
+  isRunning?: boolean;
+}
+
+function FbdBlockNode({ id, data }: { id: string; data: Record<string, unknown> }) {
+  const d = data as unknown as FbdNodeData;
   const [showConfig, setShowConfig] = useState(false);
 
   return (
     <div className="rounded border border-primary/40 bg-card/95 min-w-[160px] shadow-lg overflow-hidden select-none">
       <div className="bg-primary/10 border-b border-primary/20 px-3 py-1.5 flex items-center justify-between gap-2">
         <span className="font-display text-[10px] font-bold text-primary tracking-wider uppercase">
-          {data.type}
+          {d.type}
         </span>
         <div className="flex items-center gap-1">
-          {data.params && Object.keys(data.params).length > 0 && (
+          {d.params && Object.keys(d.params).length > 0 && (
             <button
               onClick={() => setShowConfig(!showConfig)}
               className="text-muted-foreground hover:text-foreground cursor-pointer"
@@ -63,8 +81,8 @@ function FbdBlockNode({ id, data }: { id: string; data: FbdNodeData }) {
 
       <div className="p-3 flex justify-between relative gap-6">
         <div className="flex flex-col gap-2.5 items-start">
-          {data.inputs.map((pin, i) => {
-            const val = data.pinValues?.[pin.label];
+          {d.inputs.map((pin, i) => {
+            const val = d.pinValues?.[pin.label];
             return (
               <div
                 key={pin.label}
@@ -84,7 +102,7 @@ function FbdBlockNode({ id, data }: { id: string; data: FbdNodeData }) {
                   }}
                 />
                 <span>{pin.label}</span>
-                {data.isRunning && val !== undefined && (
+                {d.isRunning && val !== undefined && (
                   <span
                     className={`ml-0.5 text-[8px] font-bold ${
                       pin.type === "BOOL"
@@ -103,14 +121,14 @@ function FbdBlockNode({ id, data }: { id: string; data: FbdNodeData }) {
         </div>
 
         <div className="flex flex-col gap-2.5 items-end">
-          {data.outputs.map((pin, i) => {
-            const val = data.pinValues?.[pin.label];
+          {d.outputs.map((pin, i) => {
+            const val = d.pinValues?.[pin.label];
             return (
               <div
                 key={pin.label}
                 className="relative flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground"
               >
-                {data.isRunning && val !== undefined && (
+                {d.isRunning && val !== undefined && (
                   <span
                     className={`mr-0.5 text-[8px] font-bold ${
                       pin.type === "BOOL"
@@ -143,10 +161,10 @@ function FbdBlockNode({ id, data }: { id: string; data: FbdNodeData }) {
         </div>
       </div>
 
-      {showConfig && data.params && data.onParamChange && (
+      {showConfig && d.params && d.onParamChange && (
         <div className="border-t border-border p-2 bg-background/50 flex flex-col gap-1.5">
-          {Object.entries(data.params).map(([key, val]) => {
-            const def = DEF_MAP.get(data.type as any);
+          {Object.entries(d.params).map(([key, val]) => {
+            const def = DEF_MAP.get(d.type as FbdBlockKind);
             const paramDef = def?.params?.find((p) => p.key === key);
             return (
               <div key={key} className="flex flex-col gap-1">
@@ -156,7 +174,7 @@ function FbdBlockNode({ id, data }: { id: string; data: FbdNodeData }) {
                 <input
                   type="text"
                   value={val}
-                  onChange={(e) => data.onParamChange!(id, key, e.target.value)}
+                  onChange={(e) => d.onParamChange!(id, key, e.target.value)}
                   className="h-6 px-1.5 text-[10px] bg-input border border-border rounded font-mono"
                 />
               </div>
@@ -166,22 +184,6 @@ function FbdBlockNode({ id, data }: { id: string; data: FbdNodeData }) {
       )}
     </div>
   );
-}
-
-interface PinInfo {
-  label: string;
-  type: string;
-}
-
-interface FbdNodeData {
-  label: string;
-  type: string;
-  inputs: PinInfo[];
-  outputs: PinInfo[];
-  params: Record<string, string | number>;
-  onParamChange?: (nodeId: string, key: string, val: string | number) => void;
-  pinValues?: Record<string, any>;
-  isRunning?: boolean;
 }
 
 export function FbdCanvas() {
@@ -200,20 +202,21 @@ export function FbdCanvas() {
   const handleParamChange = useCallback(
     (nodeId: string, key: string, val: string | number) => {
       setFbdAll(
-        (prevNodes: any[]) =>
-          prevNodes.map((n: any) => {
+        (prevNodes: FbdNode[]) =>
+          prevNodes.map((n: FbdNode) => {
             if (n.id === nodeId) {
+              const currentData = n.data as unknown as FbdNodeData;
               return {
                 ...n,
                 data: {
-                  ...n.data,
-                  params: { ...n.data.params, [key]: val },
-                },
+                  ...currentData,
+                  params: { ...(currentData?.params ?? {}), [key]: val },
+                } as unknown as Record<string, unknown>,
               };
             }
             return n;
           }),
-        (prevEdges: any[]) => prevEdges,
+        (prevEdges: FbdEdge[]) => prevEdges,
       );
     },
     [setFbdAll],
@@ -234,27 +237,28 @@ export function FbdCanvas() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
       setFbdAll(
-        (prevNodes: any[]) =>
-          prevNodes.map((n: any) => ({
+        (prevNodes: FbdNode[]) =>
+          prevNodes.map((n: FbdNode) => ({
             ...n,
-            data: { ...n.data, pinValues: undefined, isRunning: false },
+            data: { ...(n.data as unknown as FbdNodeData), pinValues: undefined, isRunning: false } as unknown as Record<string, unknown>,
           })),
-        (prevEdges: any[]) => prevEdges,
+        (prevEdges: FbdEdge[]) => prevEdges,
       );
       return;
     }
 
     intervalRef.current = setInterval(() => {
       setFbdAll(
-        (prevNodes: any[]) => {
+        (prevNodes: FbdNode[]) => {
           const fbdBlocks = toFbdBlocks(prevNodes);
           const fbdConns = toFbdConnections(edges);
           try {
             const result = scanFbd(fbdBlocks, fbdConns, {}, simStateRef.current, 100);
             simStateRef.current = result.state;
-            return prevNodes.map((n: any) => {
-              const pinValues: Record<string, any> = {};
-              const def = DEF_MAP.get(n.data.type);
+            return prevNodes.map((n: FbdNode) => {
+              const pinValues: Record<string, unknown> = {};
+              const nodeData = n.data as unknown as FbdNodeData;
+              const def = DEF_MAP.get(nodeData.type as FbdBlockKind);
               if (def) {
                 for (const inp of def.inputs) {
                   const key = `${n.id}.${inp.label}`;
@@ -271,14 +275,14 @@ export function FbdCanvas() {
               }
               return {
                 ...n,
-                data: { ...n.data, pinValues, isRunning: true },
+                data: { ...nodeData, pinValues, isRunning: true } as unknown as Record<string, unknown>,
               };
             });
           } catch {
             return prevNodes;
           }
         },
-        (prevEdges: any[]) => prevEdges,
+        (prevEdges: FbdEdge[]) => prevEdges,
       );
     }, 100);
 
@@ -296,20 +300,20 @@ export function FbdCanvas() {
   }, [nodes, edges, showStPanel, showIlPanel]);
 
   const onNodesChange = useCallback(
-    (changes: any) => {
+    (changes: NodeChange[]) => {
       setFbdAll(
-        (prevNodes: any[]) => applyNodeChanges(changes, prevNodes),
-        (prevEdges: any[]) => prevEdges,
+        (prevNodes: FbdNode[]) => applyNodeChanges(changes, prevNodes) as FbdNode[],
+        (prevEdges: FbdEdge[]) => prevEdges,
       );
     },
     [setFbdAll],
   );
 
   const onEdgesChange = useCallback(
-    (changes: any) => {
+    (changes: EdgeChange[]) => {
       setFbdAll(
-        (prevNodes: any[]) => prevNodes,
-        (prevEdges: any[]) => applyEdgeChanges(changes, prevEdges),
+        (prevNodes: FbdNode[]) => prevNodes,
+        (prevEdges: FbdEdge[]) => applyEdgeChanges(changes, prevEdges) as FbdEdge[],
       );
     },
     [setFbdAll],
@@ -317,13 +321,15 @@ export function FbdCanvas() {
 
   const onConnect = useCallback(
     (params: Connection) => {
-      const sourceNode = nodes.find((n: any) => n.id === params.source);
-      const targetNode = nodes.find((n: any) => n.id === params.target);
-      const sourcePinDef = sourceNode?.data?.outputs?.find(
-        (p: any) => p.label === params.sourceHandle,
+      const sourceNode = nodes.find((n: FbdNode) => n.id === params.source);
+      const targetNode = nodes.find((n: FbdNode) => n.id === params.target);
+      const sourceData = sourceNode?.data as unknown as FbdNodeData | undefined;
+      const targetData = targetNode?.data as unknown as FbdNodeData | undefined;
+      const sourcePinDef = sourceData?.outputs?.find(
+        (p: PinInfo) => p.label === params.sourceHandle,
       );
-      const targetPinDef = targetNode?.data?.inputs?.find(
-        (p: any) => p.label === params.targetHandle,
+      const targetPinDef = targetData?.inputs?.find(
+        (p: PinInfo) => p.label === params.targetHandle,
       );
 
       if (sourcePinDef && targetPinDef && sourcePinDef.type !== targetPinDef.type) {
@@ -334,15 +340,15 @@ export function FbdCanvas() {
       const edgeTypeColor = PIN_COLORS[sourcePinDef?.type as string] ?? PIN_COLORS.ANY;
 
       setFbdAll(
-        (prevNodes: any[]) => prevNodes,
-        (prevEdges: any[]) =>
+        (prevNodes: FbdNode[]) => prevNodes,
+        (prevEdges: FbdEdge[]) =>
           addEdge(
             {
               ...params,
               style: { stroke: edgeTypeColor, strokeWidth: 2 },
             },
             prevEdges,
-          ),
+          ) as FbdEdge[],
       );
     },
     [nodes, setFbdAll],
@@ -368,7 +374,10 @@ export function FbdCanvas() {
         y: event.clientY - rect.top - 40,
       };
 
-      const count = nodes.filter((n: any) => n.data?.type === kind).length + 1;
+      const count = nodes.filter((n: FbdNode) => {
+        const nd = n.data as unknown as FbdNodeData;
+        return nd.type === kind;
+      }).length + 1;
       const nodeId = `${kind}_${count}`;
 
       const params: Record<string, string | number> = {};
@@ -378,7 +387,7 @@ export function FbdCanvas() {
         }
       }
 
-      const newNode: Node<FbdNodeData> = {
+      const newNode: FbdNode = {
         id: nodeId,
         type: "fbdBlock",
         position,
@@ -389,12 +398,12 @@ export function FbdCanvas() {
           outputs: def.outputs.map((o) => ({ label: o.label, type: o.type })),
           params,
           onParamChange: handleParamChange,
-        },
+        } as unknown as Record<string, unknown>,
       };
 
       setFbdAll(
-        (prevNodes: any[]) => prevNodes.concat(newNode),
-        (prevEdges: any[]) => prevEdges,
+        (prevNodes: FbdNode[]) => prevNodes.concat(newNode),
+        (prevEdges: FbdEdge[]) => prevEdges,
       );
     },
     [nodes, setFbdAll, handleParamChange],
@@ -402,8 +411,8 @@ export function FbdCanvas() {
 
   const deleteSelected = useCallback(() => {
     setFbdAll(
-      (prevNodes: any[]) => prevNodes.filter((n: any) => !n.selected),
-      (prevEdges: any[]) => prevEdges.filter((e: any) => !e.selected),
+      (prevNodes: FbdNode[]) => prevNodes.filter((n: FbdNode) => n.selected),
+      (prevEdges: FbdEdge[]) => prevEdges.filter((e: FbdEdge) => e.selected),
     );
   }, [setFbdAll]);
 
@@ -543,28 +552,29 @@ export function FbdCanvas() {
   );
 }
 
-function toFbdBlocks(nodes: any[]): import("@/lib/fbd/types").FbdBlock[] {
-  return nodes.map((n: any) => {
-    const inputs = n.data?.inputs ?? [];
-    const outputs = n.data?.outputs ?? [];
+function toFbdBlocks(nodes: FbdNode[]): import("@/lib/fbd/types").FbdBlock[] {
+  return nodes.map((n: FbdNode) => {
+    const nodeData = n.data as unknown as FbdNodeData;
+    const inputs = nodeData?.inputs ?? [];
+    const outputs = nodeData?.outputs ?? [];
     return {
       id: n.id,
-      kind: n.data?.type ?? "AND",
-      label: n.data?.label ?? n.id,
+      kind: (nodeData?.type as FbdBlockKind) ?? "AND",
+      label: nodeData?.label ?? n.id,
       position: n.position ?? { x: 0, y: 0 },
-      params: n.data?.params ?? {},
+      params: (nodeData?.params as Record<string, string | number>) ?? {},
       pins: [
-        ...inputs.map((p: any) => ({
+        ...inputs.map((p: PinInfo) => ({
           id: `${n.id}.${p.label}`,
           label: p.label,
-          type: p.type ?? "BOOL",
+          type: p.type as "BOOL" | "INT" | "REAL" | "TIME" | "ANY",
           direction: "input" as const,
           blockId: n.id,
         })),
-        ...outputs.map((p: any) => ({
+        ...outputs.map((p: PinInfo) => ({
           id: `${n.id}.${p.label}`,
           label: p.label,
-          type: p.type ?? "BOOL",
+          type: p.type as "BOOL" | "INT" | "REAL" | "TIME" | "ANY",
           direction: "output" as const,
           blockId: n.id,
         })),
@@ -573,8 +583,8 @@ function toFbdBlocks(nodes: any[]): import("@/lib/fbd/types").FbdBlock[] {
   });
 }
 
-function toFbdConnections(edges: any[]): import("@/lib/fbd/types").FbdConnection[] {
-  return edges.map((e: any) => ({
+function toFbdConnections(edges: FbdEdge[]): import("@/lib/fbd/types").FbdConnection[] {
+  return edges.map((e: FbdEdge) => ({
     id: e.id ?? `${e.source}.${e.sourceHandle}->${e.target}.${e.targetHandle}`,
     sourcePin: `${e.source}.${e.sourceHandle}`,
     targetPin: `${e.target}.${e.targetHandle}`,

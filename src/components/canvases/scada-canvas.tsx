@@ -67,7 +67,7 @@ if (tags["TEMP_M01"] > 85) {
 
 function getTagNames(): string[] {
   const projectTags = Object.keys(useProjectStore.getState().tags);
-  const editorTags = Object.values(useEditorStore.getState().tags).map((t) => t.name);
+  const editorTags = Object.values(useEditorStore.getState().editorTags).map((t) => t.name);
   return [...new Set([...projectTags, ...editorTags])].sort();
 }
 
@@ -236,7 +236,7 @@ export function ScadaCanvas() {
 
         const editorState = useEditorStore.getState();
         Object.entries(nextTags).forEach(([name, value]) => {
-          const existing = Object.values(editorState.tags).find((t) => t.name === name);
+          const existing = Object.values(editorState.editorTags).find((t) => t.name === name);
           if (existing) {
             editorState.setTagValue(existing.id, value);
           } else {

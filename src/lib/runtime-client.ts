@@ -1,4 +1,4 @@
-import { createClient, type RealtimeChannel, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type RealtimeChannel, type SupabaseClient, type RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useProjectStore, type TickPayload } from "./project-store";
 
 const STORAGE_KEY = "eletricai.runtime.config";
@@ -24,15 +24,15 @@ export function loadConfig(): RuntimeConfig | null {
   }
 }
 
-export function saveConfig(cfg: RuntimeConfig) {
+export function saveConfig(cfg: RuntimeConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
 }
 
-export function clearConfig() {
+export function clearConfig(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-export async function connectSupabase(cfg: RuntimeConfig) {
+export async function connectSupabase(cfg: RuntimeConfig): Promise<boolean> {
   await disconnect();
   const store = useProjectStore.getState();
   try {
@@ -48,16 +48,16 @@ export async function connectSupabase(cfg: RuntimeConfig) {
     });
 
     channel.on(
-      "postgres_changes" as any,
+      "postgres_changes",
       { event: "INSERT", schema: "public", table: "runtime_logs" },
-      (msg: any) => {
-        const r = msg.new;
+      (msg: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+        const r = msg.new as Record<string, unknown>;
         useProjectStore.getState().pushLog({
-          t: new Date(r.ts ?? Date.now()).toLocaleTimeString(),
-          tag: r.tag ?? "RT",
-          msg: r.message ?? "",
-          lvl: r.level ?? "info",
-          channel: r.channel ?? "Logs",
+          t: new Date((r.ts as number) ?? Date.now()).toLocaleTimeString(),
+          tag: (r.tag as string) ?? "RT",
+          msg: (r.message as string) ?? "",
+          lvl: (r.level as "info" | "warn" | "err" | "ok") ?? "info",
+          channel: (r.channel as "Logs" | "Alarmes" | "IA" | "Eventos" | "OPC-UA" | "Modbus" | "Runtime" | "Terminal") ?? "Logs",
         });
       },
     );
@@ -82,12 +82,13 @@ export async function connectSupabase(cfg: RuntimeConfig) {
     });
     saveConfig(cfg);
     return true;
-  } catch (e: any) {
-    useProjectStore.getState().setRuntime({ connected: false, source: "off", error: e.message });
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : "Unknown error";
+    useProjectStore.getState().setRuntime({ connected: false, source: "off", error: errorMessage });
     useProjectStore.getState().pushLog({
       t: new Date().toLocaleTimeString(),
       tag: "RT",
-      msg: `Falha: ${e.message}`,
+      msg: `Falha: ${errorMessage}`,
       lvl: "err",
       channel: "Runtime",
     });
@@ -96,7 +97,7 @@ export async function connectSupabase(cfg: RuntimeConfig) {
   }
 }
 
-export async function disconnect() {
+export async function disconnect(): Promise<void> {
   if (channel) {
     await channel.unsubscribe();
     channel = null;
@@ -113,7 +114,7 @@ export async function disconnect() {
 }
 
 // Local fallback simulator — runs in the browser when Supabase isn't connected.
-export function startLocalSimulation() {
+export function startLocalSimulation(): void {
   if (localTimer) return;
   const store = useProjectStore.getState();
   store.setRuntime({ connected: true, source: "local", cycleMs: 50 });
@@ -131,7 +132,7 @@ export function startLocalSimulation() {
     const tags: Record<string, number | boolean> = {};
     const params: Record<string, Record<string, string | number>> = {};
     const energized: Record<string, boolean> = {};
-    const logs = [];
+    const logs: import("./project-store").RuntimeLog[] = [];
 
     for (const n of s.nodes) {
       if (n.kind === "tank") {
@@ -177,11 +178,11 @@ export function startLocalSimulation() {
   }, 50);
 }
 
-export function isLocalRunning() {
+export function isLocalRunning(): boolean {
   return !!localTimer;
 }
 
-export async function autoConnect() {
+export async function autoConnect(): Promise<boolean> {
   const cfg = loadConfig();
   if (!cfg) return false;
   try {

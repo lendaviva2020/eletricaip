@@ -9,12 +9,12 @@ import { useDigitalTwinStore, type HotspotConfig } from "@/lib/digital-twin-stor
 /* ─── helpers ─── */
 function getTag(name: string): number {
   const projectTags = useProjectStore.getState().tags;
-  const editorTags = useEditorStore.getState().tags;
+  const editorTags = useEditorStore.getState().editorTags;
   for (const [k, v] of Object.entries(projectTags)) {
     if (k.toUpperCase().includes(name.toUpperCase())) return Number(v) || 0;
   }
   for (const [, v] of Object.entries(editorTags)) {
-    if ((v as any).name?.toUpperCase() === name.toUpperCase()) return Number((v as any).value) || 0;
+    if (v.name.toUpperCase() === name.toUpperCase()) return Number(v.value) || 0;
   }
   return 0;
 }

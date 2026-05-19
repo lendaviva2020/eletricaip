@@ -1,3 +1,4 @@
+// Industrial project store — manages nodes, edges, tags, logs, and runtime state
 import { create } from "zustand";
 
 export type NodeCategory = "power" | "mech" | "inst" | "logic";
@@ -67,10 +68,14 @@ export interface IndustrialEdge {
   kind: "power" | "signal" | "pipe";
 }
 
-export const KIND_CATALOG: Record<
-  string,
-  { kind: NodeKind; category: NodeCategory; label: string; defaults?: Record<string, any> }
-> = {
+export interface KindCatalogEntry {
+  kind: NodeKind;
+  category: NodeCategory;
+  label: string;
+  defaults?: Record<string, string | number | boolean>;
+}
+
+export const KIND_CATALOG: Record<string, KindCatalogEntry> = {
   // HMI Widgets
   Gauge: {
     kind: "gauge",
@@ -317,7 +322,7 @@ interface ProjectState {
   runtime: RuntimeStatus;
   addNode: (kindLabel: string, position: { x: number; y: number }) => string;
   updateNodePosition: (id: string, position: { x: number; y: number }) => void;
-  updateNodeParam: (id: string, key: string, value: any) => void;
+  updateNodeParam: (id: string, key: string, value: string | number | boolean) => void;
   removeNode: (id: string) => void;
   addEdge: (e: Omit<IndustrialEdge, "id">) => void;
   removeEdge: (id: string) => void;

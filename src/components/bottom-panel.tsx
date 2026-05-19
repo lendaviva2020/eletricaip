@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { CONSOLE_TABS, type ConsoleTab } from "@/lib/workspace-data";
 import {
   ChevronDown,
@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/lib/project-store";
 import { useOpcuaBridge } from "@/hooks/use-opcua-bridge";
+import { useEditorStore } from "@/lib/editor/store";
 
 const TAB_ICON: Record<ConsoleTab, typeof TerminalIcon> = {
   Logs: List,
@@ -57,8 +58,10 @@ const lvlColor = {
 };
 
 export function BottomPanel() {
-  const [tab, setTab] = useState<ConsoleTab>("Logs");
-  const [open, setOpen] = useState(true);
+  const tab = useEditorStore((s) => s.consoleTab);
+  const setTab = useEditorStore((s) => s.setConsoleTab);
+  const open = useEditorStore((s) => s.consoleOpen);
+  const setOpen = useEditorStore((s) => s.setConsoleOpen);
   const liveLogs = useProjectStore((s) => s.logs);
   const runtime = useProjectStore((s) => s.runtime);
   const bridge = useOpcuaBridge();
@@ -157,7 +160,7 @@ export function BottomPanel() {
             <Trash2 className="h-3.5 w-3.5" />
           </button>
           <button
-            onClick={() => setOpen((o) => !o)}
+            onClick={() => setOpen(!open)}
             className="h-7 w-7 grid place-items-center rounded hover:bg-accent text-muted-foreground"
           >
             {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}

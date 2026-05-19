@@ -1,15 +1,10 @@
+// AI rate limiting middleware — burst + monthly quota enforcement
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getPlan } from "@/lib/plans";
 import { requireSupabaseAuth } from "./auth-middleware";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "./types";
-
-interface AuthCtx {
-  supabase: SupabaseClient<Database>;
-  userId: string;
-  claims: Record<string, unknown>;
-}
+import { supabaseAdmin } from "./client.server";
+import type { AuthContext } from "./auth-middleware";
 
 // ── In-memory sliding-window burst limiter ──────────────────────
 const BURST_WINDOW_MS = 60_000;
@@ -17,7 +12,12 @@ const BURST_MAX_CALLS = 20;
 
 const burstWindows = new Map<string, number[]>();
 
-function checkBurst(userId: string): { allowed: boolean; retryAfter: number } {
+interface BurstResult {
+  allowed: boolean;
+  retryAfter: number;
+}
+
+function checkBurst(userId: string): BurstResult {
   const now = Date.now();
   let timestamps = burstWindows.get(userId);
   if (!timestamps) {
@@ -40,7 +40,7 @@ function checkBurst(userId: string): { allowed: boolean; retryAfter: number } {
   return { allowed: true, retryAfter: 0 };
 }
 
-function monthKey(date = new Date()) {
+function monthKey(date = new Date()): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
@@ -50,8 +50,9 @@ export const requireAiQuota = createMiddleware({ type: "function" })
     const request = getRequest();
     if (request?.method === "GET") return next();
 
-    const supabase = (context as any).supabase;
-    const userId = (context as any).userId as string;
+    const authCtx = context as unknown as AuthContext;
+    const supabase = authCtx.supabase;
+    const userId = authCtx.userId;
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -59,16 +60,16 @@ export const requireAiQuota = createMiddleware({ type: "function" })
       .eq("id", userId)
       .maybeSingle();
 
-    const plan = getPlan(profile?.plan);
+    const plan = getPlan((profile as unknown as { plan: string | null })?.plan);
     if (plan.aiCreditsPerMonth === null) return next();
 
     const period = monthKey();
-    const { data: usage } = await supabase
-      .from("ai_usage_monthly")
-      .select("calls_used")
-      .eq("user_id", userId)
-      .eq("period", period)
-      .maybeSingle();
+    // Use supabaseAdmin with raw query to avoid generated type issues
+    const { data: usageRows } = await supabaseAdmin.rpc(
+      "get_ai_usage_monthly" as never,
+      { p_user_id: userId, p_period: period } as never,
+    );
+    const usage = (usageRows as unknown as { calls_used: number } | null) ?? null;
 
     const used = Number(usage?.calls_used ?? 0);
     if (used >= plan.aiCreditsPerMonth) {
@@ -85,14 +86,9 @@ export const requireAiQuota = createMiddleware({ type: "function" })
     }
 
     const nextUsed = used + 1;
-    await supabase.from("ai_usage_monthly").upsert(
-      {
-        user_id: userId,
-        period,
-        calls_used: nextUsed,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,period" },
+    await supabaseAdmin.rpc(
+      "upsert_ai_usage_monthly" as never,
+      { p_user_id: userId, p_period: period, p_calls_used: nextUsed } as never,
     );
 
     return next();
@@ -101,7 +97,8 @@ export const requireAiQuota = createMiddleware({ type: "function" })
 export const requireBurstLimit = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
-    const userId = (context as any).userId as string;
+    const authCtx = context as unknown as AuthContext;
+    const userId = authCtx.userId;
     const { allowed, retryAfter } = checkBurst(userId);
     if (!allowed) {
       throw new Response(

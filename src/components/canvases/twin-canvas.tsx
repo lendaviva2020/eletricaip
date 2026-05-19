@@ -42,7 +42,7 @@ export function TwinCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const projectTags = useProjectStore((s) => s.tags);
-  const editorTags = useEditorStore((s) => s.tags);
+  const editorTags = useEditorStore((s) => s.editorTags);
   const isLive = useProjectStore((s) => s.runtime.connected);
 
   // Poll values for drawing and buffering

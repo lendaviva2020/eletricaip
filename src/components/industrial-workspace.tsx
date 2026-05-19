@@ -1,14 +1,13 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect } from "react";
 import { ModeTabs } from "@/components/mode-tabs";
 import { BottomPanel } from "@/components/bottom-panel";
 import { RightPanel } from "@/components/right-panel";
-import type { WorkspaceMode } from "@/lib/workspace-data";
 import { Loader2, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { CanvasAiChat } from "@/components/canvas-ai-chat";
 import { useProjectPersistence } from "@/lib/use-project-persistence";
 import {
   isBreakerComponent,
-  type VoltaiComponentDefinition,
+  type VoltaiComponentType,
 } from "@/lib/voltai/component-definitions";
 import { LeftSidebarHost } from "@/components/editor/left-sidebar-host";
 import { useEditorStore } from "@/lib/editor/store";
@@ -39,41 +38,46 @@ const AlarmsCanvas = lazy(() =>
 );
 
 export function IndustrialWorkspace({ projectId = null }: { projectId?: string | null }) {
-  const [mode, setMode] = useState<WorkspaceMode>("unifilar");
-  const [dragValidation, setDragValidation] = useState(
-    "Arraste componentes IEC 60617 para o canvas.",
-  );
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const mode = useEditorStore((s) => s.activeMode);
+  const setMode = useEditorStore((s) => s.setActiveMode);
+  const leftCollapsed = useEditorStore((s) => s.leftCollapsed);
+  const rightCollapsed = useEditorStore((s) => s.rightCollapsed);
+  const toggleLeftPanel = useEditorStore((s) => s.toggleLeftPanel);
+  const toggleRightPanel = useEditorStore((s) => s.toggleRightPanel);
+  const setDragValidation = useEditorStore((s) => s.setDragValidation);
+  const setValidateComponent = useEditorStore((s) => s.setValidateComponent);
+
   const { loading, saveState } = useProjectPersistence(projectId);
-  const setActiveMode = useEditorStore((s) => s.setActiveMode);
 
+  const validateDraggedBreaker = useCallback(
+    (componentType: VoltaiComponentType): boolean => {
+      const isBreaker: boolean = isBreakerComponent(componentType);
+      setDragValidation(
+        isBreaker
+          ? `${componentType} validado como disjuntor local.`
+          : `${componentType} não é disjuntor; permitido como componente unifilar.`,
+      );
+      return isBreaker;
+    },
+    [setDragValidation],
+  );
+
+  // Register validateComponent in store so PaletteItem can access it directly
+  // without prop drilling through LeftSidebarHost → EditorUnifilarSidebar
   useEffect(() => {
-    setActiveMode(mode);
-  }, [mode, setActiveMode]);
-
-  function validateDraggedBreaker(component: VoltaiComponentDefinition) {
-    const isBreaker = isBreakerComponent(component.type);
-    setDragValidation(
-      isBreaker
-        ? `${component.type} validado como disjuntor local.`
-        : `${component.type} não é disjuntor; permitido como componente unifilar.`,
-    );
-    return isBreaker;
-  }
+    setValidateComponent(validateDraggedBreaker);
+    return () => setValidateComponent(null);
+  }, [validateDraggedBreaker, setValidateComponent]);
 
   return (
     <div className="flex-1 flex min-h-0 relative">
       {/* Painel Esquerdo */}
       {!leftCollapsed ? (
         <div className="hidden lg:flex relative shrink-0 z-10">
-          <LeftSidebarHost
-            mode={mode}
-            unifilar={{ dragValidation, onValidate: validateDraggedBreaker }}
-          />
+          <LeftSidebarHost mode={mode} />
           {/* Botão para recolher o painel esquerdo */}
           <button
-            onClick={() => setLeftCollapsed(true)}
+            onClick={toggleLeftPanel}
             className="flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
             title="Recolher painel esquerdo"
           >
@@ -83,7 +87,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       ) : (
         /* Alça elegante para expandir o painel esquerdo */
         <button
-          onClick={() => setLeftCollapsed(false)}
+          onClick={toggleLeftPanel}
           className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
           title="Expandir painel esquerdo"
         >
@@ -93,7 +97,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
 
       {/* Área Central (Canvas + Controles) */}
       <div className="flex-1 flex flex-col min-w-0">
-        <ModeTabs mode={mode} onChange={setMode} />
+        <ModeTabs />
         <SaveBadge projectId={projectId} loading={loading} state={saveState} />
         <div className="flex-1 min-h-0 relative bg-background">
           <Suspense fallback={<CanvasFallback />}>
@@ -116,7 +120,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         <div className="hidden lg:flex relative shrink-0 z-10">
           {/* Botão para recolher o painel direito */}
           <button
-            onClick={() => setRightCollapsed(true)}
+            onClick={toggleRightPanel}
             className="flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
             title="Recolher painel direito"
           >
@@ -127,7 +131,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       ) : (
         /* Alça elegante para expandir o painel direito */
         <button
-          onClick={() => setRightCollapsed(false)}
+          onClick={toggleRightPanel}
           className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
           title="Expandir painel direito"
         >

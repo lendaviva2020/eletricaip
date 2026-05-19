@@ -1,14 +1,12 @@
 import { MODES, type WorkspaceMode } from "@/lib/workspace-data";
 import { cn } from "@/lib/utils";
 import { Activity } from "lucide-react";
+import { useEditorStore } from "@/lib/editor/store";
 
-export function ModeTabs({
-  mode,
-  onChange,
-}: {
-  mode: WorkspaceMode;
-  onChange: (m: WorkspaceMode) => void;
-}) {
+export function ModeTabs() {
+  const mode = useEditorStore((s) => s.activeMode);
+  const setMode = useEditorStore((s) => s.setActiveMode);
+
   return (
     <div className="h-11 shrink-0 flex items-end border-b border-border bg-panel/40">
       <div className="flex-1 min-w-0 flex items-end gap-0.5 px-2 overflow-x-auto scrollbar-none">
@@ -17,7 +15,7 @@ export function ModeTabs({
           return (
             <button
               key={m.id}
-              onClick={() => onChange(m.id)}
+              onClick={() => setMode(m.id)}
               className={cn(
                 "relative h-9 px-3 text-xs font-medium rounded-t-md flex items-center gap-2 transition-all shrink-0",
                 "text-muted-foreground hover:text-foreground hover:bg-accent/40",

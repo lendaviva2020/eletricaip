@@ -72,7 +72,7 @@ export function RungGrid() {
       );
 
       // Capture tag deltas
-      const currentTags = useEditorStore.getState().tags;
+      const currentTags = useEditorStore.getState().editorTags;
       const flatNow: Record<string, unknown> = {};
       Object.values(currentTags).forEach((t) => (flatNow[t.name] = t.value));
       const deltas: { name: string; from: unknown; to: unknown }[] = [];

@@ -1,4 +1,6 @@
+// Notification store — manages in-app notifications
 import { create } from "zustand";
+import type { Json } from "@/integrations/supabase/types";
 
 export type NotificationType =
   | "simulation_complete"
@@ -13,7 +15,7 @@ export interface AppNotification {
   type: NotificationType;
   title: string;
   message: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   readAt: string | null;
   createdAt: string;
 }
