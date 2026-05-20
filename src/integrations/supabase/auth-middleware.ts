@@ -4,6 +4,29 @@ import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
+const SUPABASE_URL_FALLBACK = "https://hcjkwqyxqxnbqikwltvc.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY_FALLBACK =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIY2prd3F5eHF4bmJxaWt3bHR2YyIsInJlZiI6Imhjamt3cXl4cXhuYnFpa3dsdHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Mzk5MzksImV4cCI6MjA5MzUxNTkzOX0.0BM9sLDD2fsvj4CGtPFrMZ90Xf-OnDeoLCkYB9K4rZ4";
+
+function getServerSupabasePublicEnv() {
+  const env = typeof process !== "undefined" ? process.env : {};
+  return {
+    url:
+      env.SUPABASE_URL ||
+      env.VITE_SUPABASE_URL ||
+      env.NEXT_PUBLIC_SUPABASE_URL ||
+      SUPABASE_URL_FALLBACK,
+    anonKey:
+      env.SUPABASE_PUBLISHABLE_KEY ||
+      env.SUPABASE_ANON_KEY ||
+      env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      env.VITE_SUPABASE_ANON_KEY ||
+      env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      SUPABASE_PUBLISHABLE_KEY_FALLBACK,
+  };
+}
+
 export interface AuthContext {
   supabase: ReturnType<typeof createClient<Database>>;
   userId: string;
@@ -12,13 +35,12 @@ export interface AuthContext {
 
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = getServerSupabasePublicEnv();
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       const missing = [
-        ...(!SUPABASE_URL ? ["NEXT_PUBLIC_SUPABASE_URL"] : []),
-        ...(!SUPABASE_ANON_KEY ? ["NEXT_PUBLIC_SUPABASE_ANON_KEY"] : []),
+        ...(!SUPABASE_URL ? ["SUPABASE_URL"] : []),
+        ...(!SUPABASE_ANON_KEY ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
       ];
       const message = `Missing Supabase environment variable(s): ${missing.join(", ")}.`;
       console.error(`[Supabase] ${message}`);
