@@ -145,7 +145,7 @@ export const getIsPlatformAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { userId, claims } = context;
-    return { isPlatformAdmin: await isPlatformAdminUser({ userId, claims }) };
+    return { isPlatformAdmin: await isPlatformAdminUser({ userId, claims, supabase: context.supabase }) };
   });
 
 /**
