@@ -30,30 +30,16 @@ function originFromHeader(): string {
 async function isPlatformAdminUser(context: {
   userId: string;
   claims?: Record<string, unknown>;
+  supabase: import("@supabase/supabase-js").SupabaseClient;
 }): Promise<boolean> {
-  const email = String(context.claims?.email ?? "").trim().toLowerCase();
-
-  const { data: adminFlag, error } = await supabaseAdmin
-    .from("platform_admins")
-    .select("user_id")
-    .eq("user_id", context.userId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (adminFlag) return true;
-
-  if (!PLATFORM_ADMIN_EMAILS.has(email)) return false;
-
-  const { error: upsertError } = await supabaseAdmin.from("platform_admins").upsert(
-    {
-      user_id: context.userId,
-      role: "admin",
-      created_by: context.userId,
-    },
-    { onConflict: "user_id" },
-  );
-  if (upsertError) throw new Error(upsertError.message);
-
-  return true;
+  // Use SECURITY DEFINER RPC so this works with the user-auth client and
+  // does not require SUPABASE_SERVICE_ROLE_KEY at runtime.
+  const { data, error } = await context.supabase.rpc("is_platform_admin");
+  if (error) {
+    console.error("[isPlatformAdminUser] rpc error", error.message);
+    return false;
+  }
+  return Boolean(data);
 }
 
 /** Read current billing snapshot for the active tenant. */
