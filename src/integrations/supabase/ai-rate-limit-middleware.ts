@@ -1,9 +1,7 @@
 // AI rate limiting middleware — burst + monthly quota enforcement
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { getPlan } from "@/lib/plans";
 import { requireSupabaseAuth } from "./auth-middleware";
-import { supabaseAdmin } from "./client.server";
 import type { AuthContext } from "./auth-middleware";
 
 // ── In-memory sliding-window burst limiter ──────────────────────
@@ -40,10 +38,6 @@ function checkBurst(userId: string): BurstResult {
   return { allowed: true, retryAfter: 0 };
 }
 
-function monthKey(date = new Date()): string {
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
 export const requireAiQuota = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
@@ -52,44 +46,42 @@ export const requireAiQuota = createMiddleware({ type: "function" })
 
     const authCtx = context as unknown as AuthContext;
     const supabase = authCtx.supabase;
-    const userId = authCtx.userId;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("plan")
-      .eq("id", userId)
-      .maybeSingle();
+    const { data: quotaRows, error } = await supabase.rpc("get_ai_credits_remaining");
+    if (error) {
+      console.error("AI quota precheck failed:", error.message);
+      throw new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: "AI_QUOTA_CHECK_FAILED",
+            message: "Não foi possível validar a cota de IA neste momento.",
+          },
+        }),
+        { status: 503, headers: { "content-type": "application/json" } },
+      );
+    }
 
-    const plan = getPlan((profile as unknown as { plan: string | null })?.plan);
-    if (plan.aiCreditsPerMonth === null) return next();
+    const quota = (Array.isArray(quotaRows) ? quotaRows[0] : quotaRows) as {
+      plan?: string;
+      max_credits?: number;
+      used?: number;
+      remaining?: number;
+      unlimited?: boolean;
+    } | null;
 
-    const period = monthKey();
-    // Use supabaseAdmin with raw query to avoid generated type issues
-    const { data: usageRows } = await supabaseAdmin.rpc(
-      "get_ai_usage_monthly" as never,
-      { p_user_id: userId, p_period: period } as never,
-    );
-    const usage = (usageRows as unknown as { calls_used: number } | null) ?? null;
-
-    const used = Number(usage?.calls_used ?? 0);
-    if (used >= plan.aiCreditsPerMonth) {
+    if (!quota?.unlimited && Number(quota?.remaining ?? 0) <= 0) {
       throw new Response(
         JSON.stringify({
           ok: false,
           error: {
             code: "PLAN_RATE_LIMIT_429",
-            message: `Limite mensal de ${plan.aiCreditsPerMonth} chamadas de IA excedido.`,
+            message: `Limite mensal de ${Number(quota?.max_credits ?? 0)} créditos de IA excedido.`,
           },
         }),
         { status: 429, headers: { "content-type": "application/json" } },
       );
     }
-
-    const nextUsed = used + 1;
-    await supabaseAdmin.rpc(
-      "upsert_ai_usage_monthly" as never,
-      { p_user_id: userId, p_period: period, p_calls_used: nextUsed } as never,
-    );
 
     return next();
   });
