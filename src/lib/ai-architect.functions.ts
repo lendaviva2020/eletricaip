@@ -3,7 +3,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   requireAiQuota,
   requireBurstLimit,
@@ -224,8 +223,7 @@ export const generateArchitecture = createServerFn({ method: "POST" })
     }
 
     // Atomic credit gate: deduct BEFORE calling provider.
-    const { data: gate, error: gateErr } = await supabaseAdmin.rpc("consume_ai_credits_for_user", {
-      p_user_id: userId,
+    const { data: gate, error: gateErr } = await supabase.rpc("consume_ai_credits", {
       p_operation: "generate_panel",
     });
     if (gateErr) {
