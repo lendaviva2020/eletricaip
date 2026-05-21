@@ -204,7 +204,7 @@ export const generateArchitecture = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth, requireAiQuota, requireBurstLimit])
   .inputValidator((input) => InputSchema.parse(input))
   .handler(async ({ data, context }): Promise<ArchitectOk | ArchitectError> => {
-    const { supabase, userId } = context;
+    const { supabase } = context;
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       return {
