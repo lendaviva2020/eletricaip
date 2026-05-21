@@ -6,7 +6,7 @@ import type { Database } from "./types";
 
 const SUPABASE_URL_FALLBACK = "https://hcjkwqyxqxnbqikwltvc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY_FALLBACK =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIY2prd3F5eHF4bmJxaWt3bHR2YyIsInJlZiI6Imhjamt3cXl4cXhuYnFpa3dsdHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Mzk5MzksImV4cCI6MjA5MzUxNTkzOX0.0BM9sLDD2fsvj4CGtPFrMZ90Xf-OnDeoLCkYB9K4rZ4";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhjamt3cXl4cXhuYnFpa3dsdHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Mzk5MzksImV4cCI6MjA5MzUxNTkzOX0.0BM9sLDD2fsvj4CGtPFrMZ90Xf-OnDeoLCkYB9K4rZ4";
 
 function getServerSupabasePublicEnv() {
   const env = typeof process !== "undefined" ? process.env : {};
