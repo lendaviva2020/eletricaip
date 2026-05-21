@@ -358,10 +358,8 @@ export const generateArchitecture = createServerFn({ method: "POST" })
 export const getAiCredits = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { userId } = context;
-    const { data, error } = await supabaseAdmin.rpc("get_ai_credits_remaining_for_user", {
-      p_user_id: userId,
-    });
+    const { supabase } = context;
+    const { data, error } = await supabase.rpc("get_ai_credits_remaining");
     if (error) return { ok: false as const, error: error.message };
     const row = (Array.isArray(data) ? data[0] : data) as {
       plan: string;
