@@ -20,6 +20,9 @@ import {
 } from "@/lib/ai-architect-client";
 import { useProjectStore } from "@/lib/project-store";
 import { validateProject } from "@/lib/norm-validator";
+import { useServerFn } from "@tanstack/react-start";
+import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
+import { useDiagramStore } from "@/lib/diagram/store";
 
 interface Msg {
   role: "user" | "ai";
