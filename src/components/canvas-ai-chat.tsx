@@ -41,7 +41,11 @@ export function CanvasAiChat() {
   const [busy, setBusy] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileStep, setFileStep] = useState("");
+  const [patchMode, setPatchMode] = useState(true);
   const [creditInfo, setCreditInfo] = useState({ plan: "free", remainingLabel: "10 créditos" });
+  const genPatch = useServerFn(generateDiagramPatch);
+  const applyAiPatch = useDiagramStore((s) => s.applyAiPatch);
+  const diagramDoc = useDiagramStore((s) => s.doc);
 
   const [msgs, setMsgs] = useState<Msg[]>([
     {
