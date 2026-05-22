@@ -13,7 +13,7 @@ import { LeftSidebarHost } from "@/components/editor/left-sidebar-host";
 import { useEditorStore } from "@/lib/editor/store";
 
 const UnifilarCanvas = lazy(() =>
-  import("@/components/canvases/unifilar-canvas").then((m) => ({ default: m.UnifilarCanvas })),
+  import("@/components/canvases/webgl-canvas").then((m) => ({ default: m.WebglCanvas })),
 );
 const LadderCanvas = lazy(() =>
   import("@/components/canvases/ladder-canvas").then((m) => ({ default: m.LadderCanvas })),

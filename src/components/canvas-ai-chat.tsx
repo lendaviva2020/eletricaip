@@ -20,6 +20,9 @@ import {
 } from "@/lib/ai-architect-client";
 import { useProjectStore } from "@/lib/project-store";
 import { validateProject } from "@/lib/norm-validator";
+import { useServerFn } from "@tanstack/react-start";
+import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
+import { useDiagramStore } from "@/lib/diagram/store";
 
 interface Msg {
   role: "user" | "ai";
@@ -38,7 +41,11 @@ export function CanvasAiChat() {
   const [busy, setBusy] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileStep, setFileStep] = useState("");
+  const [patchMode, setPatchMode] = useState(true);
   const [creditInfo, setCreditInfo] = useState({ plan: "free", remainingLabel: "10 créditos" });
+  const genPatch = useServerFn(generateDiagramPatch);
+  const applyAiPatch = useDiagramStore((s) => s.applyAiPatch);
+  const diagramDoc = useDiagramStore((s) => s.doc);
 
   const [msgs, setMsgs] = useState<Msg[]>([
     {
@@ -86,12 +93,11 @@ export function CanvasAiChat() {
     setMsgs((m) => [
       ...m,
       { role: "user", text: p },
-      { role: "ai", text: "Processando prompt..." },
+      { role: "ai", text: patchMode ? "Gerando patch validado (Zod + NBR 5410)..." : "Processando prompt..." },
     ]);
     setBusy(true);
 
     try {
-      // Inject current active norm violations as system prompt context so the AI knows all active errors!
       const activeViolationsText = findings
         .map(
           (f) =>
@@ -103,18 +109,41 @@ export function CanvasAiChat() {
         ? `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:\n${activeViolationsText}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${p}\n\nPor favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`
         : p;
 
-      // Execute the advanced architect generation
-      const r = await callArchitect(contextualPrompt, true);
-      setMsgs((m) => {
-        const c = [...m];
-        c[c.length - 1] = {
-          role: "ai",
-          text: `**${r.title}**\n\n${r.rationale}\n\n* CCM: ${r.ccm.columns} colunas / ${r.ccm.cells} gavetas\n* Trafo: ${r.transformer.kVA}kVA (${r.transformer.primary_kV}kV → ${r.transformer.secondary_V}V)\n* Motores adicionados: ${r.motors.map((mo) => `${mo.id} (${mo.power_kW}kW)`).join(", ")}`,
-          hasPatch: true,
-          patchData: r,
-        };
-        return c;
-      });
+      if (patchMode) {
+        const res = await genPatch({ data: { prompt: contextualPrompt, doc: diagramDoc } });
+        if (!res.ok) {
+          const needsConfig = ["MISSING_KEY", "AUTH_401", "INSUFFICIENT_CREDITS"].includes(res.error.code);
+          setMsgs((m) => {
+            const c = [...m];
+            c[c.length - 1] = { role: "ai", text: res.error.message, needsConfig };
+            return c;
+          });
+        } else {
+          applyAiPatch(res.patch);
+          const { addNodes, addEdges, removeNodeIds, removeEdgeIds, updateNodes, rationale } = res.patch;
+          setMsgs((m) => {
+            const c = [...m];
+            c[c.length - 1] = {
+              role: "ai",
+              text: `**Patch aplicado ao canvas WebGL.**\n\n${rationale ?? ""}\n\n• +${addNodes.length} nós · +${addEdges.length} edges\n• ~${updateNodes.length} updates · −${removeNodeIds.length} nós / −${removeEdgeIds.length} edges`,
+              patchApplied: true,
+            };
+            return c;
+          });
+        }
+      } else {
+        const r = await callArchitect(contextualPrompt, true);
+        setMsgs((m) => {
+          const c = [...m];
+          c[c.length - 1] = {
+            role: "ai",
+            text: `**${r.title}**\n\n${r.rationale}\n\n* CCM: ${r.ccm.columns} colunas / ${r.ccm.cells} gavetas\n* Trafo: ${r.transformer.kVA}kVA (${r.transformer.primary_kV}kV → ${r.transformer.secondary_V}V)\n* Motores adicionados: ${r.motors.map((mo) => `${mo.id} (${mo.power_kW}kW)`).join(", ")}`,
+            hasPatch: true,
+            patchData: r,
+          };
+          return c;
+        });
+      }
     } catch (e: any) {
       const isSvc = e instanceof AIServiceError;
       const friendly = isSvc ? e.userMessage : (e?.message ?? "Falha ao gerar.");
@@ -262,6 +291,13 @@ export function CanvasAiChat() {
         </div>
 
         <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={() => setPatchMode((v) => !v)}
+            title="Alterna entre patch validado (WebGL) e arquiteto legado"
+            className={`h-6 px-2 rounded text-[9px] font-medium border inline-flex items-center gap-1 cursor-pointer ${patchMode ? "border-primary/60 text-primary bg-primary/10" : "border-border text-muted-foreground hover:bg-accent/40"}`}
+          >
+            <Sparkles className="h-3 w-3" /> {patchMode ? "Patch IA" : "Legado"}
+          </button>
           <button
             onClick={loadDemo}
             title="Carregar exemplo com falhas para testar validador"
