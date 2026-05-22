@@ -76,8 +76,8 @@ export const DiagramNodeSchema = z.object({
   rotation: z.number().default(0),
   label: z.string().max(80).default(""),
   params: NodeParamsSchema,
-  // metadados livres só para UI (não validados estritamente)
-  ui: z.record(z.string(), z.unknown()).optional(),
+  // metadados livres só para UI (JSON-serializável)
+  ui: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 });
 export type DiagramNode = z.infer<typeof DiagramNodeSchema>;
 
