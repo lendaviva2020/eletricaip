@@ -292,6 +292,13 @@ export function CanvasAiChat() {
 
         <div className="ml-auto flex items-center gap-1">
           <button
+            onClick={() => setPatchMode((v) => !v)}
+            title="Alterna entre patch validado (WebGL) e arquiteto legado"
+            className={`h-6 px-2 rounded text-[9px] font-medium border inline-flex items-center gap-1 cursor-pointer ${patchMode ? "border-primary/60 text-primary bg-primary/10" : "border-border text-muted-foreground hover:bg-accent/40"}`}
+          >
+            <Sparkles className="h-3 w-3" /> {patchMode ? "Patch IA" : "Legado"}
+          </button>
+          <button
             onClick={loadDemo}
             title="Carregar exemplo com falhas para testar validador"
             className="h-6 px-2 rounded text-[9px] font-medium border border-warning/40 text-warning hover:bg-warning/10 inline-flex items-center gap-1 cursor-pointer"
