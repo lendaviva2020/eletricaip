@@ -23,6 +23,7 @@ import { validateProject } from "@/lib/norm-validator";
 import { useServerFn } from "@tanstack/react-start";
 import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
 import { useDiagramStore } from "@/lib/diagram/store";
+import { Button } from "@/components/ui/button";
 
 interface Msg {
   role: "user" | "ai";
