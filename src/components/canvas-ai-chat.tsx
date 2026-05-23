@@ -146,12 +146,28 @@ export function CanvasAiChat() {
       }
     } catch (e: any) {
       const isSvc = e instanceof AIServiceError;
-      const friendly = isSvc ? e.userMessage : (e?.message ?? "Falha ao gerar.");
+      // Tenta extrair status do erro do middleware (Response-like ou Error com mensagem).
+      const rawMsg = String(e?.message ?? e ?? "");
+      const isAuth = rawMsg.includes("Unauthorized") || rawMsg.includes("401");
+      const isRate = rawMsg.includes("BURST_LIMIT") || rawMsg.includes("PLAN_RATE_LIMIT") || rawMsg.includes("429");
+      const isQuota = rawMsg.includes("AI_QUOTA") || rawMsg.includes("insufficient_credits");
+
+      const friendly = isSvc
+        ? e.userMessage
+        : isAuth
+        ? "Sessão necessária. Faça login para usar a IA."
+        : isRate
+        ? "Limite de requisições atingido. Aguarde alguns segundos ou faça upgrade do plano."
+        : isQuota
+        ? "Créditos de IA insuficientes neste mês. Faça upgrade do plano."
+        : (e?.message ?? "Falha ao gerar resposta da IA.");
       const steps = isSvc ? e.steps : undefined;
       const needsConfig =
-        isSvc &&
-        ["MISSING_KEY", "INVALID_KEY_FORMAT", "AUTH_401", "NO_CREDITS_402"].includes(e.code);
+        (isSvc && ["MISSING_KEY", "INVALID_KEY_FORMAT", "AUTH_401", "NO_CREDITS_402"].includes(e.code)) ||
+        isAuth ||
+        isQuota;
 
+      console.error("[CanvasAiChat] send failed:", e);
       setMsgs((m) => {
         const c = [...m];
         c[c.length - 1] = { role: "ai", text: friendly, steps, needsConfig };
