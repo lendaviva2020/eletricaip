@@ -16,11 +16,12 @@ import {
   callArchitect,
   applyArchitectToStore,
   AIServiceError,
-  getLocalAiUsage,
 } from "@/lib/ai-architect-client";
+import { getAiCredits } from "@/lib/ai-architect.functions";
 import { useProjectStore } from "@/lib/project-store";
 import { validateProject } from "@/lib/norm-validator";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
 import { useDiagramStore } from "@/lib/diagram/store";
 
@@ -42,7 +43,19 @@ export function CanvasAiChat() {
   const [fileLoading, setFileLoading] = useState(false);
   const [fileStep, setFileStep] = useState("");
   const [patchMode, setPatchMode] = useState(true);
-  const [creditInfo, setCreditInfo] = useState({ plan: "free", remainingLabel: "10 créditos" });
+  const fetchCredits = useServerFn(getAiCredits);
+  const creditsQuery = useQuery({
+    queryKey: ["ai-credits"],
+    queryFn: () => fetchCredits(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+  const creditInfo = useMemo(() => {
+    const d = creditsQuery.data;
+    if (!d || !d.ok) return { plan: "free", remainingLabel: "-- créditos" };
+    if (d.unlimited) return { plan: d.plan, remainingLabel: "∞ créditos" };
+    return { plan: d.plan, remainingLabel: `${d.remaining}/${d.max_credits} créditos` };
+  }, [creditsQuery.data]);
   const genPatch = useServerFn(generateDiagramPatch);
   const applyAiPatch = useDiagramStore((s) => s.applyAiPatch);
   const diagramDoc = useDiagramStore((s) => s.doc);
@@ -77,13 +90,12 @@ export function CanvasAiChat() {
     });
   }, [findings]);
 
-  // Sync remaining credits local label
+  // Refetch server-side credits when any IA call dispatches the event
   useEffect(() => {
-    setCreditInfo(getLocalAiUsage());
-    const handleUsage = () => setCreditInfo(getLocalAiUsage());
-    window.addEventListener("ai-usage-event", handleUsage);
-    return () => window.removeEventListener("ai-usage-event", handleUsage);
-  }, []);
+    const handler = () => creditsQuery.refetch();
+    window.addEventListener("ai-usage-event", handler);
+    return () => window.removeEventListener("ai-usage-event", handler);
+  }, [creditsQuery]);
 
   const send = async (textToSend?: string) => {
     const p = (textToSend ?? val).trim();
@@ -110,17 +122,21 @@ export function CanvasAiChat() {
         : p;
 
       if (patchMode) {
-        const res = await genPatch({ data: { prompt: contextualPrompt, doc: diagramDoc } });
-        if (!res.ok) {
-          const needsConfig = ["MISSING_KEY", "AUTH_401", "INSUFFICIENT_CREDITS"].includes(res.error.code);
+        const res: any = await genPatch({ data: { prompt: contextualPrompt, doc: diagramDoc } });
+        if (!res || res.ok !== true) {
+          const code = res?.error?.code ?? "UNKNOWN";
+          const message =
+            res?.error?.message ?? "A IA não retornou um patch válido. Tente reformular o pedido.";
+          const needsConfig = ["MISSING_KEY", "AUTH_401", "INSUFFICIENT_CREDITS"].includes(code);
           setMsgs((m) => {
             const c = [...m];
-            c[c.length - 1] = { role: "ai", text: res.error.message, needsConfig };
+            c[c.length - 1] = { role: "ai", text: `[${code}] ${message}`, needsConfig };
             return c;
           });
         } else {
           applyAiPatch(res.patch);
-          const { addNodes, addEdges, removeNodeIds, removeEdgeIds, updateNodes, rationale } = res.patch;
+          window.dispatchEvent(new Event("ai-usage-event"));
+          const { addNodes = [], addEdges = [], removeNodeIds = [], removeEdgeIds = [], updateNodes = [], rationale } = res.patch ?? {};
           setMsgs((m) => {
             const c = [...m];
             c[c.length - 1] = {
