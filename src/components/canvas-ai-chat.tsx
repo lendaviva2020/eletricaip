@@ -16,11 +16,12 @@ import {
   callArchitect,
   applyArchitectToStore,
   AIServiceError,
-  getLocalAiUsage,
 } from "@/lib/ai-architect-client";
+import { getAiCredits } from "@/lib/ai-architect.functions";
 import { useProjectStore } from "@/lib/project-store";
 import { validateProject } from "@/lib/norm-validator";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
 import { useDiagramStore } from "@/lib/diagram/store";
 
