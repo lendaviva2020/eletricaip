@@ -127,7 +127,7 @@ export interface SecurityDashboardData {
 export const getSecurityDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SecurityDashboardData> => {
-    const { supabase } = context as { supabase: ReturnType<typeof Object> } as any;
+    const { supabase } = context;
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const [alarmsRes, auditRes] = await Promise.all([
