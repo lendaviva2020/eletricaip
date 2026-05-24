@@ -122,17 +122,21 @@ export function CanvasAiChat() {
         : p;
 
       if (patchMode) {
-        const res = await genPatch({ data: { prompt: contextualPrompt, doc: diagramDoc } });
-        if (!res.ok) {
-          const needsConfig = ["MISSING_KEY", "AUTH_401", "INSUFFICIENT_CREDITS"].includes(res.error.code);
+        const res: any = await genPatch({ data: { prompt: contextualPrompt, doc: diagramDoc } });
+        if (!res || res.ok !== true) {
+          const code = res?.error?.code ?? "UNKNOWN";
+          const message =
+            res?.error?.message ?? "A IA não retornou um patch válido. Tente reformular o pedido.";
+          const needsConfig = ["MISSING_KEY", "AUTH_401", "INSUFFICIENT_CREDITS"].includes(code);
           setMsgs((m) => {
             const c = [...m];
-            c[c.length - 1] = { role: "ai", text: res.error.message, needsConfig };
+            c[c.length - 1] = { role: "ai", text: `[${code}] ${message}`, needsConfig };
             return c;
           });
         } else {
           applyAiPatch(res.patch);
-          const { addNodes, addEdges, removeNodeIds, removeEdgeIds, updateNodes, rationale } = res.patch;
+          window.dispatchEvent(new Event("ai-usage-event"));
+          const { addNodes = [], addEdges = [], removeNodeIds = [], removeEdgeIds = [], updateNodes = [], rationale } = res.patch ?? {};
           setMsgs((m) => {
             const c = [...m];
             c[c.length - 1] = {
