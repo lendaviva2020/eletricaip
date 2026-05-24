@@ -90,13 +90,12 @@ export function CanvasAiChat() {
     });
   }, [findings]);
 
-  // Sync remaining credits local label
+  // Refetch server-side credits when any IA call dispatches the event
   useEffect(() => {
-    setCreditInfo(getLocalAiUsage());
-    const handleUsage = () => setCreditInfo(getLocalAiUsage());
-    window.addEventListener("ai-usage-event", handleUsage);
-    return () => window.removeEventListener("ai-usage-event", handleUsage);
-  }, []);
+    const handler = () => creditsQuery.refetch();
+    window.addEventListener("ai-usage-event", handler);
+    return () => window.removeEventListener("ai-usage-event", handler);
+  }, [creditsQuery]);
 
   const send = async (textToSend?: string) => {
     const p = (textToSend ?? val).trim();
