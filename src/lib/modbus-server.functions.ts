@@ -53,8 +53,51 @@ function ensureSession(userId: string, config: ModbusGatewayConfig): ModbusSessi
   return s;
 }
 
+// SSRF guard: block loopback, link-local (cloud metadata), multicast, broadcast,
+// IPv6 loopback/link-local, and anything that isn't a plain DNS hostname or
+// RFC1918 private IPv4. OT/SCADA networks should always live on RFC1918 ranges.
+function isHostAllowed(host: string): boolean {
+  const h = host.trim().toLowerCase();
+  if (!h) return false;
+  if (h === "localhost" || h.endsWith(".localhost")) return false;
+  if (h === "simulation" || h.includes("simulation")) return true;
+  // IPv6 literal — block all (loopback, link-local, ULA shouldn't be exposed)
+  if (h.includes(":")) return false;
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (ipv4) {
+    const parts = ipv4.slice(1, 5).map((p) => Number(p));
+    if (parts.some((p) => p < 0 || p > 255)) return false;
+    const [a, b] = parts;
+    if (a === 127) return false;                     // loopback
+    if (a === 0) return false;                       // "this" network
+    if (a === 169 && b === 254) return false;        // link-local / cloud metadata
+    if (a >= 224) return false;                      // multicast / reserved / broadcast
+    const isPrivate =
+      a === 10 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168);
+    return isPrivate;
+  }
+  // Hostname — allow only simple DNS labels; reject anything with credentials/paths.
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(h)) {
+    return false;
+  }
+  // Block well-known cloud metadata hostnames
+  const blocked = ["metadata.google.internal", "metadata.goog", "metadata", "instance-data"];
+  if (blocked.includes(h)) return false;
+  return true;
+}
+
 const ConnectSchema = z.object({
-  host: z.string().min(1).default("192.168.1.100"),
+  host: z
+    .string()
+    .min(1)
+    .max(253)
+    .default("192.168.1.100")
+    .refine(isHostAllowed, {
+      message:
+        "Host não permitido. Use um IP RFC1918 privado (10.x, 172.16-31.x, 192.168.x) ou nome DNS válido do gateway OT.",
+    }),
   port: z.number().int().min(1).max(65535).default(502),
   unitId: z.number().int().min(1).max(247).default(1),
   timeoutMs: z.number().min(1000).max(30000).default(5000),
@@ -65,6 +108,22 @@ export const connectModbus = createServerFn({ method: "POST" })
   .inputValidator((input) => ConnectSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { userId, supabase } = context as unknown as AuthCtx;
+
+    // Authz: only owner/admin/engineer of any tenant the user belongs to may open OT sockets.
+    const { data: memberships } = await supabase
+      .from("tenant_memberships")
+      .select("role")
+      .eq("user_id", userId);
+    const allowed = (memberships ?? []).some((m) =>
+      ["owner", "admin", "engineer"].includes(String(m.role)),
+    );
+    if (!allowed) {
+      return {
+        ok: false as const,
+        error: { code: "FORBIDDEN", message: "Permissão insuficiente para abrir conexão Modbus." },
+      };
+    }
+
     const session = ensureSession(userId, data);
     session.status = "connecting";
 
@@ -87,8 +146,14 @@ export const connectModbus = createServerFn({ method: "POST" })
       return { ok: true as const, status: session.status, host: data.host, port: data.port };
     } catch (e: any) {
       session.status = "error";
-      session.error = e.message;
-      return { ok: false as const, error: { code: "CONNECTION_FAILED", message: e.message } };
+      // Keep detailed error server-side only; return generic code to client to
+      // prevent using errors as a port/host oracle.
+      console.error("[modbus] connect failed", { userId, host: data.host, port: data.port, err: e?.message });
+      session.error = "CONNECTION_FAILED";
+      return {
+        ok: false as const,
+        error: { code: "CONNECTION_FAILED", message: "Falha ao conectar ao gateway Modbus." },
+      };
     }
   });
 
