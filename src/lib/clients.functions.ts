@@ -77,8 +77,12 @@ export const listClients = createServerFn({ method: "POST" })
     if (data.status && data.status !== "all") q = q.eq("status", data.status);
     if (data.sector) q = q.eq("sector", data.sector);
     if (data.search) {
-      const s = `%${data.search}%`;
-      q = q.or(`name.ilike.${s},contact_name.ilike.${s},email.ilike.${s},cnpj.ilike.${s}`);
+      // Strip PostgREST-significant chars to prevent filter injection via .or()
+      const safe = data.search.replace(/[,.()%*\\]/g, " ").trim();
+      if (safe) {
+        const s = `%${safe}%`;
+        q = q.or(`name.ilike.${s},contact_name.ilike.${s},email.ilike.${s},cnpj.ilike.${s}`);
+      }
     }
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
