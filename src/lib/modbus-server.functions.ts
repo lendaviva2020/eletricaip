@@ -108,6 +108,22 @@ export const connectModbus = createServerFn({ method: "POST" })
   .inputValidator((input) => ConnectSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { userId, supabase } = context as unknown as AuthCtx;
+
+    // Authz: only owner/admin/engineer of any tenant the user belongs to may open OT sockets.
+    const { data: memberships } = await supabase
+      .from("tenant_memberships")
+      .select("role")
+      .eq("user_id", userId);
+    const allowed = (memberships ?? []).some((m) =>
+      ["owner", "admin", "engineer"].includes(String(m.role)),
+    );
+    if (!allowed) {
+      return {
+        ok: false as const,
+        error: { code: "FORBIDDEN", message: "Permissão insuficiente para abrir conexão Modbus." },
+      };
+    }
+
     const session = ensureSession(userId, data);
     session.status = "connecting";
 
@@ -130,8 +146,14 @@ export const connectModbus = createServerFn({ method: "POST" })
       return { ok: true as const, status: session.status, host: data.host, port: data.port };
     } catch (e: any) {
       session.status = "error";
-      session.error = e.message;
-      return { ok: false as const, error: { code: "CONNECTION_FAILED", message: e.message } };
+      // Keep detailed error server-side only; return generic code to client to
+      // prevent using errors as a port/host oracle.
+      console.error("[modbus] connect failed", { userId, host: data.host, port: data.port, err: e?.message });
+      session.error = "CONNECTION_FAILED";
+      return {
+        ok: false as const,
+        error: { code: "CONNECTION_FAILED", message: "Falha ao conectar ao gateway Modbus." },
+      };
     }
   });
 
