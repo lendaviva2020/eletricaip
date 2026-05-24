@@ -107,6 +107,13 @@ function SettingsPage() {
               badge="DeepSeek"
             />
             <SettingsLinkCard
+              icon={Shield}
+              title="Monitoramento de Segurança"
+              desc="Findings de scans, issues residuais e alertas nos últimos 30 dias"
+              to="/settings/security-monitor"
+              badge="Novo"
+            />
+            <SettingsLinkCard
               icon={Box}
               title="Digital Twin 3D"
               desc="Gêmeo Digital interativo com visualização 3D e telemetria ao vivo"
