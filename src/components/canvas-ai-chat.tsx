@@ -43,7 +43,19 @@ export function CanvasAiChat() {
   const [fileLoading, setFileLoading] = useState(false);
   const [fileStep, setFileStep] = useState("");
   const [patchMode, setPatchMode] = useState(true);
-  const [creditInfo, setCreditInfo] = useState({ plan: "free", remainingLabel: "10 créditos" });
+  const fetchCredits = useServerFn(getAiCredits);
+  const creditsQuery = useQuery({
+    queryKey: ["ai-credits"],
+    queryFn: () => fetchCredits(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+  const creditInfo = useMemo(() => {
+    const d = creditsQuery.data;
+    if (!d || !d.ok) return { plan: "free", remainingLabel: "-- créditos" };
+    if (d.unlimited) return { plan: d.plan, remainingLabel: "∞ créditos" };
+    return { plan: d.plan, remainingLabel: `${d.remaining}/${d.max_credits} créditos` };
+  }, [creditsQuery.data]);
   const genPatch = useServerFn(generateDiagramPatch);
   const applyAiPatch = useDiagramStore((s) => s.applyAiPatch);
   const diagramDoc = useDiagramStore((s) => s.doc);
