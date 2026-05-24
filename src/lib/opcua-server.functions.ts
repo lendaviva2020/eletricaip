@@ -57,11 +57,50 @@ function ensureSession(userId: string): OpcuaSession {
   return s;
 }
 
+// SSRF guard: only allow opc.tcp:// scheme and RFC1918/DNS hosts.
+// Mirrors isHostAllowed() in modbus-server.functions.ts.
+function isOpcuaEndpointAllowed(endpoint: string): boolean {
+  const e = endpoint.trim().toLowerCase();
+  if (!e.startsWith("opc.tcp://")) return false;
+  let host: string;
+  try {
+    const url = new URL(e.replace("opc.tcp://", "http://"));
+    host = url.hostname;
+  } catch {
+    return false;
+  }
+  if (!host) return false;
+  if (host === "simulation" || host.includes("simulation")) return true;
+  if (host === "localhost" || host.endsWith(".localhost")) return true; // dev/sim only
+  if (host.includes(":")) return false; // IPv6 literal
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (ipv4) {
+    const parts = ipv4.slice(1, 5).map((p) => Number(p));
+    if (parts.some((p) => p < 0 || p > 255)) return false;
+    const [a, b] = parts;
+    if (a === 127) return true; // local dev
+    if (a === 0 || a === 169 && b === 254 || a >= 224) return false;
+    return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host)) {
+    return false;
+  }
+  const blocked = ["metadata.google.internal", "metadata.goog", "metadata", "instance-data"];
+  return !blocked.includes(host);
+}
+
 const ConnectSchema = z.object({
-  endpoint: z.string().min(1),
+  endpoint: z
+    .string()
+    .min(1)
+    .max(512)
+    .refine(isOpcuaEndpointAllowed, {
+      message:
+        "Endpoint OPC-UA não permitido. Use opc.tcp:// com host RFC1918 privado ou DNS válido.",
+    }),
   securityMode: z.enum(["None", "Sign", "SignAndEncrypt"]).default("None"),
-  username: z.string().optional(),
-  password: z.string().optional(),
+  username: z.string().max(255).optional(),
+  password: z.string().max(255).optional(),
   timeoutMs: z.number().min(1000).max(30000).default(5000),
 });
 
@@ -70,6 +109,22 @@ export const connectOpcua = createServerFn({ method: "POST" })
   .inputValidator((input) => ConnectSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { userId, supabase } = context as unknown as AuthCtx;
+
+    // Authz: only owner/admin/engineer may open OPC-UA sessions.
+    const { data: memberships } = await supabase
+      .from("tenant_memberships")
+      .select("role")
+      .eq("user_id", userId);
+    const allowed = (memberships ?? []).some((m) =>
+      ["owner", "admin", "engineer"].includes(String(m.role)),
+    );
+    if (!allowed) {
+      return {
+        ok: false as const,
+        error: { code: "FORBIDDEN", message: "Permissão insuficiente para abrir conexão OPC-UA." },
+      };
+    }
+
     const session = ensureSession(userId);
     session.config = data;
     session.status = "connecting";
@@ -83,9 +138,6 @@ export const connectOpcua = createServerFn({ method: "POST" })
     });
 
     try {
-      // Use the existing Supabase Realtime channel as the OPC-UA transport.
-      // If a real OPC-UA server is configured, the server-side connector
-      // will push tags via broadcast. Otherwise, start simulated OPC-UA data.
       if (data.endpoint.includes("localhost") || data.endpoint.includes("simulation")) {
         startSimulatedSession(session, userId, supabase);
       } else {
@@ -97,10 +149,11 @@ export const connectOpcua = createServerFn({ method: "POST" })
       return { ok: true as const, status: session.status, endpoint: data.endpoint };
     } catch (e: any) {
       session.status = "error";
-      session.error = e.message;
+      console.error("[opcua] connect failed", { userId, endpoint: data.endpoint, err: e?.message });
+      session.error = "CONNECTION_FAILED";
       return {
         ok: false as const,
-        error: { code: "CONNECTION_FAILED", message: e.message },
+        error: { code: "CONNECTION_FAILED", message: "Falha ao conectar ao servidor OPC-UA." },
       };
     }
   });
