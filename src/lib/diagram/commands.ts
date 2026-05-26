@@ -44,6 +44,11 @@ export function applyCommand(doc: DiagramDoc, cmd: Command): DiagramDoc {
         const n = d.nodes[cmd.nodeId];
         if (n) n.position = cmd.to;
       });
+    case "RotateNode":
+      return applyDraft(doc, (d) => {
+        const n = d.nodes[cmd.nodeId];
+        if (n) n.rotation = cmd.to;
+      });
     case "UpdateNodeLabel":
       return applyDraft(doc, (d) => {
         const n = d.nodes[cmd.nodeId];
@@ -112,6 +117,8 @@ export function invertCommand(doc: DiagramDoc, cmd: Command): Command | null {
     }
     case "MoveNode":
       return { type: "MoveNode", nodeId: cmd.nodeId, from: cmd.to, to: cmd.from };
+    case "RotateNode":
+      return { type: "RotateNode", nodeId: cmd.nodeId, from: cmd.to, to: cmd.from };
     case "UpdateNodeLabel":
       return { type: "UpdateNodeLabel", nodeId: cmd.nodeId, from: cmd.to, to: cmd.from };
     case "UpdateNodeParams":
@@ -182,4 +189,11 @@ export const cmd = {
     from,
     to,
   }),
+  rotate: (nodeId: string, from: number, to: number): Command => ({
+    type: "RotateNode",
+    nodeId,
+    from,
+    to,
+  }),
+  batch: (commands: Command[]): Command => ({ type: "Batch", commands }),
 };
