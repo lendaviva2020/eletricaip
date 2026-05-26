@@ -253,9 +253,11 @@ export class DiagramStage {
       g.circle(port.x, port.y, PORT_RADIUS).fill({ color: 0x0b0f17 }).stroke({ width: 1.5, color: PORT_COLOR });
       g.eventMode = "static";
       g.cursor = "crosshair";
-      g.hitArea = { contains: (x: number, y: number) =>
-        (x - port.x) ** 2 + (y - port.y) ** 2 <= PORT_HIT_RADIUS ** 2,
-      } as { contains: (x: number, y: number) => boolean };
+      // hitArea ampliado (raio maior que o desenho) p/ facilitar pegar a porta
+      (g as unknown as { hitArea: unknown }).hitArea = {
+        contains: (x: number, y: number) =>
+          (x - port.x) ** 2 + (y - port.y) ** 2 <= PORT_HIT_RADIUS ** 2,
+      };
       g.on("pointerover", () => g.tint = PORT_COLOR_HOVER);
       g.on("pointerout", () => g.tint = 0xffffff);
       g.on("pointerdown", (e: FederatedPointerEvent) => this.beginEdgeDraft(e, node.id, port));
