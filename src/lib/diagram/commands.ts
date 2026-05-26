@@ -16,6 +16,7 @@ export type Command =
   | { type: "AddNode"; node: DiagramNode }
   | { type: "RemoveNode"; nodeId: string }
   | { type: "MoveNode"; nodeId: string; from: Position; to: Position }
+  | { type: "RotateNode"; nodeId: string; from: number; to: number }
   | { type: "UpdateNodeLabel"; nodeId: string; from: string; to: string }
   | { type: "UpdateNodeParams"; nodeId: string; from: NodeParams; to: NodeParams }
   | { type: "AddEdge"; edge: DiagramEdge }
