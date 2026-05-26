@@ -3,10 +3,10 @@
 // Componentes de UI/canvas leem este store via selectors memoizados.
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import { applyCommand, buildAiPatchCommand, invertCommand, type Command } from "./commands";
+import { applyCommand, buildAiPatchCommand, cmd, invertCommand, type Command } from "./commands";
 import { emptyHistory, popRedo, popUndo, pushHistory, type History } from "./history";
 import { createEmptyDoc } from "./model";
-import type { AiDiagramPatch, DiagramDoc, SheetKind } from "./schema";
+import type { AiDiagramPatch, DiagramDoc, Position, SheetKind } from "./schema";
 
 export const GRID_SIZE = 25;
 
@@ -98,12 +98,46 @@ export const useDiagramStore = create<DiagramState>()(
     canUndo: () => get().history.past.length > 0,
     canRedo: () => get().history.future.length > 0,
 
+    snapEnabled: true,
+    contextMenu: null,
+
     setActiveSheet: (sheet) => set({ activeSheet: sheet, selectedNodeIds: [], selectedEdgeIds: [] }),
     setSelection: (nodes, edges = []) => set({ selectedNodeIds: nodes, selectedEdgeIds: edges }),
     clearSelection: () => set({ selectedNodeIds: [], selectedEdgeIds: [] }),
+    toggleSnap: () => set((s) => ({ snapEnabled: !s.snapEnabled })),
+    openContextMenu: (state) => set({ contextMenu: state }),
+    closeContextMenu: () => set({ contextMenu: null }),
 
-    loadDoc: (doc) => set({ doc, history: emptyHistory(), selectedNodeIds: [], selectedEdgeIds: [] }),
-    resetDoc: () => set({ doc: createEmptyDoc(), history: emptyHistory(), selectedNodeIds: [], selectedEdgeIds: [] }),
+    deleteSelected: () => {
+      const { selectedNodeIds, selectedEdgeIds } = get();
+      const commands: Command[] = [];
+      for (const id of selectedEdgeIds) commands.push(cmd.removeEdge(id));
+      for (const id of selectedNodeIds) commands.push(cmd.removeNode(id));
+      if (commands.length === 0) return;
+      get().dispatch(commands.length === 1 ? commands[0] : cmd.batch(commands));
+      set({ selectedNodeIds: [], selectedEdgeIds: [] });
+    },
+
+    rotateNode: (nodeId, deltaDeg) => {
+      const node = get().doc.nodes[nodeId];
+      if (!node) return;
+      const from = node.rotation ?? 0;
+      const to = (from + deltaDeg) % 360;
+      get().dispatch(cmd.rotate(nodeId, from, to));
+    },
+
+    moveSelectedTo: (deltas) => {
+      const commands: Command[] = [];
+      for (const [nodeId, { from, to }] of Object.entries(deltas)) {
+        if (from.x === to.x && from.y === to.y) continue;
+        commands.push(cmd.move(nodeId, from, to));
+      }
+      if (commands.length === 0) return;
+      get().dispatch(commands.length === 1 ? commands[0] : cmd.batch(commands));
+    },
+
+    loadDoc: (doc) => set({ doc, history: emptyHistory(), selectedNodeIds: [], selectedEdgeIds: [], contextMenu: null }),
+    resetDoc: () => set({ doc: createEmptyDoc(), history: emptyHistory(), selectedNodeIds: [], selectedEdgeIds: [], contextMenu: null }),
   })),
 );
 
