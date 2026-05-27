@@ -231,7 +231,8 @@ export const updateMemberRole = createServerFn({ method: "POST" })
  * `profiles.role` (que pode divergir).
  */
 async function requireTenantAdmin(
-  supabase: Awaited<ReturnType<typeof requireSupabaseAuth.client>>["context"] extends infer _ ? any : never,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   userId: string,
 ): Promise<string> {
   const { data: profile } = await supabase
