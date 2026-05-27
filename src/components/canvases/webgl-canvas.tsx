@@ -1,0 +1,320 @@
+// Canvas WebGL único, parametrizado por sheet. Lê o doc do useDiagramStore,
+// sincroniza o scene graph Pixi de forma incremental e despacha comandos
+// reversíveis para o store. Toolbar e context menu vivem em HTML overlay.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  FileBox,
+  FileText,
+  Magnet,
+  Maximize2,
+  Redo2,
+  RotateCw,
+  Trash2,
+  Undo2,
+} from "lucide-react";
+import { DiagramStage, type EdgeDraftCommit, type MoveDelta } from "@/lib/diagram/render/stage";
+import { cmd } from "@/lib/diagram/commands";
+import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
+import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
+import { buildProjectPdf } from "@/lib/pdf-export";
+import type { SheetKind } from "@/lib/diagram/schema";
+
+interface Props {
+  sheet?: SheetKind;
+}
+
+export function WebglCanvas({ sheet }: Props) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<DiagramStage | null>(null);
+
+  const activeSheet = useDiagramStore((s) => s.activeSheet);
+  const effectiveSheet = sheet ?? activeSheet;
+  const doc = useDiagramStore((s) => s.doc);
+  const selectedNodeIds = useDiagramStore((s) => s.selectedNodeIds);
+  const setSelection = useDiagramStore((s) => s.setSelection);
+  const dispatch = useDiagramStore((s) => s.dispatch);
+  const moveSelectedTo = useDiagramStore((s) => s.moveSelectedTo);
+  const undo = useDiagramStore((s) => s.undo);
+  const redo = useDiagramStore((s) => s.redo);
+  const deleteSelected = useDiagramStore((s) => s.deleteSelected);
+  const rotateNode = useDiagramStore((s) => s.rotateNode);
+  const snapEnabled = useDiagramStore((s) => s.snapEnabled);
+  const toggleSnap = useDiagramStore((s) => s.toggleSnap);
+  const contextMenu = useDiagramStore((s) => s.contextMenu);
+  const openContextMenu = useDiagramStore((s) => s.openContextMenu);
+  const closeContextMenu = useDiagramStore((s) => s.closeContextMenu);
+
+  const snapFnRef = useRef((v: number) => v);
+  useEffect(() => {
+    snapFnRef.current = snapEnabled ? (v: number) => snapToGrid(v) : (v: number) => v;
+  }, [snapEnabled]);
+
+  // mount / unmount stage
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    let disposed = false;
+    const stage = new DiagramStage();
+    stageRef.current = stage;
+    stage
+      .init(host, {
+        snap: (v) => snapFnRef.current(v),
+        onSelectNode: (id) => setSelection(id ? [id] : []),
+        onSelectMany: (ids) => setSelection(ids),
+        onMoveNodes: (deltas: MoveDelta[]) => {
+          const map: Record<string, { from: { x: number; y: number }; to: { x: number; y: number } }> = {};
+          for (const d of deltas) map[d.nodeId] = { from: d.from, to: d.to };
+          moveSelectedTo(map);
+        },
+        onCommitEdge: (e: EdgeDraftCommit) => {
+          dispatch(
+            cmd.addEdge({
+              sheet: effectiveSheet,
+              source: e.source,
+              sourcePort: e.sourcePort,
+              target: e.target,
+              targetPort: e.targetPort,
+              kind: e.kind,
+            }),
+          );
+        },
+        onContextMenu: ({ nodeId, clientX, clientY }) => {
+          const hostRect = host.getBoundingClientRect();
+          openContextMenu({
+            nodeId,
+            x: clientX - hostRect.left,
+            y: clientY - hostRect.top,
+          });
+        },
+      })
+      .then(() => {
+        if (disposed) return;
+        stage.fitView();
+        stage.sync(
+          useDiagramStore.getState().doc,
+          effectiveSheet,
+          useDiagramStore.getState().selectedNodeIds,
+        );
+      });
+    return () => {
+      disposed = true;
+      stage.destroy();
+      stageRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // sync em qualquer mudança relevante
+  useEffect(() => {
+    stageRef.current?.sync(doc, effectiveSheet, selectedNodeIds);
+  }, [doc, effectiveSheet, selectedNodeIds]);
+
+  // atalhos
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || (document.activeElement as HTMLElement | null)?.isContentEditable) {
+        return;
+      }
+      const meta = e.metaKey || e.ctrlKey;
+      if (meta && e.key.toLowerCase() === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if ((meta && e.key.toLowerCase() === "z" && e.shiftKey) || (meta && e.key.toLowerCase() === "y")) {
+        e.preventDefault();
+        redo();
+        return;
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedNodeIds.length === 0) return;
+        e.preventDefault();
+        deleteSelected();
+        return;
+      }
+      if (e.key.toLowerCase() === "r" && selectedNodeIds.length > 0) {
+        e.preventDefault();
+        for (const id of selectedNodeIds) rotateNode(id, e.shiftKey ? -90 : 90);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo, deleteSelected, rotateNode, selectedNodeIds]);
+
+  // fechar context menu ao clicar fora
+  useEffect(() => {
+    if (!contextMenu) return;
+    const onDocDown = () => closeContextMenu();
+    window.addEventListener("pointerdown", onDocDown);
+    return () => window.removeEventListener("pointerdown", onDocDown);
+  }, [contextMenu, closeContextMenu]);
+
+  const handleExportDxf = useCallback(() => {
+    try {
+      const safe = (doc.metadata.title || "diagrama").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
+      const counts = exportDiagramDxf(doc, effectiveSheet, `${safe}_${effectiveSheet}.dxf`);
+      toast.success(`DXF gerado · ${counts.nodes} símbolos, ${counts.edges} ligações.`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }, [doc, effectiveSheet]);
+
+  const handleExportPdf = useCallback(() => {
+    try {
+      const safe = (doc.metadata.title || "diagrama").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
+      const pdf = buildProjectPdf({
+        project: { name: doc.metadata.title || "Diagrama sem título" },
+        bom: [],
+        totalBRL: 0,
+        norm: (doc.metadata.norms ?? []).join(" · ") || undefined,
+      });
+      pdf.save(`${safe}_memorial.pdf`);
+      toast.success("PDF gerado.");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }, [doc]);
+
+  const hasSelection = selectedNodeIds.length > 0;
+
+  return (
+    <div className="relative h-full w-full bg-[#0b0f17]">
+      <div ref={hostRef} className="absolute inset-0" />
+
+      {/* Toolbar */}
+      <div className="absolute right-3 top-3 z-10 flex gap-1 rounded-md border border-border/40 bg-background/80 p-1 backdrop-blur">
+        <Button size="icon" variant="ghost" onClick={undo} title="Desfazer (⌘Z)">
+          <Undo2 className="size-4" />
+        </Button>
+        <Button size="icon" variant="ghost" onClick={redo} title="Refazer (⌘⇧Z)">
+          <Redo2 className="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant={snapEnabled ? "default" : "ghost"}
+          onClick={toggleSnap}
+          title={`Snap-to-grid: ${snapEnabled ? "ON" : "OFF"}`}
+        >
+          <Magnet className="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          disabled={!hasSelection}
+          onClick={() => selectedNodeIds.forEach((id) => rotateNode(id, 90))}
+          title="Rotacionar 90° (R)"
+        >
+          <RotateCw className="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          disabled={!hasSelection}
+          onClick={deleteSelected}
+          title="Excluir seleção (Del)"
+        >
+          <Trash2 className="size-4" />
+        </Button>
+        <Button size="icon" variant="ghost" onClick={() => stageRef.current?.fitView()} title="Ajustar à tela">
+          <Maximize2 className="size-4" />
+        </Button>
+        <div className="mx-1 w-px bg-border/40" />
+        <Button size="icon" variant="ghost" onClick={handleExportDxf} title="Exportar DXF">
+          <FileBox className="size-4" />
+        </Button>
+        <Button size="icon" variant="ghost" onClick={handleExportPdf} title="Exportar PDF">
+          <FileText className="size-4" />
+        </Button>
+      </div>
+
+      {/* Legenda inferior */}
+      <div className="absolute bottom-3 left-3 z-10 rounded-md border border-border/40 bg-background/70 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
+        <span className="font-mono">Shift+arrastar</span> seleciona área ·{" "}
+        <span className="font-mono">Arrastar porta</span> cria ligação ·{" "}
+        <span className="font-mono">R</span> rotaciona · <span className="font-mono">Del</span> apaga
+      </div>
+
+      <ContextMenu onClose={closeContextMenu} hostRef={hostRef} />
+    </div>
+  );
+}
+
+function ContextMenu({
+  onClose,
+  hostRef,
+}: {
+  onClose: () => void;
+  hostRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const ctx = useDiagramStore((s) => s.contextMenu);
+  const deleteSelected = useDiagramStore((s) => s.deleteSelected);
+  const rotateNode = useDiagramStore((s) => s.rotateNode);
+  const setSelection = useDiagramStore((s) => s.setSelection);
+  const selectedIds = useDiagramStore((s) => s.selectedNodeIds);
+
+  const items = useMemo(() => {
+    if (!ctx) return [];
+    const onNode = ctx.nodeId != null;
+    return [
+      onNode && {
+        label: "Rotacionar 90°",
+        run: () => {
+          const id = ctx.nodeId!;
+          if (!selectedIds.includes(id)) setSelection([id]);
+          rotateNode(id, 90);
+        },
+      },
+      onNode && {
+        label: "Excluir",
+        destructive: true,
+        run: () => {
+          const id = ctx.nodeId!;
+          if (!selectedIds.includes(id)) setSelection([id]);
+          // Defer um tick para garantir que a seleção propagou antes do delete em batch
+          queueMicrotask(() => deleteSelected());
+        },
+      },
+      !onNode && {
+        label: "Limpar seleção",
+        run: () => setSelection([]),
+      },
+    ].filter(Boolean) as Array<{ label: string; run: () => void; destructive?: boolean }>;
+  }, [ctx, selectedIds, deleteSelected, rotateNode, setSelection]);
+
+  if (!ctx) return null;
+  void hostRef;
+  return (
+    <div
+      role="menu"
+      onPointerDown={(e) => e.stopPropagation()}
+      style={{ left: ctx.x, top: ctx.y }}
+      className="absolute z-30 min-w-[180px] rounded-md border border-border/60 bg-popover/95 p-1 text-sm shadow-lg backdrop-blur"
+    >
+      {items.map((it) => (
+        <button
+          key={it.label}
+          type="button"
+          className={`block w-full rounded px-2 py-1.5 text-left hover:bg-accent ${
+            it.destructive ? "text-destructive" : "text-foreground"
+          }`}
+          onClick={() => {
+            it.run();
+            onClose();
+          }}
+        >
+          {it.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Hook usado por callers externos (não usado aqui mas exportado por consistência)
+export function useDiagramSelection() {
+  const [, setTick] = useState(0);
+  useEffect(() => useDiagramStore.subscribe((s) => s.selectedNodeIds, () => setTick((t) => t + 1)), []);
+  return useDiagramStore.getState().selectedNodeIds;
+}

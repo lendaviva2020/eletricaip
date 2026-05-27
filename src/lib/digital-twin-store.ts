@@ -1,0 +1,171 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+export interface HotspotConfig {
+  id: string;
+  label: string;
+  tag: string;
+  type: "temperature" | "current" | "voltage" | "level" | "pressure" | "status" | "flow";
+  unit: string;
+  position: { x: number; y: number; z: number };
+  color: string;
+  alertThreshold?: number;
+  criticalThreshold?: number;
+  alarmActive: boolean;
+}
+
+export interface TwinMapping {
+  equipmentId: string;
+  equipmentLabel: string;
+  hotspots: HotspotConfig[];
+}
+
+export interface TwinAlarm {
+  id: string;
+  hotspotId: string;
+  tag: string;
+  label: string;
+  value: number;
+  threshold: number;
+  severity: "alert" | "critical";
+  timestamp: number;
+  acknowledged: boolean;
+  acknowledgedAt: number | null;
+}
+
+export type TwinViewMode = "normal" | "alarms-only" | "walkthrough";
+
+interface TwinTelemetrySample {
+  ts: number;
+  value: number;
+}
+
+interface TwinTelemetryBuffer {
+  tag: string;
+  samples: TwinTelemetrySample[];
+}
+
+interface DigitalTwinState {
+  mappings: TwinMapping[];
+  alarms: TwinAlarm[];
+  viewMode: TwinViewMode;
+  selectedHotspotId: string | null;
+  selectedEquipmentId: string | null;
+  showFlowLines: boolean;
+  telemetryBuffers: Record<string, TwinTelemetryBuffer>;
+  realtimeConnected: boolean;
+  lastRealtimeUpdate: number | null;
+
+  addMapping: (mapping: TwinMapping) => void;
+  removeMapping: (equipmentId: string) => void;
+  addHotspot: (equipmentId: string, hotspot: HotspotConfig) => void;
+  removeHotspot: (equipmentId: string, hotspotId: string) => void;
+  updateHotspot: (equipmentId: string, hotspot: Partial<HotspotConfig> & { id: string }) => void;
+  selectHotspot: (id: string | null) => void;
+  selectEquipment: (id: string | null) => void;
+  setViewMode: (mode: TwinViewMode) => void;
+  toggleFlowLines: () => void;
+
+  pushTelemetry: (tag: string, value: number) => void;
+  acknowledgeAlarm: (alarmId: string) => void;
+  clearAlarm: (alarmId: string) => void;
+  addAlarm: (alarm: TwinAlarm) => void;
+  setRealtimeConnected: (connected: boolean) => void;
+}
+
+const MAX_SAMPLES = 60; // 60 samples per buffer
+
+export const useDigitalTwinStore = create<DigitalTwinState>()(
+  persist(
+    (set) => ({
+      mappings: [],
+      alarms: [],
+      viewMode: "normal",
+      selectedHotspotId: null,
+      selectedEquipmentId: null,
+      showFlowLines: true,
+      telemetryBuffers: {},
+      realtimeConnected: false,
+      lastRealtimeUpdate: null,
+
+      addMapping: (mapping) => set((s) => ({ mappings: [...s.mappings, mapping] })),
+
+      removeMapping: (equipmentId) =>
+        set((s) => ({
+          mappings: s.mappings.filter((m) => m.equipmentId !== equipmentId),
+        })),
+
+      addHotspot: (equipmentId, hotspot) =>
+        set((s) => ({
+          mappings: s.mappings.map((m) =>
+            m.equipmentId === equipmentId ? { ...m, hotspots: [...m.hotspots, hotspot] } : m,
+          ),
+        })),
+
+      removeHotspot: (equipmentId, hotspotId) =>
+        set((s) => ({
+          mappings: s.mappings.map((m) =>
+            m.equipmentId === equipmentId
+              ? { ...m, hotspots: m.hotspots.filter((h) => h.id !== hotspotId) }
+              : m,
+          ),
+        })),
+
+      updateHotspot: (equipmentId, partial) =>
+        set((s) => ({
+          mappings: s.mappings.map((m) =>
+            m.equipmentId === equipmentId
+              ? {
+                  ...m,
+                  hotspots: m.hotspots.map((h) => (h.id === partial.id ? { ...h, ...partial } : h)),
+                }
+              : m,
+          ),
+        })),
+
+      selectHotspot: (id) => set({ selectedHotspotId: id }),
+      selectEquipment: (id) => set({ selectedEquipmentId: id }),
+      setViewMode: (mode) => set({ viewMode: mode }),
+      toggleFlowLines: () => set((s) => ({ showFlowLines: !s.showFlowLines })),
+
+      pushTelemetry: (tag, value) =>
+        set((s) => {
+          const existing = s.telemetryBuffers[tag];
+          const sample: TwinTelemetrySample = { ts: Date.now(), value };
+          const samples = existing ? [...existing.samples, sample].slice(-MAX_SAMPLES) : [sample];
+          return {
+            telemetryBuffers: { ...s.telemetryBuffers, [tag]: { tag, samples } },
+            lastRealtimeUpdate: Date.now(),
+          };
+        }),
+
+      acknowledgeAlarm: (alarmId) =>
+        set((s) => ({
+          alarms: s.alarms.map((a) =>
+            a.id === alarmId ? { ...a, acknowledged: true, acknowledgedAt: Date.now() } : a,
+          ),
+        })),
+
+      clearAlarm: (alarmId) =>
+        set((s) => ({
+          alarms: s.alarms.filter((a) => a.id !== alarmId),
+        })),
+
+      addAlarm: (alarm) =>
+        set((s) => {
+          const exists = s.alarms.some((a) => a.hotspotId === alarm.hotspotId && !a.acknowledged);
+          if (exists) return s;
+          return { alarms: [...s.alarms, alarm].slice(-50) };
+        }),
+
+      setRealtimeConnected: (connected) => set({ realtimeConnected: connected }),
+    }),
+    {
+      name: "eletricai-digital-twin",
+      partialize: (state) => ({
+        mappings: state.mappings,
+        showFlowLines: state.showFlowLines,
+      }),
+    },
+  ),
+);

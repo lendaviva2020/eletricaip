@@ -16,10 +16,14 @@ import {
   callArchitect,
   applyArchitectToStore,
   AIServiceError,
-  getLocalAiUsage,
 } from "@/lib/ai-architect-client";
+import { getAiCredits } from "@/lib/ai-architect.functions";
 import { useProjectStore } from "@/lib/project-store";
 import { validateProject } from "@/lib/norm-validator";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
+import { useDiagramStore } from "@/lib/diagram/store";
 
 interface Msg {
   role: "user" | "ai";
@@ -38,7 +42,23 @@ export function CanvasAiChat() {
   const [busy, setBusy] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileStep, setFileStep] = useState("");
-  const [creditInfo, setCreditInfo] = useState({ plan: "free", remainingLabel: "10 créditos" });
+  const [patchMode, setPatchMode] = useState(true);
+  const fetchCredits = useServerFn(getAiCredits);
+  const creditsQuery = useQuery({
+    queryKey: ["ai-credits"],
+    queryFn: () => fetchCredits(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+  const creditInfo = useMemo(() => {
+    const d = creditsQuery.data;
+    if (!d || !d.ok) return { plan: "free", remainingLabel: "-- créditos" };
+    if (d.unlimited) return { plan: d.plan, remainingLabel: "∞ créditos" };
+    return { plan: d.plan, remainingLabel: `${d.remaining}/${d.max_credits} créditos` };
+  }, [creditsQuery.data]);
+  const genPatch = useServerFn(generateDiagramPatch);
+  const applyAiPatch = useDiagramStore((s) => s.applyAiPatch);
+  const diagramDoc = useDiagramStore((s) => s.doc);
 
   const [msgs, setMsgs] = useState<Msg[]>([
     {
@@ -70,13 +90,12 @@ export function CanvasAiChat() {
     });
   }, [findings]);
 
-  // Sync remaining credits local label
+  // Refetch server-side credits when any IA call dispatches the event
   useEffect(() => {
-    setCreditInfo(getLocalAiUsage());
-    const handleUsage = () => setCreditInfo(getLocalAiUsage());
-    window.addEventListener("ai-usage-event", handleUsage);
-    return () => window.removeEventListener("ai-usage-event", handleUsage);
-  }, []);
+    const handler = () => creditsQuery.refetch();
+    window.addEventListener("ai-usage-event", handler);
+    return () => window.removeEventListener("ai-usage-event", handler);
+  }, [creditsQuery]);
 
   const send = async (textToSend?: string) => {
     const p = (textToSend ?? val).trim();
@@ -86,12 +105,15 @@ export function CanvasAiChat() {
     setMsgs((m) => [
       ...m,
       { role: "user", text: p },
+<<<<<<< HEAD
       { role: "ai", text: "Processando prompt..." },
+=======
+      { role: "ai", text: patchMode ? "Gerando patch validado (Zod + NBR 5410)..." : "Processando prompt..." },
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     ]);
     setBusy(true);
 
     try {
-      // Inject current active norm violations as system prompt context so the AI knows all active errors!
       const activeViolationsText = findings
         .map(
           (f) =>
@@ -103,26 +125,69 @@ export function CanvasAiChat() {
         ? `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:\n${activeViolationsText}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${p}\n\nPor favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`
         : p;
 
-      // Execute the advanced architect generation
-      const r = await callArchitect(contextualPrompt, true);
-      setMsgs((m) => {
-        const c = [...m];
-        c[c.length - 1] = {
-          role: "ai",
-          text: `**${r.title}**\n\n${r.rationale}\n\n* CCM: ${r.ccm.columns} colunas / ${r.ccm.cells} gavetas\n* Trafo: ${r.transformer.kVA}kVA (${r.transformer.primary_kV}kV → ${r.transformer.secondary_V}V)\n* Motores adicionados: ${r.motors.map((mo) => `${mo.id} (${mo.power_kW}kW)`).join(", ")}`,
-          hasPatch: true,
-          patchData: r,
-        };
-        return c;
-      });
+      if (patchMode) {
+        const res: any = await genPatch({ data: { prompt: contextualPrompt, doc: diagramDoc } });
+        if (!res || res.ok !== true) {
+          const code = res?.error?.code ?? "UNKNOWN";
+          const message =
+            res?.error?.message ?? "A IA não retornou um patch válido. Tente reformular o pedido.";
+          const needsConfig = ["MISSING_KEY", "AUTH_401", "INSUFFICIENT_CREDITS"].includes(code);
+          setMsgs((m) => {
+            const c = [...m];
+            c[c.length - 1] = { role: "ai", text: `[${code}] ${message}`, needsConfig };
+            return c;
+          });
+        } else {
+          applyAiPatch(res.patch);
+          window.dispatchEvent(new Event("ai-usage-event"));
+          const { addNodes = [], addEdges = [], removeNodeIds = [], removeEdgeIds = [], updateNodes = [], rationale } = res.patch ?? {};
+          setMsgs((m) => {
+            const c = [...m];
+            c[c.length - 1] = {
+              role: "ai",
+              text: `**Patch aplicado ao canvas WebGL.**\n\n${rationale ?? ""}\n\n• +${addNodes.length} nós · +${addEdges.length} edges\n• ~${updateNodes.length} updates · −${removeNodeIds.length} nós / −${removeEdgeIds.length} edges`,
+              patchApplied: true,
+            };
+            return c;
+          });
+        }
+      } else {
+        const r = await callArchitect(contextualPrompt, true);
+        setMsgs((m) => {
+          const c = [...m];
+          c[c.length - 1] = {
+            role: "ai",
+            text: `**${r.title}**\n\n${r.rationale}\n\n* CCM: ${r.ccm.columns} colunas / ${r.ccm.cells} gavetas\n* Trafo: ${r.transformer.kVA}kVA (${r.transformer.primary_kV}kV → ${r.transformer.secondary_V}V)\n* Motores adicionados: ${r.motors.map((mo) => `${mo.id} (${mo.power_kW}kW)`).join(", ")}`,
+            hasPatch: true,
+            patchData: r,
+          };
+          return c;
+        });
+      }
     } catch (e: any) {
       const isSvc = e instanceof AIServiceError;
-      const friendly = isSvc ? e.userMessage : (e?.message ?? "Falha ao gerar.");
+      // Tenta extrair status do erro do middleware (Response-like ou Error com mensagem).
+      const rawMsg = String(e?.message ?? e ?? "");
+      const isAuth = rawMsg.includes("Unauthorized") || rawMsg.includes("401");
+      const isRate = rawMsg.includes("BURST_LIMIT") || rawMsg.includes("PLAN_RATE_LIMIT") || rawMsg.includes("429");
+      const isQuota = rawMsg.includes("AI_QUOTA") || rawMsg.includes("insufficient_credits");
+
+      const friendly = isSvc
+        ? e.userMessage
+        : isAuth
+        ? "Sessão necessária. Faça login para usar a IA."
+        : isRate
+        ? "Limite de requisições atingido. Aguarde alguns segundos ou faça upgrade do plano."
+        : isQuota
+        ? "Créditos de IA insuficientes neste mês. Faça upgrade do plano."
+        : (e?.message ?? "Falha ao gerar resposta da IA.");
       const steps = isSvc ? e.steps : undefined;
       const needsConfig =
-        isSvc &&
-        ["MISSING_KEY", "INVALID_KEY_FORMAT", "AUTH_401", "NO_CREDITS_402"].includes(e.code);
+        (isSvc && ["MISSING_KEY", "INVALID_KEY_FORMAT", "AUTH_401", "NO_CREDITS_402"].includes(e.code)) ||
+        isAuth ||
+        isQuota;
 
+      console.error("[CanvasAiChat] send failed:", e);
       setMsgs((m) => {
         const c = [...m];
         c[c.length - 1] = { role: "ai", text: friendly, steps, needsConfig };
@@ -262,6 +327,13 @@ export function CanvasAiChat() {
         </div>
 
         <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={() => setPatchMode((v) => !v)}
+            title="Alterna entre patch validado (WebGL) e arquiteto legado"
+            className={`h-6 px-2 rounded text-[9px] font-medium border inline-flex items-center gap-1 cursor-pointer ${patchMode ? "border-primary/60 text-primary bg-primary/10" : "border-border text-muted-foreground hover:bg-accent/40"}`}
+          >
+            <Sparkles className="h-3 w-3" /> {patchMode ? "Patch IA" : "Legado"}
+          </button>
           <button
             onClick={loadDemo}
             title="Carregar exemplo com falhas para testar validador"

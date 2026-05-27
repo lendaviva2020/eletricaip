@@ -3,15 +3,33 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  requireAiQuota,
+  requireBurstLimit,
+} from "@/integrations/supabase/ai-rate-limit-middleware";
 
-const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro.
-Projete um SISTEMA ELÉTRICO COMPLETO seguindo NBR 5410, NBR 14039, NR-10, NR-12 e IEC 61131-3.
+const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
+
+Você tem DOIS modos de operação:
+
+MODO 1 — PROJETO NOVO:
+Quando o usuário pedir para criar um novo sistema, projete um SISTEMA ELÉTRICO COMPLETO seguindo NBR 5410, NBR 14039, NR-10, NR-12 e IEC 61131-3.
+
+MODO 2 — CORREÇÃO / ANÁLISE:
+Quando o usuário pedir para corrigir alertas, analisar conformidade ou resolver problemas no circuito existente:
+- ANALISE o contexto (nodes/edges existentes) passado como referência.
+- IDENTIFIQUE cada violação normativa (DR faltante, LOTO ausente, prioridade de alarme, histerese, etc.).
+- CORRIJA o circuito existente: adicione componentes faltantes, ajuste parâmetros, conecte corretamente.
+- No "rationale", descreva EXATAMENTE o que foi alterado e qual norma foi aplicada (ex: "Adicionado DR 30mA no circuito de tomadas — NBR 5410 §5.1.3.2").
+
+REGRAS GLOBAIS:
 - Use as tabelas canônicas da NBR 5410 (Tabela 36/37 ampacidade, queda de tensão, fator de agrupamento).
 - Se tiver dúvida sobre dimensionamento, ESCOLHA o cabo/disjuntor MAIORES (lado da segurança).
 - Inclua sempre: DR (RCD), aterramento PE, E-STOP por máquina (NR-12), proteções, contatores, fontes 24V, instrumentação.
+- Para alarmes ISA-18.2: sempre defina prioridade (alta/média/baixa) e histerese (deadband) para evitar chattering.
 - Topologia: nodes (id, kind, label, params, position) e edges (source→target, kind: power|signal|pipe).
-- Explique decisões em "rationale" curto e técnico em PT-BR citando normas.
-KINDS: breaker, contactor, relay, transformer, vfd, softstarter, psu, busbar, ccm, motor, conveyor, screw, valve, pump, tank, reactor, cylinder, pt100, pressure, flow, level, estop, lightcurtain, encoder.
+- Explique decisões em "rationale" curto e técnico em PT-BR citando normas e parágrafos.
+KINDS: breaker, contactor, relay, transformer, vfd, softstarter, psu, busbar, ccm, motor, conveyor, screw, valve, pump, tank, reactor, cylinder, pt100, pressure, flow, level, estop, lightcurtain, encoder, rcd.
 CATEGORIES: power | mech | inst | logic.
 POSIÇÕES: trafo no topo, barramento, CCM, motores em colunas. x: 60..1200, y: 40..900, espaçamento ≥ 160 px.`;
 
@@ -93,7 +111,7 @@ const TOOL = {
 };
 
 const InputSchema = z.object({
-  prompt: z.string().min(1).max(4000),
+  prompt: z.string().min(1).max(32000),
   context: z.unknown().optional(),
 });
 
@@ -183,7 +201,7 @@ async function fetchNormativeContext(
 }
 
 export const generateArchitecture = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuth, requireAiQuota, requireBurstLimit])
   .inputValidator((input) => InputSchema.parse(input))
   .handler(async ({ data, context }): Promise<ArchitectOk | ArchitectError> => {
     const { supabase } = context;

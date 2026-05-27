@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   type LadderCell,
   type LadderCellKind,
@@ -8,6 +8,8 @@ import {
 } from "@/lib/ladder/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { LADDER_ELEMENTS_BY_ID } from "@/lib/ladder/definitions";
 
 const KIND_GLYPH: Record<LadderCellKind, string> = {
   EMPTY: "—",
@@ -20,6 +22,16 @@ const KIND_GLYPH: Record<LadderCellKind, string> = {
   CTU: "[CTU]",
 };
 
+const ELEMENT_TO_KIND: Record<string, LadderCellKind> = {
+  XIC: "XIC",
+  XIO: "XIO",
+  OTE: "OTE",
+  OTL: "OTL",
+  OTU: "OTU",
+  TON: "TON",
+  CTU: "CTU",
+};
+
 interface Props {
   cell: LadderCell;
   isOutputCol: boolean;
@@ -27,14 +39,58 @@ interface Props {
   onChange: (next: LadderCell) => void;
 }
 
+const opCounter: Record<string, number> = {};
+function nextOperand(isOutput: boolean): string {
+  const prefix = isOutput ? "%Q" : "%I";
+  const key = isOutput ? "q" : "i";
+  opCounter[key] = (opCounter[key] ?? 0) + 1;
+  return `${prefix}0.${opCounter[key] - 1}`;
+}
+
 export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const allowed = isOutputCol ? OUTPUT_KINDS : CONTACT_KINDS;
+
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("application/ladder-element")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    }
+  }, []);
+
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const raw = e.dataTransfer.getData("application/ladder-element");
+      if (!raw) return;
+      const el = LADDER_ELEMENTS_BY_ID[raw];
+      if (!el) return;
+      const kind = ELEMENT_TO_KIND[el.id];
+      if (!kind) {
+        toast.error(`Elemento "${el.label}" não é suportado no grid ladder atual.`);
+        return;
+      }
+      if (isOutputCol && !isOutputKind(kind)) {
+        toast.error(`"${el.label}" não pode ser usado na coluna de saída.`);
+        return;
+      }
+      if (!isOutputCol && isOutputKind(kind)) {
+        toast.error(`"${el.label}" só pode ser usado na coluna de saída.`);
+        return;
+      }
+      const preset = kind === "TON" ? 1000 : kind === "CTU" ? 10 : undefined;
+      onChange({ kind, operand: cell.operand || nextOperand(isOutputCol), preset });
+      setOpen(false);
+    },
+    [isOutputCol, cell.operand, onChange],
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          onDragOver={onDragOver}
+          onDrop={onDrop}
           className={`flex h-16 w-24 flex-col items-center justify-center gap-1 rounded border text-[11px] font-mono transition-colors ${
             energized
               ? "border-success bg-success/10 text-success"

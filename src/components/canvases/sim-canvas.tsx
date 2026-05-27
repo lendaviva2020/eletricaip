@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
-import { Pause, Play, RefreshCw, Activity, Layers, Disc } from "lucide-react";
+import { Pause, Play, RefreshCw, Activity, Layers, Disc, Table2, Bell } from "lucide-react";
 import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
+import { WatchTable } from "@/components/simulation/watch-table";
+import { ScadaEngine, type Alarm, type AlarmRule } from "@/lib/simulation/scada-engine";
+import { cn } from "@/lib/utils";
+import { pushNotification } from "@/lib/notification-service";
 
 interface DataPoint {
   t: number;
@@ -16,19 +20,99 @@ interface DataPoint {
 export function SimCanvas() {
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [paused, setPaused] = useState(false);
-  const [bufferSize, setBufferSize] = useState(60); // 60 ticks history
+  const [bufferSize, setBufferSize] = useState(60);
   const [activeTab, setActiveTab] = useState<"all" | "speed" | "tank">("all");
+  const [showWatch, setShowWatch] = useState(false);
+  const [activeAlarms, setActiveAlarms] = useState<Alarm[]>([]);
+  const [showAlarms, setShowAlarms] = useState(false);
 
   const projectTags = useProjectStore((s) => s.tags);
-  const editorTags = useEditorStore((s) => s.tags);
+  const editorTags = useEditorStore((s) => s.editorTags);
+
+  const engineRef = useRef<ScadaEngine | null>(null);
+  const notifiedAlarmsRef = useRef<Set<string>>(new Set());
+
+  const alarmRules: AlarmRule[] = useMemo(
+    () => [
+      {
+        tagName: "TEMP_M01",
+        priority: "HIGH",
+        message: "Temperatura do motor M-01 acima do limite (90°C)",
+        condition: (v) => Number(v) > 90,
+      },
+      {
+        tagName: "TANQUE_NIVEL",
+        priority: "MEDIUM",
+        message: "Nivel do tanque abaixo de 20%",
+        condition: (v) => Number(v) < 20,
+      },
+      {
+        tagName: "PRESSAO_PT01",
+        priority: "CRITICAL",
+        message: "Pressao critica no reator R-401",
+        condition: (v) => Number(v) > 10,
+      },
+      {
+        tagName: "ESTOP",
+        priority: "CRITICAL",
+        message: "Parada de emergencia acionada",
+        condition: (v) => v === true || v === 1,
+      },
+      {
+        tagName: "VIBRACAO_M03",
+        priority: "LOW",
+        message: "Vibracao M-03 acima do baseline",
+        condition: (v) => Number(v) > 7,
+      },
+    ],
+    [],
+  );
+
+  useEffect(() => {
+    const engine = new ScadaEngine(alarmRules);
+    engine.onAlarmsChange((alarms) => {
+      setActiveAlarms(alarms);
+      const newlyNotified = new Set(notifiedAlarmsRef.current);
+      for (const alarm of alarms) {
+        if (alarm.state === "unacknowledged" && !notifiedAlarmsRef.current.has(alarm.id)) {
+          newlyNotified.add(alarm.id);
+          const tag = alarm.tagName;
+          const priorityLabel =
+            alarm.priority === "CRITICAL"
+              ? "CRÍTICO"
+              : alarm.priority === "HIGH"
+                ? "Alto"
+                : alarm.priority === "MEDIUM"
+                  ? "Médio"
+                  : "Baixo";
+          pushNotification("alarm", `Alarme ${priorityLabel}: ${tag}`, alarm.message, {
+            tagName: tag,
+            priority: alarm.priority,
+          });
+        }
+      }
+      notifiedAlarmsRef.current = newlyNotified;
+    });
+    engineRef.current = engine;
+    return () => engine.reset();
+  }, [alarmRules]);
 
   // Poll active tag values from stores and buffer them in state
   useEffect(() => {
     if (paused) return;
 
     const interval = setInterval(() => {
+      const flatEditor: Record<string, { value: number | boolean | string }> = {};
+      Object.values(useEditorStore.getState().editorTags).forEach((t) => {
+        flatEditor[t.name] = { value: t.value };
+      });
+      const flatProject: Record<string, { value: number | boolean | string }> = {};
+      Object.entries(useProjectStore.getState().tags).forEach(([k, v]) => {
+        flatProject[k] = { value: v };
+      });
+      engineRef.current?.evaluate({ ...flatEditor, ...flatProject });
+
       // 1. Gather live values from both stores
-      // Search for any speed, current, level or valve position tags
       let speed = 0;
       let current = 0;
       let level = 50;
@@ -157,7 +241,60 @@ export function SimCanvas() {
             </button>
           ))}
         </div>
+
+        <div className="h-4 w-px bg-border mx-2" />
+
+        <button
+          onClick={() => setShowWatch(!showWatch)}
+          className={cn(
+            "h-7 px-2.5 rounded text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer",
+            showWatch
+              ? "bg-primary text-primary-foreground"
+              : "border border-border bg-card/40 text-muted-foreground hover:bg-accent",
+          )}
+        >
+          <Table2 className="h-3.5 w-3.5" />
+          Watch
+        </button>
+
+        <button
+          onClick={() => setShowAlarms(!showAlarms)}
+          className={cn(
+            "h-7 px-2.5 rounded text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer",
+            showAlarms
+              ? "bg-destructive text-destructive-foreground"
+              : "border border-border bg-card/40 text-muted-foreground hover:bg-accent",
+          )}
+        >
+          <Bell className="h-3.5 w-3.5" />
+          Alarmes
+          {activeAlarms.length > 0 && (
+            <span className="ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold px-1">
+              {activeAlarms.length}
+            </span>
+          )}
+        </button>
       </div>
+
+      {/* WATCH TABLE PANEL */}
+      {showWatch && (
+        <div className="mb-4 rounded-md border border-border bg-card shadow-lg">
+          <div className="h-72 overflow-auto">
+            <WatchTable />
+          </div>
+        </div>
+      )}
+
+      {/* ALARMS PANEL */}
+      {showAlarms && (
+        <div className="mb-4 rounded-md border border-border bg-card shadow-lg">
+          <AlarmPanel
+            alarms={activeAlarms}
+            onAck={(tagName) => engineRef.current?.acknowledge(tagName)}
+            onAckAll={() => engineRef.current?.acknowledgeAll()}
+          />
+        </div>
+      )}
 
       {/* REAL-TIME CHARTS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -212,6 +349,81 @@ export function SimCanvas() {
           ["Qualidade", isLive ? "100% Excelente" : "Sem Sinal"],
         ]}
       />
+    </div>
+  );
+}
+
+const PRIORITY_COLORS: Record<string, string> = {
+  CRITICAL: "text-destructive",
+  HIGH: "text-warning",
+  MEDIUM: "text-primary",
+  LOW: "text-muted-foreground",
+};
+
+function AlarmPanel({
+  alarms,
+  onAck,
+  onAckAll,
+}: {
+  alarms: Alarm[];
+  onAck: (tagName: string) => void;
+  onAckAll: () => void;
+}) {
+  return (
+    <div className="p-3">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider flex items-center gap-2">
+          <Bell className="h-3.5 w-3.5 text-destructive" />
+          Alarmes Ativos ({alarms.length})
+        </span>
+        {alarms.length > 0 && (
+          <button
+            onClick={onAckAll}
+            className="h-6 px-2 rounded text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer"
+          >
+            Acknowledger Todos
+          </button>
+        )}
+      </div>
+      {alarms.length === 0 ? (
+        <div className="text-[11px] text-success flex items-center gap-2 py-2">
+          <span className="h-2 w-2 rounded-full bg-success energized" />
+          Nenhum alarme ativo
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {alarms.map((alarm) => (
+            <div
+              key={alarm.id}
+              className="flex items-center gap-2 p-2 rounded border border-border bg-card text-[11px]"
+            >
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${alarm.priority === "CRITICAL" ? "bg-destructive energized" : alarm.priority === "HIGH" ? "bg-warning" : alarm.priority === "MEDIUM" ? "bg-primary" : "bg-muted-foreground"}`}
+              />
+              <span
+                className={`text-[9px] font-bold uppercase w-16 shrink-0 ${PRIORITY_COLORS[alarm.priority]}`}
+              >
+                {alarm.priority}
+              </span>
+              <span className="flex-1 font-mono">{alarm.message}</span>
+              <span className="text-[9px] text-muted-foreground font-mono">
+                {alarm.triggeredAt ? new Date(alarm.triggeredAt).toLocaleTimeString() : ""}
+              </span>
+              {alarm.state === "unacknowledged" && (
+                <button
+                  onClick={() => onAck(alarm.tagName)}
+                  className="h-5 px-2 rounded text-[9px] font-semibold bg-accent hover:bg-accent/70 cursor-pointer"
+                >
+                  Ack
+                </button>
+              )}
+              {alarm.state === "acknowledged" && (
+                <span className="text-[9px] text-success font-mono">✓ Ack</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -82,13 +82,15 @@ export function useCollab(projectId: string | null) {
 
     channelRef.current = channel;
 
-    // Presence events
+    // CRITICAL: ALL .on() callbacks MUST be registered BEFORE .subscribe().
+    // Supabase Realtime rejects callbacks added after subscribe() with:
+    // "cannot add `presence` callbacks after subscribe()"
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         const activeUsers: CollabUser[] = [];
         Object.keys(state).forEach((key) => {
-          const presence = state[key]?.[0] as any;
+          const presence = (state as any)[key]?.[0];
           if (presence) {
             activeUsers.push({
               userId: key,
@@ -101,21 +103,18 @@ export function useCollab(projectId: string | null) {
         setUsers(activeUsers);
       })
       .on("presence", { event: "join" }, ({ key, newPresences }) => {
-        const presence = newPresences?.[0] as any;
+        const presence = (newPresences as any)?.[0];
         if (presence && key !== userId) {
           toast.success(`${presence.userName || "Um colaborador"} entrou no workspace.`);
         }
       })
       .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
-        const presence = leftPresences?.[0] as any;
+        const presence = (leftPresences as any)?.[0];
         if (presence && key !== userId) {
           toast.info(`${presence.userName || "Um colaborador"} saiu.`);
           setCursors((prev) => prev.filter((c) => c.userId !== key));
         }
-      });
-
-    // Broadcast messages (Cursors & state updates)
-    channel
+      })
       .on("broadcast", { event: "cursor" }, (payload: any) => {
         const data = payload.payload as CollabCursor;
         if (data.userId === userId) return;
@@ -127,8 +126,11 @@ export function useCollab(projectId: string | null) {
       .on("broadcast", { event: "canvas-change" }, (payload: any) => {
         const data = payload.payload;
         if (data.senderId === userId) return;
+<<<<<<< HEAD
 
         // Silently update both stores!
+=======
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
         if (data.project) {
           useProjectStore.getState().setAll(data.project.nodes ?? [], data.project.edges ?? []);
         }
@@ -137,7 +139,7 @@ export function useCollab(projectId: string | null) {
         }
       });
 
-    // Subscribe and track
+    // Subscribe LAST — after every .on() is registered.
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         await channel.track({
@@ -149,7 +151,6 @@ export function useCollab(projectId: string | null) {
       }
     });
 
-    // Automatically auto-broadcast updates when stores become dirty
     const unsubProject = useProjectStore.subscribe((state, prev) => {
       if (state.dirty && state.dirty !== prev.dirty) {
         broadcastStateChange(
@@ -165,18 +166,33 @@ export function useCollab(projectId: string | null) {
     const unsubVoltai = useVoltaiStore.subscribe((state, prev) => {
       if (state.dirty && state.dirty !== prev.dirty) {
         broadcastStateChange(
+<<<<<<< HEAD
           { nodes: useProjectStore.getState().nodes, edges: useProjectStore.getState().edges },
+=======
+          {
+            nodes: useProjectStore.getState().nodes,
+            edges: useProjectStore.getState().edges,
+          },
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
           { components: state.components, edges: state.edges },
         );
       }
     });
 
     return () => {
-      supabase.removeChannel(channel);
-      channelRef.current = null;
       unsubProject();
       unsubVoltai();
+      try {
+        channel.untrack();
+      } catch {
+        // ignore
+      }
+      supabase.removeChannel(channel);
+      if (channelRef.current === channel) {
+        channelRef.current = null;
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, userId, userName]);
 
   // Function to broadcast own cursor position

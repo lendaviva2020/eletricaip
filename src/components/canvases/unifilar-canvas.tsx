@@ -88,6 +88,14 @@ function Inner() {
 
   useVoltaiSimulation(true);
 
+  // Auto-fit view when components load
+  useEffect(() => {
+    if (components.length > 0) {
+      const timer = setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [components.length, fitView]);
+
   // Keybindings for Undo, Redo, and Delete
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

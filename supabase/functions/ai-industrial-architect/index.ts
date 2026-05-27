@@ -27,6 +27,17 @@ async function requireUser(
   return { userId: data.user.id, supabase };
 }
 
+function createAdminClient() {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!SUPABASE_URL || !SERVICE_ROLE) {
+    throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  }
+  return createClient(SUPABASE_URL, SERVICE_ROLE, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 // --- Startup key validation -------------------------------------------------
 function validateKeyFormat(k: string | undefined): { ok: boolean; reason?: string } {
   if (!k) return { ok: false, reason: "DEEPSEEK_API_KEY ausente nos secrets" };
@@ -214,6 +225,7 @@ Deno.serve(async (req) => {
   if (req.method === "GET" && url.searchParams.get("health") === "1") return healthCheck();
 
   try {
+    const admin = createAdminClient();
     const body = await req.json().catch(() => ({}));
     const { prompt, context } = body as { prompt?: string; context?: unknown };
     if (!prompt || typeof prompt !== "string") return err("BAD_INPUT", "Prompt obrigatório.");
@@ -237,7 +249,9 @@ Deno.serve(async (req) => {
     if (!v.ok) return err(apiKey ? "INVALID_KEY_FORMAT" : "MISSING_KEY", v.reason!);
 
     // Server-side AI quota check (closes CLIENT_SIDE_AUTH finding).
-    const { data: quota, error: quotaErr } = await auth.supabase.rpc("check_ai_quota");
+    const { data: quota, error: quotaErr } = await admin.rpc("check_ai_quota_for_user", {
+      p_user_id: auth.userId,
+    });
     if (quotaErr) {
       console.error("check_ai_quota failed:", quotaErr);
       return err("BAD_RESPONSE", "Não foi possível verificar sua cota de IA. Tente novamente.");
@@ -325,7 +339,8 @@ Deno.serve(async (req) => {
     // Server-side usage tracking (best effort).
     const tokensUsed = Number(data?.usage?.total_tokens) || 0;
     if (tokensUsed > 0) {
-      const { error: incErr } = await auth.supabase.rpc("increment_ai_tokens", {
+      const { error: incErr } = await admin.rpc("increment_ai_tokens_for_user", {
+        p_user_id: auth.userId,
         p_tokens: tokensUsed,
       });
       if (incErr) console.error("increment_ai_tokens failed:", incErr);

@@ -14,7 +14,7 @@ const syncTag = (name: string, value: any) => {
   store.applyTick({ tags: { [name]: value } });
 
   const editorState = useEditorStore.getState();
-  const existing = Object.values(editorState.tags).find((t) => t.name === name);
+  const existing = Object.values(editorState.editorTags).find((t) => t.name === name);
   if (existing) {
     editorState.setTagValue(existing.id, value);
   } else {
@@ -44,12 +44,15 @@ export function KonvaCanvas({ variant }: { variant: Variant }) {
   const tags = useProjectStore((s) => s.tags);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
     const ro = new ResizeObserver(() => {
-      const r = containerRef.current!.getBoundingClientRect();
+      const node = containerRef.current;
+      if (!node) return;
+      const r = node.getBoundingClientRect();
       setSize({ w: r.width, h: r.height });
     });
-    ro.observe(containerRef.current);
+    ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
@@ -276,9 +279,15 @@ function NodeShape({
     "alarm_banner",
     "alarm_table",
     "label",
+    "motor",
+    "pump",
+    "valve",
+    "tank",
+    "pipe",
   ].includes(node.kind);
 
   const groupRef = useRef<Konva.Group>(null);
+  const resizeRef = useRef<Konva.Group>(null);
   const accent =
     node.category === "power"
       ? "#3fb6d6"
@@ -298,9 +307,20 @@ function NodeShape({
     syncTag(tagName, percentage);
   };
 
+  // Handles widget resize via bottom-right corner handle
+  const handleResizeDrag = (e: Konva.KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true;
+    const newW = Math.max(80, Math.round(e.target.x()));
+    const newH = Math.max(50, Math.round(e.target.y()));
+    useProjectStore.getState().updateNodeParam(node.id, "w", newW);
+    useProjectStore.getState().updateNodeParam(node.id, "h", newH);
+  };
+
   if (variant === "scada" && isHmiWidget) {
-    const width = node.kind === "trend" || node.kind === "alarm_table" ? 180 : 120;
-    const height = node.kind === "trend" || node.kind === "alarm_table" ? 100 : 70;
+    const defaultW = node.kind === "trend" || node.kind === "alarm_table" ? 180 : 120;
+    const defaultH = node.kind === "trend" || node.kind === "alarm_table" ? 100 : 70;
+    const width = Number(node.params.w) || defaultW;
+    const height = Number(node.params.h) || defaultH;
 
     // Get current value of the bound tag
     const boundTagName = String(node.params.tag || "");
@@ -502,23 +522,136 @@ function NodeShape({
               }}
               cursor="pointer"
             />
-            <Circle
-              x={tagValue === true || tagValue === "true" ? 38 : 12}
-              y={12}
-              radius={10}
+            <Rect
+              x={tagValue === true || tagValue === "true" ? 28 : 2}
+              y={2}
+              width={20}
+              height={20}
+              cornerRadius={10}
               fill="#fff"
-              shadowBlur={3}
+              shadowBlur={2}
             />
             <Text
-              y={28}
+              y={30}
               width={50}
               align="center"
-              text={String(node.params.labelText || "Auto")}
-              fontFamily="sans-serif"
+              text={boundTagName || "Switch"}
+              fontFamily="JetBrains Mono, monospace"
+              fontSize={7}
+              fill="#8a99b3"
+            />
+          </Group>
+        )}
+
+        {/* MOTOR WIDGET (SCADA STYLE) */}
+        {node.kind === "motor" && (
+          <Group x={width / 2} y={height / 2}>
+            {/* Base Motor casing */}
+            <Rect
+              x={-25}
+              y={-15}
+              width={50}
+              height={30}
+              fill={tagValue ? "#22c55e" : "#475569"}
+              stroke="#1e293b"
+              strokeWidth={1.5}
+              cornerRadius={2}
+            />
+            {/* Spinning Fan */}
+            <Group x={15} y={0} rotation={tagValue ? (tick * 20) % 360 : 0}>
+              <Circle radius={10} fill="#334155" />
+              <Rect x={-1} y={-10} width={2} height={20} fill="#cbd5e1" />
+              <Rect x={-10} y={-1} width={20} height={2} fill="#cbd5e1" />
+            </Group>
+            <Text
+              y={20}
+              x={-50}
+              width={100}
+              align="center"
+              text={boundTagName || "Motor"}
+              fontFamily="JetBrains Mono, monospace"
               fontSize={8}
               fill="#8a99b3"
             />
           </Group>
+        )}
+
+        {/* TANK WIDGET (SCADA STYLE) */}
+        {node.kind === "tank" && (
+          <Group x={width / 2 - 30} y={10}>
+            {/* Metal casing */}
+            <Rect width={60} height={50} cornerRadius={4} stroke="#475569" strokeWidth={2} />
+            {/* Liquid Level */}
+            <Rect
+              x={2}
+              y={48 - (Number(tagValue) / 100) * 46}
+              width={56}
+              height={(Number(tagValue) / 100) * 46}
+              fill="#3fb6d6"
+              opacity={0.6}
+            />
+            <Text
+              y={55}
+              width={60}
+              align="center"
+              text={`${tagValue}%`}
+              fontFamily="JetBrains Mono, monospace"
+              fontSize={9}
+              fill="#3fb6d6"
+              fontStyle="bold"
+            />
+          </Group>
+        )}
+
+        {/* PUMP WIDGET (SCADA STYLE) */}
+        {node.kind === "pump" && (
+          <Group x={width / 2} y={height / 2}>
+            <Circle radius={25} fill="#334155" stroke="#475569" strokeWidth={2} />
+            {/* Impeller animation */}
+            <Group rotation={tagValue ? (tick * 15) % 360 : 0}>
+              <Line points={[-15, 0, 15, 0]} stroke="#94a3b8" strokeWidth={3} />
+              <Line points={[0, -15, 0, 15]} stroke="#94a3b8" strokeWidth={3} />
+            </Group>
+            <Text
+              y={28}
+              x={-50}
+              width={100}
+              align="center"
+              text={boundTagName || "Bomba"}
+              fontFamily="JetBrains Mono, monospace"
+              fontSize={8}
+              fill={tagValue ? "#22c55e" : "#8a99b3"}
+            />
+          </Group>
+        )}
+
+        {/* ALARM BANNER WIDGET */}
+        {node.kind === "alarm_banner" && tags["ALARM_ACTIVE"] && (
+          <Group x={0} y={0}>
+            <Rect width={width} height={height} fill="#7f1d1d" opacity={0.9} cornerRadius={6} />
+            <Text
+              x={10}
+              y={10}
+              width={width - 20}
+              text={`⚠️ ${tags["ALARM_MSG"] || "Alarme Ativo!"}`}
+              fontFamily="sans-serif"
+              fontSize={10}
+              fill="#fef2f2"
+              fontStyle="bold"
+            />
+          </Group>
+        )}
+
+        {/* PIPE WIDGET */}
+        {node.kind === "pipe" && (
+          <Rect
+            width={width}
+            height={10}
+            y={height / 2 - 5}
+            fill="#475569"
+            stroke="#1e293b"
+            strokeWidth={1}
+          />
         )}
 
         {/* SLIDER CONTROLLER WIDGET */}
@@ -652,6 +785,41 @@ function NodeShape({
               fontSize={8}
               fill="#8a99b3"
             />
+          </Group>
+        )}
+
+        {/* RESIZE HANDLE (bottom-right corner) */}
+        {selected && (
+          <Group
+            ref={resizeRef}
+            x={width}
+            y={height}
+            draggable
+            dragBoundFunc={(pos) => ({
+              x: Math.max(80, pos.x),
+              y: Math.max(50, pos.y),
+            })}
+            onDragMove={handleResizeDrag}
+            onDragEnd={(e) => {
+              e.cancelBubble = true;
+            }}
+          >
+            <Rect
+              x={-8}
+              y={-8}
+              width={16}
+              height={16}
+              cornerRadius={3}
+              fill="#3fb6d6"
+              stroke="#fff"
+              strokeWidth={1}
+              opacity={0.9}
+              shadowColor="black"
+              shadowBlur={4}
+              shadowOpacity={0.5}
+              cursor="nwse-resize"
+            />
+            <Rect x={-2} y={-2} width={4} height={4} fill="#fff" opacity={0.7} />
           </Group>
         )}
       </Group>

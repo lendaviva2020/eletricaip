@@ -86,7 +86,7 @@ export function RightPropertyPanel() {
 }
 
 function TagsSection({ nodeId }: { nodeId: string }) {
-  const tagsObj = useEditorStore((s) => s.tags);
+  const tagsObj = useEditorStore((s) => s.editorTags);
   const tags = useMemo(() => {
     return Object.values(tagsObj).filter((t) => t.id.startsWith(nodeId));
   }, [tagsObj, nodeId]);
@@ -106,7 +106,7 @@ function TagsSection({ nodeId }: { nodeId: string }) {
       return;
     }
     const id = `${nodeId}.${name.trim()}`;
-    if (useEditorStore.getState().tags[id]) {
+    if (useEditorStore.getState().editorTags[id]) {
       setError("Tag já existe neste nó");
       return;
     }

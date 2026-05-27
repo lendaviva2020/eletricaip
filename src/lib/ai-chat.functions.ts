@@ -2,6 +2,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  requireAiQuota,
+  requireBurstLimit,
+} from "@/integrations/supabase/ai-rate-limit-middleware";
 
 export type ChatConversation = {
   id: string;
@@ -100,17 +105,17 @@ function parseSSEDelta(chunk: string): string[] {
 }
 
 export const streamChat = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuth, requireAiQuota, requireBurstLimit])
   .inputValidator((input) =>
     z
       .object({
         conversationId: z.string().uuid(),
-        prompt: z.string().min(1).max(4000),
+        prompt: z.string().min(1).max(32000),
       })
       .parse(input),
   )
   .handler(async function* ({ data, context }) {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) {
       yield { type: "error" as const, message: "LOVABLE_API_KEY ausente no servidor." };
@@ -118,7 +123,9 @@ export const streamChat = createServerFn({ method: "POST" })
     }
 
     // Quota check.
-    const { data: quota, error: qErr } = await supabase.rpc("check_ai_quota");
+    const { data: quota, error: qErr } = await supabaseAdmin.rpc("check_ai_quota_for_user", {
+      p_user_id: userId,
+    });
     if (qErr) {
       yield { type: "error" as const, message: "Não foi possível verificar a cota." };
       return;
@@ -234,7 +241,10 @@ export const streamChat = createServerFn({ method: "POST" })
       tokens_used: tokens,
     });
     if (tokens > 0) {
-      await supabase.rpc("increment_ai_tokens", { p_tokens: tokens });
+      await supabaseAdmin.rpc("increment_ai_tokens_for_user", {
+        p_user_id: userId,
+        p_tokens: tokens,
+      });
     }
     await supabase
       .from("ai_conversations")

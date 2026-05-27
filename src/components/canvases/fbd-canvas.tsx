@@ -47,6 +47,7 @@ const FbdBlockNode = memo(function FbdBlockNode({ data }: { data: FbdNodeData })
         </span>
         {data.params && Object.keys(data.params).length > 0 && (
           <button
+            title="Configurar parâmetros"
             onClick={() => setShowConfig(!showConfig)}
             className="text-muted-foreground hover:text-foreground cursor-pointer"
           >

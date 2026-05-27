@@ -14,7 +14,7 @@ export function EditorSimSidebar() {
   const [running, setRunning] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const editorTags = useEditorStore((s) => s.tags);
+  const editorTags = useEditorStore((s) => s.editorTags);
   const forceTagValue = useEditorStore((s) => s.forceTagValue);
   const releaseTag = useEditorStore((s) => s.releaseTag);
 

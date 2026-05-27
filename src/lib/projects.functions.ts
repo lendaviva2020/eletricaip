@@ -1,6 +1,49 @@
+// Project server functions — CRUD operations for industrial projects
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { AuthContext } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+import type { Json } from "@/integrations/supabase/types";
+
+// ── Types ──────────────────────────────────────────────────────
+
+export interface ProjectListItem {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string | null;
+  client: string | null;
+  updated_at: string;
+}
+
+export interface ProjectDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  client: string | null;
+}
+
+export interface DiagramSnapshot {
+  project: {
+    nodes: Json[];
+    edges: Json[];
+  };
+  voltai: {
+    components: Json[];
+    edges: Json[];
+  };
+}
+
+export interface SaveResult {
+  diagramId: string;
+  version: number;
+  savedAt: string;
+}
+
+// ── Schemas ────────────────────────────────────────────────────
 
 const CURRENT_SNAPSHOT_VERSION = 2;
 
@@ -47,6 +90,7 @@ const EMPTY_SNAPSHOT: ProjectSnapshot = {
   editor: { tags: {}, rungs: [], fbdNodes: [], fbdEdges: [] },
 };
 
+<<<<<<< HEAD
 function parseSnapshot(value: unknown): ProjectSnapshot {
   const parsed = SnapshotSchema.safeParse(value ?? EMPTY_SNAPSHOT);
   if (parsed.success) return parsed.data;
@@ -55,21 +99,80 @@ function parseSnapshot(value: unknown): ProjectSnapshot {
 }
 
 async function ensureTenant(supabase: any, userId: string): Promise<string> {
+=======
+// ── Helpers ────────────────────────────────────────────────────
+
+function slugifyTenantLabel(value: string): string {
+  const base = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return base || "workspace";
+}
+
+async function ensureTenant(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  claims?: Record<string, unknown>,
+): Promise<string> {
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
   const { data: profile } = await supabase
     .from("profiles")
     .select("tenant_id")
     .eq("id", userId)
     .maybeSingle();
-  if (profile?.tenant_id) return profile.tenant_id as string;
-  const { data: tid, error } = await supabase.rpc("bootstrap_personal_tenant_if_missing");
-  if (error) throw new Error(error.message);
-  return tid as string;
+
+  if (profile?.tenant_id) return profile.tenant_id;
+
+  const label =
+    String(claims?.full_name ?? claims?.name ?? claims?.email ?? "").trim() ||
+    `Usuario ${userId.slice(0, 8)}`;
+  const tenantName = `Workspace de ${label}`;
+  const tenantSlug = `${slugifyTenantLabel(label)}-${userId.slice(0, 8)}`;
+
+  const { data: tenant, error: tenantError } = await supabaseAdmin
+    .from("tenants")
+    .insert({
+      name: tenantName,
+      slug: tenantSlug,
+      plan: "free",
+      status: "active",
+    })
+    .select("id")
+    .single();
+  if (tenantError) throw new Error(tenantError.message);
+
+  const tenantId = tenant.id;
+
+  const { error: membershipError } = await supabaseAdmin.from("tenant_memberships").upsert(
+    {
+      tenant_id: tenantId,
+      user_id: userId,
+      role: "owner",
+      accepted_at: new Date().toISOString(),
+    },
+    { onConflict: "tenant_id,user_id" },
+  );
+  if (membershipError) throw new Error(membershipError.message);
+
+  const { error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .update({ tenant_id: tenantId, updated_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (profileError) throw new Error(profileError.message);
+
+  return tenantId;
 }
+
+// ── Server Functions ───────────────────────────────────────────
 
 export const listProjects = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase } = context as any;
+    const authCtx = context as unknown as AuthContext;
+    const { supabase } = authCtx;
     const { data, error } = await supabase
       .from("projects")
       .select("id, name, description, status, metadata, updated_at")
@@ -77,12 +180,12 @@ export const listProjects = createServerFn({ method: "POST" })
       .limit(100);
     if (error) throw new Error(error.message);
     return {
-      projects: (data ?? []).map((p: any) => ({
+      projects: (data ?? []).map((p) => ({
         id: p.id,
         name: p.name,
         description: p.description,
         status: p.status,
-        client: (p.metadata as any)?.client ?? null,
+        client: (p.metadata as Record<string, unknown> | null)?.client as string | null ?? null,
         updated_at: p.updated_at,
       })),
     };
@@ -98,8 +201,9 @@ export const createProject = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as any;
-    const tenant_id = await ensureTenant(supabase, userId);
+    const authCtx = context as unknown as AuthContext;
+    const { supabase, userId, claims } = authCtx;
+    const tenant_id = await ensureTenant(supabase, userId, claims);
 
     const { data: tenant } = await supabase
       .from("tenants")
@@ -144,12 +248,14 @@ export const createProject = createServerFn({ method: "POST" })
     await supabase.from("diagrams").insert({
       project_id: row.id,
       name: "main",
-      canvas_data: EMPTY_SNAPSHOT as any,
+      canvas_data: EMPTY_SNAPSHOT as unknown as Json,
     });
+
+    const metadata = row.metadata as Record<string, unknown> | null;
     return {
-      id: row.id as string,
-      name: row.name as string,
-      client: (row.metadata as any)?.client ?? null,
+      id: row.id,
+      name: row.name,
+      client: (metadata?.client as string | null) ?? null,
     };
   });
 
@@ -157,7 +263,8 @@ export const loadProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ projectId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
+    const authCtx = context as unknown as AuthContext;
+    const { supabase } = authCtx;
     const { data: project, error: pErr } = await supabase
       .from("projects")
       .select("id, name, description, metadata, updated_at")
@@ -174,16 +281,27 @@ export const loadProject = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
 
+<<<<<<< HEAD
+=======
+    const parsed = SnapshotSchema.safeParse(diagram?.canvas_data ?? EMPTY_SNAPSHOT);
+    const metadata = project.metadata as Record<string, unknown> | null;
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     return {
       project: {
-        id: project.id as string,
-        name: project.name as string,
-        description: project.description as string | null,
-        client: (project.metadata as any)?.client ?? null,
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        client: (metadata?.client as string | null) ?? null,
       },
+<<<<<<< HEAD
       diagramId: (diagram?.id as string) ?? null,
       version: (diagram?.version as number) ?? 1,
       snapshot: parseSnapshot(diagram?.canvas_data),
+=======
+      diagramId: diagram?.id ?? null,
+      version: diagram?.version ?? 1,
+      snapshot: parsed.success ? parsed.data : EMPTY_SNAPSHOT,
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     };
   });
 
@@ -197,8 +315,13 @@ export const saveProject = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
+<<<<<<< HEAD
     const { supabase, userId } = context as any;
     const snapshot = parseSnapshot(data.snapshot);
+=======
+    const authCtx = context as unknown as AuthContext;
+    const { supabase, userId } = authCtx;
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
 
     const { data: existing } = await supabase
       .from("diagrams")
@@ -211,11 +334,15 @@ export const saveProject = createServerFn({ method: "POST" })
     let diagramId: string;
     let version: number;
     if (existing) {
-      diagramId = existing.id as string;
-      version = (existing.version as number) ?? 1;
+      diagramId = existing.id;
+      version = existing.version ?? 1;
       const { error } = await supabase
         .from("diagrams")
+<<<<<<< HEAD
         .update({ canvas_data: snapshot as any, updated_at: new Date().toISOString() })
+=======
+        .update({ canvas_data: data.snapshot as unknown as Json, updated_at: new Date().toISOString() })
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
         .eq("id", diagramId);
       if (error) throw new Error(error.message);
     } else {
@@ -224,13 +351,17 @@ export const saveProject = createServerFn({ method: "POST" })
         .insert({
           project_id: data.projectId,
           name: "main",
+<<<<<<< HEAD
           canvas_data: snapshot as any,
+=======
+          canvas_data: data.snapshot as unknown as Json,
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
         })
         .select("id, version")
         .single();
       if (error) throw new Error(error.message);
-      diagramId = row.id as string;
-      version = row.version as number;
+      diagramId = row.id;
+      version = row.version;
     }
 
     await supabase
@@ -246,11 +377,15 @@ export const saveProject = createServerFn({ method: "POST" })
         .order("version_number", { ascending: false })
         .limit(1)
         .maybeSingle();
-      const next = ((last?.version_number as number) ?? 0) + 1;
+      const next = (last?.version_number ?? 0) + 1;
       await supabase.from("project_versions").insert({
         project_id: data.projectId,
         version_number: next,
+<<<<<<< HEAD
         snapshot: snapshot as any,
+=======
+        snapshot: data.snapshot as unknown as Json,
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
         created_by: userId,
       });
       version = next;
@@ -259,11 +394,105 @@ export const saveProject = createServerFn({ method: "POST" })
     return { diagramId, version, savedAt: new Date().toISOString() };
   });
 
+export const duplicateProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const authCtx = context as unknown as AuthContext;
+    const { supabase, userId, claims } = authCtx;
+    const tenant_id = await ensureTenant(supabase, userId, claims);
+
+    // Fetch original project
+    const { data: original, error: pErr } = await supabase
+      .from("projects")
+      .select("id, name, description, metadata")
+      .eq("id", data.projectId)
+      .maybeSingle();
+    if (pErr) throw new Error(pErr.message);
+    if (!original) throw new Error("Projeto não encontrado");
+
+    // Enforce plan_limits.max_projects
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .select("plan")
+      .eq("id", tenant_id)
+      .maybeSingle();
+    const planName = tenant?.plan ?? "free";
+    const { data: limits } = await supabase
+      .from("plan_limits")
+      .select("max_projects")
+      .eq("plan", planName)
+      .maybeSingle();
+    const maxProjects = limits?.max_projects ?? 3;
+    if (maxProjects >= 0) {
+      const { count } = await supabase
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenant_id);
+      if ((count ?? 0) >= maxProjects) {
+        throw new Error(
+          planName === "free"
+            ? "Limite de 3 projetos atingido. Faça upgrade para continuar."
+            : `Limite de ${maxProjects} projetos atingido.`,
+        );
+      }
+    }
+
+    // Fetch original diagram
+    const { data: diagram } = await supabase
+      .from("diagrams")
+      .select("canvas_data")
+      .eq("project_id", data.projectId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const newName = `${original.name} (cópia)`;
+
+    // Create duplicate project
+    const { data: row, error } = await supabase
+      .from("projects")
+      .insert({
+        name: newName,
+        description: original.description,
+        created_by: userId,
+        tenant_id,
+        metadata: original.metadata,
+      })
+      .select("id, name")
+      .single();
+    if (error) throw new Error(error.message);
+
+    // Copy diagram snapshot
+    await supabase.from("diagrams").insert({
+      project_id: row.id,
+      name: "main",
+      canvas_data: (diagram?.canvas_data ?? EMPTY_SNAPSHOT) as unknown as Json,
+    });
+
+    return { id: row.id, name: row.name };
+  });
+
+export const archiveProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const authCtx = context as unknown as AuthContext;
+    const { supabase } = authCtx;
+    const { error } = await supabase
+      .from("projects")
+      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .eq("id", data.projectId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const deleteProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ projectId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
+    const authCtx = context as unknown as AuthContext;
+    const { supabase } = authCtx;
     await supabase.from("diagrams").delete().eq("project_id", data.projectId);
     await supabase.from("project_versions").delete().eq("project_id", data.projectId);
     const { error } = await supabase.from("projects").delete().eq("id", data.projectId);
@@ -337,7 +566,8 @@ export const listProjectVersions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ projectId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
+    const authCtx = context as unknown as AuthContext;
+    const { supabase } = authCtx;
     const { data: rows, error } = await supabase
       .from("project_versions")
       .select("id, version_number, created_at, created_by")
@@ -352,7 +582,13 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ projectId: z.string().uuid(), versionId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
+<<<<<<< HEAD
     const { supabase } = context as any;
+=======
+    const authCtx = context as unknown as AuthContext;
+    const { supabase } = authCtx;
+    // Fetch the snapshot from the version record
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     const { data: ver, error: verErr } = await supabase
       .from("project_versions")
       .select("snapshot, version_number")
@@ -375,5 +611,5 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
         .update({ canvas_data: parseSnapshot(ver.snapshot), updated_at: new Date().toISOString() })
         .eq("id", diagram.id);
     }
-    return { ok: true, restoredVersion: ver.version_number as number };
+    return { ok: true, restoredVersion: ver.version_number };
   });

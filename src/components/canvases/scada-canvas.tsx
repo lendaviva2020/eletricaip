@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { KonvaCanvas } from "./konva-canvas";
-import Editor from "@monaco-editor/react";
+import Editor, { useMonaco } from "@monaco-editor/react";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Play,
   Pause,
@@ -15,6 +17,7 @@ import {
   ChevronRight,
   Bell,
   CheckCircle2,
+  RefreshCw,
 } from "lucide-react";
 
 const DEFAULT_SCRIPT = `// ==========================================
@@ -62,11 +65,28 @@ if (tags["TEMP_M01"] > 85) {
 }
 `;
 
+function getTagNames(): string[] {
+  const projectTags = Object.keys(useProjectStore.getState().tags);
+  const editorTags = Object.values(useEditorStore.getState().editorTags).map((t) => t.name);
+  return [...new Set([...projectTags, ...editorTags])].sort();
+}
+
+function runScriptOnce(script: string, tags: Record<string, any>) {
+  const fn = new Function("tags", script);
+  const next = { ...tags };
+  fn(next);
+  return next;
+}
+
 export function ScadaCanvas() {
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [running, setRunning] = useState(false);
+  const [livePreview, setLivePreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastLiveResult, setLastLiveResult] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(true);
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
 
   const tags = useProjectStore((s) => s.tags);
   const applyTick = useProjectStore((s) => s.applyTick);
@@ -75,21 +95,135 @@ export function ScadaCanvas() {
   const isAlarmActive = tags["ALARM_ACTIVE"] === true;
   const alarmMsg = String(tags["ALARM_MSG"] || "Alta Temperatura no Motor Principal!");
 
+  // Register Monaco autocomplete provider
+  const handleEditorBeforeMount = useCallback((monaco: any) => {
+    monacoRef.current = monaco;
+    monaco.languages.registerCompletionItemProvider("javascript", {
+      triggerCharacters: ['"', "'", ".", "["],
+      provideCompletionItems: (model: any, position: any) => {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+
+        const tagNames = getTagNames();
+        interface CompletionItem {
+          label: string;
+          kind: any;
+          insertText: string;
+          range: typeof range;
+          detail?: string;
+          insertTextRules?: any;
+        }
+        const suggestions: CompletionItem[] = tagNames.map((name) => ({
+          label: name,
+          kind: monaco.languages.CompletionItemKind.Variable,
+          insertText: name,
+          range,
+          detail: "Tag do projeto",
+        }));
+
+        // Add common SCADA tag helpers
+        suggestions.push(
+          {
+            label: "tags",
+            kind: monaco.languages.CompletionItemKind.Module,
+            insertText: "tags",
+            range,
+            detail: "Objeto de tags do projeto",
+          },
+          {
+            label: "console.log",
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: "console.log($1)",
+            range,
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: "Log no console",
+          },
+          {
+            label: "Math.round",
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: "Math.round($1)",
+            range,
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: "Arredondar número",
+          },
+          {
+            label: "Math.min",
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: "Math.min($1, $2)",
+            range,
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          },
+          {
+            label: "Math.max",
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: "Math.max($1, $2)",
+            range,
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          },
+        );
+
+        // If typing inside tags["...", suggest tag names
+        const textBefore = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+        const match = textBefore.match(/tags\s*\[\s*['"]?([^'"\]]*)$/);
+        if (match) {
+          const filter = (match[1] || "").toLowerCase();
+          return {
+            suggestions: tagNames
+              .filter((n) => n.toLowerCase().includes(filter))
+              .map((name) => ({
+                label: name,
+                kind: monaco.languages.CompletionItemKind.Variable,
+                insertText: name,
+                range,
+                detail: "Tag do projeto",
+              })),
+          };
+        }
+
+        return { suggestions };
+      },
+    });
+  }, []);
+
+  const handleEditorMount = useCallback((editor: any) => {
+    editorRef.current = editor;
+  }, []);
+
+  // Live preview: debounced execute on script change
+  useEffect(() => {
+    if (!livePreview || running) return;
+    const timer = setTimeout(() => {
+      try {
+        const result = runScriptOnce(script, tags);
+        setError(null);
+        setLastLiveResult(JSON.stringify(result, null, 1).slice(0, 500));
+      } catch (err: any) {
+        setError(err.message);
+        setLastLiveResult(null);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [script, tags, livePreview, running]);
+
   // Monaco Script Execution loop running at 100ms
   useEffect(() => {
     if (!running) return;
 
     const interval = setInterval(() => {
       try {
-        const nextTags = { ...tags };
-        // Clean executor passing current tags
-        const runScript = new Function("tags", script);
-        runScript(nextTags);
-
-        // Sync to state
+        const nextTags = runScriptOnce(script, tags);
         applyTick({ tags: nextTags });
 
-        // Acknowledge alarm logger in runtime console
         if (nextTags["ALARM_ACTIVE"] && !tags["ALARM_ACTIVE"]) {
           pushLog({
             t: new Date().toLocaleTimeString(),
@@ -100,10 +234,9 @@ export function ScadaCanvas() {
           });
         }
 
-        // Sync to EditorStore for Ladder synchronization
         const editorState = useEditorStore.getState();
         Object.entries(nextTags).forEach(([name, value]) => {
-          const existing = Object.values(editorState.tags).find((t) => t.name === name);
+          const existing = Object.values(editorState.editorTags).find((t) => t.name === name);
           if (existing) {
             editorState.setTagValue(existing.id, value);
           } else {
@@ -129,9 +262,7 @@ export function ScadaCanvas() {
   }, [running, script, tags, applyTick, pushLog]);
 
   const acknowledgeAlarm = () => {
-    applyTick({
-      tags: { ...tags, ALARM_ACTIVE: false },
-    });
+    applyTick({ tags: { ...tags, ALARM_ACTIVE: false } });
     pushLog({
       t: new Date().toLocaleTimeString(),
       tag: "ALARME SCADA",
@@ -145,13 +276,12 @@ export function ScadaCanvas() {
     <div className="flex h-full w-full overflow-hidden select-none">
       {/* AREA DO CANVAS */}
       <div className="flex-1 min-w-0 relative flex flex-col">
-        {/* Pulsing Alarm Banner (ISA-18.2) */}
         {isAlarmActive && (
           <div className="absolute top-16 left-4 right-4 z-30 p-3 rounded-lg border border-destructive bg-destructive/15 backdrop-blur flex items-center justify-between shadow-lg animate-pulse pointer-events-auto">
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-destructive shrink-0" />
               <span className="font-mono text-[11px] font-bold text-destructive">
-                🚨 ALARME ATIVO: {alarmMsg}
+                ALARME ATIVO: {alarmMsg}
               </span>
             </div>
             <Button
@@ -176,7 +306,6 @@ export function ScadaCanvas() {
           editorOpen ? "w-[400px]" : "w-0 overflow-hidden border-l-0"
         }`}
       >
-        {/* Handle toggle button */}
         <button
           onClick={() => setEditorOpen((o) => !o)}
           className={`absolute top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border rounded-l flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all ${
@@ -197,15 +326,34 @@ export function ScadaCanvas() {
                   Scripting de Animação
                 </span>
               </div>
-              <Button
-                size="sm"
-                variant={running ? "destructive" : "default"}
-                onClick={() => setRunning((r) => !r)}
-                className="h-6 px-2 text-[10px] gap-1 cursor-pointer"
-              >
-                {running ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-                {running ? "Pausar" : "Executar"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <RefreshCw
+                    className={`h-3 w-3 ${livePreview ? "text-primary" : "text-muted-foreground"}`}
+                  />
+                  <Switch
+                    id="live-preview"
+                    checked={livePreview}
+                    onCheckedChange={setLivePreview}
+                    className="h-4 w-7"
+                  />
+                  <Label
+                    htmlFor="live-preview"
+                    className="text-[10px] text-muted-foreground cursor-pointer"
+                  >
+                    Live
+                  </Label>
+                </div>
+                <Button
+                  size="sm"
+                  variant={running ? "destructive" : "default"}
+                  onClick={() => setRunning((r) => !r)}
+                  className="h-6 px-2 text-[10px] gap-1 cursor-pointer"
+                >
+                  {running ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                  {running ? "Pausar" : "Executar"}
+                </Button>
+              </div>
             </div>
 
             {/* Editor Area */}
@@ -216,6 +364,8 @@ export function ScadaCanvas() {
                 theme="vs-dark"
                 value={script}
                 onChange={(v) => setScript(v || "")}
+                beforeMount={handleEditorBeforeMount}
+                onMount={handleEditorMount}
                 options={{
                   minimap: { enabled: false },
                   fontSize: 11,
@@ -231,6 +381,9 @@ export function ScadaCanvas() {
               <div className="flex items-center gap-1.5 text-muted-foreground border-b border-border pb-1 mb-1">
                 <Terminal className="h-3.5 w-3.5" />
                 <span>LOGS E ERROS DE SCRIPT</span>
+                {livePreview && !running && (
+                  <span className="ml-auto text-[9px] text-primary/70">Live Preview ativo</span>
+                )}
               </div>
               {error ? (
                 <div className="text-destructive flex items-start gap-1">
@@ -242,9 +395,18 @@ export function ScadaCanvas() {
                   <CheckCircle2 className="h-3.5 w-3.5 animate-pulse" />
                   <span>Script em execução... Ticks a 100ms</span>
                 </div>
+              ) : livePreview && lastLiveResult ? (
+                <pre className="text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                  {lastLiveResult}
+                </pre>
+              ) : livePreview && !error ? (
+                <div className="text-success flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Preview: sintaxe OK</span>
+                </div>
               ) : (
                 <div className="text-muted-foreground">
-                  Aguardando execução... Clique no botão "Executar" para iniciar.
+                  Aguardando execução... Clique em "Executar" ou ative "Live".
                 </div>
               )}
             </div>

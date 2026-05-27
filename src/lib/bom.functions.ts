@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const listBom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -103,8 +104,9 @@ export const generateBomFromCanvas = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
-    const { data: result, error } = await supabase.rpc("generate_bom_from_canvas", {
+    const { userId } = context as any;
+    const { data: result, error } = await supabaseAdmin.rpc("generate_bom_from_canvas_for_user", {
+      p_user_id: userId,
       p_project_id: data.projectId,
     });
     if (error) throw new Error(error.message);

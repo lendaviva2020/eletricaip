@@ -3,8 +3,8 @@
   "outputDirectory": "dist/client",
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/api/server"
+      "source": "/((?!assets/|favicon.ico$).*)",
+      "destination": "/api/render/$1"
     }
   ]
 }

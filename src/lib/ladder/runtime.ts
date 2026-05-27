@@ -20,7 +20,7 @@ const readBool = (operand: string, tags: Record<string, EditorTag>): boolean => 
 const writeBool = (operand: string, value: boolean) => {
   if (!operand) return;
   const state = useEditorStore.getState();
-  const existing = Object.values(state.tags).find((t) => t.name === operand);
+  const existing = Object.values(state.editorTags).find((t) => t.name === operand);
   if (existing) {
     state.setTagValue(existing.id, value);
   } else {
@@ -148,7 +148,7 @@ export interface ScanResult {
 }
 
 export const scanRungs = (rungs: LadderRung[]): ScanResult[] => {
-  const tags = useEditorStore.getState().tags;
+  const tags = useEditorStore.getState().editorTags;
   const now = typeof performance !== "undefined" ? performance.now() : Date.now();
   const results: ScanResult[] = [];
 

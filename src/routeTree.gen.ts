@@ -18,6 +18,7 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as DigitalTwinRouteImport } from './routes/digital-twin'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as ChatRouteImport } from './routes/chat'
@@ -26,10 +27,20 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AiRouteImport } from './routes/ai'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsTeamRouteImport } from './routes/settings.team'
+import { Route as SettingsSecurityMonitorRouteImport } from './routes/settings.security-monitor'
+import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
+import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
+import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
+import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
 import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
+import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+<<<<<<< HEAD
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+=======
+import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
 import { Route as ProjectsProjectIdExportRouteImport } from './routes/projects.$projectId.export'
 import { Route as ProjectsProjectIdBomRouteImport } from './routes/projects.$projectId.bom'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
@@ -81,6 +92,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DigitalTwinRoute = DigitalTwinRouteImport.update({
+  id: '/digital-twin',
+  path: '/digital-twin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -121,9 +137,39 @@ const SettingsTeamRoute = SettingsTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsSecurityMonitorRoute = SettingsSecurityMonitorRouteImport.update({
+  id: '/security-monitor',
+  path: '/security-monitor',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsProfileRoute = SettingsProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsBillingRoute = SettingsBillingRouteImport.update({
   id: '/billing',
   path: '/billing',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsAiStatusRoute = SettingsAiStatusRouteImport.update({
@@ -136,10 +182,17 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+<<<<<<< HEAD
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
+=======
+const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
+  id: '/$clientId',
+  path: '/$clientId',
+  getParentRoute: () => ClientsRoute,
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
 } as any)
 const ProjectsProjectIdExportRoute = ProjectsProjectIdExportRouteImport.update({
   id: '/$projectId/export',
@@ -173,8 +226,9 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/catalog': typeof CatalogRoute
   '/chat': typeof ChatRoute
-  '/clients': typeof ClientsRoute
+  '/clients': typeof ClientsRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/digital-twin': typeof DigitalTwinRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -184,10 +238,20 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+<<<<<<< HEAD
   '/auth/callback': typeof AuthCallbackRoute
+=======
+  '/clients/$clientId': typeof ClientsClientIdRoute
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/billing': typeof SettingsBillingRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/settings/security': typeof SettingsSecurityRoute
+  '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
   '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
@@ -201,8 +265,9 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/catalog': typeof CatalogRoute
   '/chat': typeof ChatRoute
-  '/clients': typeof ClientsRoute
+  '/clients': typeof ClientsRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/digital-twin': typeof DigitalTwinRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -212,10 +277,20 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+<<<<<<< HEAD
   '/auth/callback': typeof AuthCallbackRoute
+=======
+  '/clients/$clientId': typeof ClientsClientIdRoute
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/billing': typeof SettingsBillingRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/settings/security': typeof SettingsSecurityRoute
+  '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
   '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
@@ -230,8 +305,9 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/catalog': typeof CatalogRoute
   '/chat': typeof ChatRoute
-  '/clients': typeof ClientsRoute
+  '/clients': typeof ClientsRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/digital-twin': typeof DigitalTwinRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -241,10 +317,20 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+<<<<<<< HEAD
   '/auth/callback': typeof AuthCallbackRoute
+=======
+  '/clients/$clientId': typeof ClientsClientIdRoute
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
+  '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/billing': typeof SettingsBillingRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/settings/security': typeof SettingsSecurityRoute
+  '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
   '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
@@ -262,6 +348,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/clients'
     | '/dashboard'
+    | '/digital-twin'
     | '/forgot-password'
     | '/login'
     | '/onboarding'
@@ -271,10 +358,20 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+<<<<<<< HEAD
     | '/auth/callback'
+=======
+    | '/clients/$clientId'
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     | '/invite/$token'
     | '/settings/ai-status'
+    | '/settings/appearance'
     | '/settings/billing'
+    | '/settings/integrations'
+    | '/settings/notifications'
+    | '/settings/profile'
+    | '/settings/security'
+    | '/settings/security-monitor'
     | '/settings/team'
     | '/projects/$projectId/bom'
     | '/projects/$projectId/export'
@@ -290,6 +387,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/clients'
     | '/dashboard'
+    | '/digital-twin'
     | '/forgot-password'
     | '/login'
     | '/onboarding'
@@ -299,10 +397,20 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+<<<<<<< HEAD
     | '/auth/callback'
+=======
+    | '/clients/$clientId'
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     | '/invite/$token'
     | '/settings/ai-status'
+    | '/settings/appearance'
     | '/settings/billing'
+    | '/settings/integrations'
+    | '/settings/notifications'
+    | '/settings/profile'
+    | '/settings/security'
+    | '/settings/security-monitor'
     | '/settings/team'
     | '/projects/$projectId/bom'
     | '/projects/$projectId/export'
@@ -318,6 +426,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/clients'
     | '/dashboard'
+    | '/digital-twin'
     | '/forgot-password'
     | '/login'
     | '/onboarding'
@@ -327,10 +436,20 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+<<<<<<< HEAD
     | '/auth/callback'
+=======
+    | '/clients/$clientId'
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     | '/invite/$token'
     | '/settings/ai-status'
+    | '/settings/appearance'
     | '/settings/billing'
+    | '/settings/integrations'
+    | '/settings/notifications'
+    | '/settings/profile'
+    | '/settings/security'
+    | '/settings/security-monitor'
     | '/settings/team'
     | '/projects/$projectId/bom'
     | '/projects/$projectId/export'
@@ -345,8 +464,9 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   CatalogRoute: typeof CatalogRoute
   ChatRoute: typeof ChatRoute
-  ClientsRoute: typeof ClientsRoute
+  ClientsRoute: typeof ClientsRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  DigitalTwinRoute: typeof DigitalTwinRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -428,6 +548,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/digital-twin': {
+      id: '/digital-twin'
+      path: '/digital-twin'
+      fullPath: '/digital-twin'
+      preLoaderRoute: typeof DigitalTwinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -484,11 +611,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsTeamRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/security-monitor': {
+      id: '/settings/security-monitor'
+      path: '/security-monitor'
+      fullPath: '/settings/security-monitor'
+      preLoaderRoute: typeof SettingsSecurityMonitorRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/security': {
+      id: '/settings/security'
+      path: '/security'
+      fullPath: '/settings/security'
+      preLoaderRoute: typeof SettingsSecurityRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/profile': {
+      id: '/settings/profile'
+      path: '/profile'
+      fullPath: '/settings/profile'
+      preLoaderRoute: typeof SettingsProfileRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/notifications': {
+      id: '/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof SettingsNotificationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/integrations': {
+      id: '/settings/integrations'
+      path: '/integrations'
+      fullPath: '/settings/integrations'
+      preLoaderRoute: typeof SettingsIntegrationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/billing': {
       id: '/settings/billing'
       path: '/billing'
       fullPath: '/settings/billing'
       preLoaderRoute: typeof SettingsBillingRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/appearance': {
+      id: '/settings/appearance'
+      path: '/appearance'
+      fullPath: '/settings/appearance'
+      preLoaderRoute: typeof SettingsAppearanceRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/ai-status': {
@@ -505,12 +674,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+<<<<<<< HEAD
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
+=======
+    '/clients/$clientId': {
+      id: '/clients/$clientId'
+      path: '/$clientId'
+      fullPath: '/clients/$clientId'
+      preLoaderRoute: typeof ClientsClientIdRouteImport
+      parentRoute: typeof ClientsRoute
+>>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     }
     '/projects/$projectId/export': {
       id: '/projects/$projectId/export'
@@ -550,6 +728,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ClientsRouteChildren {
+  ClientsClientIdRoute: typeof ClientsClientIdRoute
+}
+
+const ClientsRouteChildren: ClientsRouteChildren = {
+  ClientsClientIdRoute: ClientsClientIdRoute,
+}
+
+const ClientsRouteWithChildren =
+  ClientsRoute._addFileChildren(ClientsRouteChildren)
+
 interface ProjectsRouteChildren {
   ProjectsProjectIdBomRoute: typeof ProjectsProjectIdBomRoute
   ProjectsProjectIdExportRoute: typeof ProjectsProjectIdExportRoute
@@ -566,13 +755,25 @@ const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
 
 interface SettingsRouteChildren {
   SettingsAiStatusRoute: typeof SettingsAiStatusRoute
+  SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsBillingRoute: typeof SettingsBillingRoute
+  SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
+  SettingsNotificationsRoute: typeof SettingsNotificationsRoute
+  SettingsProfileRoute: typeof SettingsProfileRoute
+  SettingsSecurityRoute: typeof SettingsSecurityRoute
+  SettingsSecurityMonitorRoute: typeof SettingsSecurityMonitorRoute
   SettingsTeamRoute: typeof SettingsTeamRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAiStatusRoute: SettingsAiStatusRoute,
+  SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsBillingRoute: SettingsBillingRoute,
+  SettingsIntegrationsRoute: SettingsIntegrationsRoute,
+  SettingsNotificationsRoute: SettingsNotificationsRoute,
+  SettingsProfileRoute: SettingsProfileRoute,
+  SettingsSecurityRoute: SettingsSecurityRoute,
+  SettingsSecurityMonitorRoute: SettingsSecurityMonitorRoute,
   SettingsTeamRoute: SettingsTeamRoute,
 }
 
@@ -586,8 +787,9 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   CatalogRoute: CatalogRoute,
   ChatRoute: ChatRoute,
-  ClientsRoute: ClientsRoute,
+  ClientsRoute: ClientsRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  DigitalTwinRoute: DigitalTwinRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
@@ -606,13 +808,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

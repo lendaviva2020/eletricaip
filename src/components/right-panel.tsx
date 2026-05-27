@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Sparkles, ShieldCheck, Wrench, Settings2, Send, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/lib/project-store";
-import { useVoltaiStore } from "@/lib/voltai/store";
 import { useEditorStore } from "@/lib/editor/store";
 import { RightPropertyPanel } from "@/components/editor/right-property-panel";
 import { RevisionHistory } from "@/components/revision-history";
@@ -21,7 +20,7 @@ export function RightPanel() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("ai");
 
   return (
-    <aside className="hidden lg:flex w-[340px] shrink-0 flex-col border-l border-border bg-panel">
+    <aside className="flex w-[340px] shrink-0 flex-col border-l border-border bg-panel">
       <div className="h-9 flex items-center px-2 border-b border-border">
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -56,15 +55,7 @@ export function RightPanel() {
 
 function PropsPanel() {
   const activeMode = useEditorStore((s) => s.activeMode);
-  const setSelectedNode = useEditorStore((s) => s.setSelectedNode);
-
-  // Bridge: voltai store selection -> editor store (single source of truth)
-  const voltaiSelectedId = useVoltaiStore((s) => s.selectedId);
-  useEffect(() => {
-    if (STRUCTURED_MODES.has(activeMode)) {
-      setSelectedNode(voltaiSelectedId);
-    }
-  }, [voltaiSelectedId, activeMode, setSelectedNode]);
+  const selectedNodeId = useEditorStore((s) => s.selectedNodeId);
 
   // Structured editors (Unifilar/Ladder/FBD): use Zod-validated panel
   if (STRUCTURED_MODES.has(activeMode)) {

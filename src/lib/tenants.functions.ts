@@ -2,6 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export type TenantSummary = {
   id: string;
@@ -160,18 +161,12 @@ export const createInvite = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tenant_id, role")
-      .eq("id", userId)
-      .maybeSingle();
-    if (!profile?.tenant_id) throw new Error("Workspace não encontrado.");
-    if (profile.role !== "admin") throw new Error("Apenas administradores podem convidar membros.");
+    const tenantId = await requireTenantAdmin(supabase, userId);
 
     const { data: invite, error } = await supabase
       .from("invites")
       .insert({
-        tenant_id: profile.tenant_id,
+        tenant_id: tenantId,
         email: data.email.toLowerCase(),
         role: data.role,
       })
@@ -197,17 +192,11 @@ export const removeMember = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     if (data.userId === userId) throw new Error("Você não pode remover a si mesmo.");
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tenant_id, role")
-      .eq("id", userId)
-      .maybeSingle();
-    if (!profile?.tenant_id || profile.role !== "admin")
-      throw new Error("Apenas administradores podem remover membros.");
+    const tenantId = await requireTenantAdmin(supabase, userId);
     const { error } = await supabase
       .from("tenant_memberships")
       .delete()
-      .eq("tenant_id", profile.tenant_id)
+      .eq("tenant_id", tenantId)
       .eq("user_id", data.userId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
@@ -225,30 +214,87 @@ export const updateMemberRole = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tenant_id, role")
-      .eq("id", userId)
-      .maybeSingle();
-    if (!profile?.tenant_id || profile.role !== "admin")
-      throw new Error("Apenas administradores podem alterar papéis.");
+    const tenantId = await requireTenantAdmin(supabase, userId);
     const { error } = await supabase
       .from("tenant_memberships")
       .update({ role: data.role })
-      .eq("tenant_id", profile.tenant_id)
+      .eq("tenant_id", tenantId)
       .eq("user_id", data.userId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
 
+/**
+ * Resolve o tenant ativo do usuário a partir de `profiles.tenant_id` e
+ * confirma que ele tem papel `admin`/`owner` em `tenant_memberships` para
+ * esse tenant. Fonte de verdade do RBAC = `tenant_memberships`, nunca
+ * `profiles.role` (que pode divergir).
+ */
+async function requireTenantAdmin(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+): Promise<string> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", userId)
+    .maybeSingle();
+  const tenantId = profile?.tenant_id as string | undefined;
+  if (!tenantId) throw new Error("Workspace não encontrado.");
+
+  const { data: membership } = await supabase
+    .from("tenant_memberships")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  const role = membership?.role as string | undefined;
+  if (!role || !["owner", "admin"].includes(role)) {
+    throw new Error("Apenas administradores do workspace podem executar esta ação.");
+  }
+  return tenantId;
+}
+
 export const acceptInviteByToken = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ token: z.string().min(8).max(128) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const { data: result, error } = await supabase.rpc("accept_invite", { p_token: data.token });
-    if (error) throw new Error(error.message);
-    const r = result as { tenant_id: string; role: string } | null;
+    const { supabase, userId, claims } = context;
+    const email = String(claims.email ?? "").toLowerCase();
+    if (!email) throw new Error("user_not_found");
+
+    const { data: invite, error: inviteError } = await supabaseAdmin
+      .from("invites")
+      .select("id, tenant_id, email, role, accepted_at, expires_at")
+      .eq("token", data.token)
+      .is("accepted_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (inviteError) throw new Error(inviteError.message);
+    if (!invite) throw new Error("invalid_or_expired_invite");
+    if (invite.email.toLowerCase() !== email) throw new Error("email_mismatch");
+
+    const { error: membershipError } = await supabaseAdmin.from("tenant_memberships").upsert(
+      {
+        tenant_id: invite.tenant_id,
+        user_id: userId,
+        role: invite.role,
+        accepted_at: new Date().toISOString(),
+      },
+      { onConflict: "tenant_id,user_id" },
+    );
+    if (membershipError) throw new Error(membershipError.message);
+
+    const acceptedAt = new Date().toISOString();
+    const { error: updateInviteError } = await supabaseAdmin
+      .from("invites")
+      .update({ accepted_at: acceptedAt })
+      .eq("id", invite.id);
+    if (updateInviteError) throw new Error(updateInviteError.message);
+
+    const r = { tenant_id: invite.tenant_id, role: invite.role };
     if (r?.tenant_id) {
       // Auto-switch active tenant to the one just accepted.
       await supabase.from("profiles").update({ tenant_id: r.tenant_id }).eq("id", userId);
