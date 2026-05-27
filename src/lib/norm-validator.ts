@@ -130,15 +130,21 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
   }
 
   // ── NR-10 — Lockout/Tagout (LOTO) e Seccionamento de Segurança ──
-  const hasLocalSwitch = nodes.some((n) => n.kind === "switch" || /seccionadora|isole|lockout|loto/i.test(n.label + JSON.stringify(n.params)));
+  const hasLocalSwitch = nodes.some(
+    (n) =>
+      n.kind === "switch" ||
+      /seccionadora|isole|lockout|loto/i.test(n.label + JSON.stringify(n.params)),
+  );
   if (motors.length > 0 && !hasLocalSwitch) {
     f.push({
       id: "nr10-loto",
       norm: "NR-10",
       severity: "warn",
       title: "Ponto de seccionamento para bloqueio (LOTO) ausente",
-      detail: "NR-10 §10.5.1 exige dispositivo de seccionamento passível de bloqueio para manutenção segura.",
-      fixHint: "Adicione uma Chave Seccionadora (QS) rotativa bloqueável por cadeado próximo aos circuitos alimentadores.",
+      detail:
+        "NR-10 §10.5.1 exige dispositivo de seccionamento passível de bloqueio para manutenção segura.",
+      fixHint:
+        "Adicione uma Chave Seccionadora (QS) rotativa bloqueável por cadeado próximo aos circuitos alimentadores.",
     });
   }
 
@@ -168,7 +174,9 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
   }
 
   // ── ISA-18.2 — Alarmes ──
-  const alarmSensors = nodes.filter((n) => n.category === "inst" || /sensor|alarm|transmissor/i.test(n.label + n.kind));
+  const alarmSensors = nodes.filter(
+    (n) => n.category === "inst" || /sensor|alarm|transmissor/i.test(n.label + n.kind),
+  );
   for (const s of alarmSensors) {
     const hasPriority = s.params.priority || s.params.prioridade || s.params.level;
     if (!hasPriority) {
@@ -178,7 +186,8 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
         severity: "warn",
         nodeId: s.id,
         title: `Alarme sem prioridade definida em ${s.label}`,
-        detail: "ISA-18.2 §10.2 exige que todo alarme tenha nível de prioridade (Alta, Média, Baixa) para evitar fadiga do operador.",
+        detail:
+          "ISA-18.2 §10.2 exige que todo alarme tenha nível de prioridade (Alta, Média, Baixa) para evitar fadiga do operador.",
         fixHint: "Configure o parâmetro 'priority' (High/Medium/Low) nas propriedades do sensor.",
       });
     }
@@ -191,7 +200,8 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
         severity: "info",
         nodeId: s.id,
         title: `Histerese/Deadband não configurada em ${s.label}`,
-        detail: "ISA-18.2 §14.3 recomenda o uso de histerese (deadband) para evitar oscilações contínuas de alarmes (alarms chattering).",
+        detail:
+          "ISA-18.2 §14.3 recomenda o uso de histerese (deadband) para evitar oscilações contínuas de alarmes (alarms chattering).",
         fixHint: "Adicione um percentual de histerese (ex: 2% a 5%) para estabilizar o disparo.",
       });
     }
@@ -205,7 +215,8 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
         norm: "ISA-18.2",
         severity: "warn",
         title: "Alto risco de Avalanche de Alarmes (Alarm Flooding)",
-        detail: "ISA-18.2 §14.1 alerta que mais de 5 alarmes sem tratamento de delay ou deadband podem saturar o operador durante distúrbios.",
+        detail:
+          "ISA-18.2 §14.1 alerta que mais de 5 alarmes sem tratamento de delay ou deadband podem saturar o operador durante distúrbios.",
         fixHint: "Aplique atraso de disparo (delay-on) ou histerese em todos os canais analógicos.",
       });
     }

@@ -19,6 +19,7 @@ interface EditorState {
   rungs: LadderRung[];
   fbdNodes: any[];
   fbdEdges: any[];
+  dirty: boolean;
 
   setActiveMode: (mode: WorkspaceMode) => void;
   setSelectedNode: (id: string | null) => void;
@@ -31,8 +32,15 @@ interface EditorState {
   setRungs: (rungs: LadderRung[] | ((prev: LadderRung[]) => LadderRung[])) => void;
   setFbdAll: (
     nodes: any[] | ((prev: any[]) => any[]),
-    edges: any[] | ((prev: any[]) => any[])
+    edges: any[] | ((prev: any[]) => any[]),
   ) => void;
+  hydrateSnapshot: (snapshot: {
+    tags?: Record<string, EditorTag>;
+    rungs?: LadderRung[];
+    fbdNodes?: any[];
+    fbdEdges?: any[];
+  }) => void;
+  markSaved: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -42,16 +50,17 @@ export const useEditorStore = create<EditorState>((set) => ({
   rungs: [],
   fbdNodes: [],
   fbdEdges: [],
+  dirty: false,
 
   setActiveMode: (mode) => set({ activeMode: mode, selectedNodeId: null }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
 
-  upsertTag: (tag) => set((s) => ({ tags: { ...s.tags, [tag.id]: tag } })),
+  upsertTag: (tag) => set((s) => ({ tags: { ...s.tags, [tag.id]: tag }, dirty: true })),
   removeTag: (id) =>
     set((s) => {
       const next = { ...s.tags };
       delete next[id];
-      return { tags: next };
+      return { tags: next, dirty: true };
     }),
   setTagValue: (id, value) =>
     set((s) => {
@@ -63,19 +72,30 @@ export const useEditorStore = create<EditorState>((set) => ({
     set((s) => {
       const tag = s.tags[id];
       if (!tag) return s;
-      return { tags: { ...s.tags, [id]: { ...tag, value, forced: true } } };
+      return { tags: { ...s.tags, [id]: { ...tag, value, forced: true } }, dirty: true };
     }),
   releaseTag: (id) =>
     set((s) => {
       const tag = s.tags[id];
       if (!tag) return s;
-      return { tags: { ...s.tags, [id]: { ...tag, forced: false } } };
+      return { tags: { ...s.tags, [id]: { ...tag, forced: false } }, dirty: true };
     }),
   setRungs: (rungs) =>
-    set((s) => ({ rungs: typeof rungs === "function" ? rungs(s.rungs) : rungs })),
+    set((s) => ({ rungs: typeof rungs === "function" ? rungs(s.rungs) : rungs, dirty: true })),
   setFbdAll: (nodes, edges) =>
     set((s) => ({
       fbdNodes: typeof nodes === "function" ? nodes(s.fbdNodes) : nodes,
       fbdEdges: typeof edges === "function" ? edges(s.fbdEdges) : edges,
+      dirty: true,
     })),
+  hydrateSnapshot: (snapshot) =>
+    set({
+      tags: snapshot.tags ?? {},
+      rungs: snapshot.rungs ?? [],
+      fbdNodes: snapshot.fbdNodes ?? [],
+      fbdEdges: snapshot.fbdEdges ?? [],
+      selectedNodeId: null,
+      dirty: false,
+    }),
+  markSaved: () => set({ dirty: false }),
 }));

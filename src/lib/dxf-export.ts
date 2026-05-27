@@ -100,7 +100,7 @@ function drawSymbol(n: DxfNode): string {
       line(
         { x: p.x + w * 0.2, y: p.y + h * 0.8 },
         { x: p.x + w * 0.8, y: p.y + h * 0.2 },
-        "SYMBOLS"
+        "SYMBOLS",
       )
     );
   }
@@ -109,8 +109,16 @@ function drawSymbol(n: DxfNode): string {
     // Contactor symbol (box with parallel contacts)
     return (
       rect(p, w, h, "COMPONENTS") +
-      line({ x: p.x + w * 0.3, y: p.y + h * 0.5 }, { x: p.x + w * 0.7, y: p.y + h * 0.5 }, "SYMBOLS") +
-      line({ x: p.x + w * 0.5, y: p.y + h * 0.2 }, { x: p.x + w * 0.5, y: p.y + h * 0.8 }, "SYMBOLS")
+      line(
+        { x: p.x + w * 0.3, y: p.y + h * 0.5 },
+        { x: p.x + w * 0.7, y: p.y + h * 0.5 },
+        "SYMBOLS",
+      ) +
+      line(
+        { x: p.x + w * 0.5, y: p.y + h * 0.2 },
+        { x: p.x + w * 0.5, y: p.y + h * 0.8 },
+        "SYMBOLS",
+      )
     );
   }
 
@@ -121,12 +129,17 @@ function drawSymbol(n: DxfNode): string {
 export function buildDxf(nodes: DxfNode[], edges: DxfEdge[]): string {
   let body = "";
   body += pair(0, "SECTION") + pair(2, "ENTITIES");
-  
+
   // Draw all components and symbols
   for (const n of nodes) {
     body += drawSymbol(n);
     if (n.label) {
-      body += text({ x: n.position.x + 4, y: n.position.y + (n.height ?? 30) + 10 }, n.label, 6, "LABELS");
+      body += text(
+        { x: n.position.x + 4, y: n.position.y + (n.height ?? 30) + 10 },
+        n.label,
+        6,
+        "LABELS",
+      );
     }
   }
 

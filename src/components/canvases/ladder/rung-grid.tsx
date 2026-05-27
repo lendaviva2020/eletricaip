@@ -234,6 +234,8 @@ export function RungGrid() {
                           removeRung(rung.id);
                         }}
                         className="rounded p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+                        title={`Remover rung ${idx + 1}`}
+                        aria-label={`Remover rung ${idx + 1}`}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -288,7 +290,12 @@ export function RungGrid() {
                 <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                   Compilador IEC 61131-3
                 </div>
-                <Button size="sm" variant="ghost" onClick={downloadCode} className="h-6 px-2 text-[10px] gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={downloadCode}
+                  className="h-6 px-2 text-[10px] gap-1"
+                >
                   <Download className="h-3 w-3" /> .{compileFormat.toLowerCase()}
                 </Button>
               </div>
@@ -316,7 +323,7 @@ export function RungGrid() {
                 </button>
               </div>
             </div>
-            
+
             <pre className="flex-1 overflow-auto p-3 text-[11px] font-mono leading-relaxed text-foreground select-text whitespace-pre scrollbar-thin">
               {compiledCode}
             </pre>

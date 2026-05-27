@@ -33,7 +33,7 @@ interface VoltaiStore {
   selectedId: string | null;
   lastSimulationJson: string;
   dirty: boolean;
-  
+
   // Undo/Redo history stacks
   past: { components: VoltaiDiagramComponent[]; edges: VoltaiDiagramEdge[] }[];
   future: { components: VoltaiDiagramComponent[]; edges: VoltaiDiagramEdge[] }[];
@@ -47,7 +47,7 @@ interface VoltaiStore {
   simulateStep: (stepMs: number) => void;
   setAll: (components: VoltaiDiagramComponent[], edges: VoltaiDiagramEdge[]) => void;
   markSaved: () => void;
-  
+
   // New advanced diagramming actions
   rotateComponent: (id: string, direction?: "cw" | "ccw") => void;
   deleteSelected: () => void;
@@ -333,7 +333,7 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
         components: store.components.map((component) =>
           component.id === id
             ? { ...component, params: { ...component.params, [key]: value } }
-            : component
+            : component,
         ),
         dirty: true,
       };
@@ -351,7 +351,7 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
                 params: getVoltaiFactoryParams(component.type),
                 simulationState: createVoltaiDefaultState(component.type),
               }
-            : component
+            : component,
         ),
         dirty: true,
       };
@@ -363,7 +363,7 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
       // We will update components directly, but keep the dirty flag active so autosave triggers later.
       return {
         components: store.components.map((component) =>
-          component.id === id ? { ...component, position } : component
+          component.id === id ? { ...component, position } : component,
         ),
         dirty: true,
       };
@@ -430,7 +430,7 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
         ...historyUpdate,
         components: store.components.filter((c) => c.id !== store.selectedId),
         edges: store.edges.filter(
-          (e) => e.source !== store.selectedId && e.target !== store.selectedId
+          (e) => e.source !== store.selectedId && e.target !== store.selectedId,
         ),
         selectedId: null,
         dirty: true,
@@ -478,14 +478,16 @@ export const useVoltaiStore = create<VoltaiStore>((set) => ({
 
       if (axis === "horizontal") {
         // Align all components to the average Y coordinate
-        const avgY = store.components.reduce((sum, c) => sum + c.position.y, 0) / store.components.length;
+        const avgY =
+          store.components.reduce((sum, c) => sum + c.position.y, 0) / store.components.length;
         alignedComponents = store.components.map((c) => ({
           ...c,
           position: { ...c.position, y: Math.round(avgY / 24) * 24 }, // Snap to grid
         }));
       } else if (axis === "vertical") {
         // Align all components to the average X coordinate
-        const avgX = store.components.reduce((sum, c) => sum + c.position.x, 0) / store.components.length;
+        const avgX =
+          store.components.reduce((sum, c) => sum + c.position.x, 0) / store.components.length;
         alignedComponents = store.components.map((c) => ({
           ...c,
           position: { ...c.position, x: Math.round(avgX / 24) * 24 }, // Snap to grid

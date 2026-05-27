@@ -2,27 +2,57 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const SnapshotSchema = z.object({
-  project: z
-    .object({
-      nodes: z.array(z.any()).default([]),
-      edges: z.array(z.any()).default([]),
-    })
-    .default({ nodes: [], edges: [] }),
-  voltai: z
-    .object({
-      components: z.array(z.any()).default([]),
-      edges: z.array(z.any()).default([]),
-    })
-    .default({ components: [], edges: [] }),
-});
+const CURRENT_SNAPSHOT_VERSION = 2;
+
+const RuntimeTagSchema = z.union([z.number(), z.boolean(), z.string()]);
+
+const SnapshotSchema = z
+  .object({
+    schemaVersion: z.number().int().positive().default(CURRENT_SNAPSHOT_VERSION),
+    project: z
+      .object({
+        nodes: z.array(z.any()).default([]),
+        edges: z.array(z.any()).default([]),
+        tags: z.record(RuntimeTagSchema).default({}),
+      })
+      .default({ nodes: [], edges: [], tags: {} }),
+    voltai: z
+      .object({
+        components: z.array(z.any()).default([]),
+        edges: z.array(z.any()).default([]),
+      })
+      .default({ components: [], edges: [] }),
+    editor: z
+      .object({
+        tags: z.record(z.any()).default({}),
+        rungs: z.array(z.any()).default([]),
+        fbdNodes: z.array(z.any()).default([]),
+        fbdEdges: z.array(z.any()).default([]),
+      })
+      .default({ tags: {}, rungs: [], fbdNodes: [], fbdEdges: [] }),
+    diagram: z.any().optional(),
+  })
+  .passthrough()
+  .transform((snapshot) => ({
+    ...snapshot,
+    schemaVersion: CURRENT_SNAPSHOT_VERSION,
+  }));
 
 export type ProjectSnapshot = z.infer<typeof SnapshotSchema>;
 
 const EMPTY_SNAPSHOT: ProjectSnapshot = {
-  project: { nodes: [], edges: [] },
+  schemaVersion: CURRENT_SNAPSHOT_VERSION,
+  project: { nodes: [], edges: [], tags: {} },
   voltai: { components: [], edges: [] },
+  editor: { tags: {}, rungs: [], fbdNodes: [], fbdEdges: [] },
 };
+
+function parseSnapshot(value: unknown): ProjectSnapshot {
+  const parsed = SnapshotSchema.safeParse(value ?? EMPTY_SNAPSHOT);
+  if (parsed.success) return parsed.data;
+  console.warn("[projects] invalid snapshot, falling back to empty snapshot", parsed.error.message);
+  return EMPTY_SNAPSHOT;
+}
 
 async function ensureTenant(supabase: any, userId: string): Promise<string> {
   const { data: profile } = await supabase
@@ -71,7 +101,6 @@ export const createProject = createServerFn({ method: "POST" })
     const { supabase, userId } = context as any;
     const tenant_id = await ensureTenant(supabase, userId);
 
-    // Enforce plan_limits.max_projects per tenant
     const { data: tenant } = await supabase
       .from("tenants")
       .select("plan")
@@ -145,7 +174,6 @@ export const loadProject = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
 
-    const parsed = SnapshotSchema.safeParse(diagram?.canvas_data ?? EMPTY_SNAPSHOT);
     return {
       project: {
         id: project.id as string,
@@ -155,7 +183,7 @@ export const loadProject = createServerFn({ method: "POST" })
       },
       diagramId: (diagram?.id as string) ?? null,
       version: (diagram?.version as number) ?? 1,
-      snapshot: parsed.success ? parsed.data : EMPTY_SNAPSHOT,
+      snapshot: parseSnapshot(diagram?.canvas_data),
     };
   });
 
@@ -170,6 +198,7 @@ export const saveProject = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
+    const snapshot = parseSnapshot(data.snapshot);
 
     const { data: existing } = await supabase
       .from("diagrams")
@@ -186,7 +215,7 @@ export const saveProject = createServerFn({ method: "POST" })
       version = (existing.version as number) ?? 1;
       const { error } = await supabase
         .from("diagrams")
-        .update({ canvas_data: data.snapshot as any, updated_at: new Date().toISOString() })
+        .update({ canvas_data: snapshot as any, updated_at: new Date().toISOString() })
         .eq("id", diagramId);
       if (error) throw new Error(error.message);
     } else {
@@ -195,7 +224,7 @@ export const saveProject = createServerFn({ method: "POST" })
         .insert({
           project_id: data.projectId,
           name: "main",
-          canvas_data: data.snapshot as any,
+          canvas_data: snapshot as any,
         })
         .select("id, version")
         .single();
@@ -221,7 +250,7 @@ export const saveProject = createServerFn({ method: "POST" })
       await supabase.from("project_versions").insert({
         project_id: data.projectId,
         version_number: next,
-        snapshot: data.snapshot as any,
+        snapshot: snapshot as any,
         created_by: userId,
       });
       version = next;
@@ -242,6 +271,68 @@ export const deleteProject = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const archiveProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context as any;
+    const { error } = await supabase
+      .from("projects")
+      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .eq("id", data.projectId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const duplicateProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ projectId: z.string().uuid(), name: z.string().max(200).optional() }))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    const tenant_id = await ensureTenant(supabase, userId);
+
+    const { data: project, error: pErr } = await supabase
+      .from("projects")
+      .select("name, description, metadata")
+      .eq("id", data.projectId)
+      .maybeSingle();
+    if (pErr) throw new Error(pErr.message);
+    if (!project) throw new Error("Projeto não encontrado.");
+
+    const { data: diagram } = await supabase
+      .from("diagrams")
+      .select("canvas_data")
+      .eq("project_id", data.projectId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const { data: copy, error: cErr } = await supabase
+      .from("projects")
+      .insert({
+        name: data.name?.trim() || `${project.name} (cópia)`,
+        description: project.description ?? null,
+        created_by: userId,
+        tenant_id,
+        metadata: project.metadata ?? {},
+      })
+      .select("id, name, metadata")
+      .single();
+    if (cErr) throw new Error(cErr.message);
+
+    await supabase.from("diagrams").insert({
+      project_id: copy.id,
+      name: "main",
+      canvas_data: parseSnapshot(diagram?.canvas_data) as any,
+    });
+
+    return {
+      id: copy.id as string,
+      name: copy.name as string,
+      client: (copy.metadata as any)?.client ?? null,
+    };
+  });
+
 export const listProjectVersions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ projectId: z.string().uuid() }))
@@ -259,12 +350,9 @@ export const listProjectVersions = createServerFn({ method: "POST" })
 
 export const restoreProjectVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({ projectId: z.string().uuid(), versionId: z.string().uuid() }),
-  )
+  .inputValidator(z.object({ projectId: z.string().uuid(), versionId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const { supabase } = context as any;
-    // Fetch the snapshot from the version record
     const { data: ver, error: verErr } = await supabase
       .from("project_versions")
       .select("snapshot, version_number")
@@ -274,7 +362,6 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
     if (verErr) throw new Error(verErr.message);
     if (!ver) throw new Error("Versão não encontrada.");
 
-    // Overwrite the current diagram canvas_data with the old snapshot
     const { data: diagram } = await supabase
       .from("diagrams")
       .select("id")
@@ -285,7 +372,7 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
     if (diagram) {
       await supabase
         .from("diagrams")
-        .update({ canvas_data: ver.snapshot, updated_at: new Date().toISOString() })
+        .update({ canvas_data: parseSnapshot(ver.snapshot), updated_at: new Date().toISOString() })
         .eq("id", diagram.id);
     }
     return { ok: true, restoredVersion: ver.version_number as number };

@@ -2,12 +2,7 @@ import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Share2, Copy, Users, Link2, Check, X } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProjectStore } from "@/lib/project-store";
@@ -80,7 +75,8 @@ export function ShareModal() {
               </div>
               <p className="text-[9px] text-muted-foreground mt-1.5">
                 <Link2 className="inline h-3 w-3 mr-0.5 align-text-bottom" />
-                Qualquer membro do tenant com este link pode acessar e editar o canvas em tempo real.
+                Qualquer membro do tenant com este link pode acessar e editar o canvas em tempo
+                real.
               </p>
             </div>
 
@@ -91,7 +87,9 @@ export function ShareModal() {
                 Colaboradores online ({users.length})
               </label>
               {users.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground italic">Nenhum colaborador conectado.</p>
+                <p className="text-[10px] text-muted-foreground italic">
+                  Nenhum colaborador conectado.
+                </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {users.map((u: CollabUser) => (

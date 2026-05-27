@@ -127,7 +127,7 @@ export function useCollab(projectId: string | null) {
       .on("broadcast", { event: "canvas-change" }, (payload: any) => {
         const data = payload.payload;
         if (data.senderId === userId) return;
-        
+
         // Silently update both stores!
         if (data.project) {
           useProjectStore.getState().setAll(data.project.nodes ?? [], data.project.edges ?? []);
@@ -154,7 +154,10 @@ export function useCollab(projectId: string | null) {
       if (state.dirty && state.dirty !== prev.dirty) {
         broadcastStateChange(
           { nodes: state.nodes, edges: state.edges },
-          { components: useVoltaiStore.getState().components, edges: useVoltaiStore.getState().edges }
+          {
+            components: useVoltaiStore.getState().components,
+            edges: useVoltaiStore.getState().edges,
+          },
         );
       }
     });
@@ -163,7 +166,7 @@ export function useCollab(projectId: string | null) {
       if (state.dirty && state.dirty !== prev.dirty) {
         broadcastStateChange(
           { nodes: useProjectStore.getState().nodes, edges: useProjectStore.getState().edges },
-          { components: state.components, edges: state.edges }
+          { components: state.components, edges: state.edges },
         );
       }
     });

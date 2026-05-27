@@ -1,16 +1,31 @@
-import { Outlet, createRootRoute, useRouterState } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HeadContent, Scripts, Link, useRouter } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Link,
+  Outlet,
+  Scripts,
+  createRootRoute,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
+import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Topbar } from "@/components/topbar";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
+import { UpgradeModal } from "@/components/upgrade-modal";
+import { ShareModal } from "@/components/share-modal";
 
 const queryClient = new QueryClient();
 
 const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
-const AUTH_NO_CHROME = ["/onboarding"]; // authenticated routes that render their own full-page layout
+const PUBLIC_PREFIXES = ["/auth/callback", "/invite/"];
+const AUTH_NO_CHROME = ["/onboarding"];
+
+function isPublicPath(path: string) {
+  return PUBLIC_PATHS.includes(path) || PUBLIC_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
 
 function NotFound() {
   return (
@@ -56,38 +71,23 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "EletricAI Industrial OS — IA, PLC, SCADA, Digital Twin" },
+      { title: "EletricAI Industrial OS - IA, PLC, SCADA, Digital Twin" },
       {
         name: "description",
         content:
           "Sistema operacional industrial unificado com IA nativa: unifilar, ladder, FBD, SCADA, Digital Twin, PLC e simulação em tempo real.",
       },
-      { property: "og:title", content: "EletricAI Industrial OS — IA, PLC, SCADA, Digital Twin" },
+      { property: "og:title", content: "EletricAI Industrial OS - IA, PLC, SCADA, Digital Twin" },
       {
         property: "og:description",
         content:
           "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation.",
       },
-      { name: "twitter:title", content: "EletricAI Industrial OS — IA, PLC, SCADA, Digital Twin" },
-      {
-        name: "description",
-        content:
-          "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation.",
-      },
+      { name: "twitter:title", content: "EletricAI Industrial OS - IA, PLC, SCADA, Digital Twin" },
       {
         name: "twitter:description",
         content:
           "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation.",
-      },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9fa077a7-5eb2-4895-a097-d0eb22bf3c1e/id-preview-cc9cc264--85619baf-31cc-4353-8b05-f9173122588d.lovable.app-1778865522986.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9fa077a7-5eb2-4895-a097-d0eb22bf3c1e/id-preview-cc9cc264--85619baf-31cc-4353-8b05-f9173122588d.lovable.app-1778865522986.png",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
@@ -118,9 +118,9 @@ function AuthGate() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user, loading } = useAuth();
   const router = useRouter();
-  const isPublic = PUBLIC_PATHS.includes(path);
+  const isPublic = isPublicPath(path);
 
-  useEffect_redirect(loading, user, isPublic, path, router);
+  useAuthRedirect(loading, user, isPublic, path, router);
 
   if (isPublic) {
     return <Outlet />;
@@ -129,10 +129,11 @@ function AuthGate() {
   if (loading) {
     return (
       <div className="min-h-screen grid place-items-center text-muted-foreground text-sm">
-        Carregando…
+        Carregando...
       </div>
     );
   }
+
   if (!user) {
     return null;
   }
@@ -152,8 +153,7 @@ function AuthGate() {
   );
 }
 
-import { useEffect } from "react";
-function useEffect_redirect(
+function useAuthRedirect(
   loading: boolean,
   user: unknown,
   isPublic: boolean,
@@ -166,9 +166,6 @@ function useEffect_redirect(
     }
   }, [loading, user, isPublic, path, router]);
 }
-
-import { UpgradeModal } from "@/components/upgrade-modal";
-import { ShareModal } from "@/components/share-modal";
 
 function RootComponent() {
   return (

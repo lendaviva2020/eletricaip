@@ -231,7 +231,12 @@ export function applyArchitectToStore(
     const kindLower = n.kind.toLowerCase();
     if (kindLower.includes("breaker") || kindLower.includes("disjuntor")) type = "QF";
     else if (kindLower.includes("contactor") || kindLower.includes("contator")) type = "KM";
-    else if (kindLower.includes("thermal") || kindLower.includes("termico") || kindLower.includes("rele")) type = "FR";
+    else if (
+      kindLower.includes("thermal") ||
+      kindLower.includes("termico") ||
+      kindLower.includes("rele")
+    )
+      type = "FR";
     else if (kindLower.includes("motor")) type = "M";
     else if (kindLower.includes("transformer") || kindLower.includes("trafo")) type = "TR";
     else if (kindLower.includes("plc") || kindLower.includes("clp")) type = "PLC";
@@ -265,9 +270,12 @@ export function applyArchitectToStore(
 
   // 3. Map and deploy standard compliant Ladder rungs & Shared tags (useEditorStore)
   const ladderRungs: LadderRung[] = [];
-  const motorList = result.motors && result.motors.length > 0
-    ? result.motors
-    : result.nodes.filter((n) => n.kind.toLowerCase().includes("motor")).map((n) => ({ id: n.id, startMethod: "DOL" }));
+  const motorList =
+    result.motors && result.motors.length > 0
+      ? result.motors
+      : result.nodes
+          .filter((n) => n.kind.toLowerCase().includes("motor"))
+          .map((n) => ({ id: n.id, startMethod: "DOL" }));
 
   motorList.forEach((motor, i) => {
     const motorId = motor.id || `M${i + 1}`;
@@ -279,22 +287,22 @@ export function applyArchitectToStore(
       label: `Partida do Motor ${motorId} (Selo de KM)`,
       cells: [
         [
-          { kind: "XIC", operand: `%I0.${i * 4}` },      // Motor Overload/Breaker OK
-          { kind: "XIC", operand: `%I0.${i * 4 + 1}` },  // Start Push-Button
-          { kind: "XIO", operand: `%I0.${i * 4 + 2}` },  // Stop Push-Button
+          { kind: "XIC", operand: `%I0.${i * 4}` }, // Motor Overload/Breaker OK
+          { kind: "XIC", operand: `%I0.${i * 4 + 1}` }, // Start Push-Button
+          { kind: "XIO", operand: `%I0.${i * 4 + 2}` }, // Stop Push-Button
           { kind: "EMPTY", operand: "" },
           { kind: "EMPTY", operand: "" },
-          { kind: "OTE", operand: `%Q0.${i * 2}` }       // Contactor command
+          { kind: "OTE", operand: `%Q0.${i * 2}` }, // Contactor command
         ],
         [
           { kind: "EMPTY", operand: "" },
-          { kind: "XIC", operand: `%Q0.${i * 2}` },      // Seal contact
+          { kind: "XIC", operand: `%Q0.${i * 2}` }, // Seal contact
           { kind: "EMPTY", operand: "" },
           { kind: "EMPTY", operand: "" },
           { kind: "EMPTY", operand: "" },
-          { kind: "EMPTY", operand: "" }
-        ]
-      ]
+          { kind: "EMPTY", operand: "" },
+        ],
+      ],
     };
     ladderRungs.push(r1);
 
@@ -304,14 +312,14 @@ export function applyArchitectToStore(
       label: `Alarme de Disparo / Falha ${motorId}`,
       cells: [
         [
-          { kind: "XIO", operand: `%I0.${i * 4}` },      // NC contact of overload
+          { kind: "XIO", operand: `%I0.${i * 4}` }, // NC contact of overload
           { kind: "EMPTY", operand: "" },
           { kind: "EMPTY", operand: "" },
           { kind: "EMPTY", operand: "" },
           { kind: "EMPTY", operand: "" },
-          { kind: "OTE", operand: `%Q0.${i * 2 + 1}` }   // Alarm Lamp
-        ]
-      ]
+          { kind: "OTE", operand: `%Q0.${i * 2 + 1}` }, // Alarm Lamp
+        ],
+      ],
     };
     ladderRungs.push(r2);
 
@@ -321,35 +329,35 @@ export function applyArchitectToStore(
       name: `${motorId}_PROT_OK`,
       type: "BOOL",
       value: true,
-      forced: false
+      forced: false,
     });
     useEditorStore.getState().upsertTag({
       id: `%I0.${i * 4 + 1}`,
       name: `${motorId}_START`,
       type: "BOOL",
       value: false,
-      forced: false
+      forced: false,
     });
     useEditorStore.getState().upsertTag({
       id: `%I0.${i * 4 + 2}`,
       name: `${motorId}_STOP`,
       type: "BOOL",
       value: false,
-      forced: false
+      forced: false,
     });
     useEditorStore.getState().upsertTag({
       id: `%Q0.${i * 2}`,
       name: `${kmId}_CMD`,
       type: "BOOL",
       value: false,
-      forced: false
+      forced: false,
     });
     useEditorStore.getState().upsertTag({
       id: `%Q0.${i * 2 + 1}`,
       name: `${motorId}_FAULT_LAMP`,
       type: "BOOL",
       value: false,
-      forced: false
+      forced: false,
     });
   });
 

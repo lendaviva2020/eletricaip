@@ -51,6 +51,8 @@ function CatalogPage() {
           />
         </div>
         <select
+          aria-label="Filtrar catalogo por categoria"
+          title="Filtrar catalogo por categoria"
           value={categoryId ?? ""}
           onChange={(e) => setCategoryId(e.target.value || undefined)}
           className="h-10 rounded-md border border-border bg-background px-3 text-sm"

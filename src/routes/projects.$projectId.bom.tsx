@@ -214,6 +214,8 @@ function BomPage() {
                     <td className="px-3 py-2">
                       <input
                         type="number"
+                        aria-label={`Quantidade de ${it.part_number}`}
+                        title={`Quantidade de ${it.part_number}`}
                         min={0.01}
                         step={0.01}
                         defaultValue={it.quantity}
@@ -224,6 +226,8 @@ function BomPage() {
                     <td className="px-3 py-2">
                       <input
                         type="number"
+                        aria-label={`Preco unitario de ${it.part_number}`}
+                        title={`Preco unitario de ${it.part_number}`}
                         min={0}
                         step={0.01}
                         defaultValue={it.unit_price_brl ?? ""}

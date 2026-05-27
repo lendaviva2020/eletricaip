@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus, Loader2, FolderKanban, ArrowRight, Sparkles } from "lucide-react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,7 +11,7 @@ import {
 } from "@/lib/current-project";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({ meta: [{ title: "Bem-vindo · EletricAI" }] }),
+  head: () => ({ meta: [{ title: "Bem-vindo - EletricAI" }] }),
   component: OnboardingPage,
 });
 
@@ -24,8 +24,24 @@ function OnboardingPage() {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [client, setClient] = useState("");
-  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [formError, setFormError] = useState("");
   const [step, setStep] = useState<"choose" | "create">("choose");
+
+  const loadProjects = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const list = await listMyProjects();
+      setProjects(list);
+      setStep(list.length === 0 ? "create" : "choose");
+    } catch (error) {
+      setProjects([]);
+      setLoadError((error as Error)?.message || "Não foi possível carregar seus projetos.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -33,28 +49,39 @@ function OnboardingPage() {
       router.navigate({ to: "/login", search: { redirect: "/onboarding" } });
       return;
     }
-    listMyProjects().then((list) => {
-      setProjects(list);
-      setLoading(false);
-      if (list.length === 0) setStep("create");
-    });
-  }, [authLoading, router, user]);
+    void loadProjects();
+  }, [authLoading, loadProjects, router, user]);
 
-  const open = (p: CurrentProject) => {
-    setProject(p);
-    router.navigate({ to: "/workspace" });
+  const open = (project: CurrentProject) => {
+    setProject(project);
+    router.navigate({ to: "/workspace", search: { projectId: project.id } });
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
+  const handleCreate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!name.trim() || creating) return;
+
     setCreating(true);
-    setError("");
-    const proj = await createProject({ name: name.trim(), client: client.trim() || undefined });
-    setCreating(false);
-    if (!proj)
-      return setError("Não foi possível criar o projeto. Verifique se você tem permissão.");
-    open(proj);
+    setFormError("");
+    try {
+      const project = await createProject({
+        name: name.trim(),
+        client: client.trim() || undefined,
+      });
+
+      if (!project) {
+        setFormError(
+          "Não foi possível criar o projeto. Verifique sua permissão e tente novamente.",
+        );
+        return;
+      }
+
+      open(project);
+    } catch (error) {
+      setFormError((error as Error)?.message || "Falha ao criar projeto.");
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -95,13 +122,27 @@ function OnboardingPage() {
           </div>
         )}
 
-        {!loading && step === "choose" && (
+        {!loading && loadError && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-center">
+            <p className="text-sm text-destructive">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => void loadProjects()}
+              className="mt-4 h-10 px-4 rounded-md border border-border hover:bg-accent text-sm"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        )}
+
+        {!loading && !loadError && step === "choose" && (
           <div className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-3">
-              {projects.map((p) => (
+              {projects.map((project) => (
                 <button
-                  key={p.id}
-                  onClick={() => open(p)}
+                  key={project.id}
+                  type="button"
+                  onClick={() => open(project)}
                   className="group text-left rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-accent/40 p-4 transition-all"
                 >
                   <div className="flex items-start gap-3">
@@ -109,9 +150,11 @@ function OnboardingPage() {
                       <FolderKanban className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{p.name}</div>
-                      {p.client && (
-                        <div className="text-[11px] text-muted-foreground truncate">{p.client}</div>
+                      <div className="text-sm font-medium truncate">{project.name}</div>
+                      {project.client && (
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {project.client}
+                        </div>
                       )}
                     </div>
                     <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -119,6 +162,7 @@ function OnboardingPage() {
                 </button>
               ))}
               <button
+                type="button"
                 onClick={() => setStep("create")}
                 className="text-left rounded-lg border border-dashed border-border hover:border-primary/50 hover:bg-accent/40 p-4 transition-all flex items-center gap-3"
               >
@@ -131,7 +175,7 @@ function OnboardingPage() {
           </div>
         )}
 
-        {!loading && step === "create" && (
+        {!loading && !loadError && step === "create" && (
           <form
             onSubmit={handleCreate}
             className="rounded-lg border border-border bg-card p-6 space-y-4"
@@ -145,23 +189,27 @@ function OnboardingPage() {
             <label className="block">
               <span className="text-xs text-muted-foreground">Nome do projeto *</span>
               <input
+                aria-label="Nome do projeto"
+                title="Nome do projeto"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(event) => setName(event.target.value)}
                 required
-                placeholder="Ex.: Sala de Máquinas — Frigorífico XYZ"
+                placeholder="Ex.: Sala de máquinas - Frigorífico XYZ"
                 className="mt-1 h-11 w-full rounded-md bg-input/60 border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
             </label>
             <label className="block">
               <span className="text-xs text-muted-foreground">Cliente</span>
               <input
+                aria-label="Cliente do projeto"
+                title="Cliente do projeto"
                 value={client}
-                onChange={(e) => setClient(e.target.value)}
+                onChange={(event) => setClient(event.target.value)}
                 placeholder="Opcional"
                 className="mt-1 h-11 w-full rounded-md bg-input/60 border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
             </label>
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {formError && <p className="text-xs text-destructive">{formError}</p>}
             <div className="flex gap-2 pt-2">
               {projects.length > 0 && (
                 <button
@@ -173,7 +221,7 @@ function OnboardingPage() {
                 </button>
               )}
               <button
-                disabled={creating}
+                disabled={creating || !name.trim()}
                 type="submit"
                 className="flex-1 h-11 rounded-md text-sm font-semibold text-primary-foreground glow-primary inline-flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{ background: "var(--gradient-primary)" }}

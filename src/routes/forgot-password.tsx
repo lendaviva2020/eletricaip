@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AuthShell, Input } from "./login";
 
 export const Route = createFileRoute("/forgot-password")({
-  head: () => ({ meta: [{ title: "Recuperar senha · EletricAI" }] }),
+  head: () => ({ meta: [{ title: "Recuperar senha - EletricAI" }] }),
   component: ForgotPage,
 });
 

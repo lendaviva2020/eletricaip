@@ -141,6 +141,8 @@ function AiPage() {
         <div className="border-t border-border p-4">
           <div className="max-w-3xl mx-auto relative">
             <textarea
+              aria-label="Mensagem para IA industrial"
+              title="Mensagem para IA industrial"
               value={val}
               onChange={(e) => setVal(e.target.value)}
               onKeyDown={(e) => {

@@ -14,6 +14,12 @@ interface State {
 }
 
 const KEY = "eletricai.currentProject";
+const EMPTY_PROJECT_SNAPSHOT = {
+  schemaVersion: 2,
+  project: { nodes: [], edges: [], tags: {} },
+  voltai: { components: [], edges: [] },
+  editor: { tags: {}, rungs: [], fbdNodes: [], fbdEdges: [] },
+};
 
 export const useCurrentProject = create<State>((set) => ({
   project: null,
@@ -85,6 +91,14 @@ export async function createProject(input: {
   if (error) {
     console.error("createProject error:", error.message);
     return null;
+  }
+  if (data?.id) {
+    const { error: diagramError } = await supabase.from("diagrams").insert({
+      project_id: (data as any).id,
+      name: "main",
+      canvas_data: EMPTY_PROJECT_SNAPSHOT,
+    });
+    if (diagramError) console.warn("createProject diagram insert:", diagramError.message);
   }
   return data
     ? {

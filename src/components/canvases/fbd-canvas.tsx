@@ -60,7 +60,10 @@ const FbdBlockNode = memo(function FbdBlockNode({ data }: { data: FbdNodeData })
         {/* Left: Input Pins */}
         <div className="flex flex-col gap-2.5 items-start">
           {data.inputs.map((pin, i) => (
-            <div key={pin.id} className="relative flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground">
+            <div
+              key={pin.id}
+              className="relative flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground"
+            >
               <Handle
                 type="target"
                 position={Position.Left}
@@ -83,7 +86,10 @@ const FbdBlockNode = memo(function FbdBlockNode({ data }: { data: FbdNodeData })
         {/* Right: Output Pins */}
         <div className="flex flex-col gap-2.5 items-end">
           {data.outputs.map((pin, i) => (
-            <div key={pin.id} className="relative flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground">
+            <div
+              key={pin.id}
+              className="relative flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground"
+            >
               <span>{pin.label}</span>
               <span className="text-[8px] opacity-50">({pin.type})</span>
               <Handle
@@ -109,9 +115,13 @@ const FbdBlockNode = memo(function FbdBlockNode({ data }: { data: FbdNodeData })
         <div className="border-t border-border p-2 bg-background/50 flex flex-col gap-1.5">
           {Object.entries(data.params).map(([key, val]) => (
             <div key={key} className="flex flex-col gap-1">
-              <label className="text-[9px] uppercase font-semibold text-muted-foreground">{key}</label>
+              <label className="text-[9px] uppercase font-semibold text-muted-foreground">
+                {key}
+              </label>
               <input
                 type="text"
+                aria-label={`Parametro ${key} do bloco ${data.label}`}
+                title={`Parametro ${key} do bloco ${data.label}`}
                 value={val}
                 onChange={(e) => data.onParamChange!(key, e.target.value)}
                 className="h-6 px-1.5 text-[10px] bg-input border border-border rounded font-mono"
@@ -221,7 +231,9 @@ export function FbdCanvas() {
         // Find if this input is connected to another block's output
         const incomingEdge = edges.find((e) => e.target === n.id && e.targetHandle === pin.id);
         if (incomingEdge) {
-          inputsCall.push(`${pin.label} := ${incomingEdge.source}.${incomingEdge.sourceHandle?.toUpperCase()}`);
+          inputsCall.push(
+            `${pin.label} := ${incomingEdge.source}.${incomingEdge.sourceHandle?.toUpperCase()}`,
+          );
         } else if (n.data?.params?.[pin.label.toUpperCase()]) {
           inputsCall.push(`${pin.label} := ${n.data.params[pin.label.toUpperCase()]}`);
         } else {
@@ -238,20 +250,20 @@ export function FbdCanvas() {
     (changes: any) => {
       setFbdAll(
         (prevNodes) => applyNodeChanges(changes, prevNodes),
-        (prevEdges) => prevEdges
+        (prevEdges) => prevEdges,
       );
     },
-    [setFbdAll]
+    [setFbdAll],
   );
 
   const onEdgesChange = useCallback(
     (changes: any) => {
       setFbdAll(
         (prevNodes) => prevNodes,
-        (prevEdges) => applyEdgeChanges(changes, prevEdges)
+        (prevEdges) => applyEdgeChanges(changes, prevEdges),
       );
     },
-    [setFbdAll]
+    [setFbdAll],
   );
 
   const onConnect = useCallback(
@@ -278,11 +290,11 @@ export function FbdCanvas() {
                 strokeWidth: 2,
               },
             },
-            prevEdges
-          )
+            prevEdges,
+          ),
       );
     },
-    [nodes, setFbdAll]
+    [nodes, setFbdAll],
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -326,7 +338,7 @@ export function FbdCanvas() {
               }
               return n;
             }),
-          (prevEdges) => prevEdges
+          (prevEdges) => prevEdges,
         );
       };
 
@@ -346,10 +358,10 @@ export function FbdCanvas() {
 
       setFbdAll(
         (prevNodes) => prevNodes.concat(newNode),
-        (prevEdges) => prevEdges
+        (prevEdges) => prevEdges,
       );
     },
-    [nodes, setFbdAll]
+    [nodes, setFbdAll],
   );
 
   const exportST = () => {
@@ -363,7 +375,7 @@ export function FbdCanvas() {
   const deleteSelected = () => {
     setFbdAll(
       (prevNodes) => prevNodes.filter((n) => !n.selected),
-      (prevEdges) => prevEdges.filter((e) => !e.selected)
+      (prevEdges) => prevEdges.filter((e) => !e.selected),
     );
   };
 

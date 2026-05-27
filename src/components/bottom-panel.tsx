@@ -63,12 +63,18 @@ export function BottomPanel() {
           </button>
         ))}
         <div className="ml-auto flex items-center gap-1">
-          <button className="h-7 w-7 grid place-items-center rounded hover:bg-accent text-muted-foreground">
+          <button
+            className="h-7 w-7 grid place-items-center rounded hover:bg-accent text-muted-foreground"
+            title="Limpar console"
+            aria-label="Limpar console"
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={() => setOpen((o) => !o)}
             className="h-7 w-7 grid place-items-center rounded hover:bg-accent text-muted-foreground"
+            title={open ? "Recolher painel inferior" : "Expandir painel inferior"}
+            aria-label={open ? "Recolher painel inferior" : "Expandir painel inferior"}
           >
             {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
           </button>

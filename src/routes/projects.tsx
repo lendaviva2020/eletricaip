@@ -1,10 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Cpu, Trash2, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Plus, Cpu, Trash2, Loader2, Archive, Copy, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { listProjects, createProject, deleteProject } from "@/lib/projects.functions";
+import {
+  archiveProject,
+  createProject,
+  deleteProject,
+  duplicateProject,
+  listProjects,
+} from "@/lib/projects.functions";
 import {
   Dialog,
   DialogContent,
@@ -32,10 +38,15 @@ function Projects() {
   const list = useServerFn(listProjects);
   const create = useServerFn(createProject);
   const del = useServerFn(deleteProject);
+  const duplicate = useServerFn(duplicateProject);
+  const archive = useServerFn(archiveProject);
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  const { data, isLoading } = useQuery({
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["projects"],
     queryFn: () => list({}),
   });
@@ -60,7 +71,37 @@ function Projects() {
     onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
   });
 
-  const projects = data?.projects ?? [];
+  const duplicateMut = useMutation({
+    mutationFn: (id: string) => duplicate({ data: { projectId: id } }),
+    onSuccess: (p: any) => {
+      toast.success(`Projeto "${p.name}" duplicado`);
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      navigate({ to: "/workspace", search: { projectId: p.id } });
+    },
+    onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
+  });
+
+  const archiveMut = useMutation({
+    mutationFn: (id: string) => archive({ data: { projectId: id } }),
+    onSuccess: () => {
+      toast.success("Projeto arquivado");
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
+    onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
+  });
+
+  const projects = useMemo(() => data?.projects ?? [], [data?.projects]);
+  const filteredProjects = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return projects.filter((project: any) => {
+      const projectStatus = project.status ?? "active";
+      if (status !== "all" && projectStatus !== status) return false;
+      if (!q) return true;
+      return [project.name, project.client, project.description, projectStatus]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q));
+    });
+  }, [projects, search, status]);
 
   return (
     <div className="flex-1 overflow-auto scrollbar-thin">
@@ -69,7 +110,9 @@ function Projects() {
           <div>
             <h1 className="text-2xl font-semibold">Projetos industriais</h1>
             <p className="text-sm text-muted-foreground">
-              {isLoading ? "Carregando..." : `${projects.length} projeto(s)`}
+              {isLoading
+                ? "Carregando..."
+                : `${filteredProjects.length} de ${projects.length} projeto(s)`}
             </p>
           </div>
           <CreateProjectDialog
@@ -78,9 +121,41 @@ function Projects() {
           />
         </div>
 
+        <div className="mb-5 flex flex-col md:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome, cliente ou descrição..."
+              className="pl-9"
+            />
+          </div>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+            aria-label="Filtrar projetos por status"
+            title="Filtrar projetos por status"
+          >
+            <option value="all">Todos os status</option>
+            <option value="active">Ativos</option>
+            <option value="archived">Arquivados</option>
+          </select>
+        </div>
+
         {isLoading ? (
           <div className="grid place-items-center h-40 text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : isError ? (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-8 text-center">
+            <p className="text-sm text-destructive mb-3">
+              Falha ao carregar projetos: {(error as Error)?.message ?? "erro desconhecido"}
+            </p>
+            <Button type="button" variant="outline" onClick={() => refetch()}>
+              Tentar novamente
+            </Button>
           </div>
         ) : projects.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-12 text-center">
@@ -93,9 +168,16 @@ function Projects() {
               pending={createMut.isPending}
             />
           </div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border p-12 text-center">
+            <Search className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Nenhum projeto corresponde aos filtros atuais.
+            </p>
+          </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((p: any) => (
+            {filteredProjects.map((p: any) => (
               <div
                 key={p.id}
                 className="group relative rounded-xl border border-border bg-card p-4 hover:border-primary/50 hover:bg-accent/30 transition-all"
@@ -110,7 +192,7 @@ function Projects() {
                     {p.name}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    {p.client ?? p.description ?? "—"}
+                    {p.client ?? p.description ?? "-"}
                   </div>
                   <div className="mt-3 pt-3 border-t border-border flex justify-between text-[11px] font-mono text-muted-foreground">
                     <span>{p.status ?? "active"}</span>
@@ -133,16 +215,37 @@ function Projects() {
                     Exportar
                   </Link>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm(`Excluir "${p.name}"?`)) deleteMut.mutate(p.id);
-                  }}
-                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
-                  aria-label="Excluir"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                  <button
+                    type="button"
+                    onClick={() => duplicateMut.mutate(p.id)}
+                    className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-primary transition"
+                    title="Duplicar projeto"
+                    aria-label="Duplicar projeto"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => archiveMut.mutate(p.id)}
+                    className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-warning transition"
+                    title="Arquivar projeto"
+                    aria-label="Arquivar projeto"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Excluir "${p.name}"?`)) deleteMut.mutate(p.id);
+                    }}
+                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
+                    title="Excluir projeto"
+                    aria-label="Excluir projeto"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -199,7 +302,7 @@ function CreateProjectDialog({
               id="np-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex.: Engarrafamento · Linha 03"
+              placeholder="Ex.: Engarrafamento - Linha 03"
               required
               maxLength={200}
             />

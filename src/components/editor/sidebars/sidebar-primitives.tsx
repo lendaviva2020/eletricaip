@@ -11,6 +11,8 @@ export function SidebarSearch({ title, placeholder }: { title: string; placehold
         <div className="relative">
           <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
+            aria-label={`Buscar em ${title}`}
+            title={`Buscar em ${title}`}
             placeholder={placeholder}
             className="w-full h-8 pl-8 pr-2 rounded bg-input/60 border border-border text-[11px] outline-none focus:ring-1 focus:ring-ring"
           />

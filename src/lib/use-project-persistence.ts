@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useProjectStore } from "@/lib/project-store";
 import { useVoltaiStore } from "@/lib/voltai/store";
+import { useEditorStore } from "@/lib/editor/store";
 import { loadProject, saveProject } from "@/lib/projects.functions";
+import type { ProjectSnapshot } from "@/lib/projects.functions";
 import { toast } from "sonner";
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
@@ -22,10 +24,13 @@ export function useProjectPersistence(projectId: string | null) {
     load({ data: { projectId } })
       .then((res: any) => {
         if (cancelled) return;
-        const snap = res.snapshot;
-        useProjectStore.getState().setAll(snap.project.nodes ?? [], snap.project.edges ?? []);
+        const snap = res.snapshot as ProjectSnapshot;
+        useProjectStore
+          .getState()
+          .hydrateSnapshot(snap.project.nodes ?? [], snap.project.edges ?? [], snap.project.tags);
         useProjectStore.getState().setProjectId(projectId);
         useVoltaiStore.getState().setAll(snap.voltai.components ?? [], snap.voltai.edges ?? []);
+        useEditorStore.getState().hydrateSnapshot(snap.editor);
       })
       .catch((e: any) => {
         toast.error(`Falha ao carregar projeto: ${e.message ?? e}`);
@@ -49,6 +54,10 @@ export function useProjectPersistence(projectId: string | null) {
       if (!s.dirty || s.dirty === prev.dirty) return;
       schedule();
     });
+    const unsub3 = useEditorStore.subscribe((s, prev) => {
+      if (!s.dirty || s.dirty === prev.dirty) return;
+      schedule();
+    });
 
     function schedule() {
       if (timer.current) clearTimeout(timer.current);
@@ -58,15 +67,14 @@ export function useProjectPersistence(projectId: string | null) {
     async function flush() {
       const ps = useProjectStore.getState();
       const vs = useVoltaiStore.getState();
-      const snapshot = {
-        project: { nodes: ps.nodes, edges: ps.edges },
-        voltai: { components: vs.components, edges: vs.edges },
-      };
+      const es = useEditorStore.getState();
+      const snapshot = buildProjectSnapshot();
       try {
         setSaveState("saving");
         await save({ data: { projectId: projectId!, snapshot } });
         ps.markSaved();
         vs.markSaved();
+        es.markSaved();
         setSaveState("saved");
       } catch (e: any) {
         setSaveState("error");
@@ -77,6 +85,7 @@ export function useProjectPersistence(projectId: string | null) {
     return () => {
       unsub();
       unsub2();
+      unsub3();
       if (timer.current) clearTimeout(timer.current);
     };
   }, [projectId, save]);
@@ -85,11 +94,23 @@ export function useProjectPersistence(projectId: string | null) {
 }
 
 export async function snapshotVersion(projectId: string, save: any) {
+  const snapshot = buildProjectSnapshot();
+  return save({ data: { projectId, snapshot, createVersion: true } });
+}
+
+export function buildProjectSnapshot(): ProjectSnapshot {
   const ps = useProjectStore.getState();
   const vs = useVoltaiStore.getState();
-  const snapshot = {
-    project: { nodes: ps.nodes, edges: ps.edges },
+  const es = useEditorStore.getState();
+  return {
+    schemaVersion: 2,
+    project: { nodes: ps.nodes, edges: ps.edges, tags: ps.tags },
     voltai: { components: vs.components, edges: vs.edges },
+    editor: {
+      tags: es.tags,
+      rungs: es.rungs,
+      fbdNodes: es.fbdNodes,
+      fbdEdges: es.fbdEdges,
+    },
   };
-  return save({ data: { projectId, snapshot, createVersion: true } });
 }

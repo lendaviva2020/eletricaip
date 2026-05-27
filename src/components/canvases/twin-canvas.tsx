@@ -47,8 +47,12 @@ export function TwinCanvas() {
   };
 
   const speedVal = getActiveTag("SPEED") || (isLive ? 1420 + Math.sin(Date.now() / 600) * 30 : 0);
-  const currentVal = getActiveTag("CURRENT") || (speedVal > 0 ? 14.5 + Math.abs(Math.sin(Date.now() / 900)) * 2 : 0);
-  const levelVal = getActiveTag("NIVEL") || getActiveTag("LEVEL") || (isLive ? 62 + Math.sin(Date.now() / 3000) * 10 : 50);
+  const currentVal =
+    getActiveTag("CURRENT") || (speedVal > 0 ? 14.5 + Math.abs(Math.sin(Date.now() / 900)) * 2 : 0);
+  const levelVal =
+    getActiveTag("NIVEL") ||
+    getActiveTag("LEVEL") ||
+    (isLive ? 62 + Math.sin(Date.now() / 3000) * 10 : 50);
 
   // Update telemetry history buffers
   useEffect(() => {
@@ -223,7 +227,7 @@ export function TwinCanvas() {
           tPos.x - 30,
           tPos.y - fluidHeight,
           tPos.x + 30,
-          tPos.y
+          tPos.y,
         );
         fGrad.addColorStop(0, "rgba(0, 140, 255, 0.7)"); // Electric Blue fluid
         fGrad.addColorStop(1, "rgba(0, 50, 150, 0.9)");
@@ -248,7 +252,7 @@ export function TwinCanvas() {
           tPos.x + 15,
           tPos.y - fluidHeight + 2 + Math.sin(Date.now() / 250) * 1.5,
           tPos.x + 29,
-          tPos.y - fluidHeight + Math.sin(Date.now() / 250) * 1.5
+          tPos.y - fluidHeight + Math.sin(Date.now() / 250) * 1.5,
         );
         ctx.stroke();
       }
@@ -393,7 +397,7 @@ export function TwinCanvas() {
                   d={buildSvgPath(
                     sensorHistory[selectedSensor].map((h) => h.val),
                     220,
-                    65
+                    65,
                   )}
                   fill="none"
                   stroke="oklch(0.78 0.17 200)"

@@ -1,12 +1,12 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthShell, Input, Divider, GoogleIcon } from "./login";
 
 export const Route = createFileRoute("/signup")({
-  head: () => ({ meta: [{ title: "Criar conta · EletricAI" }] }),
+  head: () => ({ meta: [{ title: "Criar conta - EletricAI" }] }),
   component: SignupPage,
 });
 
@@ -21,7 +21,7 @@ function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) router.navigate({ to: "/dashboard" });
+    if (user) router.navigate({ to: "/onboarding" });
   }, [router, user]);
 
   const handleEmail = async (e: React.FormEvent) => {
@@ -33,7 +33,7 @@ function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?redirect=/onboarding`,
         data: { full_name: name },
       },
     });
@@ -46,7 +46,7 @@ function SignupPage() {
     setError("");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=/onboarding` },
     });
     if (error) setError(error.message);
   };

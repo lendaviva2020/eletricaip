@@ -157,12 +157,18 @@ function AiPanel() {
       <div className="p-2 border-t border-border">
         <div className="relative">
           <input
+            aria-label="Pergunta ao EletricAI"
+            title="Pergunta ao EletricAI"
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
             placeholder="Pergunte ao EletricAI…"
             className="w-full h-9 pl-3 pr-9 rounded-md bg-input border border-border text-[12px] outline-none focus:ring-2 focus:ring-ring"
           />
-          <button className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded text-primary hover:bg-accent">
+          <button
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded text-primary hover:bg-accent"
+            title="Enviar pergunta"
+            aria-label="Enviar pergunta"
+          >
             <Send className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -212,8 +218,8 @@ function VersionsPanel() {
       <RevisionHistory />
       <div className="rounded-md border border-border bg-card p-3 text-[10px] text-muted-foreground">
         <p>
-          Cada snapshot é um registro imutável de auditoria normativa. Para compliance com NR-10 e ISO 9001,
-          salve revisões antes de cada entrega ou modificação significativa.
+          Cada snapshot é um registro imutável de auditoria normativa. Para compliance com NR-10 e
+          ISO 9001, salve revisões antes de cada entrega ou modificação significativa.
         </p>
       </div>
     </div>

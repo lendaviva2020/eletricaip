@@ -71,19 +71,64 @@ export const KIND_CATALOG: Record<
   { kind: NodeKind; category: NodeCategory; label: string; defaults?: Record<string, any> }
 > = {
   // HMI Widgets
-  "Gauge": { kind: "gauge", category: "inst", label: "HMI Gauge", defaults: { tag: "TANQUE_NIVEL", min: 0, max: 100 } },
-  "Numeric Display": { kind: "display", category: "inst", label: "HMI Display", defaults: { tag: "TEMP_M01", unit: "°C" } },
-  "Level Indicator": { kind: "level", category: "inst", label: "HMI Level", defaults: { tag: "TANQUE_NIVEL" } },
-  "Trend": { kind: "trend", category: "inst", label: "HMI Trend", defaults: { tag: "TEMP_M01" } },
-  "Button": { kind: "button", category: "logic", label: "HMI Button", defaults: { tag: "CMD_START", labelText: "Ligar" } },
-  "Switch": { kind: "switch", category: "logic", label: "HMI Switch", defaults: { tag: "AUTO_MAN", labelText: "Auto" } },
-  "Slider": { kind: "slider", category: "logic", label: "HMI Slider", defaults: { tag: "SP_SPEED", min: 0, max: 100 } },
-  "Input Field": { kind: "input", category: "logic", label: "HMI Input", defaults: { tag: "SP_TEMP", value: 50 } },
-  "Alarm Banner": { kind: "alarm_banner", category: "logic", label: "HMI Alarm Banner", defaults: {} },
+  Gauge: {
+    kind: "gauge",
+    category: "inst",
+    label: "HMI Gauge",
+    defaults: { tag: "TANQUE_NIVEL", min: 0, max: 100 },
+  },
+  "Numeric Display": {
+    kind: "display",
+    category: "inst",
+    label: "HMI Display",
+    defaults: { tag: "TEMP_M01", unit: "°C" },
+  },
+  "Level Indicator": {
+    kind: "level",
+    category: "inst",
+    label: "HMI Level",
+    defaults: { tag: "TANQUE_NIVEL" },
+  },
+  Trend: { kind: "trend", category: "inst", label: "HMI Trend", defaults: { tag: "TEMP_M01" } },
+  Button: {
+    kind: "button",
+    category: "logic",
+    label: "HMI Button",
+    defaults: { tag: "CMD_START", labelText: "Ligar" },
+  },
+  Switch: {
+    kind: "switch",
+    category: "logic",
+    label: "HMI Switch",
+    defaults: { tag: "AUTO_MAN", labelText: "Auto" },
+  },
+  Slider: {
+    kind: "slider",
+    category: "logic",
+    label: "HMI Slider",
+    defaults: { tag: "SP_SPEED", min: 0, max: 100 },
+  },
+  "Input Field": {
+    kind: "input",
+    category: "logic",
+    label: "HMI Input",
+    defaults: { tag: "SP_TEMP", value: 50 },
+  },
+  "Alarm Banner": {
+    kind: "alarm_banner",
+    category: "logic",
+    label: "HMI Alarm Banner",
+    defaults: {},
+  },
   "Alarm Table": { kind: "alarm_table", category: "logic", label: "HMI Alarm Table", defaults: {} },
-  "Motor": { kind: "motor", category: "mech", label: "HMI Motor", defaults: { tag: "MOTOR_ON" } },
-  "Pipe": { kind: "pipe", category: "mech", label: "HMI Pipe", defaults: {} },
-  "Texto": { kind: "label", category: "logic", label: "HMI Texto", defaults: { text: "SCADA Screen" } },
+  Motor: { kind: "motor", category: "mech", label: "HMI Motor", defaults: { tag: "MOTOR_ON" } },
+  Pipe: { kind: "pipe", category: "mech", label: "HMI Pipe", defaults: {} },
+  Texto: {
+    kind: "label",
+    category: "logic",
+    label: "HMI Texto",
+    defaults: { text: "SCADA Screen" },
+  },
   Disjuntor: {
     kind: "breaker",
     category: "power",
@@ -282,6 +327,11 @@ interface ProjectState {
   reset: () => void;
   loadDemoFaulty: () => void;
   setAll: (nodes: IndustrialNode[], edges: IndustrialEdge[]) => void;
+  hydrateSnapshot: (
+    nodes: IndustrialNode[],
+    edges: IndustrialEdge[],
+    tags?: Record<string, number | boolean | string>,
+  ) => void;
   setProjectId: (id: string | null) => void;
   markSaved: () => void;
 }
@@ -405,6 +455,8 @@ export const useProjectStore = create<ProjectState>((set) => {
         ],
       }),
     setAll: (nodes, edges) => set({ nodes, edges, selectedId: null, dirty: false }),
+    hydrateSnapshot: (nodes, edges, tags = {}) =>
+      set({ nodes, edges, tags, selectedId: null, dirty: false }),
     setProjectId: (id) => set({ projectId: id, dirty: false }),
     markSaved: () => set({ dirty: false, lastSavedAt: Date.now() }),
   };

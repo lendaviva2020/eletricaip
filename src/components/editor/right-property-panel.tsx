@@ -170,6 +170,8 @@ function TagsSection({ nodeId }: { nodeId: string }) {
 
         <div className="flex items-center gap-1 pt-1">
           <input
+            aria-label="Nome da nova tag"
+            title="Nome da nova tag"
             value={name}
             onChange={(e) => {
               setName(e.target.value);
@@ -184,6 +186,8 @@ function TagsSection({ nodeId }: { nodeId: string }) {
             )}
           />
           <select
+            aria-label="Tipo da nova tag"
+            title="Tipo da nova tag"
             value={type}
             onChange={(e) => setType(e.target.value as EditorTagType)}
             className="h-7 rounded bg-input border border-border text-[10px] px-1"

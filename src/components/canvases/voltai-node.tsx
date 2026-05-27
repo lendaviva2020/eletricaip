@@ -26,7 +26,10 @@ function handleOffset(terminals: VoltaiTerminal[], terminal: VoltaiTerminal) {
     : { left: `${percent}%` };
 }
 
-export const VoltaiFlowNode = memo(function VoltaiFlowNode({ data, selected }: NodeProps<VoltaiDiagramComponent>) {
+export const VoltaiFlowNode = memo(function VoltaiFlowNode({
+  data,
+  selected,
+}: NodeProps<VoltaiDiagramComponent>) {
   const definition = VOLTAI_COMPONENT_BY_TYPE[data.type];
   const status =
     data.simulationState.tripped || data.simulationState.failed || data.simulationState.blown;

@@ -48,7 +48,8 @@ export function SimCanvas() {
         const name = tag.name.toUpperCase();
         if (name === "SP_SPEED" || name === "VELOCIDADE") speed = Number(tag.value);
         else if (name === "TANQUE_NIVEL" || name === "NIVEL") level = Number(tag.value);
-        else if (name === "TEMP_M01") current = Number(tag.value) / 5; // scaled down for current visualizer
+        else if (name === "TEMP_M01")
+          current = Number(tag.value) / 5; // scaled down for current visualizer
         else if (name === "VALVE_OPEN" || name === "POS") valve = tag.value ? 100 : 0;
       });
 

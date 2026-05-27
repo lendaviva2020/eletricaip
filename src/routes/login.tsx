@@ -1,15 +1,18 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
+const DEFAULT_REDIRECT = "/dashboard";
+
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>) => ({
-    redirect: (s.redirect as string) || "/dashboard",
+    redirect:
+      typeof s.redirect === "string" && s.redirect.startsWith("/") ? s.redirect : DEFAULT_REDIRECT,
   }),
-  head: () => ({ meta: [{ title: "Entrar · EletricAI" }] }),
+  head: () => ({ meta: [{ title: "Entrar - EletricAI" }] }),
   component: LoginPage,
 });
 
@@ -24,13 +27,21 @@ function LoginPage() {
 
   useEffect(() => {
     if (!user) return;
-    // After login, send to onboarding if no project is selected yet
     (async () => {
       const { useCurrentProject } = await import("@/lib/current-project");
-      const cp = useCurrentProject.getState();
-      cp.hydrateFromStorage();
-      const target = cp.project ? redirect || "/workspace" : "/onboarding";
-      router.navigate({ to: target });
+      const currentProject = useCurrentProject.getState();
+      currentProject.hydrateFromStorage();
+
+      if (
+        !currentProject.project &&
+        redirect !== "/onboarding" &&
+        !redirect.startsWith("/invite/")
+      ) {
+        router.navigate({ to: "/onboarding" });
+        return;
+      }
+
+      router.navigate({ to: redirect as never });
     })();
   }, [redirect, router, user]);
 
@@ -45,9 +56,11 @@ function LoginPage() {
 
   const handleGoogle = async () => {
     setError("");
+    const callback = new URL("/auth/callback", window.location.origin);
+    callback.searchParams.set("redirect", redirect || DEFAULT_REDIRECT);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}${redirect || "/dashboard"}` },
+      options: { redirectTo: callback.toString() },
     });
     if (error) setError(error.message);
   };
@@ -62,14 +75,8 @@ function LoginPage() {
       </button>
       <Divider />
       <form onSubmit={handleEmail} className="space-y-3">
-        <Input label="Email" type="email" value={email} onChange={(v) => setEmail(v)} required />
-        <Input
-          label="Senha"
-          type="password"
-          value={password}
-          onChange={(v) => setPassword(v)}
-          required
-        />
+        <Input label="Email" type="email" value={email} onChange={setEmail} required />
+        <Input label="Senha" type="password" value={password} onChange={setPassword} required />
         {error && <p className="text-xs text-destructive">{error}</p>}
         <button
           disabled={loading}
@@ -135,13 +142,13 @@ export function AuthShell({
           </p>
           <ul className="mt-8 space-y-2 text-sm text-muted-foreground">
             <li className="flex gap-2">
-              <span className="text-primary">●</span> Runtime determinístico em tempo real
+              <span className="text-primary">•</span> Runtime determinístico em tempo real
             </li>
             <li className="flex gap-2">
-              <span className="text-primary">●</span> IA contextual + manutenção preditiva
+              <span className="text-primary">•</span> IA contextual + manutenção preditiva
             </li>
             <li className="flex gap-2">
-              <span className="text-primary">●</span> Conformidade NBR 5410 / IEC 61131
+              <span className="text-primary">•</span> Conformidade NBR 5410 / IEC 61131
             </li>
           </ul>
         </div>
@@ -188,6 +195,8 @@ export function Input({
       <div className="relative mt-1">
         <input
           type={inputType}
+          aria-label={label}
+          title={label}
           value={value}
           required={required}
           onChange={(e) => onChange(e.target.value)}

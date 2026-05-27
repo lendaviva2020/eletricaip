@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/invite/$token")({
-  head: () => ({ meta: [{ title: "Aceitar convite · EletricAI" }] }),
+  head: () => ({ meta: [{ title: "Aceitar convite - EletricAI" }] }),
   component: AcceptInvitePage,
 });
 
@@ -19,21 +19,33 @@ function AcceptInvitePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) {
+    let mounted = true;
+
+    async function acceptInvite() {
+      const { data: userResult } = await supabase.auth.getUser();
+      if (!mounted) return;
+      if (!userResult.user) {
         setStatus("needs-auth");
         return;
       }
+
       try {
         await accept({ data: { token } });
+        if (!mounted) return;
         setStatus("ok");
         setTimeout(() => navigate({ to: "/dashboard" }), 1200);
       } catch (e) {
+        if (!mounted) return;
         setError((e as Error).message);
         setStatus("error");
       }
-    })();
+    }
+
+    void acceptInvite();
+
+    return () => {
+      mounted = false;
+    };
   }, [token, accept, navigate]);
 
   return (
@@ -42,14 +54,14 @@ function AcceptInvitePage() {
         {status === "loading" && (
           <>
             <Loader2 className="w-8 h-8 animate-spin mx-auto" />
-            <p>Processando convite…</p>
+            <p>Processando convite...</p>
           </>
         )}
         {status === "needs-auth" && (
           <>
             <h1 className="text-xl font-semibold">Faça login para aceitar o convite</h1>
             <p className="text-sm text-muted-foreground">
-              Use o e-mail para o qual o convite foi enviado.
+              Use o email para o qual o convite foi enviado.
             </p>
             <Button
               onClick={() =>
@@ -63,7 +75,7 @@ function AcceptInvitePage() {
         {status === "ok" && (
           <>
             <h1 className="text-xl font-semibold">Convite aceito!</h1>
-            <p className="text-sm text-muted-foreground">Redirecionando…</p>
+            <p className="text-sm text-muted-foreground">Redirecionando...</p>
           </>
         )}
         {status === "error" && (

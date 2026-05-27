@@ -13,17 +13,17 @@ export function Topbar() {
   const onSave = async () => {
     setSaving("busy");
     setSavedMsg(null);
-    const r = await saveManualVersion(`Snapshot ${new Date().toLocaleString("pt-BR")}`);
-    if (r.ok) {
+    const result = await saveManualVersion(`Snapshot ${new Date().toLocaleString("pt-BR")}`);
+    if (result.ok) {
       setSaving("ok");
-      setSavedMsg(`v${r.version} salva`);
+      setSavedMsg(`v${result.version} salva`);
       setTimeout(() => {
         setSaving("idle");
         setSavedMsg(null);
       }, 2500);
     } else {
       setSaving("err");
-      setSavedMsg(r.error ?? "Falha ao salvar");
+      setSavedMsg(result.error ?? "Falha ao salvar");
       setTimeout(() => {
         setSaving("idle");
         setSavedMsg(null);
@@ -38,20 +38,22 @@ export function Topbar() {
         <GitBranch className="h-3.5 w-3.5" />
         <span className="font-mono">main</span>
         <span className="text-border">/</span>
-        <span className="text-foreground font-medium">Planta — Linha 03</span>
+        <span className="text-foreground font-medium">Planta - Linha 03</span>
       </div>
 
       <div className="flex-1 flex justify-center min-w-0">
         <div className="relative w-full max-w-md">
           <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
-            placeholder="Buscar…"
+            aria-label="Busca global"
+            title="Busca global"
+            placeholder="Buscar..."
             className="w-full h-9 pl-9 pr-3 rounded-md bg-input/60 border border-border text-sm
                        outline-none focus:ring-2 focus:ring-ring focus:bg-input
                        placeholder:text-muted-foreground/70"
           />
           <kbd className="hidden sm:block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-            ⌘K
+            Ctrl K
           </kbd>
         </div>
       </div>

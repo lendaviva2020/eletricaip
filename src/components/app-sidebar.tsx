@@ -9,8 +9,8 @@ import {
   Settings,
   FolderOpen,
 } from "lucide-react";
-import { BrandBolt } from "@/components/brand-bolt";
 import { useEffect } from "react";
+import { BrandBolt } from "@/components/brand-bolt";
 import { cn } from "@/lib/utils";
 import { useCurrentProject } from "@/lib/current-project";
 
@@ -22,7 +22,7 @@ const items = [
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Clientes", url: "/clients", icon: Users },
   { title: "Configurações", url: "/settings", icon: Settings },
-];
+] as const;
 
 export function AppSidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -110,10 +110,10 @@ export function AppSidebar() {
         <div className="rounded-md glass p-3">
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-success energized" />
-            Runtime online · 24ms
+            Runtime online - 24ms
           </div>
           <div className="mt-1 text-[10px] font-mono text-muted-foreground">
-            v0.1.0 · build 2026.05
+            v0.1.0 - build 2026.05
           </div>
         </div>
       </div>

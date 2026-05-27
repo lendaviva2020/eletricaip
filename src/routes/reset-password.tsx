@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AuthShell, Input } from "./login";
 
 export const Route = createFileRoute("/reset-password")({
-  head: () => ({ meta: [{ title: "Nova senha · EletricAI" }] }),
+  head: () => ({ meta: [{ title: "Nova senha - EletricAI" }] }),
   component: ResetPage,
 });
 
@@ -18,7 +18,6 @@ function ResetPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Supabase parses recovery hash on load — the user becomes a temp session
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) setReady(true);
       else setError("Link inválido ou expirado. Solicite outro email.");

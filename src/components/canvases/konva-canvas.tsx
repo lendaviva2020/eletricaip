@@ -304,7 +304,7 @@ function NodeShape({
 
     // Get current value of the bound tag
     const boundTagName = String(node.params.tag || "");
-    const tagValue = boundTagName ? tags[boundTagName] ?? 0 : 0;
+    const tagValue = boundTagName ? (tags[boundTagName] ?? 0) : 0;
 
     return (
       <Group

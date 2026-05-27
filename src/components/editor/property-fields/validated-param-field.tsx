@@ -47,12 +47,16 @@ export function ValidatedParamField({ spec, value, onCommit }: Props) {
       {spec.type === "boolean" ? (
         <input
           type="checkbox"
+          aria-label={spec.label}
+          title={spec.label}
           checked={Boolean(value)}
           onChange={(e) => commit(e.target.checked)}
           className="h-4 w-4"
         />
       ) : spec.type === "select" && spec.options ? (
         <select
+          aria-label={spec.label}
+          title={spec.label}
           value={String(value ?? spec.defaultValue)}
           onChange={(e) => commit(e.target.value)}
           className={cn(
@@ -69,6 +73,8 @@ export function ValidatedParamField({ spec, value, onCommit }: Props) {
       ) : (
         <input
           type={spec.type === "number" || spec.type === "time" ? "number" : "text"}
+          aria-label={spec.label}
+          title={spec.label}
           value={draft}
           min={spec.min}
           max={spec.max}

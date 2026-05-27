@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Cpu,
@@ -35,6 +36,12 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const { user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) router.navigate({ to: "/dashboard" });
+  }, [router, user]);
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <Nav authed={!!user} />
