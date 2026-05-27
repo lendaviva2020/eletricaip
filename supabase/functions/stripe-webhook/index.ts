@@ -18,9 +18,25 @@ const PLAN_MAP: Record<string, string> = {
   premium: "premium",
 };
 
-function verifyStripeSignature(payload: string, signature: string, secret: string): any {
+/**
+ * Constant-time string equality (hex). Evita timing oracle ao comparar
+ * a assinatura HMAC-SHA256 esperada com o valor recebido.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+const SIGNATURE_TOLERANCE_SEC = 300;
+
+async function verifyStripeSignature(
+  payload: string,
+  signature: string,
+  secret: string,
+): Promise<any | null> {
   const encoder = new TextEncoder();
-  const key = encoder.encode(secret);
   const parts = signature.split(",");
   let sigValue = "";
   let timestamp = "";
@@ -30,21 +46,33 @@ function verifyStripeSignature(payload: string, signature: string, secret: strin
     if (k === "t") timestamp = v;
   }
   if (!sigValue || !timestamp) return null;
-  const signedPayload = `${timestamp}.${payload}`;
-  const cryptoKey = encoder.encode(secret);
-  const algo = { name: "HMAC", hash: "SHA-256" };
 
-  return crypto.subtle
-    .importKey("raw", cryptoKey, algo, false, ["sign"])
-    .then((key) => crypto.subtle.sign(algo, key, encoder.encode(signedPayload)))
-    .then((sig) => {
-      const expected = Array.from(new Uint8Array(sig))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      if (expected !== sigValue) return null;
-      return JSON.parse(payload);
-    })
-    .catch(() => null);
+  // Replay protection: rejeita payload assinado há > tolerância.
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) return null;
+  if (Math.abs(Date.now() / 1000 - ts) > SIGNATURE_TOLERANCE_SEC) return null;
+
+  try {
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const sig = await crypto.subtle.sign(
+      "HMAC",
+      cryptoKey,
+      encoder.encode(`${timestamp}.${payload}`),
+    );
+    const expected = Array.from(new Uint8Array(sig))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    if (!timingSafeEqual(expected, sigValue)) return null;
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
 }
 
 function getPlanFromPrice(priceId: string): string | null {

@@ -4,10 +4,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-const SUPABASE_URL_FALLBACK = "https://hcjkwqyxqxnbqikwltvc.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY_FALLBACK =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhjamt3cXl4cXhuYnFpa3dsdHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Mzk5MzksImV4cCI6MjA5MzUxNTkzOX0.0BM9sLDD2fsvj4CGtPFrMZ90Xf-OnDeoLCkYB9K4rZ4";
-
+// Sem fallback hardcoded: se a env não está presente o servidor falha alto.
 function getServerSupabasePublicEnv() {
   const env = typeof process !== "undefined" ? process.env : {};
   return {
@@ -15,7 +12,7 @@ function getServerSupabasePublicEnv() {
       env.SUPABASE_URL ||
       env.VITE_SUPABASE_URL ||
       env.NEXT_PUBLIC_SUPABASE_URL ||
-      SUPABASE_URL_FALLBACK,
+      "",
     anonKey:
       env.SUPABASE_PUBLISHABLE_KEY ||
       env.SUPABASE_ANON_KEY ||
@@ -23,7 +20,7 @@ function getServerSupabasePublicEnv() {
       env.VITE_SUPABASE_ANON_KEY ||
       env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
       env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-      SUPABASE_PUBLISHABLE_KEY_FALLBACK,
+      "",
   };
 }
 

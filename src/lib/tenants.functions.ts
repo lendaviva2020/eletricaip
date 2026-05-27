@@ -161,18 +161,12 @@ export const createInvite = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tenant_id, role")
-      .eq("id", userId)
-      .maybeSingle();
-    if (!profile?.tenant_id) throw new Error("Workspace não encontrado.");
-    if (profile.role !== "admin") throw new Error("Apenas administradores podem convidar membros.");
+    const tenantId = await requireTenantAdmin(supabase, userId);
 
     const { data: invite, error } = await supabase
       .from("invites")
       .insert({
-        tenant_id: profile.tenant_id,
+        tenant_id: tenantId,
         email: data.email.toLowerCase(),
         role: data.role,
       })
@@ -198,17 +192,11 @@ export const removeMember = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     if (data.userId === userId) throw new Error("Você não pode remover a si mesmo.");
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tenant_id, role")
-      .eq("id", userId)
-      .maybeSingle();
-    if (!profile?.tenant_id || profile.role !== "admin")
-      throw new Error("Apenas administradores podem remover membros.");
+    const tenantId = await requireTenantAdmin(supabase, userId);
     const { error } = await supabase
       .from("tenant_memberships")
       .delete()
-      .eq("tenant_id", profile.tenant_id)
+      .eq("tenant_id", tenantId)
       .eq("user_id", data.userId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
@@ -226,21 +214,47 @@ export const updateMemberRole = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tenant_id, role")
-      .eq("id", userId)
-      .maybeSingle();
-    if (!profile?.tenant_id || profile.role !== "admin")
-      throw new Error("Apenas administradores podem alterar papéis.");
+    const tenantId = await requireTenantAdmin(supabase, userId);
     const { error } = await supabase
       .from("tenant_memberships")
       .update({ role: data.role })
-      .eq("tenant_id", profile.tenant_id)
+      .eq("tenant_id", tenantId)
       .eq("user_id", data.userId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+/**
+ * Resolve o tenant ativo do usuário a partir de `profiles.tenant_id` e
+ * confirma que ele tem papel `admin`/`owner` em `tenant_memberships` para
+ * esse tenant. Fonte de verdade do RBAC = `tenant_memberships`, nunca
+ * `profiles.role` (que pode divergir).
+ */
+async function requireTenantAdmin(
+  supabase: Awaited<ReturnType<typeof requireSupabaseAuth.client>>["context"] extends infer _ ? any : never,
+  userId: string,
+): Promise<string> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", userId)
+    .maybeSingle();
+  const tenantId = profile?.tenant_id as string | undefined;
+  if (!tenantId) throw new Error("Workspace não encontrado.");
+
+  const { data: membership } = await supabase
+    .from("tenant_memberships")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  const role = membership?.role as string | undefined;
+  if (!role || !["owner", "admin"].includes(role)) {
+    throw new Error("Apenas administradores do workspace podem executar esta ação.");
+  }
+  return tenantId;
+}
 
 export const acceptInviteByToken = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
