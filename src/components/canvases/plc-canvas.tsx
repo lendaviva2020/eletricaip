@@ -207,7 +207,15 @@ export function PlcCanvas() {
             {tab.label}
           </button>
         ))}
+        <button
+          onClick={() => downloadPlcOpenXml(project)}
+          title="Exportar projeto PLCopen XML (.plcproj)"
+          className="ml-auto mb-1 flex items-center gap-1.5 px-2.5 py-1 rounded border border-border bg-card/60 text-[10px] font-mono uppercase tracking-wider hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+        >
+          <Download className="h-3 w-3" /> .plcproj
+        </button>
       </div>
+
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-auto p-4">
@@ -623,9 +631,22 @@ export function PlcCanvas() {
                         <option value="fbd">FBD</option>
                         <option value="st">ST</option>
                       </select>
-                      <button className="flex items-center gap-1 h-7 px-2 rounded border border-border bg-card/60 text-[10px] font-mono hover:bg-accent cursor-pointer text-muted-foreground hover:text-foreground">
+                      {activeBlock.language !== "st" && (
+                        <button
+                          onClick={openInCanvas}
+                          title={`Abrir no canvas ${LANG_LABELS[activeBlock.language]}`}
+                          className="flex items-center gap-1 h-7 px-2 rounded border border-border bg-card/60 text-[10px] font-mono hover:bg-accent cursor-pointer text-muted-foreground hover:text-foreground"
+                        >
+                          <ExternalLink className="h-3 w-3" /> Abrir Canvas
+                        </button>
+                      )}
+                      <button
+                        onClick={handleCompile}
+                        className="flex items-center gap-1 h-7 px-2 rounded border border-primary/30 bg-primary/10 text-[10px] font-mono hover:bg-primary/20 cursor-pointer text-primary"
+                      >
                         <Play className="h-3 w-3" /> Compilar
                       </button>
+
                     </div>
                   </div>
                   <div className="flex-1 min-h-0">
