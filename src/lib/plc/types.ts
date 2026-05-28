@@ -33,15 +33,29 @@ export interface PlcRack {
 
 export type ProgramLang = "ladder" | "fbd" | "st";
 
+export interface PlcLadderSnapshot {
+  rungs: unknown[]; // LadderRung[] — kept opaque here to avoid cycle with editor types
+}
+export interface PlcFbdSnapshot {
+  nodes: unknown[];
+  edges: unknown[];
+}
+
 export interface PlcProgramBlock {
   id: string;
   name: string;
   type: "OB" | "FC" | "FB" | "DB";
   number: number;
   language: ProgramLang;
+  /** Compiled / authored ST source. Updated when user clicks "Compilar" on a ladder/FBD block. */
   code: string;
   comment: string;
+  /** Persisted Ladder snapshot for this block (when language === "ladder"). */
+  ladder?: PlcLadderSnapshot;
+  /** Persisted FBD snapshot for this block (when language === "fbd"). */
+  fbd?: PlcFbdSnapshot;
 }
+
 
 export interface PlcProject {
   vendor: PlcVendor;
