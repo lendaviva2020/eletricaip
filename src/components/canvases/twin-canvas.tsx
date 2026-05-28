@@ -66,9 +66,6 @@ export function TwinCanvas() {
     getActiveTag("NIVEL") ||
     getActiveTag("LEVEL") ||
     (isLive ? 62 + Math.sin(Date.now() / 3000) * 10 : 50);
-<<<<<<< HEAD
-=======
-
   // ===== "What-If" physical model =====
   // Simplified induction-motor + thermal model: keeping torque ∝ load, the
   // pump-curve gives speed drop ≈ slip_nom * (load/100), and current rises
@@ -120,7 +117,6 @@ export function TwinCanvas() {
     const temp = 25 + Math.pow(currentVal, 2) * 0.18;
     return { speed: speedVal, current: currentVal, temperature: temp, efficiency: eff };
   }, [speedVal, currentVal]);
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
 
   // Update telemetry history buffers
   useEffect(() => {

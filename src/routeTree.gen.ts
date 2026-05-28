@@ -36,11 +36,7 @@ import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
-<<<<<<< HEAD
-import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-=======
 import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
 import { Route as ProjectsProjectIdExportRouteImport } from './routes/projects.$projectId.export'
 import { Route as ProjectsProjectIdBomRouteImport } from './routes/projects.$projectId.bom'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
@@ -182,17 +178,10 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-<<<<<<< HEAD
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
-  getParentRoute: () => rootRouteImport,
-=======
 const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
   id: '/$clientId',
   path: '/$clientId',
   getParentRoute: () => ClientsRoute,
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
 } as any)
 const ProjectsProjectIdExportRoute = ProjectsProjectIdExportRouteImport.update({
   id: '/$projectId/export',
@@ -238,11 +227,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
-<<<<<<< HEAD
-  '/auth/callback': typeof AuthCallbackRoute
-=======
   '/clients/$clientId': typeof ClientsClientIdRoute
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
@@ -277,11 +262,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
-<<<<<<< HEAD
-  '/auth/callback': typeof AuthCallbackRoute
-=======
   '/clients/$clientId': typeof ClientsClientIdRoute
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
@@ -317,11 +298,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
-<<<<<<< HEAD
-  '/auth/callback': typeof AuthCallbackRoute
-=======
   '/clients/$clientId': typeof ClientsClientIdRoute
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
@@ -358,11 +335,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
-<<<<<<< HEAD
-    | '/auth/callback'
-=======
     | '/clients/$clientId'
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/appearance'
@@ -397,11 +370,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
-<<<<<<< HEAD
-    | '/auth/callback'
-=======
     | '/clients/$clientId'
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/appearance'
@@ -436,11 +405,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
-<<<<<<< HEAD
-    | '/auth/callback'
-=======
     | '/clients/$clientId'
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/appearance'
@@ -674,21 +639,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-<<<<<<< HEAD
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-=======
     '/clients/$clientId': {
       id: '/clients/$clientId'
       path: '/$clientId'
       fullPath: '/clients/$clientId'
       preLoaderRoute: typeof ClientsClientIdRouteImport
       parentRoute: typeof ClientsRoute
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     }
     '/projects/$projectId/export': {
       id: '/projects/$projectId/export'

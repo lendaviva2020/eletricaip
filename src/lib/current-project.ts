@@ -80,22 +80,4 @@ export async function createProject(input: {
     console.error("createProject error:", (error as Error).message);
     return null;
   }
-<<<<<<< HEAD
-  if (data?.id) {
-    const { error: diagramError } = await supabase.from("diagrams").insert({
-      project_id: (data as any).id,
-      name: "main",
-      canvas_data: EMPTY_PROJECT_SNAPSHOT,
-    });
-    if (diagramError) console.warn("createProject diagram insert:", diagramError.message);
-  }
-  return data
-    ? {
-        id: (data as any).id,
-        name: (data as any).name,
-        client: ((data as any).metadata as any)?.client ?? null,
-      }
-    : null;
-=======
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
 }
