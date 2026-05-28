@@ -37,6 +37,7 @@ import { Route as SettingsAppearanceRouteImport } from './routes/settings.appear
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ProjectsProjectIdExportRouteImport } from './routes/projects.$projectId.export'
 import { Route as ProjectsProjectIdBomRouteImport } from './routes/projects.$projectId.bom'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
@@ -183,6 +184,11 @@ const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
   path: '/$clientId',
   getParentRoute: () => ClientsRoute,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsProjectIdExportRoute = ProjectsProjectIdExportRouteImport.update({
   id: '/$projectId/export',
   path: '/$projectId/export',
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/workspace': typeof WorkspaceRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
@@ -335,6 +344,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+    | '/auth/callback'
     | '/clients/$clientId'
     | '/invite/$token'
     | '/settings/ai-status'
@@ -370,6 +380,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+    | '/auth/callback'
     | '/clients/$clientId'
     | '/invite/$token'
     | '/settings/ai-status'
@@ -405,6 +416,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/workspace'
+    | '/auth/callback'
     | '/clients/$clientId'
     | '/invite/$token'
     | '/settings/ai-status'
@@ -645,6 +657,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/clients/$clientId'
       preLoaderRoute: typeof ClientsClientIdRouteImport
       parentRoute: typeof ClientsRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId/export': {
       id: '/projects/$projectId/export'
