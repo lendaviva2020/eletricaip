@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Cpu, Copy, Archive, Trash2, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Plus, Cpu, Copy, Archive, Trash2, Loader2, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+
 import { toast } from "sonner";
 import {
   listProjects,
@@ -40,8 +41,6 @@ function Projects() {
   const dup = useServerFn(duplicateProject);
   const arch = useServerFn(archiveProject);
   const del = useServerFn(deleteProject);
-  const duplicate = useServerFn(duplicateProject);
-  const archive = useServerFn(archiveProject);
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -91,24 +90,6 @@ function Projects() {
     onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
   });
 
-  const duplicateMut = useMutation({
-    mutationFn: (id: string) => duplicate({ data: { projectId: id } }),
-    onSuccess: (p: any) => {
-      toast.success(`Projeto "${p.name}" duplicado`);
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      navigate({ to: "/workspace", search: { projectId: p.id } });
-    },
-    onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
-  });
-
-  const archiveMut = useMutation({
-    mutationFn: (id: string) => archive({ data: { projectId: id } }),
-    onSuccess: () => {
-      toast.success("Projeto arquivado");
-      qc.invalidateQueries({ queryKey: ["projects"] });
-    },
-    onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
-  });
 
   const projects = useMemo(() => data?.projects ?? [], [data?.projects]);
   const filteredProjects = useMemo(() => {

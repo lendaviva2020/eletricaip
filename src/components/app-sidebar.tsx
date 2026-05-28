@@ -15,7 +15,15 @@ import { BrandBolt } from "@/components/brand-bolt";
 import { cn } from "@/lib/utils";
 import { useCurrentProject } from "@/lib/current-project";
 
-const items = [
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof LayoutDashboard;
+  accent?: boolean;
+  core?: boolean;
+};
+
+const items: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Projetos", url: "/projects", icon: FolderKanban },
   { title: "Industrial Workspace", url: "/workspace", icon: Cpu, accent: true },
@@ -24,7 +32,8 @@ const items = [
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Clientes", url: "/clients", icon: Users },
   { title: "Configurações", url: "/settings", icon: Settings },
-] as const;
+];
+
 
 export function AppSidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });

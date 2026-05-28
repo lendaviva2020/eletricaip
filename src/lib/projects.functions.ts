@@ -463,67 +463,6 @@ export const deleteProject = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const archiveProject = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ projectId: z.string().uuid() }))
-  .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
-    const { error } = await supabase
-      .from("projects")
-      .update({ status: "archived", updated_at: new Date().toISOString() })
-      .eq("id", data.projectId);
-    if (error) throw new Error(error.message);
-    return { ok: true as const };
-  });
-
-export const duplicateProject = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ projectId: z.string().uuid(), name: z.string().max(200).optional() }))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as any;
-    const tenant_id = await ensureTenant(supabase, userId);
-
-    const { data: project, error: pErr } = await supabase
-      .from("projects")
-      .select("name, description, metadata")
-      .eq("id", data.projectId)
-      .maybeSingle();
-    if (pErr) throw new Error(pErr.message);
-    if (!project) throw new Error("Projeto não encontrado.");
-
-    const { data: diagram } = await supabase
-      .from("diagrams")
-      .select("canvas_data")
-      .eq("project_id", data.projectId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const { data: copy, error: cErr } = await supabase
-      .from("projects")
-      .insert({
-        name: data.name?.trim() || `${project.name} (cópia)`,
-        description: project.description ?? null,
-        created_by: userId,
-        tenant_id,
-        metadata: project.metadata ?? {},
-      })
-      .select("id, name, metadata")
-      .single();
-    if (cErr) throw new Error(cErr.message);
-
-    await supabase.from("diagrams").insert({
-      project_id: copy.id,
-      name: "main",
-      canvas_data: parseSnapshot(diagram?.canvas_data) as any,
-    });
-
-    return {
-      id: copy.id as string,
-      name: copy.name as string,
-      client: (copy.metadata as any)?.client ?? null,
-    };
-  });
 
 export const listProjectVersions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

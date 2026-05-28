@@ -107,7 +107,8 @@ export function buildProjectSnapshot(): ProjectSnapshot {
     project: { nodes: ps.nodes, edges: ps.edges, tags: ps.tags },
     voltai: { components: vs.components, edges: vs.edges },
     editor: {
-      tags: es.tags,
+      tags: es.editorTags,
+
       rungs: es.rungs,
       fbdNodes: es.fbdNodes,
       fbdEdges: es.fbdEdges,

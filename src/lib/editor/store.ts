@@ -16,6 +16,8 @@ export interface EditorTag {
 }
 
 export type FbdNode = Node<Record<string, unknown>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type FbdNode = Node<any>;
 export type FbdEdge = Edge;
 
 export interface EditorSnapshot {
