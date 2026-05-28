@@ -126,11 +126,6 @@ export function useCollab(projectId: string | null) {
       .on("broadcast", { event: "canvas-change" }, (payload: any) => {
         const data = payload.payload;
         if (data.senderId === userId) return;
-<<<<<<< HEAD
-
-        // Silently update both stores!
-=======
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
         if (data.project) {
           useProjectStore.getState().setAll(data.project.nodes ?? [], data.project.edges ?? []);
         }
@@ -166,14 +161,10 @@ export function useCollab(projectId: string | null) {
     const unsubVoltai = useVoltaiStore.subscribe((state, prev) => {
       if (state.dirty && state.dirty !== prev.dirty) {
         broadcastStateChange(
-<<<<<<< HEAD
-          { nodes: useProjectStore.getState().nodes, edges: useProjectStore.getState().edges },
-=======
           {
             nodes: useProjectStore.getState().nodes,
             edges: useProjectStore.getState().edges,
           },
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
           { components: state.components, edges: state.edges },
         );
       }

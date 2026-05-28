@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import {
   Cpu,
@@ -19,7 +19,10 @@ import {
   Zap,
   Terminal,
   Save,
+  Download,
+  ExternalLink,
 } from "lucide-react";
+import { toast } from "sonner";
 import { usePlcStore } from "@/lib/plc/store";
 import {
   HARDWARE_CATALOG,
@@ -28,9 +31,14 @@ import {
   type PlcProgramBlock,
   type ProgramLang,
 } from "@/lib/plc/types";
+import { useEditorStore } from "@/lib/editor/store";
+import { compileProgram } from "@/lib/ladder/compiler";
+import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
+import type { LadderRung } from "@/lib/ladder/types";
 import { FloatingLegend } from "./unifilar-canvas";
 
 const LANG_LABELS: Record<ProgramLang, string> = { ladder: "LAD", fbd: "FBD", st: "ST" };
+
 
 export function PlcCanvas() {
   const {
@@ -91,6 +99,68 @@ export function PlcCanvas() {
     if (activeBlock) updateBlock(activeBlock.id, { code });
   };
 
+  // #PLC-01 — Bridge PLC ↔ Editor: persist outgoing block snapshot, hydrate incoming
+  const hydrateEditor = useEditorStore((s) => s.hydrateSnapshot);
+  const setActiveMode = useEditorStore((s) => s.setActiveMode);
+  const prevBlockIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const editorState = useEditorStore.getState();
+    const prevId = prevBlockIdRef.current;
+    if (prevId && prevId !== activeBlockId) {
+      const prev = project.programBlocks.find((b) => b.id === prevId);
+      if (prev?.language === "ladder") {
+        updateBlock(prevId, { ladder: { rungs: editorState.rungs as unknown[] } });
+      } else if (prev?.language === "fbd") {
+        updateBlock(prevId, {
+          fbd: { nodes: editorState.fbdNodes as unknown[], edges: editorState.fbdEdges as unknown[] },
+        });
+      }
+    }
+    if (activeBlock) {
+      if (activeBlock.language === "ladder") {
+        hydrateEditor({
+          rungs: (activeBlock.ladder?.rungs ?? []) as LadderRung[],
+          editorTags: editorState.editorTags,
+        });
+      } else if (activeBlock.language === "fbd") {
+        hydrateEditor({
+          fbdNodes: (activeBlock.fbd?.nodes ?? []) as never,
+          fbdEdges: (activeBlock.fbd?.edges ?? []) as never,
+          editorTags: editorState.editorTags,
+        });
+      }
+    }
+    prevBlockIdRef.current = activeBlockId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBlockId]);
+
+  // #PLC-02 — Compile current block (Ladder/FBD → ST), persist into block.code
+  const handleCompile = () => {
+    if (!activeBlock) return;
+    const editorState = useEditorStore.getState();
+    if (activeBlock.language === "ladder") {
+      const code = compileProgram(editorState.rungs, "ST");
+      updateBlock(activeBlock.id, {
+        code,
+        ladder: { rungs: editorState.rungs as unknown[] },
+      });
+      setStCode(code);
+      toast.success(`${activeBlock.name}: ${editorState.rungs.length} rungs compilados → ST`);
+    } else if (activeBlock.language === "st") {
+      toast.info("Bloco já é Structured Text — nada a compilar");
+    } else {
+      toast.info("Compilação FBD via canvas FBD (em breve)");
+    }
+  };
+
+  const openInCanvas = () => {
+    if (!activeBlock) return;
+    if (activeBlock.language === "ladder") setActiveMode("ladder");
+    else if (activeBlock.language === "fbd") setActiveMode("fbd");
+    else toast.info("Bloco ST é editado aqui mesmo");
+  };
+
+
   const [diagCount, setDiagCount] = useState(0);
   const diagMsgs = useMemo(() => {
     const lines: string[] = [];
@@ -137,7 +207,15 @@ export function PlcCanvas() {
             {tab.label}
           </button>
         ))}
+        <button
+          onClick={() => downloadPlcOpenXml(project)}
+          title="Exportar projeto PLCopen XML (.plcproj)"
+          className="ml-auto mb-1 flex items-center gap-1.5 px-2.5 py-1 rounded border border-border bg-card/60 text-[10px] font-mono uppercase tracking-wider hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+        >
+          <Download className="h-3 w-3" /> .plcproj
+        </button>
       </div>
+
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-auto p-4">
@@ -553,9 +631,22 @@ export function PlcCanvas() {
                         <option value="fbd">FBD</option>
                         <option value="st">ST</option>
                       </select>
-                      <button className="flex items-center gap-1 h-7 px-2 rounded border border-border bg-card/60 text-[10px] font-mono hover:bg-accent cursor-pointer text-muted-foreground hover:text-foreground">
+                      {activeBlock.language !== "st" && (
+                        <button
+                          onClick={openInCanvas}
+                          title={`Abrir no canvas ${LANG_LABELS[activeBlock.language]}`}
+                          className="flex items-center gap-1 h-7 px-2 rounded border border-border bg-card/60 text-[10px] font-mono hover:bg-accent cursor-pointer text-muted-foreground hover:text-foreground"
+                        >
+                          <ExternalLink className="h-3 w-3" /> Abrir Canvas
+                        </button>
+                      )}
+                      <button
+                        onClick={handleCompile}
+                        className="flex items-center gap-1 h-7 px-2 rounded border border-primary/30 bg-primary/10 text-[10px] font-mono hover:bg-primary/20 cursor-pointer text-primary"
+                      >
                         <Play className="h-3 w-3" /> Compilar
                       </button>
+
                     </div>
                   </div>
                   <div className="flex-1 min-h-0">

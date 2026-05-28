@@ -143,12 +143,6 @@ export function BottomPanel() {
           })}
         </div>
         <div className="ml-auto flex items-center gap-1">
-<<<<<<< HEAD
-          <button
-            className="h-7 w-7 grid place-items-center rounded hover:bg-accent text-muted-foreground"
-            title="Limpar console"
-            aria-label="Limpar console"
-=======
           {tab === "Runtime" && runtime.connected && (
             <span className="text-[10px] text-success font-mono mr-1">
               {runtime.cycleMs ?? 0}ms
@@ -162,7 +156,6 @@ export function BottomPanel() {
             }}
             className="h-7 w-7 grid place-items-center rounded hover:bg-accent text-muted-foreground"
             title="Limpar console"
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

@@ -105,11 +105,7 @@ export function CanvasAiChat() {
     setMsgs((m) => [
       ...m,
       { role: "user", text: p },
-<<<<<<< HEAD
-      { role: "ai", text: "Processando prompt..." },
-=======
       { role: "ai", text: patchMode ? "Gerando patch validado (Zod + NBR 5410)..." : "Processando prompt..." },
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
     ]);
     setBusy(true);
 

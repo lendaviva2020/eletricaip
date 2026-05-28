@@ -1,19 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-<<<<<<< HEAD
-import { Plus, Cpu, Trash2, Loader2, Archive, Copy, Search } from "lucide-react";
+import { Plus, Cpu, Copy, Archive, Trash2, Loader2, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
-import {
-  archiveProject,
-  createProject,
-  deleteProject,
-  duplicateProject,
-  listProjects,
-=======
-import { Plus, Cpu, Copy, Archive, Trash2, Loader2 } from "lucide-react";
-import { useState } from "react";
+
 import { toast } from "sonner";
 import {
   listProjects,
@@ -21,7 +11,6 @@ import {
   duplicateProject,
   archiveProject,
   deleteProject,
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
 } from "@/lib/projects.functions";
 import {
   Dialog,
@@ -52,8 +41,6 @@ function Projects() {
   const dup = useServerFn(duplicateProject);
   const arch = useServerFn(archiveProject);
   const del = useServerFn(deleteProject);
-  const duplicate = useServerFn(duplicateProject);
-  const archive = useServerFn(archiveProject);
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -103,24 +90,6 @@ function Projects() {
     onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
   });
 
-  const duplicateMut = useMutation({
-    mutationFn: (id: string) => duplicate({ data: { projectId: id } }),
-    onSuccess: (p: any) => {
-      toast.success(`Projeto "${p.name}" duplicado`);
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      navigate({ to: "/workspace", search: { projectId: p.id } });
-    },
-    onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
-  });
-
-  const archiveMut = useMutation({
-    mutationFn: (id: string) => archive({ data: { projectId: id } }),
-    onSuccess: () => {
-      toast.success("Projeto arquivado");
-      qc.invalidateQueries({ queryKey: ["projects"] });
-    },
-    onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
-  });
 
   const projects = useMemo(() => data?.projects ?? [], [data?.projects]);
   const filteredProjects = useMemo(() => {
@@ -251,46 +220,26 @@ function Projects() {
                   <button
                     type="button"
                     onClick={() => duplicateMut.mutate(p.id)}
-<<<<<<< HEAD
-                    className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-primary transition"
-                    title="Duplicar projeto"
-                    aria-label="Duplicar projeto"
-=======
                     className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition"
                     aria-label="Duplicar"
                     title="Duplicar projeto"
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
-<<<<<<< HEAD
-                    onClick={() => archiveMut.mutate(p.id)}
-                    className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-warning transition"
-                    title="Arquivar projeto"
-                    aria-label="Arquivar projeto"
-=======
                     onClick={() => {
                       if (confirm(`Arquivar "${p.name}"?`)) archiveMut.mutate(p.id);
                     }}
                     className="p-1 rounded hover:bg-warning/10 text-muted-foreground hover:text-warning transition"
                     aria-label="Arquivar"
                     title="Arquivar projeto"
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
                   >
                     <Archive className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-<<<<<<< HEAD
-                      if (confirm(`Excluir "${p.name}"?`)) deleteMut.mutate(p.id);
-                    }}
-                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
-                    title="Excluir projeto"
-                    aria-label="Excluir projeto"
-=======
                       if (
                         confirm(
                           `Excluir permanentemente "${p.name}"?\n\nEsta ação não pode ser desfeita.`,
@@ -301,7 +250,6 @@ function Projects() {
                     className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
                     aria-label="Excluir"
                     title="Excluir permanentemente"
->>>>>>> 416116de870f9ca29975d2009f4054162864a6f9
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
