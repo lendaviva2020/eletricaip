@@ -99,6 +99,68 @@ export function PlcCanvas() {
     if (activeBlock) updateBlock(activeBlock.id, { code });
   };
 
+  // #PLC-01 — Bridge PLC ↔ Editor: persist outgoing block snapshot, hydrate incoming
+  const hydrateEditor = useEditorStore((s) => s.hydrateSnapshot);
+  const setActiveMode = useEditorStore((s) => s.setActiveMode);
+  const prevBlockIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const editorState = useEditorStore.getState();
+    const prevId = prevBlockIdRef.current;
+    if (prevId && prevId !== activeBlockId) {
+      const prev = project.programBlocks.find((b) => b.id === prevId);
+      if (prev?.language === "ladder") {
+        updateBlock(prevId, { ladder: { rungs: editorState.rungs as unknown[] } });
+      } else if (prev?.language === "fbd") {
+        updateBlock(prevId, {
+          fbd: { nodes: editorState.fbdNodes as unknown[], edges: editorState.fbdEdges as unknown[] },
+        });
+      }
+    }
+    if (activeBlock) {
+      if (activeBlock.language === "ladder") {
+        hydrateEditor({
+          rungs: (activeBlock.ladder?.rungs ?? []) as LadderRung[],
+          editorTags: editorState.editorTags,
+        });
+      } else if (activeBlock.language === "fbd") {
+        hydrateEditor({
+          fbdNodes: (activeBlock.fbd?.nodes ?? []) as never,
+          fbdEdges: (activeBlock.fbd?.edges ?? []) as never,
+          editorTags: editorState.editorTags,
+        });
+      }
+    }
+    prevBlockIdRef.current = activeBlockId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBlockId]);
+
+  // #PLC-02 — Compile current block (Ladder/FBD → ST), persist into block.code
+  const handleCompile = () => {
+    if (!activeBlock) return;
+    const editorState = useEditorStore.getState();
+    if (activeBlock.language === "ladder") {
+      const code = compileProgram(editorState.rungs, "ST");
+      updateBlock(activeBlock.id, {
+        code,
+        ladder: { rungs: editorState.rungs as unknown[] },
+      });
+      setStCode(code);
+      toast.success(`${activeBlock.name}: ${editorState.rungs.length} rungs compilados → ST`);
+    } else if (activeBlock.language === "st") {
+      toast.info("Bloco já é Structured Text — nada a compilar");
+    } else {
+      toast.info("Compilação FBD via canvas FBD (em breve)");
+    }
+  };
+
+  const openInCanvas = () => {
+    if (!activeBlock) return;
+    if (activeBlock.language === "ladder") setActiveMode("ladder");
+    else if (activeBlock.language === "fbd") setActiveMode("fbd");
+    else toast.info("Bloco ST é editado aqui mesmo");
+  };
+
+
   const [diagCount, setDiagCount] = useState(0);
   const diagMsgs = useMemo(() => {
     const lines: string[] = [];
