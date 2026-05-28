@@ -506,7 +506,8 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
     if (diagram) {
       await supabase
         .from("diagrams")
-        .update({ canvas_data: parseSnapshot(ver.snapshot), updated_at: new Date().toISOString() })
+        .update({ canvas_data: (ver.snapshot ?? EMPTY_SNAPSHOT) as unknown as Json, updated_at: new Date().toISOString() })
+
         .eq("id", diagram.id);
     }
     return { ok: true, restoredVersion: ver.version_number };
