@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import {
   Cpu,
@@ -19,7 +19,10 @@ import {
   Zap,
   Terminal,
   Save,
+  Download,
+  ExternalLink,
 } from "lucide-react";
+import { toast } from "sonner";
 import { usePlcStore } from "@/lib/plc/store";
 import {
   HARDWARE_CATALOG,
@@ -28,9 +31,14 @@ import {
   type PlcProgramBlock,
   type ProgramLang,
 } from "@/lib/plc/types";
+import { useEditorStore } from "@/lib/editor/store";
+import { compileProgram } from "@/lib/ladder/compiler";
+import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
+import type { LadderRung } from "@/lib/ladder/types";
 import { FloatingLegend } from "./unifilar-canvas";
 
 const LANG_LABELS: Record<ProgramLang, string> = { ladder: "LAD", fbd: "FBD", st: "ST" };
+
 
 export function PlcCanvas() {
   const {
