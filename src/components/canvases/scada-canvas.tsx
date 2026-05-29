@@ -1,23 +1,27 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { KonvaCanvas } from "./konva-canvas";
-import Editor, { useMonaco } from "@monaco-editor/react";
+import Editor from "@monaco-editor/react";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ScriptSandbox, type SandboxResult } from "@/lib/simulation/script-sandbox";
+import { BindTagDialog } from "@/components/scada/bind-tag-dialog";
+import { pushNotification } from "@/lib/notification-service";
 import {
   Play,
   Pause,
   Terminal,
   AlertTriangle,
-  ShieldCheck,
   Code2,
   ChevronLeft,
   ChevronRight,
   Bell,
   CheckCircle2,
   RefreshCw,
+  Tag as TagIcon,
+  ShieldCheck,
 } from "lucide-react";
 
 const DEFAULT_SCRIPT = `// ==========================================
@@ -71,13 +75,6 @@ function getTagNames(): string[] {
   return [...new Set([...projectTags, ...editorTags])].sort();
 }
 
-function runScriptOnce(script: string, tags: Record<string, any>) {
-  const fn = new Function("tags", script);
-  const next = { ...tags };
-  fn(next);
-  return next;
-}
-
 export function ScadaCanvas() {
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [running, setRunning] = useState(false);
@@ -85,8 +82,23 @@ export function ScadaCanvas() {
   const [error, setError] = useState<string | null>(null);
   const [lastLiveResult, setLastLiveResult] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(true);
+  const [bindOpen, setBindOpen] = useState(false);
+  const [scriptLogs, setScriptLogs] = useState<string[]>([]);
+  const [scanDuration, setScanDuration] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const monacoRef = useRef<any>(null);
+  const sandboxRef = useRef<ScriptSandbox | null>(null);
+  const lastAlarmRef = useRef<string | null>(null);
+
+  if (!sandboxRef.current) sandboxRef.current = new ScriptSandbox(250);
+  useEffect(() => () => sandboxRef.current?.dispose(), []);
+
+  const selectedId = useProjectStore((s) => s.selectedId);
+  const selectedNode = useProjectStore((s) => s.nodes.find((n) => n.id === s.selectedId));
+  const updateNodeParam = useProjectStore((s) => s.updateNodeParam);
+
 
   const tags = useProjectStore((s) => s.tags);
   const applyTick = useProjectStore((s) => s.applyTick);
@@ -199,67 +211,95 @@ export function ScadaCanvas() {
     editorRef.current = editor;
   }, []);
 
+  // Apply a sandbox tick result to project + editor stores
+  const applyResult = useCallback(
+    (result: SandboxResult) => {
+      setScanDuration(Math.round(result.durationMs * 10) / 10);
+      if (result.logs.length) {
+        setScriptLogs((prev) => [...result.logs, ...prev].slice(0, 50));
+      }
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      const nextTags = result.tags as Record<string, string | number | boolean>;
+      applyTick({ tags: nextTags });
+
+      // Fire alarm log/notification on rising edge
+      const wasAlarmActive = tags["ALARM_ACTIVE"] === true;
+      const isNowActive = nextTags["ALARM_ACTIVE"] === true;
+      const msg = String(nextTags["ALARM_MSG"] ?? "Alarme SCADA");
+      if (isNowActive && (!wasAlarmActive || lastAlarmRef.current !== msg)) {
+        lastAlarmRef.current = msg;
+        pushLog({
+          t: new Date().toLocaleTimeString(),
+          tag: "ALARME SCADA",
+          msg,
+          lvl: "err",
+          channel: "Alarmes",
+        });
+        void pushNotification("alarm", "Alarme SCADA", msg, { source: "scada-script" });
+      }
+      if (!isNowActive) lastAlarmRef.current = null;
+
+      // Mirror to editor tags (Watch table cross-module)
+      const editorState = useEditorStore.getState();
+      Object.entries(nextTags).forEach(([name, value]) => {
+        const typedValue = value as string | number | boolean;
+        const existing = Object.values(editorState.editorTags).find((t) => t.name === name);
+        if (existing) {
+          editorState.setTagValue(existing.id, typedValue);
+        } else {
+          const type =
+            typeof typedValue === "boolean"
+              ? "BOOL"
+              : typeof typedValue === "number"
+                ? "REAL"
+                : "STRING";
+          editorState.upsertTag({
+            id: `tag-${name}`,
+            name,
+            type,
+            value: typedValue,
+            forced: false,
+          });
+        }
+      });
+    },
+    [applyTick, pushLog, tags],
+  );
+
   // Live preview: debounced execute on script change
   useEffect(() => {
     if (!livePreview || running) return;
-    const timer = setTimeout(() => {
-      try {
-        const result = runScriptOnce(script, tags);
+    const timer = setTimeout(async () => {
+      const result = await sandboxRef.current?.run(script, tags as Record<string, unknown>);
+      if (!result) return;
+      if (result.ok) {
         setError(null);
-        setLastLiveResult(JSON.stringify(result, null, 1).slice(0, 500));
-      } catch (err: any) {
-        setError(err.message);
+        setLastLiveResult(JSON.stringify(result.tags, null, 1).slice(0, 500));
+      } else {
+        setError(result.error);
         setLastLiveResult(null);
       }
     }, 600);
     return () => clearTimeout(timer);
   }, [script, tags, livePreview, running]);
 
-  // Monaco Script Execution loop running at 100ms
+  // Sandboxed execution loop @ 100ms
   useEffect(() => {
     if (!running) return;
-
-    const interval = setInterval(() => {
-      try {
-        const nextTags = runScriptOnce(script, tags);
-        applyTick({ tags: nextTags });
-
-        if (nextTags["ALARM_ACTIVE"] && !tags["ALARM_ACTIVE"]) {
-          pushLog({
-            t: new Date().toLocaleTimeString(),
-            tag: "ALARME SCADA",
-            msg: String(nextTags["ALARM_MSG"]),
-            lvl: "err",
-            channel: "Alarmes",
-          });
-        }
-
-        const editorState = useEditorStore.getState();
-        Object.entries(nextTags).forEach(([name, value]) => {
-          const existing = Object.values(editorState.editorTags).find((t) => t.name === name);
-          if (existing) {
-            editorState.setTagValue(existing.id, value);
-          } else {
-            const type =
-              typeof value === "boolean" ? "BOOL" : typeof value === "number" ? "REAL" : "STRING";
-            editorState.upsertTag({
-              id: `tag-${name}`,
-              name,
-              type,
-              value,
-              forced: false,
-            });
-          }
-        });
-
-        setError(null);
-      } catch (err: any) {
-        setError(err.message);
-      }
+    const interval = setInterval(async () => {
+      const result = await sandboxRef.current?.run(
+        script,
+        useProjectStore.getState().tags as Record<string, unknown>,
+      );
+      if (result) applyResult(result);
     }, 100);
-
     return () => clearInterval(interval);
-  }, [running, script, tags, applyTick, pushLog]);
+  }, [running, script, applyResult]);
+
 
   const acknowledgeAlarm = () => {
     applyTick({ tags: { ...tags, ALARM_ACTIVE: false } });
@@ -295,10 +335,41 @@ export function ScadaCanvas() {
           </div>
         )}
 
+        {selectedNode && "tag" in selectedNode.params && (
+          <div className="absolute top-16 right-4 z-30 flex items-center gap-2 rounded-md border border-border bg-card/90 backdrop-blur px-2 py-1.5 shadow-lg">
+            <TagIcon className="h-3 w-3 text-primary" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {selectedNode.label}
+            </span>
+            <span className="font-mono text-[11px] text-foreground">
+              {String(selectedNode.params.tag ?? "—")}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setBindOpen(true)}
+              className="h-6 px-2 text-[10px] cursor-pointer"
+            >
+              Vincular
+            </Button>
+          </div>
+        )}
+
         <div className="flex-1 min-h-0 relative">
           <KonvaCanvas variant="scada" />
         </div>
       </div>
+
+      <BindTagDialog
+        open={bindOpen}
+        onOpenChange={setBindOpen}
+        currentTag={selectedNode ? String(selectedNode.params.tag ?? "") : ""}
+        title={selectedNode ? `Vincular tag · ${selectedNode.label}` : "Vincular tag"}
+        onConfirm={(tagName) => {
+          if (selectedNode) updateNodeParam(selectedNode.id, "tag", tagName);
+        }}
+      />
+
 
       {/* SCRIPTER SIDEBAR */}
       <div
@@ -381,10 +452,26 @@ export function ScadaCanvas() {
               <div className="flex items-center gap-1.5 text-muted-foreground border-b border-border pb-1 mb-1">
                 <Terminal className="h-3.5 w-3.5" />
                 <span>LOGS E ERROS DE SCRIPT</span>
+                <span className="ml-auto inline-flex items-center gap-1 text-[9px] text-primary/80">
+                  <ShieldCheck className="h-3 w-3" /> Worker sandbox
+                </span>
+                {running && (
+                  <span className="text-[9px] text-muted-foreground">{scanDuration}ms/scan</span>
+                )}
                 {livePreview && !running && (
-                  <span className="ml-auto text-[9px] text-primary/70">Live Preview ativo</span>
+                  <span className="text-[9px] text-primary/70">Live Preview</span>
                 )}
               </div>
+              {scriptLogs.length > 0 && (
+                <div className="border-b border-border/40 pb-1 mb-1 max-h-16 overflow-auto">
+                  {scriptLogs.slice(0, 8).map((l, i) => (
+                    <div key={i} className="text-foreground/70 leading-tight">
+                      › {l}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {error ? (
                 <div className="text-destructive flex items-start gap-1">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
