@@ -75,13 +75,6 @@ function getTagNames(): string[] {
   return [...new Set([...projectTags, ...editorTags])].sort();
 }
 
-function runScriptOnce(script: string, tags: Record<string, any>) {
-  const fn = new Function("tags", script);
-  const next = { ...tags };
-  fn(next);
-  return next;
-}
-
 export function ScadaCanvas() {
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [running, setRunning] = useState(false);
@@ -89,8 +82,23 @@ export function ScadaCanvas() {
   const [error, setError] = useState<string | null>(null);
   const [lastLiveResult, setLastLiveResult] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(true);
+  const [bindOpen, setBindOpen] = useState(false);
+  const [scriptLogs, setScriptLogs] = useState<string[]>([]);
+  const [scanDuration, setScanDuration] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const monacoRef = useRef<any>(null);
+  const sandboxRef = useRef<ScriptSandbox | null>(null);
+  const lastAlarmRef = useRef<string | null>(null);
+
+  if (!sandboxRef.current) sandboxRef.current = new ScriptSandbox(250);
+  useEffect(() => () => sandboxRef.current?.dispose(), []);
+
+  const selectedId = useProjectStore((s) => s.selectedId);
+  const selectedNode = useProjectStore((s) => s.nodes.find((n) => n.id === s.selectedId));
+  const updateNodeParam = useProjectStore((s) => s.updateNodeParam);
+
 
   const tags = useProjectStore((s) => s.tags);
   const applyTick = useProjectStore((s) => s.applyTick);
