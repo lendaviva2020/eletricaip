@@ -335,10 +335,41 @@ export function ScadaCanvas() {
           </div>
         )}
 
+        {selectedNode && "tag" in selectedNode.params && (
+          <div className="absolute top-16 right-4 z-30 flex items-center gap-2 rounded-md border border-border bg-card/90 backdrop-blur px-2 py-1.5 shadow-lg">
+            <TagIcon className="h-3 w-3 text-primary" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {selectedNode.label}
+            </span>
+            <span className="font-mono text-[11px] text-foreground">
+              {String(selectedNode.params.tag ?? "—")}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setBindOpen(true)}
+              className="h-6 px-2 text-[10px] cursor-pointer"
+            >
+              Vincular
+            </Button>
+          </div>
+        )}
+
         <div className="flex-1 min-h-0 relative">
           <KonvaCanvas variant="scada" />
         </div>
       </div>
+
+      <BindTagDialog
+        open={bindOpen}
+        onOpenChange={setBindOpen}
+        currentTag={selectedNode ? String(selectedNode.params.tag ?? "") : ""}
+        title={selectedNode ? `Vincular tag · ${selectedNode.label}` : "Vincular tag"}
+        onConfirm={(tagName) => {
+          if (selectedNode) updateNodeParam(selectedNode.id, "tag", tagName);
+        }}
+      />
+
 
       {/* SCRIPTER SIDEBAR */}
       <div
