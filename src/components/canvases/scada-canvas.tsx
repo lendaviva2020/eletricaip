@@ -1,23 +1,27 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { KonvaCanvas } from "./konva-canvas";
-import Editor, { useMonaco } from "@monaco-editor/react";
+import Editor from "@monaco-editor/react";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ScriptSandbox, type SandboxResult } from "@/lib/simulation/script-sandbox";
+import { BindTagDialog } from "@/components/scada/bind-tag-dialog";
+import { pushNotification } from "@/lib/notification-service";
 import {
   Play,
   Pause,
   Terminal,
   AlertTriangle,
-  ShieldCheck,
   Code2,
   ChevronLeft,
   ChevronRight,
   Bell,
   CheckCircle2,
   RefreshCw,
+  Tag as TagIcon,
+  ShieldCheck,
 } from "lucide-react";
 
 const DEFAULT_SCRIPT = `// ==========================================
