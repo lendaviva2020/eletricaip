@@ -211,67 +211,95 @@ export function ScadaCanvas() {
     editorRef.current = editor;
   }, []);
 
+  // Apply a sandbox tick result to project + editor stores
+  const applyResult = useCallback(
+    (result: SandboxResult) => {
+      setScanDuration(Math.round(result.durationMs * 10) / 10);
+      if (result.logs.length) {
+        setScriptLogs((prev) => [...result.logs, ...prev].slice(0, 50));
+      }
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      const nextTags = result.tags as Record<string, string | number | boolean>;
+      applyTick({ tags: nextTags });
+
+      // Fire alarm log/notification on rising edge
+      const wasAlarmActive = tags["ALARM_ACTIVE"] === true;
+      const isNowActive = nextTags["ALARM_ACTIVE"] === true;
+      const msg = String(nextTags["ALARM_MSG"] ?? "Alarme SCADA");
+      if (isNowActive && (!wasAlarmActive || lastAlarmRef.current !== msg)) {
+        lastAlarmRef.current = msg;
+        pushLog({
+          t: new Date().toLocaleTimeString(),
+          tag: "ALARME SCADA",
+          msg,
+          lvl: "err",
+          channel: "Alarmes",
+        });
+        void pushNotification("alarm", "Alarme SCADA", msg, { source: "scada-script" });
+      }
+      if (!isNowActive) lastAlarmRef.current = null;
+
+      // Mirror to editor tags (Watch table cross-module)
+      const editorState = useEditorStore.getState();
+      Object.entries(nextTags).forEach(([name, value]) => {
+        const typedValue = value as string | number | boolean;
+        const existing = Object.values(editorState.editorTags).find((t) => t.name === name);
+        if (existing) {
+          editorState.setTagValue(existing.id, typedValue);
+        } else {
+          const type =
+            typeof typedValue === "boolean"
+              ? "BOOL"
+              : typeof typedValue === "number"
+                ? "REAL"
+                : "STRING";
+          editorState.upsertTag({
+            id: `tag-${name}`,
+            name,
+            type,
+            value: typedValue,
+            forced: false,
+          });
+        }
+      });
+    },
+    [applyTick, pushLog, tags],
+  );
+
   // Live preview: debounced execute on script change
   useEffect(() => {
     if (!livePreview || running) return;
-    const timer = setTimeout(() => {
-      try {
-        const result = runScriptOnce(script, tags);
+    const timer = setTimeout(async () => {
+      const result = await sandboxRef.current?.run(script, tags as Record<string, unknown>);
+      if (!result) return;
+      if (result.ok) {
         setError(null);
-        setLastLiveResult(JSON.stringify(result, null, 1).slice(0, 500));
-      } catch (err: any) {
-        setError(err.message);
+        setLastLiveResult(JSON.stringify(result.tags, null, 1).slice(0, 500));
+      } else {
+        setError(result.error);
         setLastLiveResult(null);
       }
     }, 600);
     return () => clearTimeout(timer);
   }, [script, tags, livePreview, running]);
 
-  // Monaco Script Execution loop running at 100ms
+  // Sandboxed execution loop @ 100ms
   useEffect(() => {
     if (!running) return;
-
-    const interval = setInterval(() => {
-      try {
-        const nextTags = runScriptOnce(script, tags);
-        applyTick({ tags: nextTags });
-
-        if (nextTags["ALARM_ACTIVE"] && !tags["ALARM_ACTIVE"]) {
-          pushLog({
-            t: new Date().toLocaleTimeString(),
-            tag: "ALARME SCADA",
-            msg: String(nextTags["ALARM_MSG"]),
-            lvl: "err",
-            channel: "Alarmes",
-          });
-        }
-
-        const editorState = useEditorStore.getState();
-        Object.entries(nextTags).forEach(([name, value]) => {
-          const existing = Object.values(editorState.editorTags).find((t) => t.name === name);
-          if (existing) {
-            editorState.setTagValue(existing.id, value);
-          } else {
-            const type =
-              typeof value === "boolean" ? "BOOL" : typeof value === "number" ? "REAL" : "STRING";
-            editorState.upsertTag({
-              id: `tag-${name}`,
-              name,
-              type,
-              value,
-              forced: false,
-            });
-          }
-        });
-
-        setError(null);
-      } catch (err: any) {
-        setError(err.message);
-      }
+    const interval = setInterval(async () => {
+      const result = await sandboxRef.current?.run(
+        script,
+        useProjectStore.getState().tags as Record<string, unknown>,
+      );
+      if (result) applyResult(result);
     }, 100);
-
     return () => clearInterval(interval);
-  }, [running, script, tags, applyTick, pushLog]);
+  }, [running, script, applyResult]);
+
 
   const acknowledgeAlarm = () => {
     applyTick({ tags: { ...tags, ALARM_ACTIVE: false } });
