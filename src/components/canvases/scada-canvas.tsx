@@ -452,10 +452,26 @@ export function ScadaCanvas() {
               <div className="flex items-center gap-1.5 text-muted-foreground border-b border-border pb-1 mb-1">
                 <Terminal className="h-3.5 w-3.5" />
                 <span>LOGS E ERROS DE SCRIPT</span>
+                <span className="ml-auto inline-flex items-center gap-1 text-[9px] text-primary/80">
+                  <ShieldCheck className="h-3 w-3" /> Worker sandbox
+                </span>
+                {running && (
+                  <span className="text-[9px] text-muted-foreground">{scanDuration}ms/scan</span>
+                )}
                 {livePreview && !running && (
-                  <span className="ml-auto text-[9px] text-primary/70">Live Preview ativo</span>
+                  <span className="text-[9px] text-primary/70">Live Preview</span>
                 )}
               </div>
+              {scriptLogs.length > 0 && (
+                <div className="border-b border-border/40 pb-1 mb-1 max-h-16 overflow-auto">
+                  {scriptLogs.slice(0, 8).map((l, i) => (
+                    <div key={i} className="text-foreground/70 leading-tight">
+                      › {l}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {error ? (
                 <div className="text-destructive flex items-start gap-1">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
