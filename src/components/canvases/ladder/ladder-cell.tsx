@@ -92,7 +92,12 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
         toast.error(`"${el.label}" só pode ser usado na coluna de saída.`);
         return;
       }
-      const preset = kind === "TON" ? 1000 : kind === "CTU" ? 10 : undefined;
+      const preset =
+        kind === "TON" || kind === "TOF" || kind === "TP"
+          ? 1000
+          : kind === "CTU"
+            ? 10
+            : undefined;
       onChange({ kind, operand: cell.operand || nextOperand(isOutputCol), preset });
       setOpen(false);
     },
