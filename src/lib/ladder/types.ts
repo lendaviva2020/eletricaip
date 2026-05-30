@@ -11,6 +11,8 @@ export type LadderCellKind =
   | "OTL" // set
   | "OTU" // reset
   | "TON" // timer on-delay
+  | "TOF" // timer off-delay
+  | "TP" // timer pulse
   | "CTU"; // counter up
 
 export interface LadderCell {
@@ -45,7 +47,7 @@ export const newRung = (idx: number): LadderRung => ({
   ),
 });
 
-export const OUTPUT_KINDS: LadderCellKind[] = ["OTE", "OTL", "OTU", "TON", "CTU"];
+export const OUTPUT_KINDS: LadderCellKind[] = ["OTE", "OTL", "OTU", "TON", "TOF", "TP", "CTU"];
 export const CONTACT_KINDS: LadderCellKind[] = ["XIC", "XIO"];
 
 export const isOutputKind = (k: LadderCellKind) => OUTPUT_KINDS.includes(k);

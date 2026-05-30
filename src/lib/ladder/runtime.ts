@@ -114,10 +114,74 @@ const tickTimer = (
   return { done: st.done, accum: st.accum };
 };
 
-// IEC 61131-3 CTU:
-//   CU ↑ (rising edge): CV += 1 (no reset on falling edge — CTD is separate).
-//   DN reflects current CV >= PV each scan (not sticky).
-//   Reset is performed externally (e.g. OTU on the DN tag or an explicit R input).
+// IEC 61131-3 TOF: OUT is TRUE while IN is TRUE; on IN falling edge starts
+// timing, OUT remains TRUE until ET>=PT, then OUT=FALSE.
+const tickTOF = (
+  key: string,
+  input: boolean,
+  presetMs: number,
+  now: number,
+): { active: boolean; accum: number } => {
+  let st = timerState.get(key);
+  if (!st) {
+    st = { accum: 0, done: false, prevIn: false, lastTick: now };
+    timerState.set(key, st);
+  }
+  if (input) {
+    st.accum = 0;
+    st.done = true;
+    st.lastTick = now;
+  } else if (st.prevIn && !input) {
+    st.accum = 0;
+    st.done = true;
+    st.lastTick = now;
+  } else {
+    const dt = Math.max(0, now - st.lastTick);
+    st.accum += dt;
+    st.lastTick = now;
+    if (presetMs > 0 && st.accum >= presetMs) {
+      st.accum = presetMs;
+      st.done = false;
+    }
+  }
+  st.prevIn = input;
+  return { active: st.done, accum: st.accum };
+};
+
+// IEC 61131-3 TP: rising edge fires a pulse of PT duration; OUT is held
+// regardless of IN until ET>=PT. Re-armable only after IN goes false.
+const tickTP = (
+  key: string,
+  input: boolean,
+  presetMs: number,
+  now: number,
+): { active: boolean; accum: number } => {
+  let st = timerState.get(key);
+  if (!st) {
+    st = { accum: 0, done: false, prevIn: false, lastTick: now };
+    timerState.set(key, st);
+  }
+  if (input && !st.prevIn && !st.done && st.accum === 0) {
+    st.accum = 0;
+    st.done = true;
+    st.lastTick = now;
+  } else if (st.done) {
+    const dt = Math.max(0, now - st.lastTick);
+    st.accum += dt;
+    st.lastTick = now;
+    if (presetMs > 0 && st.accum >= presetMs) {
+      st.accum = presetMs;
+      st.done = false;
+    }
+  } else if (!input) {
+    st.accum = 0;
+    st.lastTick = now;
+  }
+  st.prevIn = input;
+  return { active: st.done, accum: st.accum };
+};
+
+// IEC 61131-3 CTU.
 const tickCounter = (
   key: string,
   input: boolean,
@@ -189,8 +253,17 @@ export const scanRungs = (rungs: LadderRung[]): ScanResult[] => {
         const { done, accum } = tickTimer(key, powered, preset, now);
         writeBool(outCell.operand, done);
         diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done };
-        // visual: output cell shows "done", not just rung power
         perCell[0][outCol] = done;
+      } else if (outCell.kind === "TOF") {
+        const { active, accum } = tickTOF(key, powered, preset, now);
+        writeBool(outCell.operand, active);
+        diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done: active };
+        perCell[0][outCol] = active;
+      } else if (outCell.kind === "TP") {
+        const { active, accum } = tickTP(key, powered, preset, now);
+        writeBool(outCell.operand, active);
+        diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done: active };
+        perCell[0][outCol] = active;
       } else if (outCell.kind === "CTU") {
         const { done, count } = tickCounter(key, powered, preset);
         writeBool(outCell.operand, done);

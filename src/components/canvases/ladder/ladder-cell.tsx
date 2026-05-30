@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   type LadderCell,
   type LadderCellKind,
@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { LADDER_ELEMENTS_BY_ID } from "@/lib/ladder/definitions";
+import { useEditorStore } from "@/lib/editor/store";
 
 const KIND_GLYPH: Record<LadderCellKind, string> = {
   EMPTY: "—",
@@ -19,6 +20,8 @@ const KIND_GLYPH: Record<LadderCellKind, string> = {
   OTL: "(S)",
   OTU: "(R)",
   TON: "[TON]",
+  TOF: "[TOF]",
+  TP: "[TP]",
   CTU: "[CTU]",
 };
 
@@ -29,6 +32,8 @@ const ELEMENT_TO_KIND: Record<string, LadderCellKind> = {
   OTL: "OTL",
   OTU: "OTU",
   TON: "TON",
+  TOF: "TOF",
+  TP: "TP",
   CTU: "CTU",
 };
 
@@ -50,6 +55,15 @@ function nextOperand(isOutput: boolean): string {
 export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const allowed = isOutputCol ? OUTPUT_KINDS : CONTACT_KINDS;
+  const tagNames = useEditorStore((s) =>
+    Object.values(s.editorTags)
+      .map((t) => t.name)
+      .filter(Boolean),
+  );
+  const datalistId = useMemo(
+    () => `ladder-tags-${isOutputCol ? "out" : "in"}`,
+    [isOutputCol],
+  );
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes("application/ladder-element")) {
@@ -78,7 +92,12 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
         toast.error(`"${el.label}" só pode ser usado na coluna de saída.`);
         return;
       }
-      const preset = kind === "TON" ? 1000 : kind === "CTU" ? 10 : undefined;
+      const preset =
+        kind === "TON" || kind === "TOF" || kind === "TP"
+          ? 1000
+          : kind === "CTU"
+            ? 10
+            : undefined;
       onChange({ kind, operand: cell.operand || nextOperand(isOutputCol), preset });
       setOpen(false);
     },
@@ -138,14 +157,20 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
               placeholder={isOutputCol ? "%Q0.0" : "%I0.0"}
               onChange={(e) => onChange({ ...cell, operand: e.target.value })}
               className="h-8 font-mono text-xs"
+              list={datalistId}
             />
+            <datalist id={datalistId}>
+              {tagNames.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
           </div>
         )}
 
-        {cell.kind === "TON" || cell.kind === "CTU" ? (
+        {cell.kind === "TON" || cell.kind === "TOF" || cell.kind === "TP" || cell.kind === "CTU" ? (
           <div className="space-y-1">
             <div className="text-[10px] uppercase text-muted-foreground">
-              {cell.kind === "TON" ? "Preset (ms)" : "Preset (count)"}
+              {cell.kind === "CTU" ? "Preset (count)" : "Preset (ms)"}
             </div>
             <Input
               type="number"
@@ -155,6 +180,8 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
             />
           </div>
         ) : null}
+
+
 
         {isOutputCol && cell.kind !== "EMPTY" && !isOutputKind(cell.kind) && (
           <div className="text-[10px] text-destructive">
