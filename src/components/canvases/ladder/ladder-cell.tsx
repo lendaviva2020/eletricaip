@@ -55,6 +55,15 @@ function nextOperand(isOutput: boolean): string {
 export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const allowed = isOutputCol ? OUTPUT_KINDS : CONTACT_KINDS;
+  const tagNames = useEditorStore((s) =>
+    Object.values(s.editorTags)
+      .map((t) => t.name)
+      .filter(Boolean),
+  );
+  const datalistId = useMemo(
+    () => `ladder-tags-${isOutputCol ? "out" : "in"}`,
+    [isOutputCol],
+  );
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes("application/ladder-element")) {
@@ -143,9 +152,29 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
               placeholder={isOutputCol ? "%Q0.0" : "%I0.0"}
               onChange={(e) => onChange({ ...cell, operand: e.target.value })}
               className="h-8 font-mono text-xs"
+              list={datalistId}
             />
+            <datalist id={datalistId}>
+              {tagNames.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
           </div>
         )}
+
+        {cell.kind === "TON" || cell.kind === "TOF" || cell.kind === "TP" || cell.kind === "CTU" ? (
+          <div className="space-y-1">
+            <div className="text-[10px] uppercase text-muted-foreground">
+              {cell.kind === "CTU" ? "Preset (count)" : "Preset (ms)"}
+            </div>
+            <Input
+              type="number"
+              value={cell.preset ?? ""}
+              onChange={(e) => onChange({ ...cell, preset: Number(e.target.value) })}
+              className="h-8 font-mono text-xs"
+            />
+          </div>
+        ) : null}
 
         {cell.kind === "TON" || cell.kind === "CTU" ? (
           <div className="space-y-1">
