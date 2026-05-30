@@ -189,8 +189,17 @@ export const scanRungs = (rungs: LadderRung[]): ScanResult[] => {
         const { done, accum } = tickTimer(key, powered, preset, now);
         writeBool(outCell.operand, done);
         diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done };
-        // visual: output cell shows "done", not just rung power
         perCell[0][outCol] = done;
+      } else if (outCell.kind === "TOF") {
+        const { active, accum } = tickTOF(key, powered, preset, now);
+        writeBool(outCell.operand, active);
+        diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done: active };
+        perCell[0][outCol] = active;
+      } else if (outCell.kind === "TP") {
+        const { active, accum } = tickTP(key, powered, preset, now);
+        writeBool(outCell.operand, active);
+        diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done: active };
+        perCell[0][outCol] = active;
       } else if (outCell.kind === "CTU") {
         const { done, count } = tickCounter(key, powered, preset);
         writeBool(outCell.operand, done);

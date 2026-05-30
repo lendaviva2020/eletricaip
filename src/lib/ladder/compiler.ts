@@ -45,6 +45,10 @@ export const compileRungToIL = (rung: LadderRung): string => {
       return `LD  ${expr}\nR   ${op}`;
     case "TON":
       return `LD  ${expr}\nCAL ${op}(IN := %MX, PT := T#${preset}ms)`;
+    case "TOF":
+      return `LD  ${expr}\nCAL ${op}(IN := %MX, PT := T#${preset}ms) (* TOF *)`;
+    case "TP":
+      return `LD  ${expr}\nCAL ${op}(IN := %MX, PT := T#${preset}ms) (* TP *)`;
     case "CTU":
       return `LD  ${expr}\nCAL ${op}(CU := %MX, PV := ${preset})`;
     default:
@@ -80,6 +84,10 @@ export const compileRungToST = (rung: LadderRung): string => {
       return `IF ${expr} THEN\n  ${op} := FALSE;\nEND_IF;`;
     case "TON":
       return `${op}(IN := ${expr}, PT := T#${preset}ms);`;
+    case "TOF":
+      return `${op}_TOF(IN := ${expr}, PT := T#${preset}ms); ${op} := ${op}_TOF.Q;`;
+    case "TP":
+      return `${op}_TP(IN := ${expr}, PT := T#${preset}ms); ${op} := ${op}_TP.Q;`;
     case "CTU":
       return `${op}(CU := ${expr}, PV := ${preset});`;
     default:

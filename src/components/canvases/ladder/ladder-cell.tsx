@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   type LadderCell,
   type LadderCellKind,
@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { LADDER_ELEMENTS_BY_ID } from "@/lib/ladder/definitions";
+import { useEditorStore } from "@/lib/editor/store";
 
 const KIND_GLYPH: Record<LadderCellKind, string> = {
   EMPTY: "—",
@@ -19,6 +20,8 @@ const KIND_GLYPH: Record<LadderCellKind, string> = {
   OTL: "(S)",
   OTU: "(R)",
   TON: "[TON]",
+  TOF: "[TOF]",
+  TP: "[TP]",
   CTU: "[CTU]",
 };
 
@@ -29,6 +32,8 @@ const ELEMENT_TO_KIND: Record<string, LadderCellKind> = {
   OTL: "OTL",
   OTU: "OTU",
   TON: "TON",
+  TOF: "TOF",
+  TP: "TP",
   CTU: "CTU",
 };
 
