@@ -176,19 +176,7 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
           </div>
         ) : null}
 
-        {cell.kind === "TON" || cell.kind === "CTU" ? (
-          <div className="space-y-1">
-            <div className="text-[10px] uppercase text-muted-foreground">
-              {cell.kind === "TON" ? "Preset (ms)" : "Preset (count)"}
-            </div>
-            <Input
-              type="number"
-              value={cell.preset ?? ""}
-              onChange={(e) => onChange({ ...cell, preset: Number(e.target.value) })}
-              className="h-8 font-mono text-xs"
-            />
-          </div>
-        ) : null}
+
 
         {isOutputCol && cell.kind !== "EMPTY" && !isOutputKind(cell.kind) && (
           <div className="text-[10px] text-destructive">
