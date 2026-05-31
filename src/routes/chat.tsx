@@ -34,6 +34,7 @@ function ChatPage() {
   const fetchMessages = useServerFn(getConversationMessages);
   const remove = useServerFn(deleteConversation);
   const stream = useServerFn(streamChat);
+  const creditsFn = useServerFn(getAiCredits);
   const qc = useQueryClient();
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -46,6 +47,13 @@ function ChatPage() {
     queryKey: ["chat-convos"],
     queryFn: () => list({}),
   });
+
+  const { data: credits } = useQuery({
+    queryKey: ["ai-credits"],
+    queryFn: () => creditsFn({}),
+    refetchInterval: 30000,
+  });
+
 
   const { data: messages = [] } = useQuery({
     queryKey: ["chat-msgs", activeId],
