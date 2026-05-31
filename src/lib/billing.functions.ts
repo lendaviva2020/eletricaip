@@ -294,7 +294,7 @@ export const cancelSubscription = createServerFn({ method: "POST" })
     const tenantId = profile?.tenant_id;
     if (!tenantId) throw new Error("no_tenant");
 
-    const { data: tenant } = await supabase
+    const { data: tenant } = await supabaseAdmin
       .from("tenants")
       .select("stripe_subscription_id")
       .eq("id", tenantId)
