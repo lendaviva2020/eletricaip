@@ -13,8 +13,10 @@ import {
   streamChat,
   type ChatMessage,
 } from "@/lib/ai-chat.functions";
+import { getAiCredits } from "@/lib/ai-architect.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 
 export const Route = createFileRoute("/chat")({
   head: () => ({
