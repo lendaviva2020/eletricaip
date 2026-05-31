@@ -23,15 +23,17 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
 
         const event = JSON.parse(body) as StripeEvent;
 
-        // Idempotency
+        // Idempotency: only short-circuit on actual duplicate-key violations.
         const { error: dupErr } = await supabaseAdmin
           .from("stripe_webhook_events")
           .insert({ event_id: event.id, event_type: event.type });
-        if (dupErr && !String(dupErr.message).includes("duplicate")) {
+        if (dupErr) {
+          const msg = String(dupErr.message ?? "").toLowerCase();
+          const isDuplicate = msg.includes("duplicate") || (dupErr as { code?: string }).code === "23505";
+          if (isDuplicate) return new Response("ok", { status: 200 });
           console.error("[stripe] insert event log failed", dupErr);
+          return new Response("event_log_failed", { status: 500 });
         }
-        // If duplicate, treat as success (already processed)
-        if (dupErr) return new Response("ok", { status: 200 });
 
         try {
           await handleStripeEvent(event);

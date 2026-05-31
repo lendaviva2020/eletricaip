@@ -54,37 +54,50 @@ export const getBillingOverview = createServerFn({ method: "GET" })
     const tenantId = profile?.tenant_id;
     if (!tenantId) throw new Error("no_tenant");
 
-    const [{ data: tenant }, { data: subs }, { data: invoices }, { data: usage }] =
-      await Promise.all([
-        supabase
-          .from("tenants")
-          .select("plan, stripe_customer_id, stripe_subscription_id, subscription_status")
-          .eq("id", tenantId)
-          .maybeSingle(),
-        supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("tenant_id", tenantId)
-          .order("created_at", { ascending: false })
-          .limit(5),
-        supabase
-          .from("invoices")
-          .select("*")
-          .eq("tenant_id", tenantId)
-          .order("created_at", { ascending: false })
-          .limit(10),
-        supabase
-          .from("usage_records")
-          .select("*")
-          .eq("tenant_id", tenantId)
-          .order("period", { ascending: false })
-          .limit(1),
-      ]);
+    // stripe_customer_id / stripe_subscription_id are revoked from `authenticated`
+    // by the security hardening migration — read via admin client AFTER we
+    // already verified the user belongs to this tenant (profile.tenant_id).
+    const [
+      { data: tenant },
+      { data: tenantPrivate },
+      { data: subs },
+      { data: invoices },
+      { data: usage },
+    ] = await Promise.all([
+      supabase
+        .from("tenants")
+        .select("plan, subscription_status")
+        .eq("id", tenantId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("tenants")
+        .select("stripe_customer_id, stripe_subscription_id")
+        .eq("id", tenantId)
+        .maybeSingle(),
+      supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("invoices")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("usage_records")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("period", { ascending: false })
+        .limit(1),
+    ]);
 
     return {
       tenantId,
       plan: tenant?.plan ?? "free",
-      stripeCustomerId: tenant?.stripe_customer_id ?? null,
+      stripeCustomerId: tenantPrivate?.stripe_customer_id ?? null,
       subscriptionStatus: tenant?.subscription_status ?? null,
       subscriptions: subs ?? [],
       invoices: invoices ?? [],
@@ -281,7 +294,7 @@ export const cancelSubscription = createServerFn({ method: "POST" })
     const tenantId = profile?.tenant_id;
     if (!tenantId) throw new Error("no_tenant");
 
-    const { data: tenant } = await supabase
+    const { data: tenant } = await supabaseAdmin
       .from("tenants")
       .select("stripe_subscription_id")
       .eq("id", tenantId)

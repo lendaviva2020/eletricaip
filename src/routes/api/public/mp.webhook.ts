@@ -32,11 +32,17 @@ export const Route = createFileRoute("/api/public/mp/webhook")({
         const paymentId = String(body.data?.id ?? url.searchParams.get("data.id") ?? "");
         if (!paymentId) return new Response("ignored", { status: 200 });
 
-        // Idempotency
+        // Idempotency: only short-circuit on actual duplicate-key violations.
         const { error: dupErr } = await supabaseAdmin
           .from("mp_webhook_processed")
           .insert({ payment_id: paymentId });
-        if (dupErr) return new Response("ok", { status: 200 });
+        if (dupErr) {
+          const msg = String(dupErr.message ?? "").toLowerCase();
+          const isDuplicate = msg.includes("duplicate") || (dupErr as { code?: string }).code === "23505";
+          if (isDuplicate) return new Response("ok", { status: 200 });
+          console.error("[mp] insert dedup failed", dupErr);
+          return new Response("dedup_failed", { status: 500 });
+        }
 
         try {
           await syncMpPayment(paymentId, accessToken);
