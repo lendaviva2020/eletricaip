@@ -242,3 +242,30 @@ function Bubble({
     </div>
   );
 }
+
+function CreditsBadge({ credits }: { credits: any }) {
+  if (!credits || credits.ok !== true) return null;
+  if (credits.unlimited) {
+    return (
+      <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded bg-primary/10 text-primary">
+        Ilimitado
+      </span>
+    );
+  }
+  const remaining = credits.remaining ?? 0;
+  const max = credits.max_credits ?? 0;
+  const low = max > 0 && remaining / max < 0.2;
+  return (
+    <span
+      className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded ${
+        low
+          ? "bg-destructive/10 text-destructive"
+          : "bg-muted text-muted-foreground"
+      }`}
+      title={`Créditos IA mensais — plano ${credits.plan ?? "free"}`}
+    >
+      {remaining}/{max} créditos
+    </span>
+  );
+}
+
