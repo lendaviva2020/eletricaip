@@ -13,8 +13,10 @@ import {
   streamChat,
   type ChatMessage,
 } from "@/lib/ai-chat.functions";
+import { getAiCredits } from "@/lib/ai-architect.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 
 export const Route = createFileRoute("/chat")({
   head: () => ({
@@ -32,6 +34,7 @@ function ChatPage() {
   const fetchMessages = useServerFn(getConversationMessages);
   const remove = useServerFn(deleteConversation);
   const stream = useServerFn(streamChat);
+  const creditsFn = useServerFn(getAiCredits);
   const qc = useQueryClient();
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -44,6 +47,13 @@ function ChatPage() {
     queryKey: ["chat-convos"],
     queryFn: () => list({}),
   });
+
+  const { data: credits } = useQuery({
+    queryKey: ["ai-credits"],
+    queryFn: () => creditsFn({}),
+    refetchInterval: 30000,
+  });
+
 
   const { data: messages = [] } = useQuery({
     queryKey: ["chat-msgs", activeId],
@@ -105,7 +115,9 @@ function ChatPage() {
       }
       await qc.invalidateQueries({ queryKey: ["chat-msgs", convId] });
       await qc.invalidateQueries({ queryKey: ["chat-convos"] });
+      await qc.invalidateQueries({ queryKey: ["ai-credits"] });
       setStreamingText("");
+
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -156,7 +168,11 @@ function ChatPage() {
         <header className="border-b border-border px-6 py-3 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
           <h1 className="text-base font-semibold">EletricAI Copilot</h1>
+          <div className="ml-auto">
+            <CreditsBadge credits={credits} />
+          </div>
         </header>
+
 
         <div ref={scrollerRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {messages.length === 0 && !streamingText && (
@@ -226,3 +242,30 @@ function Bubble({
     </div>
   );
 }
+
+function CreditsBadge({ credits }: { credits: any }) {
+  if (!credits || credits.ok !== true) return null;
+  if (credits.unlimited) {
+    return (
+      <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded bg-primary/10 text-primary">
+        Ilimitado
+      </span>
+    );
+  }
+  const remaining = credits.remaining ?? 0;
+  const max = credits.max_credits ?? 0;
+  const low = max > 0 && remaining / max < 0.2;
+  return (
+    <span
+      className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded ${
+        low
+          ? "bg-destructive/10 text-destructive"
+          : "bg-muted text-muted-foreground"
+      }`}
+      title={`Créditos IA mensais — plano ${credits.plan ?? "free"}`}
+    >
+      {remaining}/{max} créditos
+    </span>
+  );
+}
+
