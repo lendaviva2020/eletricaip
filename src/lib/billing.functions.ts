@@ -4,7 +4,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const PLATFORM_ADMIN_EMAILS = new Set(["989111474fe@gmail.com"]);
 
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
   basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
