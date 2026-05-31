@@ -168,7 +168,11 @@ function ChatPage() {
         <header className="border-b border-border px-6 py-3 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
           <h1 className="text-base font-semibold">EletricAI Copilot</h1>
+          <div className="ml-auto">
+            <CreditsBadge credits={credits} />
+          </div>
         </header>
+
 
         <div ref={scrollerRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {messages.length === 0 && !streamingText && (
