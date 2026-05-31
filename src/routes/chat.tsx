@@ -115,7 +115,9 @@ function ChatPage() {
       }
       await qc.invalidateQueries({ queryKey: ["chat-msgs", convId] });
       await qc.invalidateQueries({ queryKey: ["chat-convos"] });
+      await qc.invalidateQueries({ queryKey: ["ai-credits"] });
       setStreamingText("");
+
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
