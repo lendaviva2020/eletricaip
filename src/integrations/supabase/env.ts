@@ -22,9 +22,9 @@ export function getSupabasePublicEnv(): SupabasePublicEnv {
   const url =
     (isClient
       ? (import.meta.env.VITE_SUPABASE_URL ?? import.meta.env.NEXT_PUBLIC_SUPABASE_URL ?? "")
-      : (fromProc("VITE_SUPABASE_URL") ||
+      : fromProc("VITE_SUPABASE_URL") ||
         fromProc("SUPABASE_URL") ||
-        fromProc("NEXT_PUBLIC_SUPABASE_URL"))) || SUPABASE_URL_FALLBACK;
+        fromProc("NEXT_PUBLIC_SUPABASE_URL")) || SUPABASE_URL_FALLBACK;
 
   const anonKey =
     (isClient
@@ -33,12 +33,12 @@ export function getSupabasePublicEnv(): SupabasePublicEnv {
         import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
         import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
         "")
-      : (fromProc("VITE_SUPABASE_PUBLISHABLE_KEY") ||
+      : fromProc("VITE_SUPABASE_PUBLISHABLE_KEY") ||
         fromProc("VITE_SUPABASE_ANON_KEY") ||
         fromProc("SUPABASE_PUBLISHABLE_KEY") ||
         fromProc("SUPABASE_ANON_KEY") ||
         fromProc("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ||
-        fromProc("NEXT_PUBLIC_SUPABASE_ANON_KEY"))) || SUPABASE_PUBLISHABLE_KEY_FALLBACK;
+        fromProc("NEXT_PUBLIC_SUPABASE_ANON_KEY")) || SUPABASE_PUBLISHABLE_KEY_FALLBACK;
 
   return { url, anonKey };
 }

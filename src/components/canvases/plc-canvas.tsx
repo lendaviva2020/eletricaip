@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Editor from "@monaco-editor/react";
 import {
   Cpu,
@@ -21,6 +21,7 @@ import {
   Save,
   Download,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePlcStore } from "@/lib/plc/store";
@@ -30,15 +31,17 @@ import {
   type PlcVariable,
   type PlcProgramBlock,
   type ProgramLang,
+  type PlcModule,
 } from "@/lib/plc/types";
-import { useEditorStore } from "@/lib/editor/store";
+import { useEditorStore, type EditorTag, type FbdNode, type FbdEdge } from "@/lib/editor/store";
 import { compileProgram } from "@/lib/ladder/compiler";
+import { compileFbdToSt } from "@/lib/fbd/compiler";
 import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
 import type { LadderRung } from "@/lib/ladder/types";
+import type { LucideIcon } from "lucide-react";
 import { FloatingLegend } from "./unifilar-canvas";
 
 const LANG_LABELS: Record<ProgramLang, string> = { ladder: "LAD", fbd: "FBD", st: "ST" };
-
 
 export function PlcCanvas() {
   const {
@@ -99,58 +102,162 @@ export function PlcCanvas() {
     if (activeBlock) updateBlock(activeBlock.id, { code });
   };
 
+  // Build editor tags from PLC variables for block-scoped editing
+  const buildBlockEditorTags = useCallback(
+    (block?: PlcProgramBlock): Record<string, EditorTag> => {
+      // Start with global PLC variables
+      const tags: Record<string, EditorTag> = {};
+      for (const v of project.variables) {
+        tags[v.id] = {
+          id: v.id,
+          name: v.name || v.address || v.id,
+          type:
+            v.type === "BOOL"
+              ? "BOOL"
+              : v.type === "REAL"
+                ? "REAL"
+                : v.type === "STRING"
+                  ? "STRING"
+                  : "INT",
+          value: v.initialValue ?? (v.type === "BOOL" ? false : 0),
+          forced: false,
+        };
+      }
+      // Block-local tags from ladder definition (if any)
+      if (block?.ladder?.rungs) {
+        for (const rung of block.ladder.rungs as LadderRung[]) {
+          for (const cell of rung?.cells ?? []) {
+            if (cell?.operand && cell.operand !== "&nbsp;" && !tags[cell.operand]) {
+              tags[cell.operand] = {
+                id: cell.operand,
+                name: cell.operand,
+                type: "BOOL",
+                value: false,
+                forced: false,
+              };
+            }
+          }
+        }
+      }
+      return tags;
+    },
+    [project.variables],
+  );
+
   // #PLC-01 — Bridge PLC ↔ Editor: persist outgoing block snapshot, hydrate incoming
   const hydrateEditor = useEditorStore((s) => s.hydrateSnapshot);
   const setActiveMode = useEditorStore((s) => s.setActiveMode);
   const prevBlockIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     const editorState = useEditorStore.getState();
     const prevId = prevBlockIdRef.current;
+
+    // Save outgoing block state
     if (prevId && prevId !== activeBlockId) {
       const prev = project.programBlocks.find((b) => b.id === prevId);
       if (prev?.language === "ladder") {
-        updateBlock(prevId, { ladder: { rungs: editorState.rungs as unknown[] } });
+        updateBlock(prevId, { ladder: { rungs: editorState.rungs } });
       } else if (prev?.language === "fbd") {
         updateBlock(prevId, {
-          fbd: { nodes: editorState.fbdNodes as unknown[], edges: editorState.fbdEdges as unknown[] },
+          fbd: {
+            nodes: editorState.fbdNodes,
+            edges: editorState.fbdEdges,
+          },
         });
       }
     }
+
+    // Hydrate incoming block state
     if (activeBlock) {
+      const blockTags = buildBlockEditorTags(activeBlock);
       if (activeBlock.language === "ladder") {
         hydrateEditor({
           rungs: (activeBlock.ladder?.rungs ?? []) as LadderRung[],
-          editorTags: editorState.editorTags,
+          editorTags: blockTags,
         });
       } else if (activeBlock.language === "fbd") {
         hydrateEditor({
-          fbdNodes: (activeBlock.fbd?.nodes ?? []) as never,
-          fbdEdges: (activeBlock.fbd?.edges ?? []) as never,
-          editorTags: editorState.editorTags,
+          fbdNodes: (activeBlock.fbd?.nodes as FbdNode[]) ?? [],
+          fbdEdges: (activeBlock.fbd?.edges as FbdEdge[]) ?? [],
+          editorTags: blockTags,
         });
       }
     }
+
     prevBlockIdRef.current = activeBlockId;
+    prevBlockIdRef.current = activeBlockId;
+    // activeBlock omitted intentionally — it's derived from programBlocks which
+    // we mutate inside this effect. Including it would cause re-hydration loops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBlockId]);
+  }, [activeBlockId, project.programBlocks, updateBlock, hydrateEditor, buildBlockEditorTags]);
 
   // #PLC-02 — Compile current block (Ladder/FBD → ST), persist into block.code
   const handleCompile = () => {
     if (!activeBlock) return;
     const editorState = useEditorStore.getState();
+
     if (activeBlock.language === "ladder") {
       const code = compileProgram(editorState.rungs, "ST");
       updateBlock(activeBlock.id, {
         code,
-        ladder: { rungs: editorState.rungs as unknown[] },
+        ladder: { rungs: editorState.rungs },
       });
       setStCode(code);
       toast.success(`${activeBlock.name}: ${editorState.rungs.length} rungs compilados → ST`);
+    } else if (activeBlock.language === "fbd") {
+      const code = compileFbdToSt(editorState.fbdNodes, editorState.fbdEdges);
+      updateBlock(activeBlock.id, {
+        code,
+        fbd: {
+          nodes: editorState.fbdNodes,
+          edges: editorState.fbdEdges,
+        },
+      });
+      setStCode(code);
+      toast.success(
+        `${activeBlock.name}: ${editorState.fbdNodes.length} blocos FBD compilados → ST`,
+      );
     } else if (activeBlock.language === "st") {
       toast.info("Bloco já é Structured Text — nada a compilar");
-    } else {
-      toast.info("Compilação FBD via canvas FBD (em breve)");
     }
+  };
+
+  const handleAutoAddress = () => {
+    let diOffset = 0;
+    let doOffset = 0;
+    let aiOffset = 0;
+    let mOffset = 0;
+
+    for (const v of [...project.variables].sort((a, b) => a.name.localeCompare(b.name))) {
+      if (v.address && v.address !== "") continue; // skip already-addressed
+      let addr = "";
+      if (v.type === "BOOL") {
+        if (diOffset < totalDI) {
+          addr = `%I${Math.floor(diOffset / 8)}.${diOffset % 8}`;
+          diOffset++;
+        } else if (doOffset < totalDO) {
+          addr = `%Q${Math.floor(doOffset / 8)}.${doOffset % 8}`;
+          doOffset++;
+        } else {
+          addr = `%M${Math.floor(mOffset / 8)}.${mOffset % 8}`;
+          mOffset++;
+        }
+      } else if (v.type === "INT" || v.type === "DINT" || v.type === "REAL") {
+        if (aiOffset < totalAI) {
+          addr = `%IW${aiOffset}`;
+          aiOffset++;
+        } else {
+          addr = `%MW${mOffset}`;
+          mOffset++;
+        }
+      } else {
+        addr = `%MW${mOffset}`;
+        mOffset++;
+      }
+      updateVariable(v.id, { address: addr });
+    }
+    toast.success(`Endereços automáticos gerados para ${project.variables.length} variáveis`);
   };
 
   const openInCanvas = () => {
@@ -159,7 +266,6 @@ export function PlcCanvas() {
     else if (activeBlock.language === "fbd") setActiveMode("fbd");
     else toast.info("Bloco ST é editado aqui mesmo");
   };
-
 
   const [diagCount, setDiagCount] = useState(0);
   const diagMsgs = useMemo(() => {
@@ -215,7 +321,6 @@ export function PlcCanvas() {
           <Download className="h-3 w-3" /> .plcproj
         </button>
       </div>
-
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-auto p-4">
@@ -361,31 +466,40 @@ export function PlcCanvas() {
                 <Table2 className="h-3.5 w-3.5 text-primary" /> Variáveis Globais (
                 {project.variables.length})
               </span>
-              <button
-                onClick={() => {
-                  const id = varCounter();
-                  addVariable({
-                    id,
-                    name: "",
-                    address: "",
-                    type: "BOOL",
-                    comment: "",
-                    retentive: false,
-                  });
-                  startEditVar({
-                    id,
-                    name: "",
-                    address: "",
-                    type: "BOOL",
-                    comment: "",
-                    retentive: false,
-                    initialValue: false,
-                  });
-                }}
-                className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 cursor-pointer font-mono"
-              >
-                <Plus className="h-3 w-3" /> Nova Variável
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleAutoAddress}
+                  title="Gerar endereços automáticos baseados nos módulos de hardware"
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer font-mono"
+                >
+                  <RefreshCw className="h-3 w-3" /> Auto Endereçar
+                </button>
+                <button
+                  onClick={() => {
+                    const id = varCounter();
+                    addVariable({
+                      id,
+                      name: "",
+                      address: "",
+                      type: "BOOL",
+                      comment: "",
+                      retentive: false,
+                    });
+                    startEditVar({
+                      id,
+                      name: "",
+                      address: "",
+                      type: "BOOL",
+                      comment: "",
+                      retentive: false,
+                      initialValue: false,
+                    });
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 cursor-pointer font-mono"
+                >
+                  <Plus className="h-3 w-3" /> Nova Variável
+                </button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-[11px] font-mono">
@@ -427,7 +541,7 @@ export function PlcCanvas() {
                             className="h-7 px-1 rounded border border-border bg-input text-[11px] font-mono outline-none focus:border-primary cursor-pointer"
                             value={editVarData.type ?? "BOOL"}
                             onChange={(e) =>
-                              setEditVarData((p) => ({ ...p, type: e.target.value as any }))
+                              setEditVarData((p) => ({ ...p, type: e.target.value as PlcVariable["type"] }))
                             }
                           >
                             {ADDRESS_TYPES.map((t) => (
@@ -646,7 +760,6 @@ export function PlcCanvas() {
                       >
                         <Play className="h-3 w-3" /> Compilar
                       </button>
-
                     </div>
                   </div>
                   <div className="flex-1 min-h-0">
@@ -705,7 +818,7 @@ function StatCard({
   value,
   sub,
 }: {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   value: string;
   sub: string;

@@ -101,7 +101,8 @@ export const useDiagramStore = create<DiagramState>()(
     snapEnabled: true,
     contextMenu: null,
 
-    setActiveSheet: (sheet) => set({ activeSheet: sheet, selectedNodeIds: [], selectedEdgeIds: [] }),
+    setActiveSheet: (sheet) =>
+      set({ activeSheet: sheet, selectedNodeIds: [], selectedEdgeIds: [] }),
     setSelection: (nodes, edges = []) => set({ selectedNodeIds: nodes, selectedEdgeIds: edges }),
     clearSelection: () => set({ selectedNodeIds: [], selectedEdgeIds: [] }),
     toggleSnap: () => set((s) => ({ snapEnabled: !s.snapEnabled })),
@@ -136,8 +137,22 @@ export const useDiagramStore = create<DiagramState>()(
       get().dispatch(commands.length === 1 ? commands[0] : cmd.batch(commands));
     },
 
-    loadDoc: (doc) => set({ doc, history: emptyHistory(), selectedNodeIds: [], selectedEdgeIds: [], contextMenu: null }),
-    resetDoc: () => set({ doc: createEmptyDoc(), history: emptyHistory(), selectedNodeIds: [], selectedEdgeIds: [], contextMenu: null }),
+    loadDoc: (doc) =>
+      set({
+        doc,
+        history: emptyHistory(),
+        selectedNodeIds: [],
+        selectedEdgeIds: [],
+        contextMenu: null,
+      }),
+    resetDoc: () =>
+      set({
+        doc: createEmptyDoc(),
+        history: emptyHistory(),
+        selectedNodeIds: [],
+        selectedEdgeIds: [],
+        contextMenu: null,
+      }),
   })),
 );
 

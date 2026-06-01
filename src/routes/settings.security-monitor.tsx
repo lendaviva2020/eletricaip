@@ -28,10 +28,7 @@ import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  getSecurityDashboard,
-  type SecurityFinding,
-} from "@/lib/security-monitor.functions";
+import { getSecurityDashboard, type SecurityFinding } from "@/lib/security-monitor.functions";
 
 export const Route = createFileRoute("/settings/security-monitor")({
   head: () => ({
@@ -329,8 +326,7 @@ function SecurityMonitorPage() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.message}</p>
                     <span className="text-[10px] text-muted-foreground">
-                      {format(parseISO(a.triggeredAt), "dd/MM HH:mm", { locale: ptBR })} ·{" "}
-                      {a.state}
+                      {format(parseISO(a.triggeredAt), "dd/MM HH:mm", { locale: ptBR })} · {a.state}
                     </span>
                   </div>
                 ))
@@ -356,9 +352,7 @@ function SecurityMonitorPage() {
                   <div key={a.id} className="p-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm truncate">{a.action}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {a.resourceType ?? "—"}
-                      </p>
+                      <p className="text-[10px] text-muted-foreground">{a.resourceType ?? "—"}</p>
                     </div>
                     <span className="text-[10px] text-muted-foreground shrink-0">
                       {format(parseISO(a.createdAt), "dd/MM HH:mm", { locale: ptBR })}
@@ -395,10 +389,10 @@ function KpiCard({
     tone === "destructive"
       ? "text-destructive"
       : tone === "warning"
-      ? "text-orange-500"
-      : tone === "success"
-      ? "text-emerald-500"
-      : "text-muted-foreground";
+        ? "text-orange-500"
+        : tone === "success"
+          ? "text-emerald-500"
+          : "text-muted-foreground";
   return (
     <Card>
       <CardContent className="p-4">

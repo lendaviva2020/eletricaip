@@ -19,7 +19,7 @@ interface State {
 const KEY = "eletricai.currentProject";
 const EMPTY_PROJECT_SNAPSHOT = {
   schemaVersion: 2,
-  project: { nodes: [], edges: [], tags: {} },
+  project: { nodes: [], edges: [], tags: {}, scadaLayout: { nodes: [], edges: [] } },
   voltai: { components: [], edges: [] },
   editor: { tags: {}, rungs: [], fbdNodes: [], fbdEdges: [] },
 };
@@ -47,11 +47,13 @@ export const useCurrentProject = create<State>((set) => ({
 export async function listMyProjects(): Promise<CurrentProject[]> {
   try {
     const result = await listProjectsOnServer();
-    return (result.projects ?? []).map((p: { id: string; name: string; client?: string | null }) => ({
-      id: p.id,
-      name: p.name,
-      client: p.client ?? null,
-    }));
+    return (result.projects ?? []).map(
+      (p: { id: string; name: string; client?: string | null }) => ({
+        id: p.id,
+        name: p.name,
+        client: p.client ?? null,
+      }),
+    );
   } catch (error) {
     console.warn("listMyProjects error:", (error as Error).message);
     return [];

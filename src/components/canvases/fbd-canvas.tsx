@@ -18,6 +18,7 @@ import "reactflow/dist/style.css";
 import { Download, FileCode, Play, Trash2, Settings, Sparkles } from "lucide-react";
 import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
 import { useEditorStore } from "@/lib/editor/store";
+import { toast } from "sonner";
 
 interface Pin {
   id: string;
@@ -276,7 +277,9 @@ export function FbdCanvas() {
       const targetPin = targetNode?.data?.inputs?.find((p: Pin) => p.id === params.targetHandle);
 
       if (sourcePin && targetPin && sourcePin.type !== targetPin.type) {
-        alert(`Erro de Tipo: Não é possível conectar ${sourcePin.type} com ${targetPin.type}.`);
+        toast.error(
+          `Erro de Tipo: Não é possível conectar ${sourcePin.type} com ${targetPin.type}.`,
+        );
         return;
       }
 

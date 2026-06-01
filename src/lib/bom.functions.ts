@@ -2,12 +2,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+interface AuthCtx {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+}
 
 export const listBom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
+    const { supabase } = context as unknown as AuthCtx;
     const { data: items, error } = await supabase
       .from("project_bom_items")
       .select(
@@ -17,7 +24,7 @@ export const listBom = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const totalBRL = (items ?? []).reduce(
-      (sum: number, it: any) => sum + Number(it.unit_price_brl ?? 0) * Number(it.quantity ?? 0),
+      (sum: number, it) => sum + Number(it.unit_price_brl ?? 0) * Number(it.quantity ?? 0),
       0,
     );
     return { items: items ?? [], totalBRL };
@@ -42,7 +49,7 @@ export const addBomItem = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as any;
+    const { supabase, userId } = context as unknown as AuthCtx;
     const { data: row, error } = await supabase
       .from("project_bom_items")
       .insert({
@@ -79,7 +86,7 @@ export const updateBomItem = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
+    const { supabase } = context as unknown as AuthCtx;
     const patch: Record<string, unknown> = {};
     if (data.quantity !== undefined) patch.quantity = data.quantity;
     if (data.unitPriceBRL !== undefined) patch.unit_price_brl = data.unitPriceBRL;
@@ -94,7 +101,7 @@ export const deleteBomItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
+    const { supabase } = context as unknown as AuthCtx;
     const { error } = await supabase.from("project_bom_items").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -104,7 +111,7 @@ export const generateBomFromCanvas = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { userId } = context as any;
+    const { userId } = context as unknown as AuthCtx;
     const { data: result, error } = await supabaseAdmin.rpc("generate_bom_from_canvas_for_user", {
       p_user_id: userId,
       p_project_id: data.projectId,

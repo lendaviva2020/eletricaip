@@ -162,7 +162,9 @@ export function BindTagDialog({ open, onOpenChange, currentTag, onConfirm, title
               disabled={!query.trim()}
               className="gap-1"
             >
-              {exact ? "Vincular" : (
+              {exact ? (
+                "Vincular"
+              ) : (
                 <>
                   <Plus className="h-3 w-3" /> Criar e vincular
                 </>

@@ -10,8 +10,8 @@ import {
 import { useCurrentProject } from "@/lib/current-project";
 import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
 
-import { useVoltaiStore } from "@/lib/voltai/store";
-import { useEditorStore } from "@/lib/editor/store";
+import { useVoltaiStore, type VoltaiDiagramEdge } from "@/lib/voltai/store";
+import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
 import {
   getVoltaiFactoryParams,
   createVoltaiDefaultState,
@@ -36,7 +36,7 @@ export interface ArchitectResult {
     kind: string;
     category: string;
     label: string;
-    params?: Record<string, any>;
+    params?: Record<string, unknown>;
     position: { x: number; y: number };
   }>;
   edges: Array<{ source: string; target: string; kind: "power" | "signal" | "pipe" }>;
@@ -99,6 +99,12 @@ function mapError(code: string, message: string): AIServiceError {
 const STATUS_KEY = "eletricai.ai.statusEvents";
 const AI_USAGE_KEY = "eletricai.ai.usage";
 type StatusEvent = { ts: number; ok: boolean; code?: string; ms: number };
+
+interface LocalAiUsagePayload {
+  plan?: string;
+  used?: number;
+}
+
 function pushStatus(ev: StatusEvent) {
   if (typeof window === "undefined") return;
   try {
@@ -115,7 +121,7 @@ export function getLocalAiUsage() {
   if (typeof window === "undefined")
     return { plan: "free", used: 0, remainingLabel: "10 créditos" };
   try {
-    const usage = JSON.parse(localStorage.getItem(AI_USAGE_KEY) ?? "{}");
+    const usage: LocalAiUsagePayload = JSON.parse(localStorage.getItem(AI_USAGE_KEY) ?? "{}");
     const plan = getPlan(usage.plan);
     const used = Number(usage.used ?? 0);
     const remainingLabel =
@@ -196,7 +202,7 @@ export function applyArchitectToStore(
     category: (n.category as NodeCategory) || "mech",
     label: n.label || n.id,
     position: n.position,
-    params: (n.params as any) ?? {},
+    params: (n.params as Record<string, unknown>) ?? {},
     energized: n.category === "power" || n.category === "mech",
   }));
   const edges: IndustrialEdge[] = result.edges.map((e, i) => ({
@@ -263,7 +269,7 @@ export function applyArchitectToStore(
     target: e.target,
     sourceHandle: null,
     targetHandle: null,
-    role: (e.kind === "power" ? "power" : e.kind === "signal" ? "signal" : "control") as any,
+    role: (e.kind === "power" ? "power" : e.kind === "signal" ? "signal" : "control") as VoltaiDiagramEdge["role"],
   }));
 
   useVoltaiStore.getState().setAll(voltaiComponents, voltaiEdges);
@@ -364,8 +370,8 @@ export function applyArchitectToStore(
   useEditorStore.getState().setRungs(ladderRungs);
 
   // 4. Map and deploy logical FBD blocks (useEditorStore.fbdNodes / fbdEdges)
-  const fbdNodes: any[] = [];
-  const fbdEdges: any[] = [];
+  const fbdNodes: FbdNode[] = [];
+  const fbdEdges: FbdEdge[] = [];
 
   motorList.forEach((motor, i) => {
     const motorId = motor.id || `M${i + 1}`;
@@ -439,7 +445,7 @@ async function autoSaveVersion(
       .order("version_number", { ascending: false })
       .limit(1)
       .maybeSingle();
-    const next = ((last as any)?.version_number ?? 0) + 1;
+    const next = ((last as { version_number?: number } | null)?.version_number ?? 0) + 1;
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
     await supabase.from("project_versions").insert({
@@ -455,7 +461,7 @@ async function autoSaveVersion(
         nodes,
         edges,
         savedAt: new Date().toISOString(),
-      } as any,
+      } as Record<string, unknown>,
     });
     useProjectStore.getState().pushLog({
       t: new Date().toISOString(),
@@ -484,13 +490,13 @@ export async function saveManualVersion(
     .order("version_number", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const next = ((last as any)?.version_number ?? 0) + 1;
+  const next = ((last as { version_number?: number } | null)?.version_number ?? 0) + 1;
   const { nodes, edges } = useProjectStore.getState();
   const { error } = await supabase.from("project_versions").insert({
     project_id: project.id,
     created_by: u.user.id,
     version_number: next,
-    snapshot: { source: "manual", label, nodes, edges, savedAt: new Date().toISOString() } as any,
+    snapshot: { source: "manual", label, nodes, edges, savedAt: new Date().toISOString() } as Record<string, unknown>,
   });
   if (error) return { ok: false, error: error.message };
   useProjectStore.getState().pushLog({

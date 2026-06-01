@@ -230,11 +230,7 @@ export const updateMemberRole = createServerFn({ method: "POST" })
  * esse tenant. Fonte de verdade do RBAC = `tenant_memberships`, nunca
  * `profiles.role` (que pode divergir).
  */
-async function requireTenantAdmin(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
-  userId: string,
-): Promise<string> {
+async function requireTenantAdmin(supabase: any, userId: string): Promise<string> {
   const { data: profile } = await supabase
     .from("profiles")
     .select("tenant_id")
@@ -295,8 +291,7 @@ export const acceptInviteByToken = createServerFn({ method: "POST" })
     if (updateInviteError) throw new Error(updateInviteError.message);
 
     const r = { tenant_id: invite.tenant_id, role: invite.role };
-    if (r?.tenant_id) {
-      // Auto-switch active tenant to the one just accepted.
+    if (r.tenant_id) {
       await supabase.from("profiles").update({ tenant_id: r.tenant_id }).eq("id", userId);
     }
     return r;

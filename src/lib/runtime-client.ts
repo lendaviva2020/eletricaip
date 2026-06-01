@@ -1,4 +1,9 @@
-import { createClient, type RealtimeChannel, type SupabaseClient, type RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import {
+  createClient,
+  type RealtimeChannel,
+  type SupabaseClient,
+  type RealtimePostgresChangesPayload,
+} from "@supabase/supabase-js";
 import { useProjectStore, type TickPayload } from "./project-store";
 
 const STORAGE_KEY = "eletricai.runtime.config";
@@ -57,7 +62,16 @@ export async function connectSupabase(cfg: RuntimeConfig): Promise<boolean> {
           tag: (r.tag as string) ?? "RT",
           msg: (r.message as string) ?? "",
           lvl: (r.level as "info" | "warn" | "err" | "ok") ?? "info",
-          channel: (r.channel as "Logs" | "Alarmes" | "IA" | "Eventos" | "OPC-UA" | "Modbus" | "Runtime" | "Terminal") ?? "Logs",
+          channel:
+            (r.channel as
+              | "Logs"
+              | "Alarmes"
+              | "IA"
+              | "Eventos"
+              | "OPC-UA"
+              | "Modbus"
+              | "Runtime"
+              | "Terminal") ?? "Logs",
         });
       },
     );

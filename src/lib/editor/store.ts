@@ -15,10 +15,8 @@ export interface EditorTag {
   forced: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FbdNode = Node<any>;
 export type FbdEdge = Edge;
-
 
 export interface EditorSnapshot {
   editorTags?: Record<string, EditorTag>;
@@ -106,8 +104,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   setActiveMode: (mode) => set({ activeMode: mode, selectedNodeId: null }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
 
-  upsertTag: (tag) =>
-    set((s) => ({ editorTags: { ...s.editorTags, [tag.id]: tag }, dirty: true })),
+  upsertTag: (tag) => set((s) => ({ editorTags: { ...s.editorTags, [tag.id]: tag }, dirty: true })),
   removeTag: (id) =>
     set((s) => {
       const next = { ...s.editorTags };

@@ -53,7 +53,8 @@ function getGreeting(hour: number) {
   if (hour < 12) return { text: "Bom dia", icon: Sunrise, hint: "Bom café e mãos à obra." };
   if (hour < 14) return { text: "Bom almoço", icon: Coffee, hint: "Hora de uma pausa breve." };
   if (hour < 18) return { text: "Boa tarde", icon: Sun, hint: "Pico de produtividade." };
-  if (hour < 22) return { text: "Boa noite", icon: Sunset, hint: "Encerre o dia com chave de ouro." };
+  if (hour < 22)
+    return { text: "Boa noite", icon: Sunset, hint: "Encerre o dia com chave de ouro." };
   return { text: "Boa noite", icon: Moon, hint: "Cuide do descanso também." };
 }
 
@@ -253,7 +254,26 @@ function Dashboard() {
             ) : projectsQuery.isError ? (
               <EmptyState text="Não conseguimos carregar seus projetos agora. Tente novamente em instantes." />
             ) : activeProjects.length === 0 ? (
-              <EmptyState text="Sua estante de projetos está vazia. Comece criando uma planta." />
+              <div className="space-y-3 py-6 text-center">
+                <Coffee className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">Sua estante de projetos está vazia.</p>
+                <div className="flex gap-2 justify-center">
+                  <Link
+                    to="/onboarding"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Criar Primeiro Projeto
+                  </Link>
+                  <Link
+                    to="/ai"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-accent transition-colors"
+                  >
+                    <Zap className="h-4 w-4" />
+                    Gerar com IA
+                  </Link>
+                </div>
+              </div>
             ) : (
               <div className="space-y-2">
                 {activeProjects.slice(0, 5).map((project) => {

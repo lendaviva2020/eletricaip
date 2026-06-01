@@ -35,6 +35,17 @@ export interface TwinAlarm {
 
 export type TwinViewMode = "normal" | "alarms-only" | "walkthrough";
 
+export interface MotorNameplate {
+  equipmentId: string;
+  potenciaKw: number;
+  tensaoV: number;
+  correnteNominalA: number;
+  rpm: number;
+  eficiencia: number;
+  fatorPotencia: number;
+  fatorServico: number;
+}
+
 interface TwinTelemetrySample {
   ts: number;
   value: number;
@@ -55,6 +66,8 @@ interface DigitalTwinState {
   telemetryBuffers: Record<string, TwinTelemetryBuffer>;
   realtimeConnected: boolean;
   lastRealtimeUpdate: number | null;
+  modelUrl: string | null;
+  nameplates: Record<string, MotorNameplate>;
 
   addMapping: (mapping: TwinMapping) => void;
   removeMapping: (equipmentId: string) => void;
@@ -71,6 +84,8 @@ interface DigitalTwinState {
   clearAlarm: (alarmId: string) => void;
   addAlarm: (alarm: TwinAlarm) => void;
   setRealtimeConnected: (connected: boolean) => void;
+  setModelUrl: (url: string | null) => void;
+  upsertNameplate: (nameplate: MotorNameplate) => void;
 }
 
 const MAX_SAMPLES = 60; // 60 samples per buffer
@@ -87,6 +102,8 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
       telemetryBuffers: {},
       realtimeConnected: false,
       lastRealtimeUpdate: null,
+      modelUrl: null,
+      nameplates: {},
 
       addMapping: (mapping) => set((s) => ({ mappings: [...s.mappings, mapping] })),
 
@@ -159,12 +176,25 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
         }),
 
       setRealtimeConnected: (connected) => set({ realtimeConnected: connected }),
+
+      setModelUrl: (url) => set({ modelUrl: url }),
+
+      upsertNameplate: (nameplate) =>
+        set((s) => ({
+          nameplates: { ...s.nameplates, [nameplate.equipmentId]: nameplate },
+        })),
     }),
     {
       name: "eletricai-digital-twin",
       partialize: (state) => ({
         mappings: state.mappings,
+        alarms: state.alarms,
         showFlowLines: state.showFlowLines,
+        viewMode: state.viewMode,
+        selectedEquipmentId: state.selectedEquipmentId,
+        telemetryBuffers: state.telemetryBuffers,
+        modelUrl: state.modelUrl,
+        nameplates: state.nameplates,
       }),
     },
   ),

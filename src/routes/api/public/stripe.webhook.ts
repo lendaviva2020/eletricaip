@@ -29,7 +29,8 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
           .insert({ event_id: event.id, event_type: event.type });
         if (dupErr) {
           const msg = String(dupErr.message ?? "").toLowerCase();
-          const isDuplicate = msg.includes("duplicate") || (dupErr as { code?: string }).code === "23505";
+          const isDuplicate =
+            msg.includes("duplicate") || (dupErr as { code?: string }).code === "23505";
           if (isDuplicate) return new Response("ok", { status: 200 });
           console.error("[stripe] insert event log failed", dupErr);
           return new Response("event_log_failed", { status: 500 });

@@ -31,10 +31,7 @@ export function pushHistory(h: History, entry: HistoryEntry): History {
       timestamp: entry.timestamp,
       command: { ...entry.command, from: last.command.from },
       // o inverso passa a apontar para a posição original anterior
-      inverse:
-        last.inverse.type === "MoveNode"
-          ? { ...last.inverse }
-          : entry.inverse,
+      inverse: last.inverse.type === "MoveNode" ? { ...last.inverse } : entry.inverse,
     };
     const past = h.past.slice(0, -1);
     past.push(merged);

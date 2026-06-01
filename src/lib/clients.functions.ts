@@ -91,9 +91,7 @@ export const listClients = createServerFn({ method: "POST" })
 
 export const getClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) =>
-    z.object({ id: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: client, error } = await supabase
@@ -139,10 +137,7 @@ export const createClient = createServerFn({ method: "POST" })
 export const updateClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string } & Record<string, unknown>) =>
-    z
-      .object({ id: z.string().uuid() })
-      .merge(ClientPayloadSchema.partial())
-      .parse(input),
+    z.object({ id: z.string().uuid() }).merge(ClientPayloadSchema.partial()).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
@@ -159,9 +154,7 @@ export const updateClient = createServerFn({ method: "POST" })
 
 export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) =>
-    z.object({ id: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { error } = await supabase.from("clients").delete().eq("id", data.id);

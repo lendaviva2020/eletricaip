@@ -57,8 +57,14 @@ const SnapshotSchema = z
         nodes: z.array(z.any()).default([]),
         edges: z.array(z.any()).default([]),
         tags: z.record(RuntimeTagSchema).default({}),
+        scadaLayout: z
+          .object({
+            nodes: z.array(z.any()).default([]),
+            edges: z.array(z.any()).default([]),
+          })
+          .default({ nodes: [], edges: [] }),
       })
-      .default({ nodes: [], edges: [], tags: {} }),
+      .default({ nodes: [], edges: [], tags: {}, scadaLayout: { nodes: [], edges: [] } }),
     voltai: z
       .object({
         components: z.array(z.any()).default([]),
@@ -74,6 +80,21 @@ const SnapshotSchema = z
       })
       .default({ tags: {}, rungs: [], fbdNodes: [], fbdEdges: [] }),
     diagram: z.any().optional(),
+    plc: z
+      .object({
+        vendor: z.string().default("siemens"),
+        rack: z.any().default({}),
+        variables: z.array(z.any()).default([]),
+        programBlocks: z.array(z.any()).default([]),
+        cycleTimeMs: z.number().default(10),
+      })
+      .default({
+        vendor: "siemens",
+        rack: { id: "rack-1", label: "Rack Principal", modules: [] },
+        variables: [],
+        programBlocks: [],
+        cycleTimeMs: 10,
+      }),
   })
   .passthrough()
   .transform((snapshot) => ({
@@ -85,9 +106,16 @@ export type ProjectSnapshot = z.infer<typeof SnapshotSchema>;
 
 const EMPTY_SNAPSHOT: ProjectSnapshot = {
   schemaVersion: CURRENT_SNAPSHOT_VERSION,
-  project: { nodes: [], edges: [], tags: {} },
+  project: { nodes: [], edges: [], tags: {}, scadaLayout: { nodes: [], edges: [] } },
   voltai: { components: [], edges: [] },
   editor: { tags: {}, rungs: [], fbdNodes: [], fbdEdges: [] },
+  plc: {
+    vendor: "siemens",
+    rack: { id: "rack-1", label: "Rack Principal", modules: [] },
+    variables: [],
+    programBlocks: [],
+    cycleTimeMs: 10,
+  },
 };
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -174,7 +202,7 @@ export const listProjects = createServerFn({ method: "POST" })
         name: p.name,
         description: p.description,
         status: p.status,
-        client: (p.metadata as Record<string, unknown> | null)?.client as string | null ?? null,
+        client: ((p.metadata as Record<string, unknown> | null)?.client as string | null) ?? null,
         updated_at: p.updated_at,
       })),
     };
@@ -313,7 +341,10 @@ export const saveProject = createServerFn({ method: "POST" })
       version = existing.version ?? 1;
       const { error } = await supabase
         .from("diagrams")
-        .update({ canvas_data: data.snapshot as unknown as Json, updated_at: new Date().toISOString() })
+        .update({
+          canvas_data: data.snapshot as unknown as Json,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", diagramId);
       if (error) throw new Error(error.message);
     } else {
@@ -463,7 +494,6 @@ export const deleteProject = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 export const listProjectVersions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ projectId: z.string().uuid() }))
@@ -506,7 +536,10 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
     if (diagram) {
       await supabase
         .from("diagrams")
-        .update({ canvas_data: (ver.snapshot ?? EMPTY_SNAPSHOT) as unknown as Json, updated_at: new Date().toISOString() })
+        .update({
+          canvas_data: (ver.snapshot ?? EMPTY_SNAPSHOT) as unknown as Json,
+          updated_at: new Date().toISOString(),
+        })
 
         .eq("id", diagram.id);
     }

@@ -34,7 +34,6 @@ const items: NavItem[] = [
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
-
 export function AppSidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const project = useCurrentProject((s) => s.project);

@@ -338,6 +338,7 @@ interface ProjectState {
     edges: IndustrialEdge[],
     tags?: Record<string, number | boolean | string>,
   ) => void;
+  hydrateScadaLayout: (nodes: IndustrialNode[], edges: IndustrialEdge[]) => void;
   setProjectId: (id: string | null) => void;
   markSaved: () => void;
 }
@@ -463,6 +464,12 @@ export const useProjectStore = create<ProjectState>((set) => {
     setAll: (nodes, edges) => set({ nodes, edges, selectedId: null, dirty: false }),
     hydrateSnapshot: (nodes, edges, tags = {}) =>
       set({ nodes, edges, tags, selectedId: null, dirty: false }),
+    hydrateScadaLayout: (nodes, edges) =>
+      set((s) => ({
+        nodes: [...s.nodes.filter((n) => n.category === "power"), ...nodes],
+        edges,
+        dirty: false,
+      })),
     setProjectId: (id) => set({ projectId: id, dirty: false }),
     markSaved: () => set({ dirty: false, lastSavedAt: Date.now() }),
   };

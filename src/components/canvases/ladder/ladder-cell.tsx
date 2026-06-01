@@ -52,6 +52,17 @@ function nextOperand(isOutput: boolean): string {
   return `${prefix}0.${opCounter[key] - 1}`;
 }
 
+const IEC_OPERAND_RE = /^%(I|Q|M)(W|D)?(\d+)(\.(\d+))?$/i;
+const TAG_NAME_RE = /^[A-Za-z_][\w_]*$/;
+
+function validateOperand(operand: string, tags: Record<string, unknown>): string | null {
+  if (!operand || operand === "&nbsp;") return null;
+  if (IEC_OPERAND_RE.test(operand)) return null;
+  if (TAG_NAME_RE.test(operand)) return null;
+  if (operand in tags) return null;
+  return "Formato inválido. Use %I0.0, %Q0.0, %MW0, ou nome de tag.";
+}
+
 export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const allowed = isOutputCol ? OUTPUT_KINDS : CONTACT_KINDS;
@@ -61,13 +72,19 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
   // render, which triggers React error #185 (Maximum update depth exceeded).
   const editorTags = useEditorStore((s) => s.editorTags);
   const tagNames = useMemo(
-    () => Object.values(editorTags).map((t) => t.name).filter(Boolean),
+    () =>
+      Object.values(editorTags)
+        .map((t) => t.name)
+        .filter(Boolean),
     [editorTags],
   );
-  const datalistId = useMemo(
-    () => `ladder-tags-${isOutputCol ? "out" : "in"}`,
-    [isOutputCol],
-  );
+  const datalistId = useMemo(() => `ladder-tags-${isOutputCol ? "out" : "in"}`, [isOutputCol]);
+
+  const operandError = useMemo(() => {
+    if (cell.kind === "EMPTY" || !cell.operand) return null;
+    const tagMap = Object.fromEntries(Object.entries(editorTags).map(([, t]) => [t.name, true]));
+    return validateOperand(cell.operand, tagMap);
+  }, [cell.operand, cell.kind, editorTags]);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes("application/ladder-element")) {
@@ -97,11 +114,7 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
         return;
       }
       const preset =
-        kind === "TON" || kind === "TOF" || kind === "TP"
-          ? 1000
-          : kind === "CTU"
-            ? 10
-            : undefined;
+        kind === "TON" || kind === "TOF" || kind === "TP" ? 1000 : kind === "CTU" ? 10 : undefined;
       onChange({ kind, operand: cell.operand || nextOperand(isOutputCol), preset });
       setOpen(false);
     },
@@ -160,9 +173,10 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
               value={cell.operand}
               placeholder={isOutputCol ? "%Q0.0" : "%I0.0"}
               onChange={(e) => onChange({ ...cell, operand: e.target.value })}
-              className="h-8 font-mono text-xs"
+              className={`h-8 font-mono text-xs ${operandError ? "border-destructive focus-visible:ring-destructive" : ""}`}
               list={datalistId}
             />
+            {operandError && <p className="text-[10px] text-destructive mt-1">{operandError}</p>}
             <datalist id={datalistId}>
               {tagNames.map((name) => (
                 <option key={name} value={name} />
@@ -184,8 +198,6 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
             />
           </div>
         ) : null}
-
-
 
         {isOutputCol && cell.kind !== "EMPTY" && !isOutputKind(cell.kind) && (
           <div className="text-[10px] text-destructive">

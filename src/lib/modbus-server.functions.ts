@@ -68,14 +68,11 @@ function isHostAllowed(host: string): boolean {
     const parts = ipv4.slice(1, 5).map((p) => Number(p));
     if (parts.some((p) => p < 0 || p > 255)) return false;
     const [a, b] = parts;
-    if (a === 127) return false;                     // loopback
-    if (a === 0) return false;                       // "this" network
-    if (a === 169 && b === 254) return false;        // link-local / cloud metadata
-    if (a >= 224) return false;                      // multicast / reserved / broadcast
-    const isPrivate =
-      a === 10 ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168);
+    if (a === 127) return false; // loopback
+    if (a === 0) return false; // "this" network
+    if (a === 169 && b === 254) return false; // link-local / cloud metadata
+    if (a >= 224) return false; // multicast / reserved / broadcast
+    const isPrivate = a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
     return isPrivate;
   }
   // Hostname — allow only simple DNS labels; reject anything with credentials/paths.
@@ -89,15 +86,10 @@ function isHostAllowed(host: string): boolean {
 }
 
 const ConnectSchema = z.object({
-  host: z
-    .string()
-    .min(1)
-    .max(253)
-    .default("192.168.1.100")
-    .refine(isHostAllowed, {
-      message:
-        "Host não permitido. Use um IP RFC1918 privado (10.x, 172.16-31.x, 192.168.x) ou nome DNS válido do gateway OT.",
-    }),
+  host: z.string().min(1).max(253).default("192.168.1.100").refine(isHostAllowed, {
+    message:
+      "Host não permitido. Use um IP RFC1918 privado (10.x, 172.16-31.x, 192.168.x) ou nome DNS válido do gateway OT.",
+  }),
   port: z.number().int().min(1).max(65535).default(502),
   unitId: z.number().int().min(1).max(247).default(1),
   timeoutMs: z.number().min(1000).max(30000).default(5000),
@@ -148,7 +140,12 @@ export const connectModbus = createServerFn({ method: "POST" })
       session.status = "error";
       // Keep detailed error server-side only; return generic code to client to
       // prevent using errors as a port/host oracle.
-      console.error("[modbus] connect failed", { userId, host: data.host, port: data.port, err: e?.message });
+      console.error("[modbus] connect failed", {
+        userId,
+        host: data.host,
+        port: data.port,
+        err: e?.message,
+      });
       session.error = "CONNECTION_FAILED";
       return {
         ok: false as const,
@@ -353,3 +350,35 @@ async function connectRealModbus(session: ModbusSession, userId: string, supabas
     });
   });
 }
+
+export const testModbusHost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ host: z.string().min(1), port: z.number().int().min(1).max(65535) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    if (!isHostAllowed(data.host)) {
+      throw new Error("Host não permitido. Redes loopback e restritas são bloqueadas.");
+    }
+    // Simulated test: return success for simulation hosts or RFC1918 addresses
+    if (data.host === "192.168.1.100" || data.host.includes("simulation")) {
+      return { ok: true as const, simulated: true };
+    }
+    // Real connection test
+    return new Promise<{ ok: boolean; simulated?: boolean }>((resolve, reject) => {
+      const socket = new net.Socket();
+      const timer = setTimeout(() => {
+        socket.destroy();
+        reject(new Error("Timeout ao testar conexão Modbus."));
+      }, 5000);
+      socket.connect(data.port, data.host, () => {
+        clearTimeout(timer);
+        socket.destroy();
+        resolve({ ok: true as const });
+      });
+      socket.on("error", (err) => {
+        clearTimeout(timer);
+        reject(new Error(`Falha na conexão: ${err.message}`));
+      });
+    });
+  });

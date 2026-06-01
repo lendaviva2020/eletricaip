@@ -8,11 +8,7 @@ import type { Database } from "./types";
 function getServerSupabasePublicEnv() {
   const env = typeof process !== "undefined" ? process.env : {};
   return {
-    url:
-      env.SUPABASE_URL ||
-      env.VITE_SUPABASE_URL ||
-      env.NEXT_PUBLIC_SUPABASE_URL ||
-      "",
+    url: env.SUPABASE_URL || env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || "",
     anonKey:
       env.SUPABASE_PUBLISHABLE_KEY ||
       env.SUPABASE_ANON_KEY ||

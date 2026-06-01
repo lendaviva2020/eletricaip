@@ -12,11 +12,7 @@ import {
   ShieldCheck,
   Compass,
 } from "lucide-react";
-import {
-  callArchitect,
-  applyArchitectToStore,
-  AIServiceError,
-} from "@/lib/ai-architect-client";
+import { callArchitect, applyArchitectToStore, AIServiceError } from "@/lib/ai-architect-client";
 import { getAiCredits } from "@/lib/ai-architect.functions";
 import { useProjectStore } from "@/lib/project-store";
 import { validateProject } from "@/lib/norm-validator";
@@ -24,6 +20,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
 import { useDiagramStore } from "@/lib/diagram/store";
+import { AiPatchPreview } from "@/components/ai-patch-preview";
 
 interface Msg {
   role: "user" | "ai";
@@ -105,7 +102,10 @@ export function CanvasAiChat() {
     setMsgs((m) => [
       ...m,
       { role: "user", text: p },
-      { role: "ai", text: patchMode ? "Gerando patch validado (Zod + NBR 5410)..." : "Processando prompt..." },
+      {
+        role: "ai",
+        text: patchMode ? "Gerando patch validado (Zod + NBR 5410)..." : "Processando prompt...",
+      },
     ]);
     setBusy(true);
 
@@ -136,7 +136,14 @@ export function CanvasAiChat() {
         } else {
           applyAiPatch(res.patch);
           window.dispatchEvent(new Event("ai-usage-event"));
-          const { addNodes = [], addEdges = [], removeNodeIds = [], removeEdgeIds = [], updateNodes = [], rationale } = res.patch ?? {};
+          const {
+            addNodes = [],
+            addEdges = [],
+            removeNodeIds = [],
+            removeEdgeIds = [],
+            updateNodes = [],
+            rationale,
+          } = res.patch ?? {};
           setMsgs((m) => {
             const c = [...m];
             c[c.length - 1] = {
@@ -165,21 +172,25 @@ export function CanvasAiChat() {
       // Tenta extrair status do erro do middleware (Response-like ou Error com mensagem).
       const rawMsg = String(e?.message ?? e ?? "");
       const isAuth = rawMsg.includes("Unauthorized") || rawMsg.includes("401");
-      const isRate = rawMsg.includes("BURST_LIMIT") || rawMsg.includes("PLAN_RATE_LIMIT") || rawMsg.includes("429");
+      const isRate =
+        rawMsg.includes("BURST_LIMIT") ||
+        rawMsg.includes("PLAN_RATE_LIMIT") ||
+        rawMsg.includes("429");
       const isQuota = rawMsg.includes("AI_QUOTA") || rawMsg.includes("insufficient_credits");
 
       const friendly = isSvc
         ? e.userMessage
         : isAuth
-        ? "Sessão necessária. Faça login para usar a IA."
-        : isRate
-        ? "Limite de requisições atingido. Aguarde alguns segundos ou faça upgrade do plano."
-        : isQuota
-        ? "Créditos de IA insuficientes neste mês. Faça upgrade do plano."
-        : (e?.message ?? "Falha ao gerar resposta da IA.");
+          ? "Sessão necessária. Faça login para usar a IA."
+          : isRate
+            ? "Limite de requisições atingido. Aguarde alguns segundos ou faça upgrade do plano."
+            : isQuota
+              ? "Créditos de IA insuficientes neste mês. Faça upgrade do plano."
+              : (e?.message ?? "Falha ao gerar resposta da IA.");
       const steps = isSvc ? e.steps : undefined;
       const needsConfig =
-        (isSvc && ["MISSING_KEY", "INVALID_KEY_FORMAT", "AUTH_401", "NO_CREDITS_402"].includes(e.code)) ||
+        (isSvc &&
+          ["MISSING_KEY", "INVALID_KEY_FORMAT", "AUTH_401", "NO_CREDITS_402"].includes(e.code)) ||
         isAuth ||
         isQuota;
 
@@ -411,23 +422,22 @@ export function CanvasAiChat() {
               </Link>
             )}
 
-            {m.hasPatch && (
-              <div className="mt-3 pt-2 border-t border-border/60 flex items-center justify-between">
-                <span className="text-[9px] text-muted-foreground font-mono">
-                  {m.patchApplied ? "✓ Patch Aplicado" : "Diagrama Pronto"}
-                </span>
-                <Button
-                  size="sm"
-                  onClick={() => handleApplyPatch(i, m.patchData)}
-                  disabled={m.patchApplied}
-                  className="h-6 px-2 text-[9px] font-bold uppercase tracking-wider cursor-pointer"
-                >
-                  {m.patchApplied ? (
-                    <ShieldCheck className="h-3.5 w-3.5 text-success" />
-                  ) : (
-                    "Aplicar ao Canvas"
-                  )}
-                </Button>
+            {m.hasPatch && !m.patchApplied && (
+              <div className="mt-3">
+                <AiPatchPreview
+                  patch={m.patchData?.patch ?? m.patchData}
+                  onApply={() => handleApplyPatch(i, m.patchData)}
+                  onCancel={() => {
+                    setMessages((prev) =>
+                      prev.map((msg, idx) => (idx === i ? { ...msg, hasPatch: false } : msg)),
+                    );
+                  }}
+                />
+              </div>
+            )}
+            {m.hasPatch && m.patchApplied && (
+              <div className="mt-3 pt-2 border-t border-border/60">
+                <span className="text-[9px] text-success font-mono">✓ Patch Aplicado</span>
               </div>
             )}
           </div>

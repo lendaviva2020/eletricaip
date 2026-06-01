@@ -64,11 +64,7 @@ function ClientDetailPage() {
         <Card>
           <CardContent className="p-6 flex items-start gap-5 flex-wrap">
             {c.logo_url ? (
-              <img
-                src={c.logo_url}
-                alt={c.name}
-                className="h-16 w-16 rounded-xl object-cover"
-              />
+              <img src={c.logo_url} alt={c.name} className="h-16 w-16 rounded-xl object-cover" />
             ) : (
               <div className="h-16 w-16 rounded-xl grid place-items-center text-2xl font-semibold text-primary bg-primary/15">
                 {c.name[0]?.toUpperCase()}
@@ -86,10 +82,7 @@ function ClientDetailPage() {
                 <KPI label="Projetos" value={String(projects.length)} />
                 <KPI label="SLA" value={`${Number(c.sla_pct).toFixed(1)}%`} />
                 <KPI label="Contato" value={c.contact_name || "—"} />
-                <KPI
-                  label="Desde"
-                  value={new Date(c.created_at).toLocaleDateString("pt-BR")}
-                />
+                <KPI label="Desde" value={new Date(c.created_at).toLocaleDateString("pt-BR")} />
               </div>
             </div>
           </CardContent>
@@ -120,10 +113,7 @@ function ClientDetailPage() {
               <Card>
                 <CardContent className="p-0 divide-y divide-border">
                   {projects.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between px-5 py-3"
-                    >
+                    <div key={p.id} className="flex items-center justify-between px-5 py-3">
                       <div>
                         <div className="text-sm font-medium">{p.name}</div>
                         <div className="text-[11px] text-muted-foreground">
@@ -141,9 +131,7 @@ function ClientDetailPage() {
           <TabsContent value="notes" className="mt-4">
             <Card>
               <CardContent className="p-5 text-sm whitespace-pre-wrap">
-                {c.notes || (
-                  <span className="text-muted-foreground">Nenhuma nota registrada.</span>
-                )}
+                {c.notes || <span className="text-muted-foreground">Nenhuma nota registrada.</span>}
               </CardContent>
             </Card>
           </TabsContent>
@@ -182,9 +170,7 @@ function InfoRow({
           <Icon className="h-4 w-4 text-primary" />
         </div>
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            {label}
-          </div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
           {value ? (
             link ? (
               <a

@@ -125,7 +125,16 @@ function SettingsPage() {
 
         <section>
           <SectionLabel icon={Wifi} title="Protocolos industriais" />
-          <Card>
+          <div className="grid gap-3">
+            <SettingsLinkCard
+              icon={Plug}
+              title="Configuração de Protocolos"
+              desc="Configure OPC-UA, Modbus TCP, teste conexões e gerencie endpoints"
+              to="/settings/protocols"
+              badge="Novo"
+            />
+          </div>
+          <Card className="mt-3">
             <CardContent className="p-0 divide-y divide-border">
               {PROTOCOLS.map((p) => {
                 const on = protocols[p.name];

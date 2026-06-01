@@ -1,12 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+interface AuthCtx {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+}
 
 export const getProjectExportData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
+    const { supabase } = context as unknown as AuthCtx;
     const [{ data: project, error: pErr }, { data: diagrams }, { data: bom }] = await Promise.all([
       supabase
         .from("projects")
@@ -22,7 +29,7 @@ export const getProjectExportData = createServerFn({ method: "POST" })
     if (pErr) throw new Error(pErr.message);
     if (!project) throw new Error("Projeto não encontrado");
     const totalBRL = (bom ?? []).reduce(
-      (s: number, it: any) => s + Number(it.quantity) * Number(it.unit_price_brl ?? 0),
+      (s: number, it) => s + Number(it.quantity) * Number(it.unit_price_brl ?? 0),
       0,
     );
     return {

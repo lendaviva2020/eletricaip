@@ -204,10 +204,10 @@ export interface ScanResult {
   rungId: string;
   poweredOut: boolean;
   perCell: boolean[][];
-  /** Per-cell diagnostics for TON/CTU display */
+  /** Per-cell diagnostics for timer/counter display */
   diagnostics?: Record<
     string,
-    { kind: "TON" | "CTU"; value: number; preset: number; done: boolean }
+    { kind: "TON" | "TOF" | "TP" | "CTU"; value: number; preset: number; done: boolean }
   >;
 }
 
@@ -220,7 +220,7 @@ export const scanRungs = (rungs: LadderRung[]): ScanResult[] => {
     const perCell: boolean[][] = [];
     const diagnostics: Record<
       string,
-      { kind: "TON" | "CTU"; value: number; preset: number; done: boolean }
+      { kind: "TON" | "TOF" | "TP" | "CTU"; value: number; preset: number; done: boolean }
     > = {};
     let powered = false;
 
@@ -257,12 +257,12 @@ export const scanRungs = (rungs: LadderRung[]): ScanResult[] => {
       } else if (outCell.kind === "TOF") {
         const { active, accum } = tickTOF(key, powered, preset, now);
         writeBool(outCell.operand, active);
-        diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done: active };
+        diagnostics[`${0}:${outCol}`] = { kind: "TOF", value: accum, preset, done: active };
         perCell[0][outCol] = active;
       } else if (outCell.kind === "TP") {
         const { active, accum } = tickTP(key, powered, preset, now);
         writeBool(outCell.operand, active);
-        diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done: active };
+        diagnostics[`${0}:${outCol}`] = { kind: "TP", value: accum, preset, done: active };
         perCell[0][outCol] = active;
       } else if (outCell.kind === "CTU") {
         const { done, count } = tickCounter(key, powered, preset);

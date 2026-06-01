@@ -70,11 +70,19 @@ function ProfilePage() {
             </div>
             <div>
               <Label>Nome completo</Label>
-              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" />
+              <Input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="mt-1.5"
+              />
             </div>
             <div>
               <Label>Cargo</Label>
-              <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className="mt-1.5" />
+              <Input
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                className="mt-1.5"
+              />
             </div>
             <div>
               <Label>Telefone</Label>

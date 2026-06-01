@@ -18,6 +18,8 @@ import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { Twin3DViewer } from "./twin-3d-viewer";
+import { useDigitalTwinStore } from "@/lib/digital-twin-store";
+import { seedDigitalTwinDemo } from "@/lib/seed-digital-twin";
 
 interface TelemetryHistory {
   t: number;
@@ -25,10 +27,18 @@ interface TelemetryHistory {
 }
 
 export function TwinCanvas() {
-  const [angle, setAngle] = useState(35); // Viewport rotation angle in degrees
-  const [zoom, setZoom] = useState(1.1); // Viewport zoom scale
+  const [angle, setAngle] = useState(35);
+  const [zoom, setZoom] = useState(1.1);
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [sensorHistory, setSensorHistory] = useState<Record<string, TelemetryHistory[]>>({});
+
+  // #TWIN-01 — Auto-seed demo on first visit
+  const twinMappings = useDigitalTwinStore((s) => s.mappings);
+  useEffect(() => {
+    if (twinMappings.length === 0) {
+      seedDigitalTwinDemo();
+    }
+  }, [twinMappings.length]);
 
   // ===== "What-If" Simulation Mode =====
   const [view3d, setView3d] = useState(false);

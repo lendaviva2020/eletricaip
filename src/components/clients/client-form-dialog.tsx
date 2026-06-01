@@ -21,7 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { createClient, updateClient, type ClientRow, type ClientStatus } from "@/lib/clients.functions";
+import {
+  createClient,
+  updateClient,
+  type ClientRow,
+  type ClientStatus,
+} from "@/lib/clients.functions";
 
 interface Props {
   open: boolean;
@@ -112,10 +117,7 @@ export function ClientFormDialog({ open, onOpenChange, initial }: Props) {
             />
           </Field>
           <Field label="Status">
-            <Select
-              value={form.status}
-              onValueChange={(v) => update("status", v as ClientStatus)}
-            >
+            <Select value={form.status} onValueChange={(v) => update("status", v as ClientStatus)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

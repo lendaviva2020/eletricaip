@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ScriptSandbox, type SandboxResult } from "@/lib/simulation/script-sandbox";
 import { BindTagDialog } from "@/components/scada/bind-tag-dialog";
 import { pushNotification } from "@/lib/notification-service";
+import { useAlarmStore } from "@/lib/alarm-store";
 import {
   Play,
   Pause,
@@ -85,9 +86,9 @@ export function ScadaCanvas() {
   const [bindOpen, setBindOpen] = useState(false);
   const [scriptLogs, setScriptLogs] = useState<string[]>([]);
   const [scanDuration, setScanDuration] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const editorRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const monacoRef = useRef<any>(null);
   const sandboxRef = useRef<ScriptSandbox | null>(null);
   const lastAlarmRef = useRef<string | null>(null);
@@ -99,10 +100,12 @@ export function ScadaCanvas() {
   const selectedNode = useProjectStore((s) => s.nodes.find((n) => n.id === s.selectedId));
   const updateNodeParam = useProjectStore((s) => s.updateNodeParam);
 
-
   const tags = useProjectStore((s) => s.tags);
   const applyTick = useProjectStore((s) => s.applyTick);
   const pushLog = useProjectStore((s) => s.pushLog);
+
+  const addAlarm = useAlarmStore((s) => s.addAlarm);
+  const clearAlarm = useAlarmStore((s) => s.clearAlarm);
 
   const isAlarmActive = tags["ALARM_ACTIVE"] === true;
   const alarmMsg = String(tags["ALARM_MSG"] || "Alta Temperatura no Motor Principal!");
@@ -240,8 +243,22 @@ export function ScadaCanvas() {
           channel: "Alarmes",
         });
         void pushNotification("alarm", "Alarme SCADA", msg, { source: "scada-script" });
+        addAlarm({
+          id: `scada-${Date.now()}`,
+          tagName: "ALARME SCADA",
+          priority: "high",
+          message: msg,
+          triggeredAt: Date.now(),
+          acknowledgedAt: null,
+          isActive: true,
+          state: "unacknowledged",
+          category: "process",
+        });
       }
-      if (!isNowActive) lastAlarmRef.current = null;
+      if (!isNowActive && wasAlarmActive) {
+        lastAlarmRef.current = null;
+        clearAlarm("ALARME SCADA");
+      }
 
       // Mirror to editor tags (Watch table cross-module)
       const editorState = useEditorStore.getState();
@@ -267,7 +284,7 @@ export function ScadaCanvas() {
         }
       });
     },
-    [applyTick, pushLog, tags],
+    [applyTick, pushLog, tags, addAlarm, clearAlarm],
   );
 
   // Live preview: debounced execute on script change
@@ -299,7 +316,6 @@ export function ScadaCanvas() {
     }, 100);
     return () => clearInterval(interval);
   }, [running, script, applyResult]);
-
 
   const acknowledgeAlarm = () => {
     applyTick({ tags: { ...tags, ALARM_ACTIVE: false } });
@@ -369,7 +385,6 @@ export function ScadaCanvas() {
           if (selectedNode) updateNodeParam(selectedNode.id, "tag", tagName);
         }}
       />
-
 
       {/* SCRIPTER SIDEBAR */}
       <div

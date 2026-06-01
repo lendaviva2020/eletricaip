@@ -3,13 +3,7 @@
 // History stack com coalescing de moves e suporte a batches.
 import { applyDraft, makeEdge, makeNode } from "./model";
 import type { AiDiagramPatch } from "./schema";
-import type {
-  DiagramDoc,
-  DiagramEdge,
-  DiagramNode,
-  NodeParams,
-  Position,
-} from "./schema";
+import type { DiagramDoc, DiagramEdge, DiagramNode, NodeParams, Position } from "./schema";
 
 // ===== tipos de comando =====
 export type Command =
@@ -164,9 +158,12 @@ export function buildAiPatchCommand(doc: DiagramDoc, patch: AiDiagramPatch): Com
   for (const u of patch.updateNodes) {
     const cur = doc.nodes[u.id];
     if (!cur) continue;
-    if (u.position) inverse.push({ type: "MoveNode", nodeId: u.id, from: u.position, to: cur.position });
-    if (u.label !== undefined) inverse.push({ type: "UpdateNodeLabel", nodeId: u.id, from: u.label, to: cur.label });
-    if (u.params) inverse.push({ type: "UpdateNodeParams", nodeId: u.id, from: u.params, to: cur.params });
+    if (u.position)
+      inverse.push({ type: "MoveNode", nodeId: u.id, from: u.position, to: cur.position });
+    if (u.label !== undefined)
+      inverse.push({ type: "UpdateNodeLabel", nodeId: u.id, from: u.label, to: cur.label });
+    if (u.params)
+      inverse.push({ type: "UpdateNodeParams", nodeId: u.id, from: u.params, to: cur.params });
   }
   return { type: "ApplyAiPatch", patch, inverse };
 }

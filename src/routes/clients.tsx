@@ -31,7 +31,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
-import { listClients, deleteClient, type ClientRow, type ClientStatus } from "@/lib/clients.functions";
+import {
+  listClients,
+  deleteClient,
+  type ClientRow,
+  type ClientStatus,
+} from "@/lib/clients.functions";
 
 export const Route = createFileRoute("/clients")({
   head: () => ({
@@ -67,7 +72,7 @@ function ClientsPage() {
       }),
   });
 
-  const clients = data?.clients ?? [];
+  const clients = useMemo(() => data?.clients ?? [], [data?.clients]);
   const sectors = useMemo(
     () => Array.from(new Set(clients.map((c) => c.sector).filter(Boolean))).sort(),
     [clients],
@@ -169,7 +174,6 @@ function ClientsPage() {
               >
                 <div className="flex items-start gap-3">
                   {c.logo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={c.logo_url}
                       alt={c.name}
@@ -254,9 +258,7 @@ function ClientsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmDelete && deleteMut.mutate(confirmDelete.id)}
-            >
+            <AlertDialogAction onClick={() => confirmDelete && deleteMut.mutate(confirmDelete.id)}>
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -268,8 +270,14 @@ function ClientsPage() {
 
 function StatusBadge({ status }: { status: ClientStatus }) {
   const map = {
-    active: { label: "Ativo", className: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" },
-    prospect: { label: "Prospect", className: "bg-amber-500/15 text-amber-500 border-amber-500/30" },
+    active: {
+      label: "Ativo",
+      className: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
+    },
+    prospect: {
+      label: "Prospect",
+      className: "bg-amber-500/15 text-amber-500 border-amber-500/30",
+    },
     inactive: { label: "Inativo", className: "bg-muted text-muted-foreground border-border" },
   } as const;
   const cfg = map[status];

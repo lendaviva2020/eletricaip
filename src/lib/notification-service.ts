@@ -37,7 +37,11 @@ export async function pushNotification(
         message,
         data: (data ?? {}) as Json,
       };
-      await (supabase.from("notifications") as unknown as { insert: (payload: Record<string, unknown>) => Promise<unknown> }).insert(insertPayload);
+      await (
+        supabase.from("notifications") as unknown as {
+          insert: (payload: Record<string, unknown>) => Promise<unknown>;
+        }
+      ).insert(insertPayload);
     } catch {
       // fallback — notification already shown locally
     }

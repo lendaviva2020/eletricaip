@@ -17,7 +17,6 @@ import { getAiCredits } from "@/lib/ai-architect.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-
 export const Route = createFileRoute("/chat")({
   head: () => ({
     meta: [
@@ -53,7 +52,6 @@ function ChatPage() {
     queryFn: () => creditsFn({}),
     refetchInterval: 30000,
   });
-
 
   const { data: messages = [] } = useQuery({
     queryKey: ["chat-msgs", activeId],
@@ -117,7 +115,6 @@ function ChatPage() {
       await qc.invalidateQueries({ queryKey: ["chat-convos"] });
       await qc.invalidateQueries({ queryKey: ["ai-credits"] });
       setStreamingText("");
-
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -172,7 +169,6 @@ function ChatPage() {
             <CreditsBadge credits={credits} />
           </div>
         </header>
-
 
         <div ref={scrollerRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {messages.length === 0 && !streamingText && (
@@ -258,9 +254,7 @@ function CreditsBadge({ credits }: { credits: any }) {
   return (
     <span
       className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded ${
-        low
-          ? "bg-destructive/10 text-destructive"
-          : "bg-muted text-muted-foreground"
+        low ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
       }`}
       title={`Créditos IA mensais — plano ${credits.plan ?? "free"}`}
     >
@@ -268,4 +262,3 @@ function CreditsBadge({ credits }: { credits: any }) {
     </span>
   );
 }
-

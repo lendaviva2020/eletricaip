@@ -90,7 +90,6 @@ function Projects() {
     onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
   });
 
-
   const projects = useMemo(() => data?.projects ?? [], [data?.projects]);
   const filteredProjects = useMemo(() => {
     const q = search.trim().toLowerCase();

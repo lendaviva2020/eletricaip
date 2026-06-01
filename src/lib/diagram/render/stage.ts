@@ -154,10 +154,12 @@ export class DiagramStage {
 
   destroy() {
     this.resizeObs?.disconnect();
-    if (this.host && this.app.canvas.parentElement === this.host) {
-      this.host.removeChild(this.app.canvas);
+    if (this.app.renderer) {
+      if (this.host && this.app.canvas.parentElement === this.host) {
+        this.host.removeChild(this.app.canvas);
+      }
+      this.app.destroy(true, { children: true });
     }
-    this.app.destroy(true, { children: true });
     this.nodes.clear();
     this.edges.clear();
   }
@@ -174,6 +176,11 @@ export class DiagramStage {
   fitView() {
     this.viewport.fit();
     this.viewport.moveCenter(2000, 2000);
+  }
+
+  screenToWorld(clientX: number, clientY: number): { x: number; y: number } {
+    if (!this.app.renderer) return { x: 2000, y: 2000 };
+    return this.viewport.toWorld(clientX, clientY);
   }
 
   /** Diff incremental do scene graph contra o doc. */
@@ -250,7 +257,9 @@ export class DiagramStage {
     view.portGraphics.clear();
     for (const port of getPorts(node.params.kind)) {
       const g = new Graphics();
-      g.circle(port.x, port.y, PORT_RADIUS).fill({ color: 0x0b0f17 }).stroke({ width: 1.5, color: PORT_COLOR });
+      g.circle(port.x, port.y, PORT_RADIUS)
+        .fill({ color: 0x0b0f17 })
+        .stroke({ width: 1.5, color: PORT_COLOR });
       g.eventMode = "static";
       g.cursor = "crosshair";
       // hitArea ampliado (raio maior que o desenho) p/ facilitar pegar a porta
@@ -258,8 +267,8 @@ export class DiagramStage {
         contains: (x: number, y: number) =>
           (x - port.x) ** 2 + (y - port.y) ** 2 <= PORT_HIT_RADIUS ** 2,
       };
-      g.on("pointerover", () => g.tint = PORT_COLOR_HOVER);
-      g.on("pointerout", () => g.tint = 0xffffff);
+      g.on("pointerover", () => (g.tint = PORT_COLOR_HOVER));
+      g.on("pointerout", () => (g.tint = 0xffffff));
       g.on("pointerdown", (e: FederatedPointerEvent) => this.beginEdgeDraft(e, node.id, port));
       view.portsLayer.addChild(g);
       view.portGraphics.set(port.id, g);
@@ -415,9 +424,7 @@ export class DiagramStage {
         const t = this.findNode(this.draft.hoverTarget.nodeId);
         if (t) {
           const tw = this.portWorldFromView(t, this.draft.hoverTarget.port);
-          this.draft.preview
-            .circle(tw.x, tw.y, 6)
-            .stroke({ width: 1.5, color: 0x22d3ee });
+          this.draft.preview.circle(tw.x, tw.y, 6).stroke({ width: 1.5, color: 0x22d3ee });
         }
       }
       return;
@@ -484,7 +491,12 @@ export class DiagramStage {
       m.rect.destroy();
       const picked: string[] = [];
       for (const [id, v] of this.nodes) {
-        if (v.container.x >= x && v.container.x <= x + w && v.container.y >= y && v.container.y <= y + h) {
+        if (
+          v.container.x >= x &&
+          v.container.x <= x + w &&
+          v.container.y >= y &&
+          v.container.y <= y + h
+        ) {
           picked.push(id);
         }
       }
@@ -500,7 +512,13 @@ export class DiagramStage {
     e.stopPropagation();
     const preview = new Graphics();
     this.overlayLayer.addChild(preview);
-    this.draft = { pointerId: e.pointerId, source: nodeId, sourcePort: port, preview, hoverTarget: null };
+    this.draft = {
+      pointerId: e.pointerId,
+      source: nodeId,
+      sourcePort: port,
+      preview,
+      hoverTarget: null,
+    };
   }
 
   private findNode(id: string): { container: Container; kind: string } | null {
@@ -519,7 +537,11 @@ export class DiagramStage {
     return { x: view.container.x + r.x, y: view.container.y + r.y };
   }
 
-  private findPortAt(x: number, y: number, exceptId: string): { nodeId: string; port: PortDef } | null {
+  private findPortAt(
+    x: number,
+    y: number,
+    exceptId: string,
+  ): { nodeId: string; port: PortDef } | null {
     let best: { nodeId: string; port: PortDef; d2: number } | null = null;
     const tol = 14;
     for (const [id, v] of this.nodes) {

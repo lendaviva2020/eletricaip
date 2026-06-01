@@ -29,6 +29,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as SettingsSecurityMonitorRouteImport } from './routes/settings.security-monitor'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
+import { Route as SettingsProtocolsRouteImport } from './routes/settings.protocols'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
@@ -144,6 +145,11 @@ const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsProtocolsRoute = SettingsProtocolsRouteImport.update({
+  id: '/protocols',
+  path: '/protocols',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsProfileRoute = SettingsProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -242,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/settings/protocols': typeof SettingsProtocolsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
@@ -278,6 +285,7 @@ export interface FileRoutesByTo {
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/settings/protocols': typeof SettingsProtocolsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
@@ -315,6 +323,7 @@ export interface FileRoutesById {
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
+  '/settings/protocols': typeof SettingsProtocolsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
@@ -353,6 +362,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
+    | '/settings/protocols'
     | '/settings/security'
     | '/settings/security-monitor'
     | '/settings/team'
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
+    | '/settings/protocols'
     | '/settings/security'
     | '/settings/security-monitor'
     | '/settings/team'
@@ -425,6 +436,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
+    | '/settings/protocols'
     | '/settings/security'
     | '/settings/security-monitor'
     | '/settings/team'
@@ -602,6 +614,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsSecurityRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/protocols': {
+      id: '/settings/protocols'
+      path: '/protocols'
+      fullPath: '/settings/protocols'
+      preLoaderRoute: typeof SettingsProtocolsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/profile': {
       id: '/settings/profile'
       path: '/profile'
@@ -735,6 +754,7 @@ interface SettingsRouteChildren {
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
+  SettingsProtocolsRoute: typeof SettingsProtocolsRoute
   SettingsSecurityRoute: typeof SettingsSecurityRoute
   SettingsSecurityMonitorRoute: typeof SettingsSecurityMonitorRoute
   SettingsTeamRoute: typeof SettingsTeamRoute
@@ -747,6 +767,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsProfileRoute: SettingsProfileRoute,
+  SettingsProtocolsRoute: SettingsProtocolsRoute,
   SettingsSecurityRoute: SettingsSecurityRoute,
   SettingsSecurityMonitorRoute: SettingsSecurityMonitorRoute,
   SettingsTeamRoute: SettingsTeamRoute,
@@ -783,3 +804,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

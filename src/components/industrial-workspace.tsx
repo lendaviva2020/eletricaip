@@ -1,16 +1,23 @@
 import { Suspense, lazy, useCallback, useEffect } from "react";
+import { useRouter } from "@tanstack/react-router";
 import { ModeTabs } from "@/components/mode-tabs";
 import { BottomPanel } from "@/components/bottom-panel";
 import { RightPanel } from "@/components/right-panel";
-import { Loader2, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  FolderOpen,
+  PlusCircle,
+} from "lucide-react";
 import { CanvasAiChat } from "@/components/canvas-ai-chat";
 import { useProjectPersistence } from "@/lib/use-project-persistence";
-import {
-  isBreakerComponent,
-  type VoltaiComponentType,
-} from "@/lib/voltai/component-definitions";
+import { isBreakerComponent, type VoltaiComponentType } from "@/lib/voltai/component-definitions";
 import { LeftSidebarHost } from "@/components/editor/left-sidebar-host";
 import { useEditorStore } from "@/lib/editor/store";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const UnifilarCanvas = lazy(() =>
   import("@/components/canvases/webgl-canvas").then((m) => ({ default: m.WebglCanvas })),
@@ -38,6 +45,7 @@ const AlarmsCanvas = lazy(() =>
 );
 
 export function IndustrialWorkspace({ projectId = null }: { projectId?: string | null }) {
+  const router = useRouter();
   const mode = useEditorStore((s) => s.activeMode);
   const setMode = useEditorStore((s) => s.setActiveMode);
   const leftCollapsed = useEditorStore((s) => s.leftCollapsed);
@@ -46,8 +54,6 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
   const toggleRightPanel = useEditorStore((s) => s.toggleRightPanel);
   const setDragValidation = useEditorStore((s) => s.setDragValidation);
   const setValidateComponent = useEditorStore((s) => s.setValidateComponent);
-
-  const { loading, saveState } = useProjectPersistence(projectId);
 
   const validateDraggedBreaker = useCallback(
     (componentType: VoltaiComponentType): boolean => {
@@ -62,12 +68,20 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
     [setDragValidation],
   );
 
-  // Register validateComponent in store so PaletteItem can access it directly
-  // without prop drilling through LeftSidebarHost → EditorUnifilarSidebar
   useEffect(() => {
     setValidateComponent(validateDraggedBreaker);
     return () => setValidateComponent(null);
   }, [validateDraggedBreaker, setValidateComponent]);
+
+  const { loading, saveState } = useProjectPersistence(projectId);
+
+  if (!projectId) {
+    return <WorkspaceEmptyState />;
+  }
+
+  if (loading) {
+    return <WorkspaceLoading />;
+  }
 
   return (
     <div className="flex-1 flex min-h-0 relative">
@@ -100,16 +114,18 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         <ModeTabs />
         <SaveBadge projectId={projectId} loading={loading} state={saveState} />
         <div className="flex-1 min-h-0 relative bg-background">
-          <Suspense fallback={<CanvasFallback />}>
-            {mode === "unifilar" && <UnifilarCanvas />}
-            {mode === "ladder" && <LadderCanvas />}
-            {mode === "fbd" && <FbdCanvas />}
-            {mode === "scada" && <ScadaCanvas />}
-            {mode === "twin" && <TwinCanvas />}
-            {mode === "plc" && <PlcCanvas />}
-            {mode === "sim" && <SimCanvas />}
-            {mode === "alarms" && <AlarmsCanvas />}
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<CanvasFallback />}>
+              {mode === "unifilar" && <UnifilarCanvas />}
+              {mode === "ladder" && <LadderCanvas />}
+              {mode === "fbd" && <FbdCanvas />}
+              {mode === "scada" && <ScadaCanvas />}
+              {mode === "twin" && <TwinCanvas />}
+              {mode === "plc" && <PlcCanvas />}
+              {mode === "sim" && <SimCanvas />}
+              {mode === "alarms" && <AlarmsCanvas />}
+            </Suspense>
+          </ErrorBoundary>
           <CanvasAiChat />
         </div>
         <BottomPanel />
@@ -146,6 +162,53 @@ function CanvasFallback() {
   return (
     <div className="h-full w-full grid place-items-center text-[11px] text-muted-foreground">
       Carregando canvas...
+    </div>
+  );
+}
+
+function WorkspaceLoading() {
+  return (
+    <div className="flex-1 flex items-center justify-center bg-background">
+      <div className="text-center space-y-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+        <p className="text-sm text-muted-foreground">Carregando projeto...</p>
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceEmptyState() {
+  const router = useRouter();
+  return (
+    <div className="flex-1 flex items-center justify-center bg-background">
+      <div className="max-w-md text-center space-y-5 px-6">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
+          <FolderOpen className="h-8 w-8 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold">Nenhum projeto aberto</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Abra um projeto existente ou crie um novo para começar a trabalhar no workspace
+            industrial.
+          </p>
+        </div>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={() => router.navigate({ to: "/projects" })}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <FolderOpen className="h-4 w-4" />
+            Abrir projeto
+          </button>
+          <button
+            onClick={() => router.navigate({ to: "/onboarding" })}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-accent transition-colors"
+          >
+            <PlusCircle className="h-4 w-4" />
+            Novo projeto
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

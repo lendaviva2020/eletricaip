@@ -8,6 +8,22 @@ import {
   type VoltaiSimulationState,
 } from "./component-definitions";
 
+/**
+ * @deprecated Este store será descomissionado em favor do DiagramStore
+ * (src/lib/diagram/store.ts) com canvas WebGL/Pixi.js.
+ *
+ * Os componentes e edges do VoltaiStore usam um schema legado
+ * (VoltaiDiagramComponent/VoltaiDiagramEdge) diferente do novo
+ * DiagramDoc. A migração completa está planejada para a Fase 11.
+ *
+ * NOVO CÓDIGO deve usar `useDiagramStore` para diagramas unifilares.
+ * O VoltaiStore permanece apenas para manter compatibilidade com
+ * o canvas ReactFlow legado durante o período de transição.
+ *
+ * @see useDiagramStore em src/lib/diagram/store.ts
+ * @see Plano de descomissionamento: backlog #WGL-07
+ */
+
 export interface VoltaiDiagramComponent {
   id: string;
   type: VoltaiComponentType;

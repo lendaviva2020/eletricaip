@@ -68,9 +68,7 @@ function IntegrationsPage() {
                 <Input
                   type="number"
                   value={s.modbus.unitId}
-                  onChange={(e) =>
-                    s.set("modbus", { ...s.modbus, unitId: Number(e.target.value) })
-                  }
+                  onChange={(e) => s.set("modbus", { ...s.modbus, unitId: Number(e.target.value) })}
                 />
               </FieldT>
             </div>

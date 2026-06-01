@@ -4,22 +4,72 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  FileBox,
-  FileText,
-  Magnet,
-  Maximize2,
-  Redo2,
-  RotateCw,
-  Trash2,
-  Undo2,
-} from "lucide-react";
+import { FileBox, FileText, Magnet, Maximize2, Redo2, RotateCw, Trash2, Undo2 } from "lucide-react";
 import { DiagramStage, type EdgeDraftCommit, type MoveDelta } from "@/lib/diagram/render/stage";
 import { cmd } from "@/lib/diagram/commands";
 import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
 import { buildProjectPdf } from "@/lib/pdf-export";
-import type { SheetKind } from "@/lib/diagram/schema";
+import type { SheetKind, NodeKind } from "@/lib/diagram/schema";
+import {
+  type VoltaiComponentType,
+  VOLTAI_COMPONENT_BY_TYPE,
+} from "@/lib/voltai/component-definitions";
+
+function isVoltaiComponentType(value: string): value is VoltaiComponentType {
+  return value in VOLTAI_COMPONENT_BY_TYPE;
+}
+
+function voltaiComponentToNodeKind(type: VoltaiComponentType): NodeKind {
+  const map: Record<string, NodeKind> = {
+    QF: "breaker", QS: "disconnector", DR: "rcd", FU: "fuse",
+    KM: "contactor", KA: "relay", FR: "relay", M: "motor",
+    SS: "softstarter", VFD: "vfd", TR: "transformer", PS: "psu",
+    G: "ground", TCTERRA: "ground", UPS: "psu",
+    PT: "pt100", TT: "pt100", LT: "level", FT: "flow",
+    ES: "estop", ESTOP_RELAY: "estop",
+    HL: "lamp", HZ: "lamp", PLC: "terminal", KT: "relay",
+    CT: "terminal", BC: "terminal", TC: "terminal", TP: "terminal",
+    MPCB: "breaker", MCB_AUX: "breaker", CR: "relay",
+    PFC: "terminal", KWH: "terminal", IED: "terminal", SA: "terminal",
+    R: "load", L: "load", SPD: "lightcurtain", TVSS: "lightcurtain",
+    B: "terminal", SR: "relay", PTZ: "terminal",
+    FL: "flow", PSW: "pressure", LS: "level", V: "load", SIN: "terminal",
+  };
+  return (map[type] ?? "terminal") as NodeKind;
+}
+
+function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
+  switch (kind) {
+    case "breaker": return { kind, in_A: 63, curve: "C", poles: 1 };
+    case "rcd": return { kind, in_A: 25, sensitivity_mA: 30, poles: 2 };
+    case "contactor": return { kind, in_A: 32, coil_V: 24 };
+    case "relay": return { kind, coil_V: 24, contacts: 2 };
+    case "fuse": return { kind, in_A: 63 };
+    case "disconnector": return { kind, in_A: 63 };
+    case "transformer": return { kind, kVA: 100, primary_V: 13800, secondary_V: 380, vector: "Dyn11" };
+    case "psu": return { kind, output_V: 24, output_A: 10 };
+    case "vfd": return { kind, power_kW: 7.5, voltage_V: 380 };
+    case "softstarter": return { kind, power_kW: 11 };
+    case "busbar": return { kind, current_A: 630, voltage_V: 380 };
+    case "ccm": return { kind, columns: 4, cells: 6 };
+    case "motor": return { kind, power_kW: 7.5, voltage_V: 380, startMethod: "DOL" };
+    case "load": return { kind, power_W: 1000, voltage_V: 220, fp: 0.92 };
+    case "lamp": return { kind, power_W: 15, voltage_V: 220 };
+    case "socket": return { kind, current_A: 10, voltage_V: 220 };
+    case "pt100": return { kind, range_C: [-50, 200] };
+    case "pressure": return { kind, range_bar: [0, 10] };
+    case "flow": return { kind, range: [0, 100] };
+    case "level": return { kind, range_pct: [0, 100] };
+    case "encoder": return { kind, ppr: 1024 };
+    case "estop": return { kind, category: "1" };
+    case "lightcurtain": return { kind, resolution_mm: 14 };
+    case "ground": return { kind };
+    case "neutral": return { kind };
+    case "terminal": return { kind };
+    default: return { kind: "terminal" };
+  }
+}
 
 interface Props {
   sheet?: SheetKind;
@@ -64,7 +114,10 @@ export function WebglCanvas({ sheet }: Props) {
         onSelectNode: (id) => setSelection(id ? [id] : []),
         onSelectMany: (ids) => setSelection(ids),
         onMoveNodes: (deltas: MoveDelta[]) => {
-          const map: Record<string, { from: { x: number; y: number }; to: { x: number; y: number } }> = {};
+          const map: Record<
+            string,
+            { from: { x: number; y: number }; to: { x: number; y: number } }
+          > = {};
           for (const d of deltas) map[d.nodeId] = { from: d.from, to: d.to };
           moveSelectedTo(map);
         },
@@ -115,7 +168,11 @@ export function WebglCanvas({ sheet }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (document.activeElement?.tagName ?? "").toLowerCase();
-      if (tag === "input" || tag === "textarea" || (document.activeElement as HTMLElement | null)?.isContentEditable) {
+      if (
+        tag === "input" ||
+        tag === "textarea" ||
+        (document.activeElement as HTMLElement | null)?.isContentEditable
+      ) {
         return;
       }
       const meta = e.metaKey || e.ctrlKey;
@@ -124,7 +181,10 @@ export function WebglCanvas({ sheet }: Props) {
         undo();
         return;
       }
-      if ((meta && e.key.toLowerCase() === "z" && e.shiftKey) || (meta && e.key.toLowerCase() === "y")) {
+      if (
+        (meta && e.key.toLowerCase() === "z" && e.shiftKey) ||
+        (meta && e.key.toLowerCase() === "y")
+      ) {
         e.preventDefault();
         redo();
         return;
@@ -180,8 +240,42 @@ export function WebglCanvas({ sheet }: Props) {
 
   const hasSelection = selectedNodeIds.length > 0;
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const rawType = e.dataTransfer.getData("application/voltai-component");
+      if (!rawType || !isVoltaiComponentType(rawType)) return;
+
+      const host = hostRef.current;
+      if (!host) return;
+      const rect = host.getBoundingClientRect();
+      const clientX = e.clientX - rect.left;
+      const clientY = e.clientY - rect.top;
+
+      const stage = stageRef.current;
+      const world = stage?.screenToWorld(clientX, clientY) ?? { x: clientX + 2000 - rect.width / 2, y: clientY + 2000 - rect.height / 2 };
+      const position = { x: snapToGrid(world.x), y: snapToGrid(world.y) };
+      const kind = voltaiComponentToNodeKind(rawType);
+
+      dispatch(
+        cmd.addNode({
+          sheet: effectiveSheet,
+          position,
+          params: defaultNodeParams(kind) as Parameters<typeof cmd.addNode>[0]["params"],
+          label: rawType,
+        }),
+      );
+    },
+    [effectiveSheet, dispatch],
+  );
+
   return (
-    <div className="relative h-full w-full bg-[#0b0f17]">
+    <div className="relative h-full w-full bg-[#0b0f17]" onDragOver={handleDragOver} onDrop={handleDrop}>
       <div ref={hostRef} className="absolute inset-0" />
 
       {/* Toolbar */}
@@ -218,7 +312,12 @@ export function WebglCanvas({ sheet }: Props) {
         >
           <Trash2 className="size-4" />
         </Button>
-        <Button size="icon" variant="ghost" onClick={() => stageRef.current?.fitView()} title="Ajustar à tela">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => stageRef.current?.fitView()}
+          title="Ajustar à tela"
+        >
           <Maximize2 className="size-4" />
         </Button>
         <div className="mx-1 w-px bg-border/40" />
@@ -234,7 +333,8 @@ export function WebglCanvas({ sheet }: Props) {
       <div className="absolute bottom-3 left-3 z-10 rounded-md border border-border/40 bg-background/70 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
         <span className="font-mono">Shift+arrastar</span> seleciona área ·{" "}
         <span className="font-mono">Arrastar porta</span> cria ligação ·{" "}
-        <span className="font-mono">R</span> rotaciona · <span className="font-mono">Del</span> apaga
+        <span className="font-mono">R</span> rotaciona · <span className="font-mono">Del</span>{" "}
+        apaga
       </div>
 
       <ContextMenu onClose={closeContextMenu} hostRef={hostRef} />
@@ -315,6 +415,13 @@ function ContextMenu({
 // Hook usado por callers externos (não usado aqui mas exportado por consistência)
 export function useDiagramSelection() {
   const [, setTick] = useState(0);
-  useEffect(() => useDiagramStore.subscribe((s) => s.selectedNodeIds, () => setTick((t) => t + 1)), []);
+  useEffect(
+    () =>
+      useDiagramStore.subscribe(
+        (s) => s.selectedNodeIds,
+        () => setTick((t) => t + 1),
+      ),
+    [],
+  );
   return useDiagramStore.getState().selectedNodeIds;
 }

@@ -49,11 +49,21 @@ function SecurityPage() {
             <h2 className="text-sm font-semibold">Trocar senha</h2>
             <div>
               <Label>Nova senha</Label>
-              <Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} className="mt-1.5" />
+              <Input
+                type="password"
+                value={pw}
+                onChange={(e) => setPw(e.target.value)}
+                className="mt-1.5"
+              />
             </div>
             <div>
               <Label>Confirmar senha</Label>
-              <Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} className="mt-1.5" />
+              <Input
+                type="password"
+                value={pw2}
+                onChange={(e) => setPw2(e.target.value)}
+                className="mt-1.5"
+              />
             </div>
             <Button onClick={changePw} disabled={saving}>
               {saving ? "Salvando…" : "Atualizar senha"}

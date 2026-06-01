@@ -8,6 +8,7 @@ import {
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { AiDiagramPatchSchema, type AiDiagramPatch } from "@/lib/diagram/schema";
+import { buildPatchJsonSchema } from "@/lib/diagram/zod-to-json-schema";
 
 const InputSchema = z.object({
   prompt: z.string().min(1).max(8000),
@@ -47,66 +48,10 @@ EXEMPLO de patch mínimo válido:
   "addEdges": [], "removeNodeIds": [], "removeEdgeIds": [], "updateNodes": []
 }`;
 
-// JSON Schema PLANO (sem $ref, sem discriminatedUnion) — DeepSeek aceita.
-// Validação rigorosa acontece depois via AiDiagramPatchSchema.safeParse.
-const PATCH_JSON_SCHEMA = {
-  type: "object",
-  properties: {
-    rationale: { type: "string" },
-    addNodes: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          sheet: { type: "string", enum: ["unifilar", "multifilar", "ladder"] },
-          position: {
-            type: "object",
-            properties: { x: { type: "number" }, y: { type: "number" } },
-            required: ["x", "y"],
-          },
-          rotation: { type: "number" },
-          label: { type: "string" },
-          params: { type: "object" },
-        },
-        required: ["id", "sheet", "position", "label", "params"],
-      },
-    },
-    addEdges: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          sheet: { type: "string", enum: ["unifilar", "multifilar", "ladder"] },
-          source: { type: "string" },
-          target: { type: "string" },
-          kind: { type: "string", enum: ["power", "signal", "pipe", "ground"] },
-        },
-        required: ["id", "sheet", "source", "target", "kind"],
-      },
-    },
-    removeNodeIds: { type: "array", items: { type: "string" } },
-    removeEdgeIds: { type: "array", items: { type: "string" } },
-    updateNodes: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          position: {
-            type: "object",
-            properties: { x: { type: "number" }, y: { type: "number" } },
-          },
-          label: { type: "string" },
-          params: { type: "object" },
-        },
-        required: ["id"],
-      },
-    },
-  },
-  required: ["rationale"],
-};
+// JSON Schema gerado automaticamente a partir de AiDiagramPatchSchema (Zod).
+// Fonte única da verdade: src/lib/diagram/schema.ts.
+// Se adicionar campos ao Zod, o schema plano será atualizado via buildPatchJsonSchema().
+const PATCH_JSON_SCHEMA = buildPatchJsonSchema();
 
 async function callDeepseek(apiKey: string, userMsg: string, fixHint?: string) {
   const controller = new AbortController();
@@ -119,7 +64,10 @@ async function callDeepseek(apiKey: string, userMsg: string, fixHint?: string) {
       body: JSON.stringify({
         model: "deepseek-chat",
         messages: [
-          { role: "system", content: SYSTEM + (fixHint ? `\n\nCORREÇÃO NECESSÁRIA: ${fixHint}` : "") },
+          {
+            role: "system",
+            content: SYSTEM + (fixHint ? `\n\nCORREÇÃO NECESSÁRIA: ${fixHint}` : ""),
+          },
           { role: "user", content: userMsg },
         ],
         tools: [
@@ -167,7 +115,13 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
     const { supabase } = context;
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey)
-      return { ok: false, error: { code: "MISSING_KEY", message: "DEEPSEEK_API_KEY ausente nos secrets do servidor." } };
+      return {
+        ok: false,
+        error: {
+          code: "MISSING_KEY",
+          message: "DEEPSEEK_API_KEY ausente nos secrets do servidor.",
+        },
+      };
 
     const { error: gateErr } = await supabase.rpc("consume_ai_credits", {
       p_operation: "generate_panel",
@@ -177,7 +131,10 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
       if (msg.includes("insufficient_credits"))
         return {
           ok: false,
-          error: { code: "INSUFFICIENT_CREDITS", message: "Créditos de IA insuficientes neste mês." },
+          error: {
+            code: "INSUFFICIENT_CREDITS",
+            message: "Créditos de IA insuficientes neste mês.",
+          },
         };
       console.error("[generateDiagramPatch] consume_ai_credits failed:", gateErr);
       return { ok: false, error: { code: "BAD_RESPONSE", message: "Falha ao debitar créditos." } };
@@ -193,13 +150,19 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
       try {
         const resp = await callDeepseek(apiKey, userMsg, attempt > 0 ? lastErr : undefined);
         if (resp.status === 401)
-          return { ok: false, error: { code: "AUTH_401", message: "Chave DeepSeek inválida ou revogada." } };
+          return {
+            ok: false,
+            error: { code: "AUTH_401", message: "Chave DeepSeek inválida ou revogada." },
+          };
         if (resp.status === 429) {
           lastErr = "rate_limit";
           continue;
         }
         if (resp.status === 402)
-          return { ok: false, error: { code: "NO_CREDITS_402", message: "Créditos DeepSeek esgotados." } };
+          return {
+            ok: false,
+            error: { code: "NO_CREDITS_402", message: "Créditos DeepSeek esgotados." },
+          };
         if (!resp.ok) {
           const txt = await resp.text().catch(() => "");
           console.error(`[generateDiagramPatch] HTTP ${resp.status}:`, txt.slice(0, 300));

@@ -59,7 +59,11 @@ export function diagramToDxf(doc: DiagramDoc, sheet: SheetKind): string {
   return buildDxf(nodes, edges);
 }
 
-export function exportDiagramDxf(doc: DiagramDoc, sheet: SheetKind, filename: string): {
+export function exportDiagramDxf(
+  doc: DiagramDoc,
+  sheet: SheetKind,
+  filename: string,
+): {
   nodes: number;
   edges: number;
 } {

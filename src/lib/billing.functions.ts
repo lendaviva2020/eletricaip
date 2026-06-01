@@ -4,7 +4,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
   basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
   pro: "VITE_STRIPE_PRICE_PRO_MONTHLY",
@@ -18,11 +17,17 @@ const PLAN_PRICE_BRL: Record<string, number> = {
   premium: 1000,
 };
 
+const ORIGIN_FALLBACK = process.env.PUBLIC_APP_URL || "https://app.lovable.dev";
+
 function originFromHeader(): string {
   try {
-    return getRequestHeader("origin") || process.env.PUBLIC_APP_URL || "";
+    const origin = getRequestHeader("origin") || process.env.PUBLIC_APP_URL || ORIGIN_FALLBACK;
+    if (origin === ORIGIN_FALLBACK && !process.env.PUBLIC_APP_URL) {
+      console.warn("[billing] PUBLIC_APP_URL not set; using fallback origin:", ORIGIN_FALLBACK);
+    }
+    return origin;
   } catch {
-    return process.env.PUBLIC_APP_URL || "";
+    return process.env.PUBLIC_APP_URL || ORIGIN_FALLBACK;
   }
 }
 
@@ -64,11 +69,7 @@ export const getBillingOverview = createServerFn({ method: "GET" })
       { data: invoices },
       { data: usage },
     ] = await Promise.all([
-      supabase
-        .from("tenants")
-        .select("plan, subscription_status")
-        .eq("id", tenantId)
-        .maybeSingle(),
+      supabase.from("tenants").select("plan, subscription_status").eq("id", tenantId).maybeSingle(),
       supabaseAdmin
         .from("tenants")
         .select("stripe_customer_id, stripe_subscription_id")
@@ -113,7 +114,8 @@ export const changePlanManual = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { userId, claims } = context;
-    if (!(await isPlatformAdminUser({ userId, claims, supabase: context.supabase }))) throw new Error("forbidden");
+    if (!(await isPlatformAdminUser({ userId, claims, supabase: context.supabase })))
+      throw new Error("forbidden");
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -131,8 +133,18 @@ export const changePlanManual = createServerFn({ method: "POST" })
     if (tenantError) throw new Error(tenantError.message);
 
     const oldPlan = (tenant?.plan ?? "free").toLowerCase();
-    const oldPlanType = oldPlan === "premium" ? "INDUSTRIAL" : oldPlan === "basic" || oldPlan === "pro" ? "PRO" : "FREE";
-    const newPlanType = data.plan === "premium" ? "INDUSTRIAL" : data.plan === "basic" || data.plan === "pro" ? "PRO" : "FREE";
+    const oldPlanType =
+      oldPlan === "premium"
+        ? "INDUSTRIAL"
+        : oldPlan === "basic" || oldPlan === "pro"
+          ? "PRO"
+          : "FREE";
+    const newPlanType =
+      data.plan === "premium"
+        ? "INDUSTRIAL"
+        : data.plan === "basic" || data.plan === "pro"
+          ? "PRO"
+          : "FREE";
 
     const { error: updateError } = await supabaseAdmin
       .from("tenants")
@@ -157,7 +169,9 @@ export const getIsPlatformAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { userId, claims } = context;
-    return { isPlatformAdmin: await isPlatformAdminUser({ userId, claims, supabase: context.supabase }) };
+    return {
+      isPlatformAdmin: await isPlatformAdminUser({ userId, claims, supabase: context.supabase }),
+    };
   });
 
 /**
@@ -183,7 +197,7 @@ export const createStripeCheckout = createServerFn({ method: "POST" })
     const tenantId = profile?.tenant_id;
     if (!tenantId) throw new Error("no_tenant");
 
-    const origin = originFromHeader() || "https://app.lovable.dev";
+    const origin = originFromHeader();
     const params = new URLSearchParams();
     params.set("mode", "subscription");
     params.set("line_items[0][price]", priceId);
@@ -233,7 +247,7 @@ export const createMpPreference = createServerFn({ method: "POST" })
     const tenantId = profile?.tenant_id;
     if (!tenantId) throw new Error("no_tenant");
 
-    const origin = originFromHeader() || "https://app.lovable.dev";
+    const origin = originFromHeader();
     const price = PLAN_PRICE_BRL[data.plan];
 
     const r = await fetch("https://api.mercadopago.com/checkout/preferences", {

@@ -56,7 +56,6 @@ export interface PlcProgramBlock {
   fbd?: PlcFbdSnapshot;
 }
 
-
 export interface PlcProject {
   vendor: PlcVendor;
   rack: PlcRack;
