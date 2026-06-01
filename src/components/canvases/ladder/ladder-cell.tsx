@@ -55,10 +55,14 @@ function nextOperand(isOutput: boolean): string {
 export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const allowed = isOutputCol ? OUTPUT_KINDS : CONTACT_KINDS;
-  const tagNames = useEditorStore((s) =>
-    Object.values(s.editorTags)
-      .map((t) => t.name)
-      .filter(Boolean),
+  // IMPORTANT: subscribe to the editorTags map directly (stable reference per
+  // store update) and derive the names array via useMemo. Returning a new
+  // array directly from the zustand selector creates a new reference on every
+  // render, which triggers React error #185 (Maximum update depth exceeded).
+  const editorTags = useEditorStore((s) => s.editorTags);
+  const tagNames = useMemo(
+    () => Object.values(editorTags).map((t) => t.name).filter(Boolean),
+    [editorTags],
   );
   const datalistId = useMemo(
     () => `ladder-tags-${isOutputCol ? "out" : "in"}`,
