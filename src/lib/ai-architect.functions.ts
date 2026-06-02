@@ -7,6 +7,7 @@ import {
   requireAiQuota,
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
+import { sanitizePromptText, sanitizeProjectContext } from "@/lib/ai/context-sanitizer";
 
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
 
