@@ -258,19 +258,19 @@ export const generateArchitecture = createServerFn({ method: "POST" })
       ? `\n\nContexto normativo (trechos relevantes):\n${rag.chunks.map((c, i) => `[${i + 1}] (${c.category}) ${c.text}`).join("\n\n")}`
       : "";
 
+    // Prompt-injection defense: sanitize free-form prompt and structured context.
+    const safePrompt = sanitizePromptText(data.prompt);
+
     let contextStr: string | undefined;
     if (data.context !== undefined) {
       try {
-        contextStr = JSON.stringify(data.context);
+        contextStr = sanitizeProjectContext(data.context as Record<string, unknown>);
       } catch {
         return { ok: false, error: { code: "BAD_INPUT", message: "Contexto inválido." } };
       }
-      if (contextStr.length > 20000) {
-        return { ok: false, error: { code: "BAD_INPUT", message: "Contexto muito grande." } };
-      }
     }
 
-    const userMsg = `Briefing:\n${data.prompt}${ragBlock}${contextStr ? `\n\nContexto atual do projeto (JSON):\n${contextStr.slice(0, 8000)}` : ""}`;
+    const userMsg = `Briefing:\n${safePrompt}${ragBlock}${contextStr ? `\n\nContexto atual do projeto (JSON):\n${contextStr}` : ""}`;
 
     const resp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
