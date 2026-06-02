@@ -7,6 +7,7 @@ import {
   type VoltaiTerminalSide,
 } from "@/lib/voltai/component-definitions";
 import { getComponentSymbol } from "@/lib/voltai/symbols";
+import { sanitizeSvg } from "@/lib/security/svg-sanitizer";
 import type { VoltaiDiagramComponent } from "@/lib/voltai/store";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +67,7 @@ export const VoltaiFlowNode = memo(function VoltaiFlowNode({
         <div
           className="h-11 w-14 shrink-0 [&_svg]:h-full [&_svg]:w-full transition-transform duration-300 ease-out"
           style={{ transform: `rotate(${data.rotation ?? 0}deg)` }}
-          dangerouslySetInnerHTML={{ __html: getComponentSymbol(data.type) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSvg(getComponentSymbol(data.type)) }}
         />
         <div className="min-w-0">
           <div className="font-mono text-[11px] font-semibold truncate">{data.label}</div>
