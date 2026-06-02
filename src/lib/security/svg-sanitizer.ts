@@ -5,7 +5,7 @@
 // any future regression where untrusted markup could reach the renderer.
 import DOMPurify from "dompurify";
 
-const SVG_CONFIG = {
+const SVG_CONFIG: DOMPurify.Config = {
   USE_PROFILES: { svg: true, svgFilters: true },
   FORBID_TAGS: ["script", "use", "foreignObject", "animate"],
   FORBID_ATTR: [
@@ -19,7 +19,7 @@ const SVG_CONFIG = {
     "href",
   ],
   FORCE_BODY: false,
-} as const;
+};
 
 function ssrStrip(raw: string): string {
   return raw

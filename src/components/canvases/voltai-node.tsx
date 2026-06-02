@@ -7,6 +7,7 @@ import {
   type VoltaiTerminalSide,
 } from "@/lib/voltai/component-definitions";
 import { getComponentSymbol } from "@/lib/voltai/symbols";
+import { sanitizeSvg } from "@/lib/security/svg-sanitizer";
 import type { VoltaiDiagramComponent } from "@/lib/voltai/store";
 import { cn } from "@/lib/utils";
 
