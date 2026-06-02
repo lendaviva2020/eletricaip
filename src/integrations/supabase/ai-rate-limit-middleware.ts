@@ -1,8 +1,11 @@
-// AI rate limiting middleware — burst + monthly quota enforcement
+// AI rate limiting middleware — burst + monthly quota enforcement.
+// Burst limiting uses Upstash Redis (distributed) when configured;
+// falls back to an in-memory sliding window otherwise.
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "./auth-middleware";
 import type { AuthContext } from "./auth-middleware";
+import { checkRateLimit } from "@/lib/security/rate-limiter.server";
 
 // ── In-memory sliding-window burst limiter ──────────────────────
 const BURST_WINDOW_MS = 60_000;
@@ -91,15 +94,35 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
   .server(async ({ next, context }) => {
     const authCtx = context as unknown as AuthContext;
     const userId = authCtx.userId;
-    const { allowed, retryAfter } = checkBurst(userId);
-    if (!allowed) {
+
+    // Prefer Upstash distributed limiter; fall back to in-memory if unavailable.
+    const upstash = await checkRateLimit("ai", userId);
+    if (upstash.bypassed) {
+      const { allowed, retryAfter } = checkBurst(userId);
+      if (!allowed) {
+        throw new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              code: "BURST_LIMIT_429",
+              message: `Muitas requisições em sequência. Tente novamente em ${retryAfter}s.`,
+              retryAfter,
+            },
+          }),
+          { status: 429, headers: { "content-type": "application/json" } },
+        );
+      }
+      return next();
+    }
+
+    if (!upstash.allowed) {
       throw new Response(
         JSON.stringify({
           ok: false,
           error: {
             code: "BURST_LIMIT_429",
-            message: `Muitas requisições em sequência. Tente novamente em ${retryAfter}s.`,
-            retryAfter,
+            message: `Muitas requisições em sequência. Tente novamente em ${upstash.retryAfterSeconds}s.`,
+            retryAfter: upstash.retryAfterSeconds,
           },
         }),
         { status: 429, headers: { "content-type": "application/json" } },
