@@ -3,9 +3,9 @@
 // runtime (no DOM available). Even though our SVG strings are generated server-side
 // from a hardcoded whitelist (see src/lib/voltai/symbols.ts), this layer prevents
 // any future regression where untrusted markup could reach the renderer.
-import DOMPurify from "dompurify";
+import DOMPurify, { type Config } from "dompurify";
 
-const SVG_CONFIG: DOMPurify.Config = {
+const SVG_CONFIG: Config = {
   USE_PROFILES: { svg: true, svgFilters: true },
   FORBID_TAGS: ["script", "use", "foreignObject", "animate"],
   FORBID_ATTR: [
