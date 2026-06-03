@@ -88,7 +88,7 @@ interface EditorState {
   setValidateComponent: (fn: ((componentType: VoltaiComponentType) => boolean) | null) => void;
 }
 
-export const useEditorStore = create<EditorState>((set) => ({
+export const useEditorStore = create<EditorState>()(subscribeWithSelector((set) => ({
   activeMode: "unifilar",
   selectedNodeId: null,
   editorTags: {},
