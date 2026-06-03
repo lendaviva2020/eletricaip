@@ -202,7 +202,7 @@ export function applyArchitectToStore(
     category: (n.category as NodeCategory) || "mech",
     label: n.label || n.id,
     position: n.position,
-    params: (n.params as Record<string, unknown>) ?? {},
+    params: (n.params as Record<string, string | number | boolean>) ?? {},
     energized: n.category === "power" || n.category === "mech",
   }));
   const edges: IndustrialEdge[] = result.edges.map((e, i) => ({
