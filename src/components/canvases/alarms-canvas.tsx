@@ -50,7 +50,7 @@ export function AlarmsCanvas() {
   const ackTag = useAlarmStore((s) => s.acknowledgeTag);
   const ackAll = useAlarmStore((s) => s.acknowledgeAll);
   const registerNewAlarmCb = useAlarmStore((s) => s.registerNewAlarmCallback);
-  const pushNotification = useNotificationStore((s) => s.push);
+  const pushNotification = useNotificationStore((s) => s.addNotification);
 
   // Register callback for new alarms — fires pushNotification + toast
   useEffect(() => {
@@ -61,9 +61,11 @@ export function AlarmsCanvas() {
       });
       pushNotification({
         id: `alarm-${alarm.id}`,
+        type: "alarm",
         title: `Alarme ${alarm.priority}`,
-        body: alarm.message,
-        channel: "Alarmes",
+        message: alarm.message,
+        readAt: null,
+        createdAt: new Date().toISOString(),
       });
     });
     return () => registerNewAlarmCb(null);

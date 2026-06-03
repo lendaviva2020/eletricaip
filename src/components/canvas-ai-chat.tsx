@@ -428,7 +428,7 @@ export function CanvasAiChat() {
                   patch={m.patchData?.patch ?? m.patchData}
                   onApply={() => handleApplyPatch(i, m.patchData)}
                   onCancel={() => {
-                    setMessages((prev) =>
+                    setMsgs((prev) =>
                       prev.map((msg, idx) => (idx === i ? { ...msg, hasPatch: false } : msg)),
                     );
                   }}

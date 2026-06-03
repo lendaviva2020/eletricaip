@@ -92,7 +92,7 @@ export const updateBomItem = createServerFn({ method: "POST" })
     if (data.unitPriceBRL !== undefined) patch.unit_price_brl = data.unitPriceBRL;
     if (data.notes !== undefined) patch.notes = data.notes;
     if (data.reference !== undefined) patch.reference = data.reference;
-    const { error } = await supabase.from("project_bom_items").update(patch).eq("id", data.id);
+    const { error } = await supabase.from("project_bom_items").update(patch as never).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

@@ -54,7 +54,7 @@ export const listAlarmConfigs = createServerFn({ method: "POST" })
       .eq("project_id", data.projectId)
       .order("severity");
     if (error) throw new Error(error.message);
-    return { configs: rows as AlarmConfigRow[] };
+    return { configs: rows as unknown as AlarmConfigRow[] };
   });
 
 export const createAlarmConfig = createServerFn({ method: "POST" })
@@ -78,16 +78,14 @@ export const createAlarmConfig = createServerFn({ method: "POST" })
       .insert({
         project_id: data.projectId,
         tag_name: data.tagName,
-        message: data.message,
+        description: data.message,
         severity: data.severity,
         category: data.category,
-        condition: data.condition,
-        enabled: true,
-      })
+      } as never)
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    return { config: row as AlarmConfigRow };
+    return { config: row as unknown as AlarmConfigRow };
   });
 
 export const listAlarmHistory = createServerFn({ method: "POST" })

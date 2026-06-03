@@ -1,5 +1,7 @@
 // Editor store — manages active mode, tags, ladder rungs, FBD nodes/edges, UI state
 import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
 import type { WorkspaceMode, ConsoleTab } from "@/lib/workspace-data";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { Node, Edge } from "reactflow";
@@ -86,7 +88,7 @@ interface EditorState {
   setValidateComponent: (fn: ((componentType: VoltaiComponentType) => boolean) | null) => void;
 }
 
-export const useEditorStore = create<EditorState>((set) => ({
+export const useEditorStore = create<EditorState>()(subscribeWithSelector((set) => ({
   activeMode: "unifilar",
   selectedNodeId: null,
   editorTags: {},
@@ -163,4 +165,23 @@ export const useEditorStore = create<EditorState>((set) => ({
 
   setDragValidation: (msg) => set({ dragValidation: msg }),
   setValidateComponent: (fn) => set({ validateComponent: fn }),
-}));
+})));
+
+// ── Stable composite selectors (use with useShallow for multi-field reads) ──
+export const editorUiSelector = (s: EditorState) => ({
+  leftCollapsed: s.leftCollapsed,
+  rightCollapsed: s.rightCollapsed,
+  consoleTab: s.consoleTab,
+  consoleOpen: s.consoleOpen,
+});
+
+export function useEditorUi() {
+  return useEditorStore(useShallow(editorUiSelector));
+}
+
+export function useEditorMode() {
+  return useEditorStore(useShallow((s: EditorState) => ({
+    activeMode: s.activeMode,
+    setActiveMode: s.setActiveMode,
+  })));
+}

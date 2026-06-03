@@ -202,7 +202,7 @@ export function applyArchitectToStore(
     category: (n.category as NodeCategory) || "mech",
     label: n.label || n.id,
     position: n.position,
-    params: (n.params as Record<string, unknown>) ?? {},
+    params: (n.params as Record<string, string | number | boolean>) ?? {},
     energized: n.category === "power" || n.category === "mech",
   }));
   const edges: IndustrialEdge[] = result.edges.map((e, i) => ({
@@ -461,7 +461,7 @@ async function autoSaveVersion(
         nodes,
         edges,
         savedAt: new Date().toISOString(),
-      } as Record<string, unknown>,
+      } as never,
     });
     useProjectStore.getState().pushLog({
       t: new Date().toISOString(),
@@ -496,7 +496,7 @@ export async function saveManualVersion(
     project_id: project.id,
     created_by: u.user.id,
     version_number: next,
-    snapshot: { source: "manual", label, nodes, edges, savedAt: new Date().toISOString() } as Record<string, unknown>,
+    snapshot: { source: "manual", label, nodes, edges, savedAt: new Date().toISOString() } as never,
   });
   if (error) return { ok: false, error: error.message };
   useProjectStore.getState().pushLog({
