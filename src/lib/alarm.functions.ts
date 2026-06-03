@@ -54,7 +54,7 @@ export const listAlarmConfigs = createServerFn({ method: "POST" })
       .eq("project_id", data.projectId)
       .order("severity");
     if (error) throw new Error(error.message);
-    return { configs: rows as AlarmConfigRow[] };
+    return { configs: rows as unknown as AlarmConfigRow[] };
   });
 
 export const createAlarmConfig = createServerFn({ method: "POST" })
