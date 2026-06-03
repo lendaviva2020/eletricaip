@@ -126,15 +126,17 @@ export function PlcCanvas() {
       // Block-local tags from ladder definition (if any)
       if (block?.ladder?.rungs) {
         for (const rung of block.ladder.rungs as LadderRung[]) {
-          for (const cell of rung?.cells ?? []) {
-            if (cell?.operand && cell.operand !== "&nbsp;" && !tags[cell.operand]) {
-              tags[cell.operand] = {
-                id: cell.operand,
-                name: cell.operand,
-                type: "BOOL",
-                value: false,
-                forced: false,
-              };
+          for (const row of rung?.cells ?? []) {
+            for (const cell of row ?? []) {
+              if (cell?.operand && cell.operand !== "&nbsp;" && !tags[cell.operand]) {
+                tags[cell.operand] = {
+                  id: cell.operand,
+                  name: cell.operand,
+                  type: "BOOL",
+                  value: false,
+                  forced: false,
+                };
+              }
             }
           }
         }
