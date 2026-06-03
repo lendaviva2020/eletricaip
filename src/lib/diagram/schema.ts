@@ -249,19 +249,20 @@ export type DiagramDoc = z.infer<typeof DiagramDocSchema>;
 // A IA devolve um *patch* (não o doc inteiro): novas listas + remoções.
 export const AiDiagramPatchSchema = z.object({
   rationale: z.string().max(2000),
-  addNodes: z.array(DiagramNodeSchema).default([]),
-  addEdges: z.array(DiagramEdgeSchema).default([]),
-  removeNodeIds: z.array(z.string()).default([]),
-  removeEdgeIds: z.array(z.string()).default([]),
+  addNodes: z.array(DiagramNodeSchema).max(100).default([]),
+  addEdges: z.array(DiagramEdgeSchema).max(200).default([]),
+  removeNodeIds: z.array(z.string().min(1).max(40)).max(200).default([]),
+  removeEdgeIds: z.array(z.string().min(1).max(40)).max(400).default([]),
   updateNodes: z
     .array(
       z.object({
-        id: z.string(),
+        id: z.string().min(1).max(40),
         position: PositionSchema.optional(),
         label: z.string().max(80).optional(),
         params: NodeParamsSchema.optional(),
       }),
     )
+    .max(200)
     .default([]),
 });
 export type AiDiagramPatch = z.infer<typeof AiDiagramPatchSchema>;
