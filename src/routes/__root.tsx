@@ -98,14 +98,6 @@ export const Route = createRootRoute({
   component: RootComponent,
   notFoundComponent: NotFound,
   errorComponent: ErrorComp,
-  server: {
-    headers: () => ({
-      "X-Content-Type-Options": "nosniff",
-      "X-Frame-Options": "DENY",
-      "Referrer-Policy": "strict-origin-when-cross-origin",
-      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-    }),
-  },
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
