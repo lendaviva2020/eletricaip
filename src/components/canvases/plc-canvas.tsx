@@ -208,7 +208,10 @@ export function PlcCanvas() {
       setStCode(code);
       toast.success(`${activeBlock.name}: ${editorState.rungs.length} rungs compilados → ST`);
     } else if (activeBlock.language === "fbd") {
-      const code = compileFbdToSt(editorState.fbdNodes, editorState.fbdEdges);
+      const code = compileFbdToSt(
+        editorState.fbdNodes as unknown as Parameters<typeof compileFbdToSt>[0],
+        editorState.fbdEdges as unknown as Parameters<typeof compileFbdToSt>[1],
+      );
       updateBlock(activeBlock.id, {
         code,
         fbd: {
