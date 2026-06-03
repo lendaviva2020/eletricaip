@@ -1,5 +1,7 @@
 // Editor store — manages active mode, tags, ladder rungs, FBD nodes/edges, UI state
 import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
 import type { WorkspaceMode, ConsoleTab } from "@/lib/workspace-data";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { Node, Edge } from "reactflow";
