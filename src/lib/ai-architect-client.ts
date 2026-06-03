@@ -496,7 +496,7 @@ export async function saveManualVersion(
     project_id: project.id,
     created_by: u.user.id,
     version_number: next,
-    snapshot: { source: "manual", label, nodes, edges, savedAt: new Date().toISOString() } as Record<string, unknown>,
+    snapshot: { source: "manual", label, nodes, edges, savedAt: new Date().toISOString() } as never,
   });
   if (error) return { ok: false, error: error.message };
   useProjectStore.getState().pushLog({
