@@ -165,4 +165,23 @@ export const useEditorStore = create<EditorState>()(subscribeWithSelector((set) 
 
   setDragValidation: (msg) => set({ dragValidation: msg }),
   setValidateComponent: (fn) => set({ validateComponent: fn }),
-}));
+})));
+
+// ── Stable composite selectors (use with useShallow for multi-field reads) ──
+export const editorUiSelector = (s: EditorState) => ({
+  leftCollapsed: s.leftCollapsed,
+  rightCollapsed: s.rightCollapsed,
+  consoleTab: s.consoleTab,
+  consoleOpen: s.consoleOpen,
+});
+
+export function useEditorUi() {
+  return useEditorStore(useShallow(editorUiSelector));
+}
+
+export function useEditorMode() {
+  return useEditorStore(useShallow((s: EditorState) => ({
+    activeMode: s.activeMode,
+    setActiveMode: s.setActiveMode,
+  })));
+}
