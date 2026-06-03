@@ -461,7 +461,7 @@ async function autoSaveVersion(
         nodes,
         edges,
         savedAt: new Date().toISOString(),
-      } as Record<string, unknown>,
+      } as unknown as Json,
     });
     useProjectStore.getState().pushLog({
       t: new Date().toISOString(),
