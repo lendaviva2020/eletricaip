@@ -48,7 +48,7 @@ const BLOCKED = [
 
 for (const k of BLOCKED) {
   try {
-    (self as Record<string, unknown>)[k] = undefined;
+    (self as unknown as Record<string, unknown>)[k] = undefined;
   } catch {
     /* Worker globals may be non-configurable — we just try. */
   }
