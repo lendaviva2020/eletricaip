@@ -124,7 +124,10 @@ export function ScadaCanvas() {
   // Register Monaco autocomplete provider
   const handleEditorBeforeMount = useCallback((monaco: any) => {
     monacoRef.current = monaco;
-    monaco.languages.registerCompletionItemProvider("javascript", {
+    // Re-register defensively: dispose previous provider before adding new one
+    // to avoid duplicate completions when the editor is toggled on/off.
+    completionDisposableRef.current?.dispose();
+    completionDisposableRef.current = monaco.languages.registerCompletionItemProvider("javascript", {
       triggerCharacters: ['"', "'", ".", "["],
       provideCompletionItems: (model: any, position: any) => {
         const word = model.getWordUntilPosition(position);
