@@ -26,12 +26,25 @@ interface LoadProjectResponse {
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
+const AUTOSAVE_DEBOUNCE_MS = 2000;
+
 export function useProjectPersistence(projectId: string | null) {
   const load = useServerFn(loadProject);
   const save = useServerFn(saveProject);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [loading, setLoading] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  const savingRef = useRef(false);
+  const pendingRef = useRef(false);
+
+  // Track mount lifecycle to prevent setState after unmount.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Load on mount / id change
   useEffect(() => {
@@ -43,7 +56,6 @@ export function useProjectPersistence(projectId: string | null) {
         if (cancelled) return;
         const snap = res.snapshot;
 
-        // ProjectStore: nodes, edges, tags, runtime
         useProjectStore
           .getState()
           .hydrateSnapshot(
@@ -53,20 +65,15 @@ export function useProjectPersistence(projectId: string | null) {
           );
         useProjectStore.getState().setProjectId(projectId);
 
-        // DiagramStore: WebGL unifilar doc
         if (snap.diagram) {
           useDiagramStore.getState().loadDoc(snap.diagram as DiagramDoc);
         } else {
           useDiagramStore.getState().resetDoc();
         }
 
-        // VoltaiStore: LEGACY unifilar (ReactFlow)
         useVoltaiStore.getState().setAll(snap.voltai.components ?? [], snap.voltai.edges ?? []);
-
-        // EditorStore: tags, ladder rungs, FBD
         useEditorStore.getState().hydrateSnapshot(snap.editor);
 
-        // Restore SCADA layout
         const scadaLayout = snap.project.scadaLayout;
         if (scadaLayout?.nodes?.length || scadaLayout?.edges?.length) {
           useProjectStore
@@ -77,17 +84,17 @@ export function useProjectPersistence(projectId: string | null) {
             );
         }
 
-        // Restore PLC project
         if (snap.plc) {
           usePlcStore.getState().setProject(snap.plc as PlcProject);
         }
       })
       .catch((e: unknown) => {
+        if (cancelled) return;
         const message = e instanceof Error ? e.message : String(e);
         toast.error(`Falha ao carregar projeto: ${message}`);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && mountedRef.current) setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -97,6 +104,44 @@ export function useProjectPersistence(projectId: string | null) {
   // Debounced auto-save when dirty
   useEffect(() => {
     if (!projectId) return;
+
+    const schedule = () => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(flush, AUTOSAVE_DEBOUNCE_MS);
+    };
+
+    const flush = async () => {
+      // Coalesce: if a save is in flight, mark pending and let it re-trigger after.
+      if (savingRef.current) {
+        pendingRef.current = true;
+        return;
+      }
+      const ps = useProjectStore.getState();
+      const vs = useVoltaiStore.getState();
+      const es = useEditorStore.getState();
+
+      const snapshot = buildProjectSnapshot();
+      savingRef.current = true;
+      if (mountedRef.current) setSaveState("saving");
+      try {
+        await save({ data: { projectId, snapshot } });
+        ps.markSaved();
+        vs.markSaved();
+        es.markSaved();
+        if (mountedRef.current) setSaveState("saved");
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (mountedRef.current) setSaveState("error");
+        toast.error(`Falha ao salvar: ${message}`);
+      } finally {
+        savingRef.current = false;
+        if (pendingRef.current) {
+          pendingRef.current = false;
+          schedule();
+        }
+      }
+    };
+
     const unsub = useProjectStore.subscribe((s, prev) => {
       if (!s.dirty || s.dirty === prev.dirty) return;
       schedule();
@@ -118,46 +163,27 @@ export function useProjectPersistence(projectId: string | null) {
       schedule();
     });
 
-    function schedule() {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(flush, 2000);
-    }
-
-    async function flush() {
-      const ps = useProjectStore.getState();
-      const vs = useVoltaiStore.getState();
-      const es = useEditorStore.getState();
-      const ds = useDiagramStore.getState();
-
-      const snapshot = buildProjectSnapshot();
-      try {
-        setSaveState("saving");
-        await save({ data: { projectId: projectId!, snapshot } });
-        ps.markSaved();
-        vs.markSaved();
-        es.markSaved();
-        setSaveState("saved");
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : String(e);
-        setSaveState("error");
-        toast.error(`Falha ao salvar: ${message}`);
-      }
-    }
-
     return () => {
       unsub();
       unsub2();
       unsub3();
       unsub4();
       unsub5();
-      if (timer.current) clearTimeout(timer.current);
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+      pendingRef.current = false;
     };
   }, [projectId, save]);
 
   return { loading, saveState };
 }
 
-export async function snapshotVersion(projectId: string, save: ReturnType<typeof useServerFn<typeof saveProject>>) {
+export async function snapshotVersion(
+  projectId: string,
+  save: ReturnType<typeof useServerFn<typeof saveProject>>,
+) {
   const snapshot = buildProjectSnapshot();
   return save({ data: { projectId, snapshot, createVersion: true } });
 }
