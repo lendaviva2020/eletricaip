@@ -86,14 +86,26 @@ export function ScadaCanvas() {
   const [scriptLogs, setScriptLogs] = useState<string[]>([]);
   const [scanDuration, setScanDuration] = useState(0);
 
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<{ dispose?: () => void } | null>(null);
 
-  const monacoRef = useRef<any>(null);
+  const monacoRef = useRef<unknown>(null);
+  const completionDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const sandboxRef = useRef<ScriptSandbox | null>(null);
   const lastAlarmRef = useRef<string | null>(null);
 
   if (!sandboxRef.current) sandboxRef.current = new ScriptSandbox(250);
-  useEffect(() => () => sandboxRef.current?.dispose(), []);
+  // Dispose sandbox + Monaco resources on unmount to prevent memory leaks.
+  useEffect(
+    () => () => {
+      sandboxRef.current?.dispose();
+      completionDisposableRef.current?.dispose();
+      completionDisposableRef.current = null;
+      editorRef.current?.dispose?.();
+      editorRef.current = null;
+      monacoRef.current = null;
+    },
+    [],
+  );
 
   const selectedId = useProjectStore((s) => s.selectedId);
   const selectedNode = useProjectStore((s) => s.nodes.find((n) => n.id === s.selectedId));
