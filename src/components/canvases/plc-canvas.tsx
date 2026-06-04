@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import Editor from "@monaco-editor/react";
+import { LazyMonacoEditor as Editor } from "./lazy";
 import {
   Cpu,
   MemoryStick,
