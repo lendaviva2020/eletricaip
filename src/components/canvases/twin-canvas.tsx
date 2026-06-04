@@ -17,7 +17,7 @@ import {
 import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
-import { Twin3DViewer } from "./twin-3d-viewer";
+import { LazyTwin3DViewer as Twin3DViewer } from "./lazy";
 import { useDigitalTwinStore } from "@/lib/digital-twin-store";
 import { seedDigitalTwinDemo } from "@/lib/seed-digital-twin";
 

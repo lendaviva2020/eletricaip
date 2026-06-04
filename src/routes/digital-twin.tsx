@@ -24,7 +24,7 @@ import {
   PanelRightOpen,
   PanelRightClose,
 } from "lucide-react";
-import { Twin3DViewer } from "@/components/canvases/twin-3d-viewer";
+import { LazyTwin3DViewer as Twin3DViewer } from "@/components/canvases/lazy";
 import { useDigitalTwinStore, type HotspotConfig, type TwinAlarm } from "@/lib/digital-twin-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
