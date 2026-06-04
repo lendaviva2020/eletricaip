@@ -114,7 +114,9 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         <ModeTabs />
         <SaveBadge projectId={projectId} loading={loading} state={saveState} />
         <div className="flex-1 min-h-0 relative bg-background">
-          <ErrorBoundary>
+          {/* ErrorBoundary keyed por `mode`: isola crashes (ex.: React #185)
+              ao canvas ativo e cria um boundary fresco ao trocar de aba. */}
+          <ErrorBoundary key={mode}>
             <Suspense fallback={<CanvasFallback />}>
               {mode === "unifilar" && <UnifilarCanvas />}
               {mode === "ladder" && <LadderCanvas />}
