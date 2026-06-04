@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { KonvaCanvas } from "./konva-canvas";
-import Editor from "@monaco-editor/react";
+import { LazyKonvaCanvas as KonvaCanvas, LazyMonacoEditor as Editor } from "./lazy";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { Button } from "@/components/ui/button";
