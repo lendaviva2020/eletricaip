@@ -128,9 +128,13 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
               {mode === "alarms" && <AlarmsCanvas />}
             </Suspense>
           </ErrorBoundary>
-          <CanvasAiChat />
+          <ErrorBoundary fallback={null}>
+            <CanvasAiChat />
+          </ErrorBoundary>
         </div>
-        <BottomPanel />
+        <ErrorBoundary fallback={null}>
+          <BottomPanel />
+        </ErrorBoundary>
       </div>
 
       {/* Painel Direito */}
