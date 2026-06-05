@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { LadderRung, LadderCell } from "@/lib/ladder/types";
 import { newRung, emptyCell, RUNG_COLS } from "@/lib/ladder/types";
 import { compileProgram } from "@/lib/ladder/compiler";
-import { scanRungs, resetRuntimeState, type ScanResult } from "@/lib/ladder/runtime";
+import {
+  scanRungs,
+  resetRuntimeState,
+  LadderScanTimeoutError,
+  type ScanResult,
+} from "@/lib/ladder/runtime";
 import { useEditorStore } from "@/lib/editor/store";
 import { LadderCellView } from "./ladder-cell";
 import { Button } from "@/components/ui/button";
@@ -61,7 +66,17 @@ export function RungGrid() {
       return;
     }
     const tick = () => {
-      const results = scanRungs(rungs);
+      let results: ScanResult[];
+      try {
+        results = scanRungs(rungs);
+      } catch (err) {
+        if (err instanceof LadderScanTimeoutError) {
+          console.warn("[RungGrid] scan abortado:", err.message);
+          setRunning(false);
+          return;
+        }
+        throw err;
+      }
       scanCountRef.current += 1;
       setScanState(Object.fromEntries(results.map((r) => [r.rungId, r])));
       setRungs((rs) =>
