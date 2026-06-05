@@ -55,9 +55,15 @@ export const Route = createFileRoute("/api/public/iot/ingest")({
         if (error) {
           // Log full error server-side; never leak DB internals to caller.
           console.error("[iot.ingest] rpc error:", error.message);
-          const isAuthErr = /unauthorized|invalid_api_key/.test(error.message);
-          const status = isAuthErr ? 401 : 400;
-          const safeCode = isAuthErr ? "unauthorized" : "ingest_error";
+          const msg = error.message || "";
+          const isAuthErr = /unauthorized|invalid_api_key/.test(msg);
+          const isPlanErr = /plan_required/.test(msg);
+          const status = isAuthErr ? 401 : isPlanErr ? 402 : 400;
+          const safeCode = isAuthErr
+            ? "unauthorized"
+            : isPlanErr
+              ? "plan_required"
+              : "ingest_error";
           return new Response(JSON.stringify({ ok: false, error: safeCode }), {
             status,
             headers: cors(),
