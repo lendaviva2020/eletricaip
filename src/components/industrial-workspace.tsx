@@ -18,6 +18,7 @@ import { isBreakerComponent, type VoltaiComponentType } from "@/lib/voltai/compo
 import { LeftSidebarHost } from "@/components/editor/left-sidebar-host";
 import { useEditorStore } from "@/lib/editor/store";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { EditorAiConfigBanner } from "@/components/editor-ai-config-banner";
 
 const UnifilarCanvas = lazy(() =>
   import("@/components/canvases/webgl-canvas").then((m) => ({ default: m.WebglCanvas })),
@@ -112,6 +113,9 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       {/* Área Central (Canvas + Controles) */}
       <div className="flex-1 flex flex-col min-w-0">
         <ModeTabs />
+        <ErrorBoundary fallback={null}>
+          <EditorAiConfigBanner />
+        </ErrorBoundary>
         <SaveBadge projectId={projectId} loading={loading} state={saveState} />
         <div className="flex-1 min-h-0 relative bg-background">
           {/* ErrorBoundary keyed por `mode`: isola crashes (ex.: React #185)
