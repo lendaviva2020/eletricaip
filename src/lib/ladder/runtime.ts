@@ -211,12 +211,51 @@ export interface ScanResult {
   >;
 }
 
-export const scanRungs = (rungs: LadderRung[]): ScanResult[] => {
+/** Orçamento (ms) por scan-cycle: aborta com aviso se exceder, evitando
+ *  travar o thread principal com programas Ladder maliciosos ou muito grandes. */
+export const LADDER_SCAN_BUDGET_MS = 50;
+/** Limite duro de rungs por scan — defesa em profundidade contra inputs absurdos. */
+export const LADDER_MAX_RUNGS = 2000;
+
+export class LadderScanTimeoutError extends Error {
+  constructor(
+    public readonly processed: number,
+    public readonly total: number,
+    public readonly elapsedMs: number,
+  ) {
+    super(
+      `Ladder scan excedeu o orçamento de ${LADDER_SCAN_BUDGET_MS}ms ` +
+        `(${processed}/${total} rungs em ${elapsedMs.toFixed(1)}ms).`,
+    );
+    this.name = "LadderScanTimeoutError";
+  }
+}
+
+export const scanRungs = (
+  rungs: LadderRung[],
+  opts: { budgetMs?: number; maxRungs?: number } = {},
+): ScanResult[] => {
+  const budgetMs = opts.budgetMs ?? LADDER_SCAN_BUDGET_MS;
+  const maxRungs = opts.maxRungs ?? LADDER_MAX_RUNGS;
+  if (rungs.length > maxRungs) {
+    throw new LadderScanTimeoutError(0, rungs.length, 0);
+  }
+
   const tags = useEditorStore.getState().editorTags;
-  const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const nowFn = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  const start = nowFn();
+  const now = start;
   const results: ScanResult[] = [];
 
-  for (const rung of rungs) {
+  for (let idx = 0; idx < rungs.length; idx++) {
+    // Verifica orçamento a cada 32 rungs (amortiza custo do clock).
+    if ((idx & 31) === 0) {
+      const elapsed = nowFn() - start;
+      if (elapsed > budgetMs) {
+        throw new LadderScanTimeoutError(idx, rungs.length, elapsed);
+      }
+    }
+    const rung = rungs[idx];
     const perCell: boolean[][] = [];
     const diagnostics: Record<
       string,
