@@ -24,7 +24,23 @@ interface PlcStore {
   removeBlock: (id: string) => void;
 }
 
+// Bloco 12 — IDs únicos e colisão-livres. `crypto.randomUUID()` é nativo em
+// todos os runtimes modernos (browser + Workers), mas mantemos um fallback
+// determinístico (timestamp + counter + random) para qualquer ambiente legado
+// onde `crypto` ou `randomUUID` não estejam disponíveis.
 let modCounter = 0;
+function genId(prefix: string): string {
+  try {
+    const c = typeof crypto !== "undefined" ? crypto : undefined;
+    if (c && typeof c.randomUUID === "function") {
+      return `${prefix}-${c.randomUUID()}`;
+    }
+  } catch {
+    // ignore — usa fallback abaixo
+  }
+  modCounter++;
+  return `${prefix}-${Date.now()}-${modCounter}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 export const usePlcStore = create<PlcStore>((set) => ({
   project: createDefaultPlcProject(),
@@ -38,9 +54,8 @@ export const usePlcStore = create<PlcStore>((set) => ({
 
   addModule: (catalogKey, label, category, channels) =>
     set((s) => {
-      modCounter++;
       const mod: PlcModule = {
-        id: `mod-${Date.now()}-${modCounter}`,
+        id: genId("mod"),
         catalogKey,
         category,
         label,
