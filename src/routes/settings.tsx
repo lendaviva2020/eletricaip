@@ -289,27 +289,3 @@ function SettingsLinkCard({
   );
 }
 
-function RuntimeCard({
-  icon: Icon,
-  label,
-  value,
-  desc,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  desc: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-          <Icon className="h-3.5 w-3.5 text-primary" />
-          {label}
-        </div>
-        <p className="text-lg font-mono text-primary font-medium">{value}</p>
-        <p className="text-xs text-muted-foreground mt-1">{desc}</p>
-      </CardContent>
-    </Card>
-  );
-}
