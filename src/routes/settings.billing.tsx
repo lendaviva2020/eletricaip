@@ -357,22 +357,24 @@ function BillingPage() {
                           <Users className="h-3 w-3" /> Usuários
                         </span>
                         <p className="text-lg font-semibold mt-1">
-                          8{" "}
-                          <span className="text-xs text-muted-foreground/60 font-normal">/ 15</span>
+                          {isDemo ? "8" : "—"}{" "}
+                          <span className="text-xs text-muted-foreground/60 font-normal">
+                            / {isDemo ? "15" : "—"}
+                          </span>
                         </p>
                       </div>
                       <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
                           <Bot className="h-3 w-3" /> Uso de IA
                         </span>
-                        <p className="text-lg font-semibold mt-1">42%</p>
+                        <p className="text-lg font-semibold mt-1">{isDemo ? "42%" : "—"}</p>
                       </div>
                       <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
                           <Cpu className="h-3 w-3" /> Automações
                         </span>
                         <p className="text-lg font-semibold mt-1">
-                          156{" "}
+                          {isDemo ? "156" : "—"}{" "}
                           <span className="text-xs text-muted-foreground/60 font-normal">
                             / mês
                           </span>
@@ -383,7 +385,7 @@ function BillingPage() {
                           <HardDrive className="h-3 w-3" /> Armazenamento
                         </span>
                         <p className="text-lg font-semibold mt-1">
-                          2.4{" "}
+                          {isDemo ? "2.4" : "—"}{" "}
                           <span className="text-xs text-muted-foreground/60 font-normal">GB</span>
                         </p>
                       </div>
