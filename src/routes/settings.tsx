@@ -5,13 +5,10 @@ import {
   Settings2,
   CreditCard,
   Users,
-  Cpu,
   Sparkles,
-  Gauge,
   ChevronRight,
   Wifi,
   Zap,
-  HardDrive,
   BookText,
   Ruler,
   ToggleLeft,
@@ -83,6 +80,20 @@ function SettingsPage() {
         <section>
           <SectionLabel icon={Users} title="Conta & Workspace" />
           <div className="grid gap-3">
+            <SettingsLinkCard
+              icon={User}
+              title="Perfil"
+              desc="Seu nome, cargo, telefone e dados de contato"
+              to="/settings/profile"
+              badge={null}
+            />
+            <SettingsLinkCard
+              icon={Shield}
+              title="Segurança"
+              desc="Trocar senha e encerrar sessões em todos os dispositivos"
+              to="/settings/security"
+              badge={null}
+            />
             {isPlatformAdmin && (
               <SettingsLinkCard
                 icon={CreditCard}
@@ -119,6 +130,33 @@ function SettingsPage() {
               desc="Gêmeo Digital interativo com visualização 3D e telemetria ao vivo"
               to="/digital-twin"
               badge="Novo"
+            />
+          </div>
+        </section>
+
+        <section>
+          <SectionLabel icon={Palette} title="Preferências" />
+          <div className="grid gap-3">
+            <SettingsLinkCard
+              icon={Bell}
+              title="Notificações"
+              desc="Canais (email, in-app, push) e tipos de eventos que você quer receber"
+              to="/settings/notifications"
+              badge={null}
+            />
+            <SettingsLinkCard
+              icon={Palette}
+              title="Aparência"
+              desc="Tema, densidade da interface e idioma"
+              to="/settings/appearance"
+              badge={null}
+            />
+            <SettingsLinkCard
+              icon={Plug}
+              title="Integrações"
+              desc="Credenciais padrão de Modbus, OPC-UA e MQTT do workspace"
+              to="/settings/integrations"
+              badge={null}
             />
           </div>
         </section>
@@ -186,33 +224,11 @@ function SettingsPage() {
           </Card>
         </section>
 
-        <section>
-          <SectionLabel icon={Gauge} title="Runtime" />
-          <div className="grid gap-3 sm:grid-cols-3">
-            <RuntimeCard
-              icon={Cpu}
-              label="Cycle time alvo"
-              value="8 ms"
-              desc="Intervalo do ciclo principal"
-            />
-            <RuntimeCard
-              icon={HardDrive}
-              label="Solver"
-              value="RK4 · Δt 16ms"
-              desc="Método numérico de integração"
-            />
-            <RuntimeCard
-              icon={Sparkles}
-              label="Modo IA"
-              value="Contextual + autopilot"
-              desc="Motor de inferência industrial"
-            />
-          </div>
-        </section>
       </div>
     </div>
   );
 }
+
 
 function SectionLabel({
   icon: Icon,
@@ -270,27 +286,3 @@ function SettingsLinkCard({
   );
 }
 
-function RuntimeCard({
-  icon: Icon,
-  label,
-  value,
-  desc,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  desc: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-          <Icon className="h-3.5 w-3.5 text-primary" />
-          {label}
-        </div>
-        <p className="text-lg font-mono text-primary font-medium">{value}</p>
-        <p className="text-xs text-muted-foreground mt-1">{desc}</p>
-      </CardContent>
-    </Card>
-  );
-}
