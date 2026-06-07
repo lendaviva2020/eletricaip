@@ -449,9 +449,14 @@ function TeamPage() {
             />
             <span className="text-xs text-muted-foreground/80">{onlineCount} online</span>
           </div>
-          <div className="w-px h-6 bg-border/40" />
-          <span className="text-xs text-muted-foreground/60">Último acesso: hoje 14:23</span>
-          <div className="w-px h-6 bg-border/40" />
+          {isDemo && (
+            <>
+              <div className="w-px h-6 bg-border/40" />
+              <span className="text-xs text-muted-foreground/60">Último acesso: hoje 14:23</span>
+              <div className="w-px h-6 bg-border/40" />
+            </>
+          )}
+          {!isDemo && <div className="w-px h-6 bg-border/40" />}
           <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setInviteOpen(true)}>
             <UserPlus className="h-3.5 w-3.5" /> Convidar
           </Button>
