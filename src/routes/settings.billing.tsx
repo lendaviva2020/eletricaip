@@ -264,7 +264,7 @@ function BillingPage() {
             <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
               Próxima cobrança
             </p>
-            <p className="text-xs font-semibold">01 Jun 2026</p>
+            <p className="text-xs font-semibold">{isDemo ? "01 Jun 2026" : "—"}</p>
           </div>
           <div className="w-px h-8 bg-border/40" />
           <Badge
