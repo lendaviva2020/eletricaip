@@ -227,33 +227,11 @@ function SettingsPage() {
           </Card>
         </section>
 
-        <section>
-          <SectionLabel icon={Gauge} title="Runtime" />
-          <div className="grid gap-3 sm:grid-cols-3">
-            <RuntimeCard
-              icon={Cpu}
-              label="Cycle time alvo"
-              value="8 ms"
-              desc="Intervalo do ciclo principal"
-            />
-            <RuntimeCard
-              icon={HardDrive}
-              label="Solver"
-              value="RK4 · Δt 16ms"
-              desc="Método numérico de integração"
-            />
-            <RuntimeCard
-              icon={Sparkles}
-              label="Modo IA"
-              value="Contextual + autopilot"
-              desc="Motor de inferência industrial"
-            />
-          </div>
-        </section>
       </div>
     </div>
   );
 }
+
 
 function SectionLabel({
   icon: Icon,
