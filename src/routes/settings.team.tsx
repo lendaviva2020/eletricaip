@@ -449,9 +449,14 @@ function TeamPage() {
             />
             <span className="text-xs text-muted-foreground/80">{onlineCount} online</span>
           </div>
-          <div className="w-px h-6 bg-border/40" />
-          <span className="text-xs text-muted-foreground/60">Último acesso: hoje 14:23</span>
-          <div className="w-px h-6 bg-border/40" />
+          {isDemo && (
+            <>
+              <div className="w-px h-6 bg-border/40" />
+              <span className="text-xs text-muted-foreground/60">Último acesso: hoje 14:23</span>
+              <div className="w-px h-6 bg-border/40" />
+            </>
+          )}
+          {!isDemo && <div className="w-px h-6 bg-border/40" />}
           <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setInviteOpen(true)}>
             <UserPlus className="h-3.5 w-3.5" /> Convidar
           </Button>
@@ -797,7 +802,13 @@ function TeamPage() {
               </span>
               <Card>
                 <CardContent className="p-3">
-                  <ActivityTimeline entries={DEMO_ACTIVITIES} />
+                  {isDemo ? (
+                    <ActivityTimeline entries={DEMO_ACTIVITIES} />
+                  ) : (
+                    <p className="text-xs text-muted-foreground/60 px-2 py-6 text-center">
+                      Sem atividade registrada ainda.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
@@ -809,25 +820,29 @@ function TeamPage() {
                     Uso de IA por membro
                   </span>
                 </div>
-                {demoMembers.slice(0, 4).map((m) => (
-                  <div key={m.id} className="flex items-center gap-2 py-1.5">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted/40 text-[7px] font-semibold text-muted-foreground/60">
-                      {m.name.slice(0, 2).toUpperCase()}
+                {demoMembers.slice(0, 4).map((m, idx) => {
+                  // Deterministic demo values seeded by index (no Math.random)
+                  const pct = 18 + idx * 12;
+                  const bar = 30 + idx * 15;
+                  return (
+                    <div key={m.id} className="flex items-center gap-2 py-1.5">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted/40 text-[7px] font-semibold text-muted-foreground/60">
+                        {m.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <span className="text-[10px] flex-1 truncate text-muted-foreground/70">
+                        {m.name.split(" ")[0]}
+                      </span>
+                      <span className="text-[10px] font-mono text-primary/80">{pct}%</span>
+                      <div className="w-12 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary/60"
+                          style={{ width: `${bar}%` }}
+                        />
+                      </div>
                     </div>
-                    <span className="text-[10px] flex-1 truncate text-muted-foreground/70">
-                      {m.name.split(" ")[0]}
-                    </span>
-                    <span className="text-[10px] font-mono text-primary/80">
-                      {Math.floor(Math.random() * 40 + 10)}%
-                    </span>
-                    <div className="w-12 h-1.5 rounded-full bg-muted/40 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary/60"
-                        style={{ width: `${Math.floor(Math.random() * 60 + 20)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
+
               </div>
             </div>
           </div>

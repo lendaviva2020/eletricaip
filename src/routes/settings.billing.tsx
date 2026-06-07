@@ -121,16 +121,21 @@ function BillingPage() {
   const usageChart = useMemo(() => {
     const now = new Date();
     const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    // Deterministic demo data based on day-of-week, zeros in real mode until
+    // a real time-series source is wired (see backlog #BIL-01).
+    const demoSeries = [320, 580, 740, 690, 820, 910, 450];
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(now.getTime() - (6 - i) * 86400000);
+      const base = isDemo ? demoSeries[i] : 0;
       return {
         label: days[d.getDay()],
-        calls: Math.floor(Math.random() * 800 + 200),
-        tokens: Math.floor(Math.random() * 50000 + 10000),
-        automations: Math.floor(Math.random() * 40 + 10),
+        calls: base,
+        tokens: base * 60,
+        automations: Math.floor(base / 20),
       };
     });
-  }, []);
+  }, [isDemo]);
+
 
   async function handleCheckout(provider: "stripe" | "mp", plan: PaidPlan) {
     setBusy(`${provider}:${plan}`);
@@ -259,7 +264,7 @@ function BillingPage() {
             <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
               Próxima cobrança
             </p>
-            <p className="text-xs font-semibold">01 Jun 2026</p>
+            <p className="text-xs font-semibold">{isDemo ? "01 Jun 2026" : "—"}</p>
           </div>
           <div className="w-px h-8 bg-border/40" />
           <Badge
@@ -352,22 +357,24 @@ function BillingPage() {
                           <Users className="h-3 w-3" /> Usuários
                         </span>
                         <p className="text-lg font-semibold mt-1">
-                          8{" "}
-                          <span className="text-xs text-muted-foreground/60 font-normal">/ 15</span>
+                          {isDemo ? "8" : "—"}{" "}
+                          <span className="text-xs text-muted-foreground/60 font-normal">
+                            / {isDemo ? "15" : "—"}
+                          </span>
                         </p>
                       </div>
                       <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
                           <Bot className="h-3 w-3" /> Uso de IA
                         </span>
-                        <p className="text-lg font-semibold mt-1">42%</p>
+                        <p className="text-lg font-semibold mt-1">{isDemo ? "42%" : "—"}</p>
                       </div>
                       <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
                           <Cpu className="h-3 w-3" /> Automações
                         </span>
                         <p className="text-lg font-semibold mt-1">
-                          156{" "}
+                          {isDemo ? "156" : "—"}{" "}
                           <span className="text-xs text-muted-foreground/60 font-normal">
                             / mês
                           </span>
@@ -378,7 +385,7 @@ function BillingPage() {
                           <HardDrive className="h-3 w-3" /> Armazenamento
                         </span>
                         <p className="text-lg font-semibold mt-1">
-                          2.4{" "}
+                          {isDemo ? "2.4" : "—"}{" "}
                           <span className="text-xs text-muted-foreground/60 font-normal">GB</span>
                         </p>
                       </div>
@@ -461,28 +468,28 @@ function BillingPage() {
               <MetricCard
                 icon={<Wallet className="h-4 w-4" />}
                 label="Gasto total"
-                value="R$ 580,00"
+                value={isDemo ? "R$ 580,00" : "—"}
                 sub="Este mês"
-                trend={{ value: 12, positive: true }}
+                trend={isDemo ? { value: 12, positive: true } : undefined}
               />
               <MetricCard
                 icon={<TrendingUp className="h-4 w-4" />}
                 label="IA economizou"
-                value="R$ 3.240"
+                value={isDemo ? "R$ 3.240" : "—"}
                 sub="em horas homem"
-                trend={{ value: 34, positive: true }}
+                trend={isDemo ? { value: 34, positive: true } : undefined}
               />
               <MetricCard
                 icon={<PiggyBank className="h-4 w-4" />}
                 label="Custo por automação"
-                value="R$ 0,47"
+                value={isDemo ? "R$ 0,47" : "—"}
                 sub="média do período"
               />
               <MetricCard
                 icon={<CircleDollarSign className="h-4 w-4" />}
                 label="Créditos IA restantes"
-                value="4.580"
-                sub="de 10.000"
+                value={isDemo ? "4.580" : "—"}
+                sub={isDemo ? "de 10.000" : ""}
               />
             </div>
 
@@ -885,11 +892,16 @@ function BillingPage() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="text-center">
-                    <CircularProgress value={42} max={100} size={64} label="Tokens utilizados" />
+                    <CircularProgress
+                      value={isDemo ? 42 : 0}
+                      max={100}
+                      size={64}
+                      label="Tokens utilizados"
+                    />
                   </div>
                   <div className="text-center">
                     <CircularProgress
-                      value={78}
+                      value={isDemo ? 78 : 0}
                       max={100}
                       size={64}
                       color="#22c55e"
@@ -898,7 +910,7 @@ function BillingPage() {
                   </div>
                   <div className="text-center">
                     <CircularProgress
-                      value={34}
+                      value={isDemo ? 34 : 0}
                       max={50}
                       size={64}
                       color="#f59e0b"
@@ -907,7 +919,7 @@ function BillingPage() {
                   </div>
                   <div className="text-center">
                     <CircularProgress
-                      value={89}
+                      value={isDemo ? 89 : 0}
                       max={100}
                       size={64}
                       color="#8b5cf6"
