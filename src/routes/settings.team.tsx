@@ -802,7 +802,13 @@ function TeamPage() {
               </span>
               <Card>
                 <CardContent className="p-3">
-                  <ActivityTimeline entries={DEMO_ACTIVITIES} />
+                  {isDemo ? (
+                    <ActivityTimeline entries={DEMO_ACTIVITIES} />
+                  ) : (
+                    <p className="text-xs text-muted-foreground/60 px-2 py-6 text-center">
+                      Sem atividade registrada ainda.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
