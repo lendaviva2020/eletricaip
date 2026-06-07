@@ -809,25 +809,29 @@ function TeamPage() {
                     Uso de IA por membro
                   </span>
                 </div>
-                {demoMembers.slice(0, 4).map((m) => (
-                  <div key={m.id} className="flex items-center gap-2 py-1.5">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted/40 text-[7px] font-semibold text-muted-foreground/60">
-                      {m.name.slice(0, 2).toUpperCase()}
+                {demoMembers.slice(0, 4).map((m, idx) => {
+                  // Deterministic demo values seeded by index (no Math.random)
+                  const pct = 18 + idx * 12;
+                  const bar = 30 + idx * 15;
+                  return (
+                    <div key={m.id} className="flex items-center gap-2 py-1.5">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted/40 text-[7px] font-semibold text-muted-foreground/60">
+                        {m.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <span className="text-[10px] flex-1 truncate text-muted-foreground/70">
+                        {m.name.split(" ")[0]}
+                      </span>
+                      <span className="text-[10px] font-mono text-primary/80">{pct}%</span>
+                      <div className="w-12 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary/60"
+                          style={{ width: `${bar}%` }}
+                        />
+                      </div>
                     </div>
-                    <span className="text-[10px] flex-1 truncate text-muted-foreground/70">
-                      {m.name.split(" ")[0]}
-                    </span>
-                    <span className="text-[10px] font-mono text-primary/80">
-                      {Math.floor(Math.random() * 40 + 10)}%
-                    </span>
-                    <div className="w-12 h-1.5 rounded-full bg-muted/40 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary/60"
-                        style={{ width: `${Math.floor(Math.random() * 60 + 20)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
+
               </div>
             </div>
           </div>
