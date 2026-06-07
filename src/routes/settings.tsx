@@ -83,6 +83,20 @@ function SettingsPage() {
         <section>
           <SectionLabel icon={Users} title="Conta & Workspace" />
           <div className="grid gap-3">
+            <SettingsLinkCard
+              icon={User}
+              title="Perfil"
+              desc="Seu nome, cargo, telefone e dados de contato"
+              to="/settings/profile"
+              badge={null}
+            />
+            <SettingsLinkCard
+              icon={Shield}
+              title="Segurança"
+              desc="Trocar senha e encerrar sessões em todos os dispositivos"
+              to="/settings/security"
+              badge={null}
+            />
             {isPlatformAdmin && (
               <SettingsLinkCard
                 icon={CreditCard}
@@ -119,6 +133,33 @@ function SettingsPage() {
               desc="Gêmeo Digital interativo com visualização 3D e telemetria ao vivo"
               to="/digital-twin"
               badge="Novo"
+            />
+          </div>
+        </section>
+
+        <section>
+          <SectionLabel icon={Palette} title="Preferências" />
+          <div className="grid gap-3">
+            <SettingsLinkCard
+              icon={Bell}
+              title="Notificações"
+              desc="Canais (email, in-app, push) e tipos de eventos que você quer receber"
+              to="/settings/notifications"
+              badge={null}
+            />
+            <SettingsLinkCard
+              icon={Palette}
+              title="Aparência"
+              desc="Tema, densidade da interface e idioma"
+              to="/settings/appearance"
+              badge={null}
+            />
+            <SettingsLinkCard
+              icon={Plug}
+              title="Integrações"
+              desc="Credenciais padrão de Modbus, OPC-UA e MQTT do workspace"
+              to="/settings/integrations"
+              badge={null}
             />
           </div>
         </section>
