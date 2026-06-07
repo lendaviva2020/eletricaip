@@ -892,11 +892,16 @@ function BillingPage() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="text-center">
-                    <CircularProgress value={42} max={100} size={64} label="Tokens utilizados" />
+                    <CircularProgress
+                      value={isDemo ? 42 : 0}
+                      max={100}
+                      size={64}
+                      label="Tokens utilizados"
+                    />
                   </div>
                   <div className="text-center">
                     <CircularProgress
-                      value={78}
+                      value={isDemo ? 78 : 0}
                       max={100}
                       size={64}
                       color="#22c55e"
@@ -905,7 +910,7 @@ function BillingPage() {
                   </div>
                   <div className="text-center">
                     <CircularProgress
-                      value={34}
+                      value={isDemo ? 34 : 0}
                       max={50}
                       size={64}
                       color="#f59e0b"
@@ -914,7 +919,7 @@ function BillingPage() {
                   </div>
                   <div className="text-center">
                     <CircularProgress
-                      value={89}
+                      value={isDemo ? 89 : 0}
                       max={100}
                       size={64}
                       color="#8b5cf6"
