@@ -121,16 +121,21 @@ function BillingPage() {
   const usageChart = useMemo(() => {
     const now = new Date();
     const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    // Deterministic demo data based on day-of-week, zeros in real mode until
+    // a real time-series source is wired (see backlog #BIL-01).
+    const demoSeries = [320, 580, 740, 690, 820, 910, 450];
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(now.getTime() - (6 - i) * 86400000);
+      const base = isDemo ? demoSeries[i] : 0;
       return {
         label: days[d.getDay()],
-        calls: Math.floor(Math.random() * 800 + 200),
-        tokens: Math.floor(Math.random() * 50000 + 10000),
-        automations: Math.floor(Math.random() * 40 + 10),
+        calls: base,
+        tokens: base * 60,
+        automations: Math.floor(base / 20),
       };
     });
-  }, []);
+  }, [isDemo]);
+
 
   async function handleCheckout(provider: "stripe" | "mp", plan: PaidPlan) {
     setBusy(`${provider}:${plan}`);
