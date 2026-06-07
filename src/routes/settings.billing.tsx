@@ -468,28 +468,28 @@ function BillingPage() {
               <MetricCard
                 icon={<Wallet className="h-4 w-4" />}
                 label="Gasto total"
-                value="R$ 580,00"
+                value={isDemo ? "R$ 580,00" : "—"}
                 sub="Este mês"
-                trend={{ value: 12, positive: true }}
+                trend={isDemo ? { value: 12, positive: true } : undefined}
               />
               <MetricCard
                 icon={<TrendingUp className="h-4 w-4" />}
                 label="IA economizou"
-                value="R$ 3.240"
+                value={isDemo ? "R$ 3.240" : "—"}
                 sub="em horas homem"
-                trend={{ value: 34, positive: true }}
+                trend={isDemo ? { value: 34, positive: true } : undefined}
               />
               <MetricCard
                 icon={<PiggyBank className="h-4 w-4" />}
                 label="Custo por automação"
-                value="R$ 0,47"
+                value={isDemo ? "R$ 0,47" : "—"}
                 sub="média do período"
               />
               <MetricCard
                 icon={<CircleDollarSign className="h-4 w-4" />}
                 label="Créditos IA restantes"
-                value="4.580"
-                sub="de 10.000"
+                value={isDemo ? "4.580" : "—"}
+                sub={isDemo ? "de 10.000" : ""}
               />
             </div>
 
