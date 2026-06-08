@@ -9,7 +9,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  */
 
 async function getActiveTenantId(
-  supabase: Awaited<ReturnType<typeof requireSupabaseAuth.server>>["context"]["supabase"],
+  supabase: { from: (table: string) => any },
   userId: string,
 ): Promise<string> {
   const { data } = await supabase
@@ -21,6 +21,7 @@ async function getActiveTenantId(
   if (!tid) throw new Error("no_tenant");
   return tid;
 }
+
 
 const SettingKey = z
   .string()
