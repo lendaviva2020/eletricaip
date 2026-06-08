@@ -1,37 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { Bell } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { useTenantSetting } from "@/hooks/use-tenant-setting";
 
 export const Route = createFileRoute("/settings/notifications")({
   head: () => ({ meta: [{ title: "Notificações · EletricAI" }] }),
   component: NotificationsPage,
 });
 
-interface NotifState {
-  prefs: Record<string, boolean>;
-  toggle: (k: string) => void;
-}
-
-export const useNotifPrefs = create<NotifState>()(
-  persist(
-    (set) => ({
-      prefs: {
-        email_critical_alarm: true,
-        email_protocol_failure: true,
-        email_new_member: false,
-        inapp_critical_alarm: true,
-        inapp_protocol_failure: true,
-        inapp_new_member: true,
-        push_critical_alarm: false,
-      },
-      toggle: (k) => set((s) => ({ prefs: { ...s.prefs, [k]: !s.prefs[k] } })),
-    }),
-    { name: "eletricai-notif-prefs" },
-  ),
-);
+const DEFAULT_PREFS: Record<string, boolean> = {
+  email_critical_alarm: true,
+  email_protocol_failure: true,
+  email_new_member: false,
+  inapp_critical_alarm: true,
+  inapp_protocol_failure: true,
+  inapp_new_member: true,
+  push_critical_alarm: false,
+};
 
 const ITEMS: { key: string; label: string; channel: string }[] = [
   { key: "email_critical_alarm", label: "Alarme crítico", channel: "Email" },
@@ -44,8 +30,13 @@ const ITEMS: { key: string; label: string; channel: string }[] = [
 ];
 
 function NotificationsPage() {
-  const prefs = useNotifPrefs((s) => s.prefs);
-  const toggle = useNotifPrefs((s) => s.toggle);
+  const { value: prefs, update, isSaving } = useTenantSetting(
+    "notification_prefs",
+    DEFAULT_PREFS,
+  );
+
+  const toggle = (k: string) => update({ [k]: !prefs[k] });
+
   return (
     <div className="flex-1 overflow-auto p-6">
       <div className="max-w-2xl mx-auto space-y-4">
@@ -60,11 +51,18 @@ function NotificationsPage() {
                   <p className="text-sm font-medium">{i.label}</p>
                   <p className="text-xs text-muted-foreground">Canal: {i.channel}</p>
                 </div>
-                <Switch checked={!!prefs[i.key]} onCheckedChange={() => toggle(i.key)} />
+                <Switch
+                  checked={!!prefs[i.key]}
+                  onCheckedChange={() => toggle(i.key)}
+                  disabled={isSaving}
+                />
               </div>
             ))}
           </CardContent>
         </Card>
+        <p className="text-[11px] text-muted-foreground">
+          As preferências ficam salvas no seu workspace e se aplicam a todos os dispositivos.
+        </p>
       </div>
     </div>
   );
