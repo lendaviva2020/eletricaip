@@ -275,9 +275,17 @@ function TeamPage() {
         setInviteOpen(false);
         return;
       }
-      const inv = await inviteFn({ data: { email: email.trim(), role } });
+      const inv = await inviteFn({
+        data: {
+          email: email.trim(),
+          role,
+          invitedName: inviteName.trim() || undefined,
+          invitedSector: inviteSector || undefined,
+        },
+      });
       toast.success(`Convite criado. Link: ${window.location.origin}/invite/${inv.token}`);
       setEmail("");
+      setInviteName("");
       setInviteOpen(false);
       await qc.invalidateQueries({ queryKey: ["tenant-invites", active?.id] });
     } catch (e) {
@@ -285,7 +293,7 @@ function TeamPage() {
     } finally {
       setBusy(null);
     }
-  }, [email, role, isDemo, inviteFn, active?.id, qc]);
+  }, [email, role, isDemo, inviteFn, inviteName, inviteSector, active?.id, qc]);
 
   const handleRevoke = useCallback(
     async (id: string) => {
