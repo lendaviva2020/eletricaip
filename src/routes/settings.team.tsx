@@ -275,7 +275,14 @@ function TeamPage() {
         setInviteOpen(false);
         return;
       }
-      const inv = await inviteFn({ data: { email: email.trim(), role } });
+      const inv = await inviteFn({
+        data: {
+          email: email.trim(),
+          role,
+          invitedName: inviteName.trim() || undefined,
+          invitedSector: inviteSector || undefined,
+        },
+      });
       toast.success(`Convite criado. Link: ${window.location.origin}/invite/${inv.token}`);
       setEmail("");
       setInviteOpen(false);
