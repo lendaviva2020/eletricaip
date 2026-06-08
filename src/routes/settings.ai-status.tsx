@@ -9,7 +9,7 @@ import {
   ShieldAlert,
   ExternalLink,
 } from "lucide-react";
-import { pingArchitectHealth, getStatusEvents } from "@/lib/ai-architect-client";
+import { pingArchitectHealth, getStatusEvents, fetchAiStatusEvents } from "@/lib/ai-architect-client";
 
 export const Route = createFileRoute("/settings/ai-status")({
   head: () => ({
