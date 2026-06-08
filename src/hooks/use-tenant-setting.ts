@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
  * session yet (SSR / signed-out preview). Writes are best-effort to
  * Supabase plus a local mirror so the UI stays in sync.
  */
-export function useTenantSetting<T extends Record<string, JsonValue>>(key: string, defaults: T) {
+export function useTenantSetting<T extends object>(key: string, defaults: T) {
   const qc = useQueryClient();
   const getFn = useServerFn(getTenantSetting);
   const setFn = useServerFn(setTenantSetting);
