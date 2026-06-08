@@ -1007,6 +1007,8 @@ export type Database = {
           email: string
           expires_at: string
           id: string
+          invited_name: string | null
+          invited_sector: string | null
           role: string
           tenant_id: string
           token: string
@@ -1017,6 +1019,8 @@ export type Database = {
           email: string
           expires_at?: string
           id?: string
+          invited_name?: string | null
+          invited_sector?: string | null
           role?: string
           tenant_id: string
           token?: string
@@ -1027,6 +1031,8 @@ export type Database = {
           email?: string
           expires_at?: string
           id?: string
+          invited_name?: string | null
+          invited_sector?: string | null
           role?: string
           tenant_id?: string
           token?: string
