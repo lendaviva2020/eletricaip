@@ -156,6 +156,8 @@ export const createInvite = createServerFn({ method: "POST" })
       .object({
         email: z.string().email().max(255),
         role: z.enum(["admin", "engineer", "operator", "viewer"]),
+        invitedName: z.string().trim().min(1).max(120).optional(),
+        invitedSector: z.string().trim().min(1).max(60).optional(),
       })
       .parse(input),
   )
@@ -169,12 +171,15 @@ export const createInvite = createServerFn({ method: "POST" })
         tenant_id: tenantId,
         email: data.email.toLowerCase(),
         role: data.role,
+        invited_name: data.invitedName ?? null,
+        invited_sector: data.invitedSector ?? null,
       })
       .select("id, token, expires_at")
       .single();
     if (error) throw new Error(error.message);
     return invite;
   });
+
 
 export const revokeInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
