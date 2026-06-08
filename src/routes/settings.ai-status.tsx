@@ -32,16 +32,19 @@ function AiStatusPage() {
   const refresh = async () => {
     setBusy(true);
     setHealth(await pingArchitectHealth());
-    setEvents(getStatusEvents());
+    setEvents(await fetchAiStatusEvents());
     setBusy(false);
   };
 
   useEffect(() => {
     refresh();
-    const onEv = () => setEvents(getStatusEvents());
+    const onEv = () => {
+      void fetchAiStatusEvents().then(setEvents);
+    };
     window.addEventListener("ai-status-event", onEv);
     return () => window.removeEventListener("ai-status-event", onEv);
   }, []);
+
 
   const last24h = events.filter((e) => Date.now() - e.ts < 24 * 60 * 60 * 1000);
   const auth401Count = last24h.filter((e) => e.code === "AUTH_401").length;
