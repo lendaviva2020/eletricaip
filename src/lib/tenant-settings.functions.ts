@@ -42,8 +42,13 @@ export const getTenantSetting = createServerFn({ method: "POST" })
       .eq("key", data.key)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return (row as { value: unknown; updated_at: string } | null) ?? null;
+    return (row as { value: unknown; updated_at: string } | null) ?? null as unknown as
+      | { value: unknown; updated_at: string }
+      | null;
   });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Json = any;
+
 
 export const setTenantSetting = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
