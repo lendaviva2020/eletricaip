@@ -9,6 +9,7 @@ import {
 } from "@/lib/project-store";
 import { useCurrentProject } from "@/lib/current-project";
 import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
+import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.functions";
 
 import { useVoltaiStore, type VoltaiDiagramEdge } from "@/lib/voltai/store";
 import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
@@ -115,7 +116,34 @@ function pushStatus(ev: StatusEvent) {
   } catch {
     /* ignore */
   }
+  // Best-effort persistence to Supabase (tenant-scoped). Ignored when
+  // user is not authenticated yet.
+  void supabase.auth.getUser().then(({ data }) => {
+    if (!data.user) return;
+    recordAiStatusEvent({
+      data: { ok: ev.ok, code: ev.code, latencyMs: ev.ms },
+    }).catch(() => {
+      /* swallow — local copy already kept */
+    });
+  });
 }
+
+export async function fetchAiStatusEvents(): Promise<StatusEvent[]> {
+  try {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return getStatusEvents();
+    const rows = await listAiStatusEvents({ data: { limit: 50 } });
+    return rows.map((r) => ({
+      ts: new Date(r.created_at).getTime(),
+      ok: r.ok,
+      code: r.code ?? undefined,
+      ms: r.latency_ms,
+    }));
+  } catch {
+    return getStatusEvents();
+  }
+}
+
 
 export function getLocalAiUsage() {
   if (typeof window === "undefined")

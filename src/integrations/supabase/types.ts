@@ -111,6 +111,44 @@ export type Database = {
           },
         ]
       }
+      ai_status_events: {
+        Row: {
+          code: string | null
+          created_at: string
+          id: string
+          latency_ms: number
+          ok: boolean
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          latency_ms?: number
+          ok: boolean
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          latency_ms?: number
+          ok?: boolean
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_status_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alarm_configs: {
         Row: {
           area: string
@@ -2216,6 +2254,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tenant_memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_settings: {
+        Row: {
+          created_at: string
+          key: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_settings_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
