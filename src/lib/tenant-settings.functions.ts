@@ -22,6 +22,13 @@ async function getActiveTenantId(
   return tid;
 }
 
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [k: string]: JsonValue }
+  | JsonValue[];
 
 const SettingKey = z
   .string()
@@ -42,13 +49,12 @@ export const getTenantSetting = createServerFn({ method: "POST" })
       .eq("key", data.key)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return (row as { value: unknown; updated_at: string } | null) ?? null as unknown as
-      | { value: unknown; updated_at: string }
-      | null;
+    if (!row) return null;
+    return {
+      value: (row as { value: JsonValue }).value as JsonValue,
+      updated_at: (row as { updated_at: string }).updated_at,
+    };
   });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Json = any;
-
 
 export const setTenantSetting = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -75,6 +81,7 @@ export const setTenantSetting = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
 
 // ---- AI status events ----
 
