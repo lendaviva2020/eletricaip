@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { toast } from "sonner";
 import { Plug } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { useTenantSetting } from "@/hooks/use-tenant-setting";
 
 export const Route = createFileRoute("/settings/integrations")({
   head: () => ({ meta: [{ title: "Integrações · EletricAI" }] }),
@@ -19,26 +18,16 @@ interface ProtoConfig {
   mqtt: { broker: string; clientId: string; username: string };
 }
 
-interface IntegrationsState extends ProtoConfig {
-  set: <K extends keyof ProtoConfig>(k: K, v: ProtoConfig[K]) => void;
-}
-
-export const useIntegrations = create<IntegrationsState>()(
-  persist(
-    (set) => ({
-      modbus: { host: "192.168.1.100", port: 502, unitId: 1 },
-      opcua: { endpoint: "opc.tcp://localhost:4840", username: "" },
-      mqtt: { broker: "mqtt://broker.local:1883", clientId: "eletricai-1", username: "" },
-      set: (k, v) => set((s) => ({ ...s, [k]: v })),
-    }),
-    { name: "eletricai-integrations" },
-  ),
-);
+const DEFAULTS: ProtoConfig = {
+  modbus: { host: "192.168.1.100", port: 502, unitId: 1 },
+  opcua: { endpoint: "opc.tcp://localhost:4840", username: "" },
+  mqtt: { broker: "mqtt://broker.local:1883", clientId: "eletricai-1", username: "" },
+};
 
 function IntegrationsPage() {
-  const s = useIntegrations();
+  const { value, update, isSaving } = useTenantSetting<ProtoConfig>("integrations", DEFAULTS);
 
-  const save = () => toast.success("Configurações de integração salvas localmente");
+  const save = () => toast.success("Configurações salvas no workspace");
 
   return (
     <div className="flex-1 overflow-auto p-6">
@@ -53,22 +42,28 @@ function IntegrationsPage() {
             <div className="grid grid-cols-3 gap-3">
               <FieldT label="Host">
                 <Input
-                  value={s.modbus.host}
-                  onChange={(e) => s.set("modbus", { ...s.modbus, host: e.target.value })}
+                  value={value.modbus.host}
+                  onChange={(e) =>
+                    update({ modbus: { ...value.modbus, host: e.target.value } })
+                  }
                 />
               </FieldT>
               <FieldT label="Porta">
                 <Input
                   type="number"
-                  value={s.modbus.port}
-                  onChange={(e) => s.set("modbus", { ...s.modbus, port: Number(e.target.value) })}
+                  value={value.modbus.port}
+                  onChange={(e) =>
+                    update({ modbus: { ...value.modbus, port: Number(e.target.value) } })
+                  }
                 />
               </FieldT>
               <FieldT label="Unit ID">
                 <Input
                   type="number"
-                  value={s.modbus.unitId}
-                  onChange={(e) => s.set("modbus", { ...s.modbus, unitId: Number(e.target.value) })}
+                  value={value.modbus.unitId}
+                  onChange={(e) =>
+                    update({ modbus: { ...value.modbus, unitId: Number(e.target.value) } })
+                  }
                 />
               </FieldT>
             </div>
@@ -81,14 +76,18 @@ function IntegrationsPage() {
             <div className="grid grid-cols-2 gap-3">
               <FieldT label="Endpoint">
                 <Input
-                  value={s.opcua.endpoint}
-                  onChange={(e) => s.set("opcua", { ...s.opcua, endpoint: e.target.value })}
+                  value={value.opcua.endpoint}
+                  onChange={(e) =>
+                    update({ opcua: { ...value.opcua, endpoint: e.target.value } })
+                  }
                 />
               </FieldT>
               <FieldT label="Usuário">
                 <Input
-                  value={s.opcua.username}
-                  onChange={(e) => s.set("opcua", { ...s.opcua, username: e.target.value })}
+                  value={value.opcua.username}
+                  onChange={(e) =>
+                    update({ opcua: { ...value.opcua, username: e.target.value } })
+                  }
                 />
               </FieldT>
             </div>
@@ -101,27 +100,35 @@ function IntegrationsPage() {
             <div className="grid grid-cols-3 gap-3">
               <FieldT label="Broker">
                 <Input
-                  value={s.mqtt.broker}
-                  onChange={(e) => s.set("mqtt", { ...s.mqtt, broker: e.target.value })}
+                  value={value.mqtt.broker}
+                  onChange={(e) =>
+                    update({ mqtt: { ...value.mqtt, broker: e.target.value } })
+                  }
                 />
               </FieldT>
               <FieldT label="Client ID">
                 <Input
-                  value={s.mqtt.clientId}
-                  onChange={(e) => s.set("mqtt", { ...s.mqtt, clientId: e.target.value })}
+                  value={value.mqtt.clientId}
+                  onChange={(e) =>
+                    update({ mqtt: { ...value.mqtt, clientId: e.target.value } })
+                  }
                 />
               </FieldT>
               <FieldT label="Usuário">
                 <Input
-                  value={s.mqtt.username}
-                  onChange={(e) => s.set("mqtt", { ...s.mqtt, username: e.target.value })}
+                  value={value.mqtt.username}
+                  onChange={(e) =>
+                    update({ mqtt: { ...value.mqtt, username: e.target.value } })
+                  }
                 />
               </FieldT>
             </div>
           </CardContent>
         </Card>
 
-        <Button onClick={save}>Salvar configurações</Button>
+        <Button onClick={save} disabled={isSaving}>
+          {isSaving ? "Salvando..." : "Salvar configurações"}
+        </Button>
       </div>
     </div>
   );
