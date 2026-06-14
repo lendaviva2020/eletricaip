@@ -579,6 +579,3 @@ function colorForEdge(k: EdgeKind): number {
       return 0x94a3b8;
   }
 }
-
-// Re-export Point for callers that may need it.
-export { Point };
