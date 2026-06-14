@@ -4,7 +4,7 @@
 //
 // Recursos: portas/handles, edge-draft com preview ortogonal, marquee
 // (Shift+drag), snap-to-grid no commit, context menu, multi-select drag.
-import { Application, Container, FederatedPointerEvent, Graphics, Point, Text } from "pixi.js";
+import { Application, Container, FederatedPointerEvent, Graphics, Text } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import type { DiagramDoc, DiagramEdge, DiagramNode, EdgeKind, SheetKind } from "../schema";
 import { drawSymbol } from "./symbols";
@@ -579,6 +579,3 @@ function colorForEdge(k: EdgeKind): number {
       return 0x94a3b8;
   }
 }
-
-// Re-export Point for callers that may need it.
-export { Point };

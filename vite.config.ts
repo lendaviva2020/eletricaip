@@ -16,15 +16,28 @@ export default defineConfig({
   },
   vite: {
     build: {
-      chunkSizeWarningLimit: 5000,
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
-          manualChunks(id) {
-            if (!id.includes("node_modules")) return undefined;
-            if (id.includes("reactflow")) return "vendor-reactflow";
-            if (id.includes("konva") || id.includes("react-konva")) return "vendor-konva";
-            if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+          manualChunks(id: string) {
+            if (
+              id.includes("three") ||
+              id.includes("@react-three") ||
+              id.includes("camera-controls")
+            ) {
+              return "vendor-3d";
+            }
+            if (id.includes("konva")) return "vendor-konva";
+            if (id.includes("reactflow") || id.includes("@xyflow")) return "vendor-reactflow";
+            if (id.includes("recharts") || id.includes("d3-") || id.includes("victory")) {
+              return "vendor-charts";
+            }
             if (id.includes("@supabase")) return "vendor-supabase";
+            if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/")) {
+              return "vendor-react";
+            }
+            if (id.includes("@tanstack")) return "vendor-tanstack";
+            if (id.includes("node_modules")) return "vendor-misc";
             return undefined;
           },
         },
