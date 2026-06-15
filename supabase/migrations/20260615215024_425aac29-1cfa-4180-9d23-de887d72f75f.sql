@@ -1,0 +1,9 @@
+GRANT EXECUTE ON FUNCTION public.get_ai_credits_remaining() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.consume_ai_credits(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.check_ai_quota() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_ai_tokens(integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.tenant_has_feature(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.bootstrap_personal_tenant_if_missing() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.accept_invite(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.change_tenant_plan(text) TO authenticated;
