@@ -3,22 +3,15 @@ import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
+import { getSupabasePublicEnv } from "./env";
 
-// Sem fallback hardcoded: se a env não está presente o servidor falha alto.
+// Usa o helper compartilhado (com fallback para o URL/anon key públicos do projeto)
+// para evitar 500 quando o runtime serverless não injeta as envs SUPABASE_*.
 function getServerSupabasePublicEnv() {
-  const env = typeof process !== "undefined" ? process.env : {};
-  return {
-    url: env.SUPABASE_URL || env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || "",
-    anonKey:
-      env.SUPABASE_PUBLISHABLE_KEY ||
-      env.SUPABASE_ANON_KEY ||
-      env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-      env.VITE_SUPABASE_ANON_KEY ||
-      env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-      env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-      "",
-  };
+  const { url, anonKey } = getSupabasePublicEnv();
+  return { url, anonKey };
 }
+
 
 export interface AuthContext {
   supabase: ReturnType<typeof createClient<Database>>;
