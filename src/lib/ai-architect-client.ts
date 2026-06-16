@@ -97,13 +97,7 @@ function mapError(code: string, message: string): AIServiceError {
 
 // --- Status tracking (for the Status page + global counters) ---------------
 const STATUS_KEY = "eletricai.ai.statusEvents";
-const AI_USAGE_KEY = "eletricai.ai.usage";
 type StatusEvent = { ts: number; ok: boolean; code?: string; ms: number };
-
-interface LocalAiUsagePayload {
-  plan?: string;
-  used?: number;
-}
 
 function pushStatus(ev: StatusEvent) {
   if (typeof window === "undefined") return;
@@ -143,28 +137,13 @@ export async function fetchAiStatusEvents(): Promise<StatusEvent[]> {
   }
 }
 
-export function getLocalAiUsage() {
-  if (typeof window === "undefined")
-    return { plan: "free", used: 0, remainingLabel: "10 créditos" };
-  try {
-    const usage: LocalAiUsagePayload = JSON.parse(localStorage.getItem(AI_USAGE_KEY) ?? "{}");
-    const plan = getPlan(usage.plan);
-    const used = Number(usage.used ?? 0);
-    const remainingLabel =
-      plan.aiCreditsPerMonth === null
-        ? "IA ilimitada"
-        : `${Math.max(0, plan.aiCreditsPerMonth - used)} créditos`;
-    return { plan: plan.id, used, remainingLabel };
-  } catch {
-    return { plan: "free", used: 0, remainingLabel: "10 créditos" };
-  }
-}
-
-function incrementLocalAiUsage(planId = "free") {
+/**
+ * Triggers the AI credits badge to refetch its server-side quota.
+ * The quota itself is enforced server-side (requireAiQuota middleware) —
+ * this is purely a UI refresh signal.
+ */
+function notifyAiUsageChanged() {
   if (typeof window === "undefined") return;
-  const current = getLocalAiUsage();
-  const next = { plan: planId || current.plan, used: current.used + 1 };
-  localStorage.setItem(AI_USAGE_KEY, JSON.stringify(next));
   window.dispatchEvent(new CustomEvent("ai-usage-event"));
 }
 export function getStatusEvents(): StatusEvent[] {
@@ -175,6 +154,7 @@ export function getStatusEvents(): StatusEvent[] {
     return [];
   }
 }
+
 
 export async function callArchitect(
   prompt: string,
