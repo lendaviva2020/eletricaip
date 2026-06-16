@@ -95,24 +95,22 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     const authCtx = context as unknown as AuthContext;
     const userId = authCtx.userId;
 
-    // Prefer Upstash distributed limiter; fall back to in-memory if unavailable.
     const upstash = await checkRateLimit("ai", userId);
+    // Fail-closed: if the distributed limiter is offline/unconfigured we cannot
+    // safely enforce per-user limits across instances, so reject the request.
     if (upstash.bypassed) {
-      const { allowed, retryAfter } = checkBurst(userId);
-      if (!allowed) {
-        throw new Response(
-          JSON.stringify({
-            ok: false,
-            error: {
-              code: "BURST_LIMIT_429",
-              message: `Muitas requisições em sequência. Tente novamente em ${retryAfter}s.`,
-              retryAfter,
-            },
-          }),
-          { status: 429, headers: { "content-type": "application/json" } },
-        );
-      }
-      return next();
+      console.error("[ai-rate-limit] distributed limiter unavailable — failing closed");
+      throw new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: "RATE_LIMITER_UNAVAILABLE_503",
+            message:
+              "Serviço de limite de requisições temporariamente indisponível. Tente novamente em instantes.",
+          },
+        }),
+        { status: 503, headers: { "content-type": "application/json" } },
+      );
     }
 
     if (!upstash.allowed) {
@@ -130,3 +128,4 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     }
     return next();
   });
+
