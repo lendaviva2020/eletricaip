@@ -1,45 +1,14 @@
 // AI rate limiting middleware — burst + monthly quota enforcement.
-// Burst limiting uses Upstash Redis (distributed) when configured;
-// falls back to an in-memory sliding window otherwise.
+// Burst limiting REQUIRES Upstash Redis (distributed). The previous in-memory
+// fallback was removed because it is ineffective across serverless instances —
+// when Upstash is unavailable the middleware now fails closed (HTTP 503).
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "./auth-middleware";
 import type { AuthContext } from "./auth-middleware";
 import { checkRateLimit } from "@/lib/security/rate-limiter.server";
 
-// ── In-memory sliding-window burst limiter ──────────────────────
-const BURST_WINDOW_MS = 60_000;
-const BURST_MAX_CALLS = 20;
 
-const burstWindows = new Map<string, number[]>();
-
-interface BurstResult {
-  allowed: boolean;
-  retryAfter: number;
-}
-
-function checkBurst(userId: string): BurstResult {
-  const now = Date.now();
-  let timestamps = burstWindows.get(userId);
-  if (!timestamps) {
-    timestamps = [];
-    burstWindows.set(userId, timestamps);
-  }
-  // Prune entries outside the window.
-  const cutoff = now - BURST_WINDOW_MS;
-  let i = 0;
-  while (i < timestamps.length && timestamps[i] < cutoff) i++;
-  if (i > 0) timestamps.splice(0, i);
-
-  if (timestamps.length >= BURST_MAX_CALLS) {
-    const oldest = timestamps[0];
-    const retryAfter = Math.ceil((oldest + BURST_WINDOW_MS - now) / 1000);
-    return { allowed: false, retryAfter };
-  }
-
-  timestamps.push(now);
-  return { allowed: true, retryAfter: 0 };
-}
 
 export const requireAiQuota = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
