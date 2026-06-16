@@ -148,8 +148,13 @@ export function useProjectPersistence(projectId: string | null) {
   useEffect(() => {
     if (!projectId) return;
 
-    const schedule = () => {
+    const schedule = (reason: string) => {
       if (timer.current) clearTimeout(timer.current);
+      useAutosaveLog.getState().log({
+        kind: "schedule",
+        projectId,
+        message: `Mudança detectada (${reason}) — autosave em ${AUTOSAVE_DEBOUNCE_MS}ms`,
+      });
       timer.current = setTimeout(flush, AUTOSAVE_DEBOUNCE_MS);
     };
 
@@ -166,46 +171,71 @@ export function useProjectPersistence(projectId: string | null) {
       const snapshot = buildProjectSnapshot();
       savingRef.current = true;
       if (mountedRef.current) setSaveState("saving");
+      const diagramNodes = Object.keys(snapshot.diagram?.nodes ?? {}).length;
+      const diagramEdges = Object.keys(snapshot.diagram?.edges ?? {}).length;
+      useAutosaveLog.getState().log({
+        kind: "save:start",
+        projectId,
+        message: "Salvando snapshot…",
+        meta: {
+          projectNodes: snapshot.project.nodes.length,
+          projectEdges: snapshot.project.edges.length,
+          diagramNodes,
+          diagramEdges,
+        },
+      });
+      const startedAt = performance.now();
       try {
         await save({ data: { projectId, snapshot } });
         ps.markSaved();
         vs.markSaved();
         es.markSaved();
         if (mountedRef.current) setSaveState("saved");
+        useAutosaveLog.getState().log({
+          kind: "save:success",
+          projectId,
+          message: `Salvo em ${Math.round(performance.now() - startedAt)}ms`,
+          meta: { diagramNodes, diagramEdges },
+        });
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         if (mountedRef.current) setSaveState("error");
+        useAutosaveLog.getState().log({
+          kind: "save:error",
+          projectId,
+          message,
+        });
         toast.error(`Falha ao salvar: ${message}`);
       } finally {
         savingRef.current = false;
         if (pendingRef.current) {
           pendingRef.current = false;
-          schedule();
+          schedule("retry-coalesced");
         }
       }
     };
 
     const unsub = useProjectStore.subscribe((s, prev) => {
       if (!s.dirty || s.dirty === prev.dirty) return;
-      schedule();
+      schedule("project-store");
     });
     const unsub2 = useVoltaiStore.subscribe((s, prev) => {
       if (!s.dirty || s.dirty === prev.dirty) return;
-      schedule();
+      schedule("voltai-store");
     });
     const unsub3 = useEditorStore.subscribe((s, prev) => {
       if (!s.dirty || s.dirty === prev.dirty) return;
-      schedule();
+      schedule("editor-store");
     });
     const unsub4 = useDiagramStore.subscribe((s, prev) => {
       // `doc.version` é literal (schema), não muda. Comparamos a identidade do doc:
       // toda dispatch/loadDoc/resetDoc substitui o objeto.
       if (s.doc === prev.doc) return;
-      schedule();
+      schedule("diagram-store");
     });
     const unsub5 = usePlcStore.subscribe((s, prev) => {
       if (s.project === prev.project) return;
-      schedule();
+      schedule("plc-store");
     });
 
     return () => {
