@@ -86,11 +86,7 @@ export function installDiagnosticsInterceptor() {
   const orig = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url;
+      typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const isServerFn = url.includes("/_serverFn/");
     if (!isServerFn) return orig(input as RequestInfo, init);
     const started = performance.now();

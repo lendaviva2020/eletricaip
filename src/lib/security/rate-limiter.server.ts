@@ -24,7 +24,10 @@ function buildLimiter(key: LimiterKey): Ratelimit | null {
   if (_cache[key]) return _cache[key]!;
   const redis = getRedis();
   if (!redis) return null;
-  const config: Record<LimiterKey, { limiter: ReturnType<typeof Ratelimit.slidingWindow>; prefix: string }> = {
+  const config: Record<
+    LimiterKey,
+    { limiter: ReturnType<typeof Ratelimit.slidingWindow>; prefix: string }
+  > = {
     ai: {
       limiter: Ratelimit.slidingWindow(10, "10 s"),
       prefix: "eletricai:rl:ai",

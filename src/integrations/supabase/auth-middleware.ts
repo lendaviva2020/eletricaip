@@ -12,7 +12,6 @@ function getServerSupabasePublicEnv() {
   return { url, anonKey };
 }
 
-
 export interface AuthContext {
   supabase: ReturnType<typeof createClient<Database>>;
   userId: string;

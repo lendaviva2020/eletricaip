@@ -88,84 +88,87 @@ interface EditorState {
   setValidateComponent: (fn: ((componentType: VoltaiComponentType) => boolean) | null) => void;
 }
 
-export const useEditorStore = create<EditorState>()(subscribeWithSelector((set) => ({
-  activeMode: "unifilar",
-  selectedNodeId: null,
-  editorTags: {},
-  rungs: [],
-  fbdNodes: [],
-  fbdEdges: [],
-  dirty: false,
-  leftCollapsed: false,
-  rightCollapsed: false,
-  consoleTab: "Logs",
-  consoleOpen: true,
-  dragValidation: "Arraste componentes IEC 60617 para o canvas.",
-  validateComponent: null,
+export const useEditorStore = create<EditorState>()(
+  subscribeWithSelector((set) => ({
+    activeMode: "unifilar",
+    selectedNodeId: null,
+    editorTags: {},
+    rungs: [],
+    fbdNodes: [],
+    fbdEdges: [],
+    dirty: false,
+    leftCollapsed: false,
+    rightCollapsed: false,
+    consoleTab: "Logs",
+    consoleOpen: true,
+    dragValidation: "Arraste componentes IEC 60617 para o canvas.",
+    validateComponent: null,
 
-  setActiveMode: (mode) => set({ activeMode: mode, selectedNodeId: null }),
-  setSelectedNode: (id) => set({ selectedNodeId: id }),
+    setActiveMode: (mode) => set({ activeMode: mode, selectedNodeId: null }),
+    setSelectedNode: (id) => set({ selectedNodeId: id }),
 
-  upsertTag: (tag) => set((s) => ({ editorTags: { ...s.editorTags, [tag.id]: tag }, dirty: true })),
-  removeTag: (id) =>
-    set((s) => {
-      const next = { ...s.editorTags };
-      delete next[id];
-      return { editorTags: next, dirty: true };
-    }),
-  setTagValue: (id, value) =>
-    set((s) => {
-      const tag = s.editorTags[id];
-      if (!tag || tag.forced) return s;
-      return { editorTags: { ...s.editorTags, [id]: { ...tag, value } } };
-    }),
-  forceTagValue: (id, value) =>
-    set((s) => {
-      const tag = s.editorTags[id];
-      if (!tag) return s;
-      return {
-        editorTags: { ...s.editorTags, [id]: { ...tag, value, forced: true } },
+    upsertTag: (tag) =>
+      set((s) => ({ editorTags: { ...s.editorTags, [tag.id]: tag }, dirty: true })),
+    removeTag: (id) =>
+      set((s) => {
+        const next = { ...s.editorTags };
+        delete next[id];
+        return { editorTags: next, dirty: true };
+      }),
+    setTagValue: (id, value) =>
+      set((s) => {
+        const tag = s.editorTags[id];
+        if (!tag || tag.forced) return s;
+        return { editorTags: { ...s.editorTags, [id]: { ...tag, value } } };
+      }),
+    forceTagValue: (id, value) =>
+      set((s) => {
+        const tag = s.editorTags[id];
+        if (!tag) return s;
+        return {
+          editorTags: { ...s.editorTags, [id]: { ...tag, value, forced: true } },
+          dirty: true,
+        };
+      }),
+    releaseTag: (id) =>
+      set((s) => {
+        const tag = s.editorTags[id];
+        if (!tag) return s;
+        return {
+          editorTags: { ...s.editorTags, [id]: { ...tag, forced: false } },
+          dirty: true,
+        };
+      }),
+
+    setRungs: (rungs) =>
+      set((s) => ({ rungs: typeof rungs === "function" ? rungs(s.rungs) : rungs, dirty: true })),
+    setFbdAll: (nodes, edges) =>
+      set((s) => ({
+        fbdNodes: typeof nodes === "function" ? nodes(s.fbdNodes) : nodes,
+        fbdEdges: typeof edges === "function" ? edges(s.fbdEdges) : edges,
         dirty: true,
-      };
-    }),
-  releaseTag: (id) =>
-    set((s) => {
-      const tag = s.editorTags[id];
-      if (!tag) return s;
-      return {
-        editorTags: { ...s.editorTags, [id]: { ...tag, forced: false } },
-        dirty: true,
-      };
-    }),
+      })),
 
-  setRungs: (rungs) =>
-    set((s) => ({ rungs: typeof rungs === "function" ? rungs(s.rungs) : rungs, dirty: true })),
-  setFbdAll: (nodes, edges) =>
-    set((s) => ({
-      fbdNodes: typeof nodes === "function" ? nodes(s.fbdNodes) : nodes,
-      fbdEdges: typeof edges === "function" ? edges(s.fbdEdges) : edges,
-      dirty: true,
-    })),
+    hydrateSnapshot: (snapshot) =>
+      set({
+        editorTags: snapshot.editorTags ?? {},
+        rungs: snapshot.rungs ?? [],
+        fbdNodes: snapshot.fbdNodes ?? [],
+        fbdEdges: snapshot.fbdEdges ?? [],
+        selectedNodeId: null,
+        dirty: false,
+      }),
+    markSaved: () => set({ dirty: false }),
 
-  hydrateSnapshot: (snapshot) =>
-    set({
-      editorTags: snapshot.editorTags ?? {},
-      rungs: snapshot.rungs ?? [],
-      fbdNodes: snapshot.fbdNodes ?? [],
-      fbdEdges: snapshot.fbdEdges ?? [],
-      selectedNodeId: null,
-      dirty: false,
-    }),
-  markSaved: () => set({ dirty: false }),
+    toggleLeftPanel: () => set((s) => ({ leftCollapsed: !s.leftCollapsed })),
+    toggleRightPanel: () => set((s) => ({ rightCollapsed: !s.rightCollapsed })),
+    setConsoleTab: (tab) => set({ consoleTab: tab }),
+    setConsoleOpen: (open) => set({ consoleOpen: open }),
 
-  toggleLeftPanel: () => set((s) => ({ leftCollapsed: !s.leftCollapsed })),
-  toggleRightPanel: () => set((s) => ({ rightCollapsed: !s.rightCollapsed })),
-  setConsoleTab: (tab) => set({ consoleTab: tab }),
-  setConsoleOpen: (open) => set({ consoleOpen: open }),
-
-  setDragValidation: (msg) => set({ dragValidation: msg }),
-  setValidateComponent: (fn) => set({ validateComponent: fn }),
-})));
+    setDragValidation: (msg) => set({ dragValidation: msg }),
+    setValidateComponent: (fn) => set({ validateComponent: fn }),
+  })),
+);
 
 // ── Stable composite selectors (use with useShallow for multi-field reads) ──
 export const editorUiSelector = (s: EditorState) => ({
@@ -180,8 +183,10 @@ export function useEditorUi() {
 }
 
 export function useEditorMode() {
-  return useEditorStore(useShallow((s: EditorState) => ({
-    activeMode: s.activeMode,
-    setActiveMode: s.setActiveMode,
-  })));
+  return useEditorStore(
+    useShallow((s: EditorState) => ({
+      activeMode: s.activeMode,
+      setActiveMode: s.setActiveMode,
+    })),
+  );
 }

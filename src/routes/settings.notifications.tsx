@@ -30,10 +30,7 @@ const ITEMS: { key: string; label: string; channel: string }[] = [
 ];
 
 function NotificationsPage() {
-  const { value: prefs, update, isSaving } = useTenantSetting(
-    "notification_prefs",
-    DEFAULT_PREFS,
-  );
+  const { value: prefs, update, isSaving } = useTenantSetting("notification_prefs", DEFAULT_PREFS);
 
   const toggle = (k: string) => update({ [k]: !prefs[k] });
 

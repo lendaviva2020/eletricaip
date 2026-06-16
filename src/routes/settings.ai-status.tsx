@@ -9,7 +9,11 @@ import {
   ShieldAlert,
   ExternalLink,
 } from "lucide-react";
-import { pingArchitectHealth, getStatusEvents, fetchAiStatusEvents } from "@/lib/ai-architect-client";
+import {
+  pingArchitectHealth,
+  getStatusEvents,
+  fetchAiStatusEvents,
+} from "@/lib/ai-architect-client";
 
 export const Route = createFileRoute("/settings/ai-status")({
   head: () => ({
@@ -44,7 +48,6 @@ function AiStatusPage() {
     window.addEventListener("ai-status-event", onEv);
     return () => window.removeEventListener("ai-status-event", onEv);
   }, []);
-
 
   const last24h = events.filter((e) => Date.now() - e.ts < 24 * 60 * 60 * 1000);
   const auth401Count = last24h.filter((e) => e.code === "AUTH_401").length;

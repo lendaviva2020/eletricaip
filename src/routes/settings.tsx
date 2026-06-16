@@ -230,12 +230,10 @@ function SettingsPage() {
             </CardContent>
           </Card>
         </section>
-
       </div>
     </div>
   );
 }
-
 
 function SectionLabel({
   icon: Icon,
@@ -292,4 +290,3 @@ function SettingsLinkCard({
     </button>
   );
 }
-

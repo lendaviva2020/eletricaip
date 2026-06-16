@@ -22,52 +22,114 @@ function isVoltaiComponentType(value: string): value is VoltaiComponentType {
 
 function voltaiComponentToNodeKind(type: VoltaiComponentType): NodeKind {
   const map: Record<string, NodeKind> = {
-    QF: "breaker", QS: "disconnector", DR: "rcd", FU: "fuse",
-    KM: "contactor", KA: "relay", FR: "relay", M: "motor",
-    SS: "softstarter", VFD: "vfd", TR: "transformer", PS: "psu",
-    G: "ground", TCTERRA: "ground", UPS: "psu",
-    PT: "pt100", TT: "pt100", LT: "level", FT: "flow",
-    ES: "estop", ESTOP_RELAY: "estop",
-    HL: "lamp", HZ: "lamp", PLC: "terminal", KT: "relay",
-    CT: "terminal", BC: "terminal", TC: "terminal", TP: "terminal",
-    MPCB: "breaker", MCB_AUX: "breaker", CR: "relay",
-    PFC: "terminal", KWH: "terminal", IED: "terminal", SA: "terminal",
-    R: "load", L: "load", SPD: "lightcurtain", TVSS: "lightcurtain",
-    B: "terminal", SR: "relay", PTZ: "terminal",
-    FL: "flow", PSW: "pressure", LS: "level", V: "load", SIN: "terminal",
+    QF: "breaker",
+    QS: "disconnector",
+    DR: "rcd",
+    FU: "fuse",
+    KM: "contactor",
+    KA: "relay",
+    FR: "relay",
+    M: "motor",
+    SS: "softstarter",
+    VFD: "vfd",
+    TR: "transformer",
+    PS: "psu",
+    G: "ground",
+    TCTERRA: "ground",
+    UPS: "psu",
+    PT: "pt100",
+    TT: "pt100",
+    LT: "level",
+    FT: "flow",
+    ES: "estop",
+    ESTOP_RELAY: "estop",
+    HL: "lamp",
+    HZ: "lamp",
+    PLC: "terminal",
+    KT: "relay",
+    CT: "terminal",
+    BC: "terminal",
+    TC: "terminal",
+    TP: "terminal",
+    MPCB: "breaker",
+    MCB_AUX: "breaker",
+    CR: "relay",
+    PFC: "terminal",
+    KWH: "terminal",
+    IED: "terminal",
+    SA: "terminal",
+    R: "load",
+    L: "load",
+    SPD: "lightcurtain",
+    TVSS: "lightcurtain",
+    B: "terminal",
+    SR: "relay",
+    PTZ: "terminal",
+    FL: "flow",
+    PSW: "pressure",
+    LS: "level",
+    V: "load",
+    SIN: "terminal",
   };
   return (map[type] ?? "terminal") as NodeKind;
 }
 
 function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
   switch (kind) {
-    case "breaker": return { kind, in_A: 63, curve: "C", poles: 1 };
-    case "rcd": return { kind, in_A: 25, sensitivity_mA: 30, poles: 2 };
-    case "contactor": return { kind, in_A: 32, coil_V: 24 };
-    case "relay": return { kind, coil_V: 24, contacts: 2 };
-    case "fuse": return { kind, in_A: 63 };
-    case "disconnector": return { kind, in_A: 63 };
-    case "transformer": return { kind, kVA: 100, primary_V: 13800, secondary_V: 380, vector: "Dyn11" };
-    case "psu": return { kind, output_V: 24, output_A: 10 };
-    case "vfd": return { kind, power_kW: 7.5, voltage_V: 380 };
-    case "softstarter": return { kind, power_kW: 11 };
-    case "busbar": return { kind, current_A: 630, voltage_V: 380 };
-    case "ccm": return { kind, columns: 4, cells: 6 };
-    case "motor": return { kind, power_kW: 7.5, voltage_V: 380, startMethod: "DOL" };
-    case "load": return { kind, power_W: 1000, voltage_V: 220, fp: 0.92 };
-    case "lamp": return { kind, power_W: 15, voltage_V: 220 };
-    case "socket": return { kind, current_A: 10, voltage_V: 220 };
-    case "pt100": return { kind, range_C: [-50, 200] };
-    case "pressure": return { kind, range_bar: [0, 10] };
-    case "flow": return { kind, range: [0, 100] };
-    case "level": return { kind, range_pct: [0, 100] };
-    case "encoder": return { kind, ppr: 1024 };
-    case "estop": return { kind, category: "1" };
-    case "lightcurtain": return { kind, resolution_mm: 14 };
-    case "ground": return { kind };
-    case "neutral": return { kind };
-    case "terminal": return { kind };
-    default: return { kind: "terminal" };
+    case "breaker":
+      return { kind, in_A: 63, curve: "C", poles: 1 };
+    case "rcd":
+      return { kind, in_A: 25, sensitivity_mA: 30, poles: 2 };
+    case "contactor":
+      return { kind, in_A: 32, coil_V: 24 };
+    case "relay":
+      return { kind, coil_V: 24, contacts: 2 };
+    case "fuse":
+      return { kind, in_A: 63 };
+    case "disconnector":
+      return { kind, in_A: 63 };
+    case "transformer":
+      return { kind, kVA: 100, primary_V: 13800, secondary_V: 380, vector: "Dyn11" };
+    case "psu":
+      return { kind, output_V: 24, output_A: 10 };
+    case "vfd":
+      return { kind, power_kW: 7.5, voltage_V: 380 };
+    case "softstarter":
+      return { kind, power_kW: 11 };
+    case "busbar":
+      return { kind, current_A: 630, voltage_V: 380 };
+    case "ccm":
+      return { kind, columns: 4, cells: 6 };
+    case "motor":
+      return { kind, power_kW: 7.5, voltage_V: 380, startMethod: "DOL" };
+    case "load":
+      return { kind, power_W: 1000, voltage_V: 220, fp: 0.92 };
+    case "lamp":
+      return { kind, power_W: 15, voltage_V: 220 };
+    case "socket":
+      return { kind, current_A: 10, voltage_V: 220 };
+    case "pt100":
+      return { kind, range_C: [-50, 200] };
+    case "pressure":
+      return { kind, range_bar: [0, 10] };
+    case "flow":
+      return { kind, range: [0, 100] };
+    case "level":
+      return { kind, range_pct: [0, 100] };
+    case "encoder":
+      return { kind, ppr: 1024 };
+    case "estop":
+      return { kind, category: "1" };
+    case "lightcurtain":
+      return { kind, resolution_mm: 14 };
+    case "ground":
+      return { kind };
+    case "neutral":
+      return { kind };
+    case "terminal":
+      return { kind };
+    default:
+      return { kind: "terminal" };
   }
 }
 
@@ -258,7 +320,10 @@ export function WebglCanvas({ sheet }: Props) {
       const clientY = e.clientY - rect.top;
 
       const stage = stageRef.current;
-      const world = stage?.screenToWorld(clientX, clientY) ?? { x: clientX + 2000 - rect.width / 2, y: clientY + 2000 - rect.height / 2 };
+      const world = stage?.screenToWorld(clientX, clientY) ?? {
+        x: clientX + 2000 - rect.width / 2,
+        y: clientY + 2000 - rect.height / 2,
+      };
       const position = { x: snapToGrid(world.x), y: snapToGrid(world.y) };
       const kind = voltaiComponentToNodeKind(rawType);
 
@@ -275,7 +340,11 @@ export function WebglCanvas({ sheet }: Props) {
   );
 
   return (
-    <div className="relative h-full w-full bg-[#0b0f17]" onDragOver={handleDragOver} onDrop={handleDrop}>
+    <div
+      className="relative h-full w-full bg-[#0b0f17]"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <div ref={hostRef} className="absolute inset-0" />
 
       {/* Toolbar */}

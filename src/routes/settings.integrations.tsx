@@ -43,9 +43,7 @@ function IntegrationsPage() {
               <FieldT label="Host">
                 <Input
                   value={value.modbus.host}
-                  onChange={(e) =>
-                    update({ modbus: { ...value.modbus, host: e.target.value } })
-                  }
+                  onChange={(e) => update({ modbus: { ...value.modbus, host: e.target.value } })}
                 />
               </FieldT>
               <FieldT label="Porta">
@@ -77,17 +75,13 @@ function IntegrationsPage() {
               <FieldT label="Endpoint">
                 <Input
                   value={value.opcua.endpoint}
-                  onChange={(e) =>
-                    update({ opcua: { ...value.opcua, endpoint: e.target.value } })
-                  }
+                  onChange={(e) => update({ opcua: { ...value.opcua, endpoint: e.target.value } })}
                 />
               </FieldT>
               <FieldT label="Usuário">
                 <Input
                   value={value.opcua.username}
-                  onChange={(e) =>
-                    update({ opcua: { ...value.opcua, username: e.target.value } })
-                  }
+                  onChange={(e) => update({ opcua: { ...value.opcua, username: e.target.value } })}
                 />
               </FieldT>
             </div>
@@ -101,25 +95,19 @@ function IntegrationsPage() {
               <FieldT label="Broker">
                 <Input
                   value={value.mqtt.broker}
-                  onChange={(e) =>
-                    update({ mqtt: { ...value.mqtt, broker: e.target.value } })
-                  }
+                  onChange={(e) => update({ mqtt: { ...value.mqtt, broker: e.target.value } })}
                 />
               </FieldT>
               <FieldT label="Client ID">
                 <Input
                   value={value.mqtt.clientId}
-                  onChange={(e) =>
-                    update({ mqtt: { ...value.mqtt, clientId: e.target.value } })
-                  }
+                  onChange={(e) => update({ mqtt: { ...value.mqtt, clientId: e.target.value } })}
                 />
               </FieldT>
               <FieldT label="Usuário">
                 <Input
                   value={value.mqtt.username}
-                  onChange={(e) =>
-                    update({ mqtt: { ...value.mqtt, username: e.target.value } })
-                  }
+                  onChange={(e) => update({ mqtt: { ...value.mqtt, username: e.target.value } })}
                 />
               </FieldT>
             </div>
