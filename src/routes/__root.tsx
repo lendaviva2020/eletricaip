@@ -16,6 +16,9 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { ShareModal } from "@/components/share-modal";
+import { installDiagnosticsInterceptor } from "@/lib/diagnostics-counter";
+
+if (typeof window !== "undefined") installDiagnosticsInterceptor();
 
 const queryClient = new QueryClient();
 
