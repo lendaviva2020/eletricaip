@@ -19,27 +19,41 @@ function ProfilePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
-  const [phone, setPhone] = useState("");
+  const [locale, setLocale] = useState("pt-BR");
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return setLoading(false);
-      setUserId(u.user.id);
-      setEmail(u.user.email ?? "");
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("full_name, job_title, phone")
-        .eq("id", u.user.id)
-        .maybeSingle();
-      if (p) {
-        setFullName((p as { full_name?: string }).full_name ?? "");
-        setJobTitle((p as { job_title?: string }).job_title ?? "");
-        setPhone((p as { phone?: string }).phone ?? "");
+      try {
+        const { data: u, error: uErr } = await supabase.auth.getUser();
+        if (uErr || !u.user) {
+          if (!cancelled) setLoading(false);
+          return;
+        }
+        if (cancelled) return;
+        setUserId(u.user.id);
+        setEmail(u.user.email ?? "");
+        const { data: p, error: pErr } = await supabase
+          .from("profiles")
+          .select("full_name, locale")
+          .eq("id", u.user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (pErr) {
+          toast.error(`Falha ao carregar perfil: ${pErr.message}`);
+        } else if (p) {
+          setFullName(p.full_name ?? "");
+          setLocale(p.locale ?? "pt-BR");
+        }
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const save = async () => {
@@ -47,7 +61,7 @@ function ProfilePage() {
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ full_name: fullName, job_title: jobTitle, phone } as never)
+      .update({ full_name: fullName, locale })
       .eq("id", userId);
     setSaving(false);
     if (error) toast.error(error.message);
@@ -77,16 +91,17 @@ function ProfilePage() {
               />
             </div>
             <div>
-              <Label>Cargo</Label>
-              <Input
-                value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
-                className="mt-1.5"
-              />
-            </div>
-            <div>
-              <Label>Telefone</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5" />
+              <Label>Idioma</Label>
+              <select
+                value={locale}
+                onChange={(e) => setLocale(e.target.value)}
+                className="mt-1.5 h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
+                aria-label="Idioma"
+              >
+                <option value="pt-BR">Português (Brasil)</option>
+                <option value="en-US">English (US)</option>
+                <option value="es-ES">Español</option>
+              </select>
             </div>
             <Button onClick={save} disabled={saving}>
               {saving ? "Salvando…" : "Salvar alterações"}

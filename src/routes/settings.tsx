@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet, useMatches } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -55,16 +55,24 @@ const NORMAS: { name: string; desc: string }[] = [
 ];
 
 function SettingsPage() {
+  // settings.tsx é layout-pai (flat routes). Quando há sub-rota ativa
+  // (/settings/profile, /settings/billing, etc.), renderizamos o Outlet.
+  const matches = useMatches();
+  const isIndex = matches[matches.length - 1]?.routeId === "/settings";
+
   const adminFn = useServerFn(getIsPlatformAdmin);
   const { data: adminInfo } = useQuery({
     queryKey: ["settings", "is-platform-admin"],
     queryFn: () => adminFn({}),
+    enabled: isIndex,
   });
   const isPlatformAdmin = !!adminInfo?.isPlatformAdmin;
   const protocols = useSettingsStore((s) => s.protocols);
   const normas = useSettingsStore((s) => s.normas);
   const toggleProtocol = useSettingsStore((s) => s.toggleProtocol);
   const toggleNorma = useSettingsStore((s) => s.toggleNorma);
+
+  if (!isIndex) return <Outlet />;
 
   return (
     <div className="flex-1 overflow-auto scrollbar-thin p-6">
