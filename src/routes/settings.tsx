@@ -140,6 +140,14 @@ function SettingsPage() {
               badge="Novo"
             />
             <SettingsLinkCard
+              icon={Settings2}
+              title="Autosave & Canvas"
+              desc="Logs do autosave, status de persistência do diagrama e diagnóstico de falhas"
+              to="/settings/autosave"
+              badge="Novo"
+            />
+
+            <SettingsLinkCard
               icon={Box}
               title="Digital Twin 3D"
               desc="Gêmeo Digital interativo com visualização 3D e telemetria ao vivo"

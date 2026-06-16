@@ -35,6 +35,7 @@ import { Route as SettingsNotificationsRouteImport } from './routes/settings.not
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
 import { Route as SettingsDiagnosticsRouteImport } from './routes/settings.diagnostics'
 import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
+import { Route as SettingsAutosaveRouteImport } from './routes/settings.autosave'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
@@ -176,6 +177,11 @@ const SettingsBillingRoute = SettingsBillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsAutosaveRoute = SettingsAutosaveRouteImport.update({
+  id: '/autosave',
+  path: '/autosave',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
+  '/settings/autosave': typeof SettingsAutosaveRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
@@ -288,6 +295,7 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
+  '/settings/autosave': typeof SettingsAutosaveRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
@@ -327,6 +335,7 @@ export interface FileRoutesById {
   '/invite/$token': typeof InviteTokenRoute
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
+  '/settings/autosave': typeof SettingsAutosaveRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
@@ -367,6 +376,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/appearance'
+    | '/settings/autosave'
     | '/settings/billing'
     | '/settings/diagnostics'
     | '/settings/integrations'
@@ -405,6 +415,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/appearance'
+    | '/settings/autosave'
     | '/settings/billing'
     | '/settings/diagnostics'
     | '/settings/integrations'
@@ -443,6 +454,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/settings/ai-status'
     | '/settings/appearance'
+    | '/settings/autosave'
     | '/settings/billing'
     | '/settings/diagnostics'
     | '/settings/integrations'
@@ -668,6 +680,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsBillingRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/autosave': {
+      id: '/settings/autosave'
+      path: '/autosave'
+      fullPath: '/settings/autosave'
+      preLoaderRoute: typeof SettingsAutosaveRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/appearance': {
       id: '/settings/appearance'
       path: '/appearance'
@@ -769,6 +788,7 @@ const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
 interface SettingsRouteChildren {
   SettingsAiStatusRoute: typeof SettingsAiStatusRoute
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
+  SettingsAutosaveRoute: typeof SettingsAutosaveRoute
   SettingsBillingRoute: typeof SettingsBillingRoute
   SettingsDiagnosticsRoute: typeof SettingsDiagnosticsRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
@@ -783,6 +803,7 @@ interface SettingsRouteChildren {
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAiStatusRoute: SettingsAiStatusRoute,
   SettingsAppearanceRoute: SettingsAppearanceRoute,
+  SettingsAutosaveRoute: SettingsAutosaveRoute,
   SettingsBillingRoute: SettingsBillingRoute,
   SettingsDiagnosticsRoute: SettingsDiagnosticsRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,

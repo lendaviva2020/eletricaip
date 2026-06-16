@@ -10,6 +10,7 @@ import type { ProjectSnapshot } from "@/lib/projects.functions";
 import type { DiagramDoc } from "@/lib/diagram/schema";
 import type { PlcProject } from "@/lib/plc/types";
 import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
+import { useAutosaveLog } from "@/lib/autosave-log";
 import { toast } from "sonner";
 
 interface LoadProjectResponse {
@@ -48,9 +49,21 @@ export function useProjectPersistence(projectId: string | null) {
 
   // Load on mount / id change
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) {
+      useAutosaveLog.getState().log({
+        kind: "skip:no-project",
+        projectId: null,
+        message: "Sem projectId — autosave desativado",
+      });
+      return;
+    }
     let cancelled = false;
     setLoading(true);
+    useAutosaveLog.getState().log({
+      kind: "load:start",
+      projectId,
+      message: "Carregando snapshot do servidor…",
+    });
     load({ data: { projectId } })
       .then((res: LoadProjectResponse) => {
         if (cancelled) return;
@@ -65,10 +78,21 @@ export function useProjectPersistence(projectId: string | null) {
           );
         useProjectStore.getState().setProjectId(projectId);
 
+        // Sincronização explícita do diagrama: substituímos o objeto `doc`
+        // garantindo que TODOS os subscribers (Konva/ReactFlow) recebam
+        // referência nova e reidratem o canvas após qualquer reload.
+        const ds = useDiagramStore.getState();
         if (snap.diagram) {
-          useDiagramStore.getState().loadDoc(snap.diagram as DiagramDoc);
+          ds.loadDoc(snap.diagram as DiagramDoc);
+          // Force re-broadcast no próximo tick — alguns canvases assinam
+          // após o mount; um segundo loadDoc com referência idêntica é noop,
+          // então clonamos shallow para garantir nova identidade.
+          queueMicrotask(() => {
+            const cur = useDiagramStore.getState().doc;
+            useDiagramStore.getState().loadDoc({ ...cur });
+          });
         } else {
-          useDiagramStore.getState().resetDoc();
+          ds.resetDoc();
         }
 
         useVoltaiStore.getState().setAll(snap.voltai.components ?? [], snap.voltai.edges ?? []);
@@ -87,10 +111,29 @@ export function useProjectPersistence(projectId: string | null) {
         if (snap.plc) {
           usePlcStore.getState().setProject(snap.plc as PlcProject);
         }
+
+        const diagramDoc = snap.diagram as DiagramDoc | undefined;
+        useAutosaveLog.getState().log({
+          kind: "load:success",
+          projectId,
+          message: "Snapshot carregado e canvas sincronizado",
+          meta: {
+            projectNodes: (snap.project.nodes ?? []).length,
+            projectEdges: (snap.project.edges ?? []).length,
+            diagramNodes: diagramDoc ? Object.keys(diagramDoc.nodes ?? {}).length : 0,
+            diagramEdges: diagramDoc ? Object.keys(diagramDoc.edges ?? {}).length : 0,
+            voltaiComponents: (snap.voltai.components ?? []).length,
+          },
+        });
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         const message = e instanceof Error ? e.message : String(e);
+        useAutosaveLog.getState().log({
+          kind: "load:error",
+          projectId,
+          message: `Falha ao carregar: ${message}`,
+        });
         toast.error(`Falha ao carregar projeto: ${message}`);
       })
       .finally(() => {
@@ -105,8 +148,13 @@ export function useProjectPersistence(projectId: string | null) {
   useEffect(() => {
     if (!projectId) return;
 
-    const schedule = () => {
+    const schedule = (reason: string) => {
       if (timer.current) clearTimeout(timer.current);
+      useAutosaveLog.getState().log({
+        kind: "schedule",
+        projectId,
+        message: `Mudança detectada (${reason}) — autosave em ${AUTOSAVE_DEBOUNCE_MS}ms`,
+      });
       timer.current = setTimeout(flush, AUTOSAVE_DEBOUNCE_MS);
     };
 
@@ -123,46 +171,71 @@ export function useProjectPersistence(projectId: string | null) {
       const snapshot = buildProjectSnapshot();
       savingRef.current = true;
       if (mountedRef.current) setSaveState("saving");
+      const diagramNodes = Object.keys(snapshot.diagram?.nodes ?? {}).length;
+      const diagramEdges = Object.keys(snapshot.diagram?.edges ?? {}).length;
+      useAutosaveLog.getState().log({
+        kind: "save:start",
+        projectId,
+        message: "Salvando snapshot…",
+        meta: {
+          projectNodes: snapshot.project.nodes.length,
+          projectEdges: snapshot.project.edges.length,
+          diagramNodes,
+          diagramEdges,
+        },
+      });
+      const startedAt = performance.now();
       try {
         await save({ data: { projectId, snapshot } });
         ps.markSaved();
         vs.markSaved();
         es.markSaved();
         if (mountedRef.current) setSaveState("saved");
+        useAutosaveLog.getState().log({
+          kind: "save:success",
+          projectId,
+          message: `Salvo em ${Math.round(performance.now() - startedAt)}ms`,
+          meta: { diagramNodes, diagramEdges },
+        });
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         if (mountedRef.current) setSaveState("error");
+        useAutosaveLog.getState().log({
+          kind: "save:error",
+          projectId,
+          message,
+        });
         toast.error(`Falha ao salvar: ${message}`);
       } finally {
         savingRef.current = false;
         if (pendingRef.current) {
           pendingRef.current = false;
-          schedule();
+          schedule("retry-coalesced");
         }
       }
     };
 
     const unsub = useProjectStore.subscribe((s, prev) => {
       if (!s.dirty || s.dirty === prev.dirty) return;
-      schedule();
+      schedule("project-store");
     });
     const unsub2 = useVoltaiStore.subscribe((s, prev) => {
       if (!s.dirty || s.dirty === prev.dirty) return;
-      schedule();
+      schedule("voltai-store");
     });
     const unsub3 = useEditorStore.subscribe((s, prev) => {
       if (!s.dirty || s.dirty === prev.dirty) return;
-      schedule();
+      schedule("editor-store");
     });
     const unsub4 = useDiagramStore.subscribe((s, prev) => {
       // `doc.version` é literal (schema), não muda. Comparamos a identidade do doc:
       // toda dispatch/loadDoc/resetDoc substitui o objeto.
       if (s.doc === prev.doc) return;
-      schedule();
+      schedule("diagram-store");
     });
     const unsub5 = usePlcStore.subscribe((s, prev) => {
       if (s.project === prev.project) return;
-      schedule();
+      schedule("plc-store");
     });
 
     return () => {
