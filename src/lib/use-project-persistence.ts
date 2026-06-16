@@ -10,6 +10,7 @@ import type { ProjectSnapshot } from "@/lib/projects.functions";
 import type { DiagramDoc } from "@/lib/diagram/schema";
 import type { PlcProject } from "@/lib/plc/types";
 import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
+import { useAutosaveLog } from "@/lib/autosave-log";
 import { toast } from "sonner";
 
 interface LoadProjectResponse {
