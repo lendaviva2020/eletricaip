@@ -59,18 +59,20 @@ function SettingsPage() {
   // (/settings/profile, /settings/billing, etc.), renderizamos o Outlet.
   const matches = useMatches();
   const isIndex = matches[matches.length - 1]?.routeId === "/settings";
-  if (!isIndex) return <Outlet />;
 
   const adminFn = useServerFn(getIsPlatformAdmin);
   const { data: adminInfo } = useQuery({
     queryKey: ["settings", "is-platform-admin"],
     queryFn: () => adminFn({}),
+    enabled: isIndex,
   });
   const isPlatformAdmin = !!adminInfo?.isPlatformAdmin;
   const protocols = useSettingsStore((s) => s.protocols);
   const normas = useSettingsStore((s) => s.normas);
   const toggleProtocol = useSettingsStore((s) => s.toggleProtocol);
   const toggleNorma = useSettingsStore((s) => s.toggleNorma);
+
+  if (!isIndex) return <Outlet />;
 
   return (
     <div className="flex-1 overflow-auto scrollbar-thin p-6">
