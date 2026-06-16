@@ -313,8 +313,9 @@ Deno.serve(async (req) => {
     }
 
     const userMsg = contextStr
-      ? `Briefing:\n${prompt}\n\nContexto atual do projeto (JSON):\n${contextStr.slice(0, 8000)}`
-      : prompt;
+      ? `Briefing:\n${safePrompt}\n\nContexto atual do projeto (JSON):\n${contextStr}`
+      : safePrompt;
+
 
     const resp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
