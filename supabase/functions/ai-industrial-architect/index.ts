@@ -274,14 +274,14 @@ Deno.serve(async (req) => {
     let contextStr: string | undefined;
     if (context !== undefined) {
       try {
-        contextStr = JSON.stringify(context);
+        contextStr = sanitizeProjectContext(context);
       } catch {
         return err("BAD_INPUT", "Contexto inválido.");
       }
-      if (contextStr.length > 20000) {
-        return err("BAD_INPUT", "Contexto muito grande.");
-      }
     }
+    const safePrompt = sanitizePromptText(prompt, 4000);
+
+
 
     const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
     const v = validateKeyFormat(apiKey);
