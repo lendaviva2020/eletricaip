@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { getPlan } from "@/lib/plans";
 import {
   useProjectStore,
   type IndustrialNode,
