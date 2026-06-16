@@ -125,6 +125,13 @@ function SettingsPage() {
               badge="Novo"
             />
             <SettingsLinkCard
+              icon={Settings2}
+              title="Diagnósticos"
+              desc="Status do Supabase, permissões (RLS/GRANT) e contadores de 500/503 em tempo real"
+              to="/settings/diagnostics"
+              badge="Novo"
+            />
+            <SettingsLinkCard
               icon={Box}
               title="Digital Twin 3D"
               desc="Gêmeo Digital interativo com visualização 3D e telemetria ao vivo"

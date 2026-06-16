@@ -33,6 +33,7 @@ import { Route as SettingsProtocolsRouteImport } from './routes/settings.protoco
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
+import { Route as SettingsDiagnosticsRouteImport } from './routes/settings.diagnostics'
 import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
@@ -165,6 +166,11 @@ const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
   path: '/integrations',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsDiagnosticsRoute = SettingsDiagnosticsRouteImport.update({
+  id: '/diagnostics',
+  path: '/diagnostics',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsBillingRoute = SettingsBillingRouteImport.update({
   id: '/billing',
   path: '/billing',
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/billing': typeof SettingsBillingRoute
+  '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByTo {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/billing': typeof SettingsBillingRoute
+  '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -320,6 +328,7 @@ export interface FileRoutesById {
   '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/billing': typeof SettingsBillingRoute
+  '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -359,6 +368,7 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/appearance'
     | '/settings/billing'
+    | '/settings/diagnostics'
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
@@ -396,6 +406,7 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/appearance'
     | '/settings/billing'
+    | '/settings/diagnostics'
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
@@ -433,6 +444,7 @@ export interface FileRouteTypes {
     | '/settings/ai-status'
     | '/settings/appearance'
     | '/settings/billing'
+    | '/settings/diagnostics'
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
@@ -642,6 +654,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsIntegrationsRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/diagnostics': {
+      id: '/settings/diagnostics'
+      path: '/diagnostics'
+      fullPath: '/settings/diagnostics'
+      preLoaderRoute: typeof SettingsDiagnosticsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/billing': {
       id: '/settings/billing'
       path: '/billing'
@@ -751,6 +770,7 @@ interface SettingsRouteChildren {
   SettingsAiStatusRoute: typeof SettingsAiStatusRoute
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsBillingRoute: typeof SettingsBillingRoute
+  SettingsDiagnosticsRoute: typeof SettingsDiagnosticsRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
@@ -764,6 +784,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAiStatusRoute: SettingsAiStatusRoute,
   SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsBillingRoute: SettingsBillingRoute,
+  SettingsDiagnosticsRoute: SettingsDiagnosticsRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsProfileRoute: SettingsProfileRoute,
@@ -804,13 +825,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
