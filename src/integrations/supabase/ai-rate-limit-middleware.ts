@@ -58,6 +58,25 @@ export const requireAiQuota = createMiddleware({ type: "function" })
     return next();
   });
 
+// Per-instance fallback bucket used only when Upstash is not configured.
+// Not perfectly distributed, but enough to throttle a single abusive client
+// inside one Worker isolate without blocking every legitimate AI call.
+const _localBuckets = new Map<string, number[]>();
+const LOCAL_WINDOW_MS = 10_000;
+const LOCAL_MAX = 10;
+function localBurstAllow(userId: string): { allowed: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  const arr = (_localBuckets.get(userId) ?? []).filter((t) => now - t < LOCAL_WINDOW_MS);
+  if (arr.length >= LOCAL_MAX) {
+    const retry = Math.max(1, Math.ceil((LOCAL_WINDOW_MS - (now - arr[0])) / 1000));
+    _localBuckets.set(userId, arr);
+    return { allowed: false, retryAfterSeconds: retry };
+  }
+  arr.push(now);
+  _localBuckets.set(userId, arr);
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
 export const requireBurstLimit = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
@@ -65,21 +84,25 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     const userId = authCtx.userId;
 
     const upstash = await checkRateLimit("ai", userId);
-    // Fail-closed: if the distributed limiter is offline/unconfigured we cannot
-    // safely enforce per-user limits across instances, so reject the request.
+    // If Upstash isn't configured (bypassed) we degrade to a per-instance
+    // bucket instead of failing closed — otherwise no AI request can succeed
+    // in environments without Redis credentials.
     if (upstash.bypassed) {
-      console.error("[ai-rate-limit] distributed limiter unavailable — failing closed");
-      throw new Response(
-        JSON.stringify({
-          ok: false,
-          error: {
-            code: "RATE_LIMITER_UNAVAILABLE_503",
-            message:
-              "Serviço de limite de requisições temporariamente indisponível. Tente novamente em instantes.",
-          },
-        }),
-        { status: 503, headers: { "content-type": "application/json" } },
-      );
+      const local = localBurstAllow(userId);
+      if (!local.allowed) {
+        throw new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              code: "BURST_LIMIT_429",
+              message: `Muitas requisições em sequência. Tente novamente em ${local.retryAfterSeconds}s.`,
+              retryAfter: local.retryAfterSeconds,
+            },
+          }),
+          { status: 429, headers: { "content-type": "application/json" } },
+        );
+      }
+      return next();
     }
 
     if (!upstash.allowed) {
@@ -97,4 +120,5 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     }
     return next();
   });
+
 
