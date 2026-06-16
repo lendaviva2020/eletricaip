@@ -155,7 +155,9 @@ export function useProjectPersistence(projectId: string | null) {
       schedule();
     });
     const unsub4 = useDiagramStore.subscribe((s, prev) => {
-      if (!s.doc.version || s.doc.version === prev.doc.version) return;
+      // `doc.version` é literal (schema), não muda. Comparamos a identidade do doc:
+      // toda dispatch/loadDoc/resetDoc substitui o objeto.
+      if (s.doc === prev.doc) return;
       schedule();
     });
     const unsub5 = usePlcStore.subscribe((s, prev) => {
