@@ -180,7 +180,6 @@ export const createInvite = createServerFn({ method: "POST" })
     return invite;
   });
 
-
 export const revokeInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ inviteId: z.string().uuid() }).parse(input))

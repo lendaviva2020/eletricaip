@@ -22,13 +22,7 @@ async function getActiveTenantId(
   return tid;
 }
 
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | { [k: string]: JsonValue }
-  | JsonValue[];
+export type JsonValue = string | number | boolean | null | { [k: string]: JsonValue } | JsonValue[];
 
 const SettingKey = z
   .string()
@@ -81,7 +75,6 @@ export const setTenantSetting = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
-
 
 // ---- AI status events ----
 

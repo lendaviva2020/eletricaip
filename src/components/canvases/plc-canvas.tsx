@@ -546,7 +546,10 @@ export function PlcCanvas() {
                             className="h-7 px-1 rounded border border-border bg-input text-[11px] font-mono outline-none focus:border-primary cursor-pointer"
                             value={editVarData.type ?? "BOOL"}
                             onChange={(e) =>
-                              setEditVarData((p) => ({ ...p, type: e.target.value as PlcVariable["type"] }))
+                              setEditVarData((p) => ({
+                                ...p,
+                                type: e.target.value as PlcVariable["type"],
+                              }))
                             }
                           >
                             {ADDRESS_TYPES.map((t) => (

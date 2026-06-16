@@ -127,101 +127,104 @@ export function ScadaCanvas() {
     // Re-register defensively: dispose previous provider before adding new one
     // to avoid duplicate completions when the editor is toggled on/off.
     completionDisposableRef.current?.dispose();
-    completionDisposableRef.current = monaco.languages.registerCompletionItemProvider("javascript", {
-      triggerCharacters: ['"', "'", ".", "["],
-      provideCompletionItems: (model: any, position: any) => {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn,
-        };
-
-        const tagNames = getTagNames();
-        interface CompletionItem {
-          label: string;
-          kind: any;
-          insertText: string;
-          range: typeof range;
-          detail?: string;
-          insertTextRules?: any;
-        }
-        const suggestions: CompletionItem[] = tagNames.map((name) => ({
-          label: name,
-          kind: monaco.languages.CompletionItemKind.Variable,
-          insertText: name,
-          range,
-          detail: "Tag do projeto",
-        }));
-
-        // Add common SCADA tag helpers
-        suggestions.push(
-          {
-            label: "tags",
-            kind: monaco.languages.CompletionItemKind.Module,
-            insertText: "tags",
-            range,
-            detail: "Objeto de tags do projeto",
-          },
-          {
-            label: "console.log",
-            kind: monaco.languages.CompletionItemKind.Function,
-            insertText: "console.log($1)",
-            range,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            detail: "Log no console",
-          },
-          {
-            label: "Math.round",
-            kind: monaco.languages.CompletionItemKind.Function,
-            insertText: "Math.round($1)",
-            range,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            detail: "Arredondar número",
-          },
-          {
-            label: "Math.min",
-            kind: monaco.languages.CompletionItemKind.Function,
-            insertText: "Math.min($1, $2)",
-            range,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          },
-          {
-            label: "Math.max",
-            kind: monaco.languages.CompletionItemKind.Function,
-            insertText: "Math.max($1, $2)",
-            range,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          },
-        );
-
-        // If typing inside tags["...", suggest tag names
-        const textBefore = model.getValueInRange({
-          startLineNumber: position.lineNumber,
-          startColumn: 1,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
-        });
-        const match = textBefore.match(/tags\s*\[\s*['"]?([^'"\]]*)$/);
-        if (match) {
-          const filter = (match[1] || "").toLowerCase();
-          return {
-            suggestions: tagNames
-              .filter((n) => n.toLowerCase().includes(filter))
-              .map((name) => ({
-                label: name,
-                kind: monaco.languages.CompletionItemKind.Variable,
-                insertText: name,
-                range,
-                detail: "Tag do projeto",
-              })),
+    completionDisposableRef.current = monaco.languages.registerCompletionItemProvider(
+      "javascript",
+      {
+        triggerCharacters: ['"', "'", ".", "["],
+        provideCompletionItems: (model: any, position: any) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
           };
-        }
 
-        return { suggestions };
+          const tagNames = getTagNames();
+          interface CompletionItem {
+            label: string;
+            kind: any;
+            insertText: string;
+            range: typeof range;
+            detail?: string;
+            insertTextRules?: any;
+          }
+          const suggestions: CompletionItem[] = tagNames.map((name) => ({
+            label: name,
+            kind: monaco.languages.CompletionItemKind.Variable,
+            insertText: name,
+            range,
+            detail: "Tag do projeto",
+          }));
+
+          // Add common SCADA tag helpers
+          suggestions.push(
+            {
+              label: "tags",
+              kind: monaco.languages.CompletionItemKind.Module,
+              insertText: "tags",
+              range,
+              detail: "Objeto de tags do projeto",
+            },
+            {
+              label: "console.log",
+              kind: monaco.languages.CompletionItemKind.Function,
+              insertText: "console.log($1)",
+              range,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              detail: "Log no console",
+            },
+            {
+              label: "Math.round",
+              kind: monaco.languages.CompletionItemKind.Function,
+              insertText: "Math.round($1)",
+              range,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              detail: "Arredondar número",
+            },
+            {
+              label: "Math.min",
+              kind: monaco.languages.CompletionItemKind.Function,
+              insertText: "Math.min($1, $2)",
+              range,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            },
+            {
+              label: "Math.max",
+              kind: monaco.languages.CompletionItemKind.Function,
+              insertText: "Math.max($1, $2)",
+              range,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            },
+          );
+
+          // If typing inside tags["...", suggest tag names
+          const textBefore = model.getValueInRange({
+            startLineNumber: position.lineNumber,
+            startColumn: 1,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column,
+          });
+          const match = textBefore.match(/tags\s*\[\s*['"]?([^'"\]]*)$/);
+          if (match) {
+            const filter = (match[1] || "").toLowerCase();
+            return {
+              suggestions: tagNames
+                .filter((n) => n.toLowerCase().includes(filter))
+                .map((name) => ({
+                  label: name,
+                  kind: monaco.languages.CompletionItemKind.Variable,
+                  insertText: name,
+                  range,
+                  detail: "Tag do projeto",
+                })),
+            };
+          }
+
+          return { suggestions };
+        },
       },
-    });
+    );
   }, []);
 
   const handleEditorMount = useCallback((editor: any) => {

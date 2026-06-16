@@ -144,7 +144,6 @@ export async function fetchAiStatusEvents(): Promise<StatusEvent[]> {
   }
 }
 
-
 export function getLocalAiUsage() {
   if (typeof window === "undefined")
     return { plan: "free", used: 0, remainingLabel: "10 créditos" };
@@ -297,7 +296,11 @@ export function applyArchitectToStore(
     target: e.target,
     sourceHandle: null,
     targetHandle: null,
-    role: (e.kind === "power" ? "power" : e.kind === "signal" ? "signal" : "control") as VoltaiDiagramEdge["role"],
+    role: (e.kind === "power"
+      ? "power"
+      : e.kind === "signal"
+        ? "signal"
+        : "control") as VoltaiDiagramEdge["role"],
   }));
 
   useVoltaiStore.getState().setAll(voltaiComponents, voltaiEdges);

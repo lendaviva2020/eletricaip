@@ -14,10 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getDiagnostics } from "@/lib/diagnostics.functions";
-import {
-  installDiagnosticsInterceptor,
-  useDiagnosticsCounter,
-} from "@/lib/diagnostics-counter";
+import { installDiagnosticsInterceptor, useDiagnosticsCounter } from "@/lib/diagnostics-counter";
 
 export const Route = createFileRoute("/settings/diagnostics")({
   head: () => ({
@@ -72,9 +69,21 @@ function DiagnosticsPage() {
         <section className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Stat label="Total /_serverFn" value={counter.total} />
           <Stat label="OK" value={counter.ok} tone="success" />
-          <Stat label="500" value={counter.count500} tone={counter.count500 ? "destructive" : undefined} />
-          <Stat label="503" value={counter.count503} tone={counter.count503 ? "destructive" : undefined} />
-          <Stat label="4xx" value={counter.count4xx} tone={counter.count4xx ? "warning" : undefined} />
+          <Stat
+            label="500"
+            value={counter.count500}
+            tone={counter.count500 ? "destructive" : undefined}
+          />
+          <Stat
+            label="503"
+            value={counter.count503}
+            tone={counter.count503 ? "destructive" : undefined}
+          />
+          <Stat
+            label="4xx"
+            value={counter.count4xx}
+            tone={counter.count4xx ? "warning" : undefined}
+          />
         </section>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">

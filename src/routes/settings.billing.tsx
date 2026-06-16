@@ -136,7 +136,6 @@ function BillingPage() {
     });
   }, [isDemo]);
 
-
   async function handleCheckout(provider: "stripe" | "mp", plan: PaidPlan) {
     setBusy(`${provider}:${plan}`);
     try {
