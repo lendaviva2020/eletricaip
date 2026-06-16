@@ -49,9 +49,21 @@ export function useProjectPersistence(projectId: string | null) {
 
   // Load on mount / id change
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) {
+      useAutosaveLog.getState().log({
+        kind: "skip:no-project",
+        projectId: null,
+        message: "Sem projectId — autosave desativado",
+      });
+      return;
+    }
     let cancelled = false;
     setLoading(true);
+    useAutosaveLog.getState().log({
+      kind: "load:start",
+      projectId,
+      message: "Carregando snapshot do servidor…",
+    });
     load({ data: { projectId } })
       .then((res: LoadProjectResponse) => {
         if (cancelled) return;
@@ -66,10 +78,21 @@ export function useProjectPersistence(projectId: string | null) {
           );
         useProjectStore.getState().setProjectId(projectId);
 
+        // Sincronização explícita do diagrama: substituímos o objeto `doc`
+        // garantindo que TODOS os subscribers (Konva/ReactFlow) recebam
+        // referência nova e reidratem o canvas após qualquer reload.
+        const ds = useDiagramStore.getState();
         if (snap.diagram) {
-          useDiagramStore.getState().loadDoc(snap.diagram as DiagramDoc);
+          ds.loadDoc(snap.diagram as DiagramDoc);
+          // Force re-broadcast no próximo tick — alguns canvases assinam
+          // após o mount; um segundo loadDoc com referência idêntica é noop,
+          // então clonamos shallow para garantir nova identidade.
+          queueMicrotask(() => {
+            const cur = useDiagramStore.getState().doc;
+            useDiagramStore.getState().loadDoc({ ...cur });
+          });
         } else {
-          useDiagramStore.getState().resetDoc();
+          ds.resetDoc();
         }
 
         useVoltaiStore.getState().setAll(snap.voltai.components ?? [], snap.voltai.edges ?? []);
@@ -88,10 +111,29 @@ export function useProjectPersistence(projectId: string | null) {
         if (snap.plc) {
           usePlcStore.getState().setProject(snap.plc as PlcProject);
         }
+
+        const diagramDoc = snap.diagram as DiagramDoc | undefined;
+        useAutosaveLog.getState().log({
+          kind: "load:success",
+          projectId,
+          message: "Snapshot carregado e canvas sincronizado",
+          meta: {
+            projectNodes: (snap.project.nodes ?? []).length,
+            projectEdges: (snap.project.edges ?? []).length,
+            diagramNodes: diagramDoc ? Object.keys(diagramDoc.nodes ?? {}).length : 0,
+            diagramEdges: diagramDoc ? Object.keys(diagramDoc.edges ?? {}).length : 0,
+            voltaiComponents: (snap.voltai.components ?? []).length,
+          },
+        });
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         const message = e instanceof Error ? e.message : String(e);
+        useAutosaveLog.getState().log({
+          kind: "load:error",
+          projectId,
+          message: `Falha ao carregar: ${message}`,
+        });
         toast.error(`Falha ao carregar projeto: ${message}`);
       })
       .finally(() => {
