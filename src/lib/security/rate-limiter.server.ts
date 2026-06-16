@@ -79,8 +79,10 @@ export async function checkRateLimit(
       bypassed: false,
     };
   } catch (err) {
-    // Fail-open on Upstash errors — surface for ops but don't block legitimate traffic.
-    console.error("[rate-limiter] Upstash error:", err);
-    return { allowed: true, retryAfterSeconds: 0, remaining: -1, limit: -1, bypassed: true };
+    // Fail-closed on Upstash errors — surface to the caller as bypassed=false/allowed=false-equivalent
+    // so middleware can return 503 rather than silently allowing the request.
+    console.error("[rate-limiter] Upstash error (failing closed):", err);
+    return { allowed: false, retryAfterSeconds: 5, remaining: 0, limit: -1, bypassed: true };
   }
+
 }
