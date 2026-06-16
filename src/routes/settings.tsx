@@ -55,6 +55,12 @@ const NORMAS: { name: string; desc: string }[] = [
 ];
 
 function SettingsPage() {
+  // settings.tsx é layout-pai (flat routes). Quando há sub-rota ativa
+  // (/settings/profile, /settings/billing, etc.), renderizamos o Outlet.
+  const matches = useMatches();
+  const isIndex = matches[matches.length - 1]?.routeId === "/settings";
+  if (!isIndex) return <Outlet />;
+
   const adminFn = useServerFn(getIsPlatformAdmin);
   const { data: adminInfo } = useQuery({
     queryKey: ["settings", "is-platform-admin"],
