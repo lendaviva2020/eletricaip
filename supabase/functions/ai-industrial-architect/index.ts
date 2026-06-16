@@ -55,6 +55,45 @@ if (!STARTUP_VALIDATION.ok) {
   console.log(`[ai-industrial-architect] DEEPSEEK_API_KEY OK (len=${STARTUP_KEY!.length})`);
 }
 
+// --- Prompt-injection sanitization (mirrors src/lib/ai/context-sanitizer.ts) -------
+const INJECTION_PATTERNS: RegExp[] = [
+  /ignore\s+(all\s+)?previous\s+instructions/gi,
+  /disregard\s+(all\s+)?(your|previous)/gi,
+  /you\s+are\s+now\s+a/gi,
+  /act\s+as\s+(?:a|an)\s+/gi,
+  /system\s*:\s*/gi,
+  /\[\s*INST\s*\]/gi,
+  /<\s*\|im_(?:start|end)\|\s*>/gi,
+  /<\s*\/?\s*system\s*>/gi,
+];
+const MAX_STRING_LENGTH = 300;
+const MAX_CONTEXT_CHARS = 8000;
+const MAX_DEPTH = 5;
+const MAX_ARRAY_ITEMS = 50;
+const MAX_OBJECT_ENTRIES = 30;
+function sanitizePromptText(value: string, maxLen = 32000): string {
+  let out = value.slice(0, maxLen);
+  for (const p of INJECTION_PATTERNS) out = out.replace(p, "[FILTERED]");
+  return out;
+}
+function sanitizeValue(value: unknown, depth = 0): unknown {
+  if (depth > MAX_DEPTH) return "[nested_too_deep]";
+  if (typeof value === "string") return sanitizePromptText(value, MAX_STRING_LENGTH);
+  if (Array.isArray(value)) return value.slice(0, MAX_ARRAY_ITEMS).map((i) => sanitizeValue(i, depth + 1));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .slice(0, MAX_OBJECT_ENTRIES)
+        .map(([k, v]) => [k, sanitizeValue(v, depth + 1)]),
+    );
+  }
+  return value;
+}
+function sanitizeProjectContext(ctx: unknown): string {
+  return JSON.stringify(sanitizeValue(ctx)).slice(0, MAX_CONTEXT_CHARS);
+}
+
+
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro.
 Projete um SISTEMA ELÉTRICO COMPLETO seguindo NBR 5410, NBR 14039, NR-10, NR-12 e IEC 61131-3.
 - Use as tabelas canônicas da NBR 5410 (Tabela 36/37 ampacidade, queda de tensão, fator de agrupamento).
