@@ -1,7 +1,7 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
-  "sideEffects": false,
+  "sideEffects": ["**/*.css", "src/start.ts", "src/server.ts", "src/lib/error-capture.ts", "src/lib/diagnostics-counter.ts", "src/integrations/supabase/auth-attacher.ts"],
   "type": "module",
   "scripts": {
     "dev": "vite dev",
