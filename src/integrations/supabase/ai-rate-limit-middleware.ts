@@ -1,45 +1,14 @@
 // AI rate limiting middleware — burst + monthly quota enforcement.
-// Burst limiting uses Upstash Redis (distributed) when configured;
-// falls back to an in-memory sliding window otherwise.
+// Burst limiting REQUIRES Upstash Redis (distributed). The previous in-memory
+// fallback was removed because it is ineffective across serverless instances —
+// when Upstash is unavailable the middleware now fails closed (HTTP 503).
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "./auth-middleware";
 import type { AuthContext } from "./auth-middleware";
 import { checkRateLimit } from "@/lib/security/rate-limiter.server";
 
-// ── In-memory sliding-window burst limiter ──────────────────────
-const BURST_WINDOW_MS = 60_000;
-const BURST_MAX_CALLS = 20;
 
-const burstWindows = new Map<string, number[]>();
-
-interface BurstResult {
-  allowed: boolean;
-  retryAfter: number;
-}
-
-function checkBurst(userId: string): BurstResult {
-  const now = Date.now();
-  let timestamps = burstWindows.get(userId);
-  if (!timestamps) {
-    timestamps = [];
-    burstWindows.set(userId, timestamps);
-  }
-  // Prune entries outside the window.
-  const cutoff = now - BURST_WINDOW_MS;
-  let i = 0;
-  while (i < timestamps.length && timestamps[i] < cutoff) i++;
-  if (i > 0) timestamps.splice(0, i);
-
-  if (timestamps.length >= BURST_MAX_CALLS) {
-    const oldest = timestamps[0];
-    const retryAfter = Math.ceil((oldest + BURST_WINDOW_MS - now) / 1000);
-    return { allowed: false, retryAfter };
-  }
-
-  timestamps.push(now);
-  return { allowed: true, retryAfter: 0 };
-}
 
 export const requireAiQuota = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
@@ -95,24 +64,22 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     const authCtx = context as unknown as AuthContext;
     const userId = authCtx.userId;
 
-    // Prefer Upstash distributed limiter; fall back to in-memory if unavailable.
     const upstash = await checkRateLimit("ai", userId);
+    // Fail-closed: if the distributed limiter is offline/unconfigured we cannot
+    // safely enforce per-user limits across instances, so reject the request.
     if (upstash.bypassed) {
-      const { allowed, retryAfter } = checkBurst(userId);
-      if (!allowed) {
-        throw new Response(
-          JSON.stringify({
-            ok: false,
-            error: {
-              code: "BURST_LIMIT_429",
-              message: `Muitas requisições em sequência. Tente novamente em ${retryAfter}s.`,
-              retryAfter,
-            },
-          }),
-          { status: 429, headers: { "content-type": "application/json" } },
-        );
-      }
-      return next();
+      console.error("[ai-rate-limit] distributed limiter unavailable — failing closed");
+      throw new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: "RATE_LIMITER_UNAVAILABLE_503",
+            message:
+              "Serviço de limite de requisições temporariamente indisponível. Tente novamente em instantes.",
+          },
+        }),
+        { status: 503, headers: { "content-type": "application/json" } },
+      );
     }
 
     if (!upstash.allowed) {
@@ -130,3 +97,4 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     }
     return next();
   });
+
