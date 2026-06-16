@@ -171,7 +171,7 @@ export async function callArchitect(
       throw mapError(res.error.code, res.error.message);
     }
     pushStatus({ ts: Date.now(), ok: true, ms: Date.now() - t0 });
-    incrementLocalAiUsage();
+    notifyAiUsageChanged();
     return res.system as unknown as ArchitectResult;
   } catch (e) {
     if (e instanceof AIServiceError) throw e;
