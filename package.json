@@ -1,7 +1,7 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
-  "sideEffects": false,
+  "sideEffects": ["**/*.css", "src/start.ts", "src/server.ts", "src/lib/error-capture.ts", "src/lib/diagnostics-counter.ts", "src/integrations/supabase/auth-attacher.ts"],
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -64,8 +64,6 @@
     "jspdf": "^4.2.1",
     "konva": "^10.3.0",
     "lucide-react": "^0.575.0",
-    "motion": "^12.39.0",
-    "nitro": "3.0.260603-beta",
     "pixi-viewport": "^6.0.3",
     "pixi.js": "^8.18.1",
     "react": "^19.2.0",
@@ -84,7 +82,6 @@
     "tw-animate-css": "^1.3.4",
     "ulid": "^3.0.2",
     "vaul": "^1.1.2",
-    "vite-tsconfig-paths": "^6.0.2",
     "zod": "^3.24.2",
     "zod-to-json-schema": "^3.25.2",
     "zustand": "^5.0.13"
