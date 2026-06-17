@@ -1,12 +1,13 @@
 // AI rate limiting middleware — burst + monthly quota enforcement.
-// Burst limiting REQUIRES Upstash Redis (distributed). The previous in-memory
-// fallback was removed because it is ineffective across serverless instances —
-// when Upstash is unavailable the middleware now fails closed (HTTP 503).
+// Burst limiting prefers Upstash Redis (distributed). When Upstash is
+// unavailable or its circuit breaker is open we degrade to a per-instance
+// fallback bucket so AI calls keep working instead of returning blank 503s.
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "./auth-middleware";
 import type { AuthContext } from "./auth-middleware";
 import { checkRateLimit } from "@/lib/security/rate-limiter.server";
+import { recordAiDecision } from "@/lib/security/ai-metrics.server";
 
 
 
