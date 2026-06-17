@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   RefreshCw,
@@ -9,12 +9,45 @@ import {
   AlertCircle,
   ShieldAlert,
   TimerReset,
+  Sparkles,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getDiagnostics, getAiRateLimitMetrics } from "@/lib/diagnostics.functions";
+import { getAiCredits } from "@/lib/ai-architect.functions";
 import { installDiagnosticsInterceptor, useDiagnosticsCounter } from "@/lib/diagnostics-counter";
+
+const MAX_SAMPLES = 60; // 60 × 5s ≈ 5min
+
+interface RateSample {
+  t: number;
+  label: string;
+  upstashAllowed: number;
+  upstashBlocked: number;
+  fallbackAllowed: number;
+  fallbackBlocked: number;
+  quotaBlocked: number;
+}
+interface CreditSample {
+  t: number;
+  label: string;
+  used: number;
+  remaining: number;
+}
+
 
 export const Route = createFileRoute("/settings/diagnostics")({
   head: () => ({
