@@ -3,6 +3,22 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export const getAiRateLimitMetrics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { snapshotAiMetrics } = await import("@/lib/security/ai-metrics.server");
+    const { getRateLimiterBreaker } = await import("@/lib/security/rate-limiter.server");
+    const upstashConfigured =
+      !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+    return {
+      ts: Date.now(),
+      upstashConfigured,
+      breaker: getRateLimiterBreaker(),
+      ...snapshotAiMetrics(),
+    };
+  });
+
+
 export interface DiagnosticCheck {
   name: string;
   ok: boolean;
