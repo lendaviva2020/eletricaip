@@ -556,3 +556,11 @@ function MiniStat({
     </div>
   );
 }
+
+function Placeholder({ text }: { text: string }) {
+  return (
+    <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+      {text}
+    </div>
+  );
+}
