@@ -13,7 +13,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getDiagnostics } from "@/lib/diagnostics.functions";
+import { getDiagnostics, getAiRateLimitMetrics } from "@/lib/diagnostics.functions";
 import { installDiagnosticsInterceptor, useDiagnosticsCounter } from "@/lib/diagnostics-counter";
 
 export const Route = createFileRoute("/settings/diagnostics")({
@@ -40,6 +40,14 @@ function DiagnosticsPage() {
     queryKey: ["diagnostics", "checks"],
     queryFn: () => fn({}),
     refetchInterval: 15_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const fnAi = useServerFn(getAiRateLimitMetrics);
+  const qAi = useQuery({
+    queryKey: ["diagnostics", "ai-rate-limit"],
+    queryFn: () => fnAi(),
+    refetchInterval: 5_000,
     refetchOnWindowFocus: false,
   });
 
@@ -142,6 +150,98 @@ function DiagnosticsPage() {
           </Card>
         </section>
 
+        {/* AI Rate-limit metrics */}
+        <section>
+          <h2 className="text-sm font-medium mb-2 flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-primary" /> AI Rate-limit · Upstash / Fallback
+          </h2>
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              {!qAi.data ? (
+                <div className="text-sm text-muted-foreground">Carregando métricas…</div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <Badge variant={qAi.data.upstashConfigured ? "default" : "secondary"}>
+                      Upstash: {qAi.data.upstashConfigured ? "configurado" : "ausente"}
+                    </Badge>
+                    <Badge
+                      variant={
+                        qAi.data.breaker.state === "closed"
+                          ? "default"
+                          : qAi.data.breaker.state === "open"
+                            ? "destructive"
+                            : "secondary"
+                      }
+                    >
+                      Breaker: {qAi.data.breaker.state}
+                      {qAi.data.breaker.state === "open"
+                        ? ` · retry em ${Math.ceil(qAi.data.breaker.msUntilRetry / 1000)}s`
+                        : ""}
+                    </Badge>
+                    <Badge variant="outline">falhas: {qAi.data.breaker.failures}</Badge>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <MiniStat label="Upstash OK" value={qAi.data.totals.upstashAllowed} />
+                    <MiniStat
+                      label="Upstash 429"
+                      value={qAi.data.totals.upstashBlocked}
+                      tone={qAi.data.totals.upstashBlocked ? "warning" : undefined}
+                    />
+                    <MiniStat label="Fallback OK" value={qAi.data.totals.fallbackAllowed} />
+                    <MiniStat
+                      label="Fallback 429"
+                      value={qAi.data.totals.fallbackBlocked}
+                      tone={qAi.data.totals.fallbackBlocked ? "warning" : undefined}
+                    />
+                    <MiniStat
+                      label="Quota 429"
+                      value={qAi.data.totals.quotaBlocked}
+                      tone={qAi.data.totals.quotaBlocked ? "destructive" : undefined}
+                    />
+                    <MiniStat
+                      label="Breaker skip"
+                      value={qAi.data.totals.breakerOpenSkipped}
+                      tone={qAi.data.totals.breakerOpenSkipped ? "warning" : undefined}
+                    />
+                    <MiniStat
+                      label="Upstash erros"
+                      value={qAi.data.totals.upstashError}
+                      tone={qAi.data.totals.upstashError ? "destructive" : undefined}
+                    />
+                    <MiniStat label="Sem config" value={qAi.data.totals.unconfigured} />
+                  </div>
+                  {qAi.data.topUsers.length > 0 && (
+                    <div className="border border-border rounded">
+                      <div className="px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground border-b border-border">
+                        Top usuários (instância atual)
+                      </div>
+                      <div className="divide-y divide-border">
+                        {qAi.data.topUsers.map((u) => (
+                          <div
+                            key={u.userId}
+                            className="px-3 py-1.5 text-xs font-mono flex items-center gap-2"
+                          >
+                            <span className="truncate flex-1">{u.userId.slice(0, 8)}…</span>
+                            <Badge variant="outline" className="text-[10px] h-5">
+                              {u.lastSource}
+                            </Badge>
+                            <span className="text-muted-foreground">
+                              ups {u.upstashAllowed}/{u.upstashBlocked} · fb {u.fallbackAllowed}/
+                              {u.fallbackBlocked} · q {u.quotaBlocked}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+
         {/* Recent client errors */}
         <section>
           <h2 className="text-sm font-medium mb-2 flex items-center gap-2">
@@ -205,5 +305,30 @@ function Stat({
         <div className={`text-2xl font-mono mt-1 ${colorClass}`}>{value}</div>
       </CardContent>
     </Card>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "success" | "destructive" | "warning";
+}) {
+  const colorClass =
+    tone === "success"
+      ? "text-success"
+      : tone === "destructive"
+        ? "text-destructive"
+        : tone === "warning"
+          ? "text-amber-500"
+          : "text-foreground";
+  return (
+    <div className="border border-border rounded px-3 py-2">
+      <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">{label}</div>
+      <div className={`text-lg font-mono mt-0.5 ${colorClass}`}>{value}</div>
+    </div>
   );
 }
