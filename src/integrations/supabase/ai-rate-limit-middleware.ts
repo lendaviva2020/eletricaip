@@ -44,6 +44,7 @@ export const requireAiQuota = createMiddleware({ type: "function" })
     } | null;
 
     if (!quota?.unlimited && Number(quota?.remaining ?? 0) <= 0) {
+      recordAiDecision(authCtx.userId, "upstash", false, "quota");
       throw new Response(
         JSON.stringify({
           ok: false,
