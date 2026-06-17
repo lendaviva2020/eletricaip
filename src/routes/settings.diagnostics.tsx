@@ -13,7 +13,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getDiagnostics } from "@/lib/diagnostics.functions";
+import { getDiagnostics, getAiRateLimitMetrics } from "@/lib/diagnostics.functions";
 import { installDiagnosticsInterceptor, useDiagnosticsCounter } from "@/lib/diagnostics-counter";
 
 export const Route = createFileRoute("/settings/diagnostics")({
