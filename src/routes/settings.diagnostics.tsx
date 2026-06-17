@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   RefreshCw,
@@ -9,12 +9,45 @@ import {
   AlertCircle,
   ShieldAlert,
   TimerReset,
+  Sparkles,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getDiagnostics, getAiRateLimitMetrics } from "@/lib/diagnostics.functions";
+import { getAiCredits } from "@/lib/ai-architect.functions";
 import { installDiagnosticsInterceptor, useDiagnosticsCounter } from "@/lib/diagnostics-counter";
+
+const MAX_SAMPLES = 60; // 60 × 5s ≈ 5min
+
+interface RateSample {
+  t: number;
+  label: string;
+  upstashAllowed: number;
+  upstashBlocked: number;
+  fallbackAllowed: number;
+  fallbackBlocked: number;
+  quotaBlocked: number;
+}
+interface CreditSample {
+  t: number;
+  label: string;
+  used: number;
+  remaining: number;
+}
+
 
 export const Route = createFileRoute("/settings/diagnostics")({
   head: () => ({
@@ -50,6 +83,55 @@ function DiagnosticsPage() {
     refetchInterval: 5_000,
     refetchOnWindowFocus: false,
   });
+
+  const fnCredits = useServerFn(getAiCredits);
+  const qCredits = useQuery({
+    queryKey: ["diagnostics", "ai-credits"],
+    queryFn: () => fnCredits(),
+    refetchInterval: 5_000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Ring buffers for time-series charts.
+  const [rateSeries, setRateSeries] = useState<RateSample[]>([]);
+  const [creditSeries, setCreditSeries] = useState<CreditSample[]>([]);
+  const prevTotalsRef = useRef<typeof qAi.data extends infer T ? unknown : never>(null);
+
+  useEffect(() => {
+    if (!qAi.data) return;
+    const totals = qAi.data.totals;
+    const prev = prevTotalsRef.current as null | typeof totals;
+    prevTotalsRef.current = totals as never;
+    if (!prev) return; // need 2 samples to compute a delta
+    const t = qAi.data.ts;
+    const sample: RateSample = {
+      t,
+      label: new Date(t).toLocaleTimeString().slice(0, 8),
+      upstashAllowed: Math.max(0, totals.upstashAllowed - prev.upstashAllowed),
+      upstashBlocked: Math.max(0, totals.upstashBlocked - prev.upstashBlocked),
+      fallbackAllowed: Math.max(0, totals.fallbackAllowed - prev.fallbackAllowed),
+      fallbackBlocked: Math.max(0, totals.fallbackBlocked - prev.fallbackBlocked),
+      quotaBlocked: Math.max(0, totals.quotaBlocked - prev.quotaBlocked),
+    };
+    setRateSeries((s) => [...s, sample].slice(-MAX_SAMPLES));
+  }, [qAi.data]);
+
+  useEffect(() => {
+    if (!qCredits.data || !qCredits.data.ok) return;
+    const t = Date.now();
+    const { used, remaining } = qCredits.data;
+    setCreditSeries((s) =>
+      [
+        ...s,
+        {
+          t,
+          label: new Date(t).toLocaleTimeString().slice(0, 8),
+          used,
+          remaining: Math.max(0, remaining),
+        },
+      ].slice(-MAX_SAMPLES),
+    );
+  }, [qCredits.data]);
 
   const counter = useDiagnosticsCounter();
   const errorRate = counter.total > 0 ? ((counter.total - counter.ok) / counter.total) * 100 : 0;
@@ -149,6 +231,148 @@ function DiagnosticsPage() {
             </CardContent>
           </Card>
         </section>
+
+        {/* Live charts */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> AI Credits (consumo)
+                </h3>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {qCredits.data?.ok
+                    ? `${qCredits.data.used}/${qCredits.data.unlimited ? "∞" : qCredits.data.max_credits}`
+                    : "--"}
+                </span>
+              </div>
+              <div className="h-[160px]">
+                {creditSeries.length < 2 ? (
+                  <Placeholder text="Coletando amostras…" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={creditSeries}>
+                      <defs>
+                        <linearGradient id="gUsed" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 11,
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="used"
+                        stroke="hsl(var(--primary))"
+                        fill="url(#gUsed)"
+                        name="usados"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="remaining"
+                        stroke="hsl(var(--success))"
+                        dot={false}
+                        name="restantes"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" /> Burst limits (req / 5s)
+                </h3>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  fonte: {qAi.data?.topUsers[0]?.lastSource ?? "—"}
+                </span>
+              </div>
+              <div className="h-[160px]">
+                {rateSeries.length < 2 ? (
+                  <Placeholder text="Coletando amostras…" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={rateSeries}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 11,
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Line type="monotone" dataKey="upstashAllowed" stroke="hsl(var(--primary))" dot={false} name="ups OK" />
+                      <Line type="monotone" dataKey="upstashBlocked" stroke="hsl(var(--destructive))" dot={false} name="ups 429" />
+                      <Line type="monotone" dataKey="fallbackAllowed" stroke="hsl(var(--success))" dot={false} name="fb OK" />
+                      <Line type="monotone" dataKey="fallbackBlocked" stroke="#f59e0b" dot={false} name="fb 429" />
+                      <Line type="monotone" dataKey="quotaBlocked" stroke="#a855f7" dot={false} name="quota" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" /> Top usuários — eventos por janela
+                </h3>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {qAi.data?.topUsers.length ?? 0} usuário(s)
+                </span>
+              </div>
+              <div className="h-[180px]">
+                {!qAi.data || qAi.data.topUsers.length === 0 ? (
+                  <Placeholder text="Sem atividade nesta instância." />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={qAi.data.topUsers.slice(0, 10).map((u) => ({
+                        userId: u.userId.slice(0, 6),
+                        upstash: u.upstashAllowed + u.upstashBlocked,
+                        fallback: u.fallbackAllowed + u.fallbackBlocked,
+                        bloqueios: u.upstashBlocked + u.fallbackBlocked + u.quotaBlocked,
+                      }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="userId" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 11,
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Line type="monotone" dataKey="upstash" stroke="hsl(var(--primary))" name="upstash" />
+                      <Line type="monotone" dataKey="fallback" stroke="hsl(var(--success))" name="fallback" />
+                      <Line type="monotone" dataKey="bloqueios" stroke="hsl(var(--destructive))" name="bloqueios" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
 
         {/* AI Rate-limit metrics */}
         <section>
@@ -329,6 +553,14 @@ function MiniStat({
     <div className="border border-border rounded px-3 py-2">
       <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">{label}</div>
       <div className={`text-lg font-mono mt-0.5 ${colorClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function Placeholder({ text }: { text: string }) {
+  return (
+    <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+      {text}
     </div>
   );
 }
