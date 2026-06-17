@@ -232,6 +232,148 @@ function DiagnosticsPage() {
           </Card>
         </section>
 
+        {/* Live charts */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> AI Credits (consumo)
+                </h3>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {qCredits.data?.ok
+                    ? `${qCredits.data.used}/${qCredits.data.unlimited ? "∞" : qCredits.data.max_credits}`
+                    : "--"}
+                </span>
+              </div>
+              <div className="h-[160px]">
+                {creditSeries.length < 2 ? (
+                  <Placeholder text="Coletando amostras…" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={creditSeries}>
+                      <defs>
+                        <linearGradient id="gUsed" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 11,
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="used"
+                        stroke="hsl(var(--primary))"
+                        fill="url(#gUsed)"
+                        name="usados"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="remaining"
+                        stroke="hsl(var(--success))"
+                        dot={false}
+                        name="restantes"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" /> Burst limits (req / 5s)
+                </h3>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  fonte: {qAi.data?.topUsers[0]?.lastSource ?? "—"}
+                </span>
+              </div>
+              <div className="h-[160px]">
+                {rateSeries.length < 2 ? (
+                  <Placeholder text="Coletando amostras…" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={rateSeries}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 11,
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Line type="monotone" dataKey="upstashAllowed" stroke="hsl(var(--primary))" dot={false} name="ups OK" />
+                      <Line type="monotone" dataKey="upstashBlocked" stroke="hsl(var(--destructive))" dot={false} name="ups 429" />
+                      <Line type="monotone" dataKey="fallbackAllowed" stroke="hsl(var(--success))" dot={false} name="fb OK" />
+                      <Line type="monotone" dataKey="fallbackBlocked" stroke="#f59e0b" dot={false} name="fb 429" />
+                      <Line type="monotone" dataKey="quotaBlocked" stroke="#a855f7" dot={false} name="quota" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" /> Top usuários — eventos por janela
+                </h3>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {qAi.data?.topUsers.length ?? 0} usuário(s)
+                </span>
+              </div>
+              <div className="h-[180px]">
+                {!qAi.data || qAi.data.topUsers.length === 0 ? (
+                  <Placeholder text="Sem atividade nesta instância." />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={qAi.data.topUsers.slice(0, 10).map((u) => ({
+                        userId: u.userId.slice(0, 6),
+                        upstash: u.upstashAllowed + u.upstashBlocked,
+                        fallback: u.fallbackAllowed + u.fallbackBlocked,
+                        bloqueios: u.upstashBlocked + u.fallbackBlocked + u.quotaBlocked,
+                      }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="userId" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 11,
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Line type="monotone" dataKey="upstash" stroke="hsl(var(--primary))" name="upstash" />
+                      <Line type="monotone" dataKey="fallback" stroke="hsl(var(--success))" name="fallback" />
+                      <Line type="monotone" dataKey="bloqueios" stroke="hsl(var(--destructive))" name="bloqueios" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+
         {/* AI Rate-limit metrics */}
         <section>
           <h2 className="text-sm font-medium mb-2 flex items-center gap-2">
