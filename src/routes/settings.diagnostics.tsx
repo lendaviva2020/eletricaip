@@ -84,6 +84,55 @@ function DiagnosticsPage() {
     refetchOnWindowFocus: false,
   });
 
+  const fnCredits = useServerFn(getAiCredits);
+  const qCredits = useQuery({
+    queryKey: ["diagnostics", "ai-credits"],
+    queryFn: () => fnCredits(),
+    refetchInterval: 5_000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Ring buffers for time-series charts.
+  const [rateSeries, setRateSeries] = useState<RateSample[]>([]);
+  const [creditSeries, setCreditSeries] = useState<CreditSample[]>([]);
+  const prevTotalsRef = useRef<typeof qAi.data extends infer T ? unknown : never>(null);
+
+  useEffect(() => {
+    if (!qAi.data) return;
+    const totals = qAi.data.totals;
+    const prev = prevTotalsRef.current as null | typeof totals;
+    prevTotalsRef.current = totals as never;
+    if (!prev) return; // need 2 samples to compute a delta
+    const t = qAi.data.ts;
+    const sample: RateSample = {
+      t,
+      label: new Date(t).toLocaleTimeString().slice(0, 8),
+      upstashAllowed: Math.max(0, totals.upstashAllowed - prev.upstashAllowed),
+      upstashBlocked: Math.max(0, totals.upstashBlocked - prev.upstashBlocked),
+      fallbackAllowed: Math.max(0, totals.fallbackAllowed - prev.fallbackAllowed),
+      fallbackBlocked: Math.max(0, totals.fallbackBlocked - prev.fallbackBlocked),
+      quotaBlocked: Math.max(0, totals.quotaBlocked - prev.quotaBlocked),
+    };
+    setRateSeries((s) => [...s, sample].slice(-MAX_SAMPLES));
+  }, [qAi.data]);
+
+  useEffect(() => {
+    if (!qCredits.data || !qCredits.data.ok) return;
+    const t = Date.now();
+    const { used, remaining } = qCredits.data;
+    setCreditSeries((s) =>
+      [
+        ...s,
+        {
+          t,
+          label: new Date(t).toLocaleTimeString().slice(0, 8),
+          used,
+          remaining: Math.max(0, remaining),
+        },
+      ].slice(-MAX_SAMPLES),
+    );
+  }, [qCredits.data]);
+
   const counter = useDiagnosticsCounter();
   const errorRate = counter.total > 0 ? ((counter.total - counter.ok) / counter.total) * 100 : 0;
 
