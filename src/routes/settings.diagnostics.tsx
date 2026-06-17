@@ -43,6 +43,14 @@ function DiagnosticsPage() {
     refetchOnWindowFocus: false,
   });
 
+  const fnAi = useServerFn(getAiRateLimitMetrics);
+  const qAi = useQuery({
+    queryKey: ["diagnostics", "ai-rate-limit"],
+    queryFn: () => fnAi(),
+    refetchInterval: 5_000,
+    refetchOnWindowFocus: false,
+  });
+
   const counter = useDiagnosticsCounter();
   const errorRate = counter.total > 0 ? ((counter.total - counter.ok) / counter.total) * 100 : 0;
 
