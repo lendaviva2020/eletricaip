@@ -307,3 +307,28 @@ function Stat({
     </Card>
   );
 }
+
+function MiniStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "success" | "destructive" | "warning";
+}) {
+  const colorClass =
+    tone === "success"
+      ? "text-success"
+      : tone === "destructive"
+        ? "text-destructive"
+        : tone === "warning"
+          ? "text-amber-500"
+          : "text-foreground";
+  return (
+    <div className="border border-border rounded px-3 py-2">
+      <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">{label}</div>
+      <div className={`text-lg font-mono mt-0.5 ${colorClass}`}>{value}</div>
+    </div>
+  );
+}
