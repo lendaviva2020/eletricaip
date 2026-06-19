@@ -111,6 +111,45 @@ export type Database = {
           },
         ]
       }
+      ai_rate_limit_configs: {
+        Row: {
+          burst_max: number
+          burst_window_ms: number
+          created_at: string
+          fallback_max: number
+          fallback_window_ms: number
+          id: string
+          note: string | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          burst_max?: number
+          burst_window_ms?: number
+          created_at?: string
+          fallback_max?: number
+          fallback_window_ms?: number
+          id?: string
+          note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          burst_max?: number
+          burst_window_ms?: number
+          created_at?: string
+          fallback_max?: number
+          fallback_window_ms?: number
+          id?: string
+          note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_status_events: {
         Row: {
           code: string | null

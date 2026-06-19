@@ -61,16 +61,17 @@ export const requireAiQuota = createMiddleware({ type: "function" })
   });
 
 // Per-instance fallback bucket used only when Upstash is not configured.
-// Not perfectly distributed, but enough to throttle a single abusive client
-// inside one Worker isolate without blocking every legitimate AI call.
+// Window / max are loaded dynamically per-user from ai_rate_limit_configs.
 const _localBuckets = new Map<string, number[]>();
-const LOCAL_WINDOW_MS = 10_000;
-const LOCAL_MAX = 10;
-function localBurstAllow(userId: string): { allowed: boolean; retryAfterSeconds: number } {
+function localBurstAllow(
+  userId: string,
+  windowMs: number,
+  max: number,
+): { allowed: boolean; retryAfterSeconds: number } {
   const now = Date.now();
-  const arr = (_localBuckets.get(userId) ?? []).filter((t) => now - t < LOCAL_WINDOW_MS);
-  if (arr.length >= LOCAL_MAX) {
-    const retry = Math.max(1, Math.ceil((LOCAL_WINDOW_MS - (now - arr[0])) / 1000));
+  const arr = (_localBuckets.get(userId) ?? []).filter((t) => now - t < windowMs);
+  if (arr.length >= max) {
+    const retry = Math.max(1, Math.ceil((windowMs - (now - arr[0])) / 1000));
     _localBuckets.set(userId, arr);
     return { allowed: false, retryAfterSeconds: retry };
   }
@@ -85,11 +86,14 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     const authCtx = context as unknown as AuthContext;
     const userId = authCtx.userId;
 
+    const { getAiRateLimitConfig } = await import("@/lib/security/ai-rate-limit-config.server");
+    const cfg = await getAiRateLimitConfig(userId);
+
     const upstash = await checkRateLimit("ai", userId);
     // If Upstash isn't usable (unconfigured, breaker open, or errored) we
     // degrade to a per-instance bucket instead of failing closed.
     if (upstash.bypassed) {
-      const local = localBurstAllow(userId);
+      const local = localBurstAllow(userId, cfg.fallbackWindowMs, cfg.fallbackMax);
       recordAiDecision(userId, upstash.source, local.allowed, "burst");
       if (!local.allowed) {
         throw new Response(
