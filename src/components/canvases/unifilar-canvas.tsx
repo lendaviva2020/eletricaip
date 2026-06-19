@@ -34,6 +34,7 @@ import {
 import { useVoltaiStore, type VoltaiDiagramComponent } from "@/lib/voltai/store";
 import { useVoltaiSimulation } from "@/lib/voltai/use-voltai-simulation";
 import { VoltaiFlowNode } from "./voltai-node";
+import { CircuitControlPanel } from "./circuit-control-panel";
 
 function isVoltaiComponentType(value: string): value is VoltaiComponentType {
   return value in VOLTAI_COMPONENT_BY_TYPE;
