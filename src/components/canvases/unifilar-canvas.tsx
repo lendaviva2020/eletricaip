@@ -379,6 +379,7 @@ function Inner() {
         />
       </ReactFlow>
       <MultiplayerCursors cursors={cursors} />
+      <CircuitControlPanel />
       <BottomStrip
         items={[
           ["Icc", "12.4 kA"],
