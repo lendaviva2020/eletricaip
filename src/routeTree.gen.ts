@@ -29,6 +29,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as SettingsSecurityMonitorRouteImport } from './routes/settings.security-monitor'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
+import { Route as SettingsRateLimitsRouteImport } from './routes/settings.rate-limits'
 import { Route as SettingsProtocolsRouteImport } from './routes/settings.protocols'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
@@ -147,6 +148,11 @@ const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsRateLimitsRoute = SettingsRateLimitsRouteImport.update({
+  id: '/rate-limits',
+  path: '/rate-limits',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsProtocolsRoute = SettingsProtocolsRouteImport.update({
   id: '/protocols',
   path: '/protocols',
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/protocols': typeof SettingsProtocolsRoute
+  '/settings/rate-limits': typeof SettingsRateLimitsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/protocols': typeof SettingsProtocolsRoute
+  '/settings/rate-limits': typeof SettingsRateLimitsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/protocols': typeof SettingsProtocolsRoute
+  '/settings/rate-limits': typeof SettingsRateLimitsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings/protocols'
+    | '/settings/rate-limits'
     | '/settings/security'
     | '/settings/security-monitor'
     | '/settings/team'
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings/protocols'
+    | '/settings/rate-limits'
     | '/settings/security'
     | '/settings/security-monitor'
     | '/settings/team'
@@ -461,6 +472,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings/protocols'
+    | '/settings/rate-limits'
     | '/settings/security'
     | '/settings/security-monitor'
     | '/settings/team'
@@ -638,6 +650,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsSecurityRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/rate-limits': {
+      id: '/settings/rate-limits'
+      path: '/rate-limits'
+      fullPath: '/settings/rate-limits'
+      preLoaderRoute: typeof SettingsRateLimitsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/protocols': {
       id: '/settings/protocols'
       path: '/protocols'
@@ -795,6 +814,7 @@ interface SettingsRouteChildren {
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   SettingsProtocolsRoute: typeof SettingsProtocolsRoute
+  SettingsRateLimitsRoute: typeof SettingsRateLimitsRoute
   SettingsSecurityRoute: typeof SettingsSecurityRoute
   SettingsSecurityMonitorRoute: typeof SettingsSecurityMonitorRoute
   SettingsTeamRoute: typeof SettingsTeamRoute
@@ -810,6 +830,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   SettingsProtocolsRoute: SettingsProtocolsRoute,
+  SettingsRateLimitsRoute: SettingsRateLimitsRoute,
   SettingsSecurityRoute: SettingsSecurityRoute,
   SettingsSecurityMonitorRoute: SettingsSecurityMonitorRoute,
   SettingsTeamRoute: SettingsTeamRoute,
