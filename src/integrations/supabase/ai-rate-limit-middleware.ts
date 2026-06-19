@@ -86,11 +86,14 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     const authCtx = context as unknown as AuthContext;
     const userId = authCtx.userId;
 
+    const { getAiRateLimitConfig } = await import("@/lib/security/ai-rate-limit-config.server");
+    const cfg = await getAiRateLimitConfig(userId);
+
     const upstash = await checkRateLimit("ai", userId);
     // If Upstash isn't usable (unconfigured, breaker open, or errored) we
     // degrade to a per-instance bucket instead of failing closed.
     if (upstash.bypassed) {
-      const local = localBurstAllow(userId);
+      const local = localBurstAllow(userId, cfg.fallbackWindowMs, cfg.fallbackMax);
       recordAiDecision(userId, upstash.source, local.allowed, "burst");
       if (!local.allowed) {
         throw new Response(
