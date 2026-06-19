@@ -5,6 +5,19 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // NOTE: do NOT import `supabaseAdmin` at module scope — the getter throws if
 // SUPABASE_SERVICE_ROLE_KEY is absent, which would break every handler in this
 // file (including ones that don't need admin). Load it lazily inside handlers.
+async function loadAdmin() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+async function tryLoadAdmin() {
+  try {
+    return await loadAdmin();
+  } catch (err) {
+    console.warn("[billing] admin client unavailable:", (err as Error)?.message);
+    return null;
+  }
+}
+
 
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
   basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
