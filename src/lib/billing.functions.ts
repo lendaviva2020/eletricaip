@@ -134,6 +134,8 @@ export const changePlanManual = createServerFn({ method: "POST" })
     const { userId, claims } = context;
     if (!(await isPlatformAdminUser({ userId, claims, supabase: context.supabase })))
       throw new Error("forbidden");
+    const supabaseAdmin = await loadAdmin();
+
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
