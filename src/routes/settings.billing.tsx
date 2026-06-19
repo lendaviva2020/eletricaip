@@ -113,6 +113,13 @@ function BillingPage() {
   });
   const isPlatformAdmin = !!adminInfo?.isPlatformAdmin;
 
+  // Client-side gate: redirect non-admins after the check resolves.
+  useEffect(() => {
+    if (adminInfo && !adminInfo.isPlatformAdmin) {
+      navigate({ to: "/settings" });
+    }
+  }, [adminInfo, navigate]);
+
   const isDemo = backendError;
   const currentPlan = data?.plan ?? "free";
   const plan = getPlan(currentPlan);
