@@ -2,7 +2,22 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+// NOTE: do NOT import `supabaseAdmin` at module scope — the getter throws if
+// SUPABASE_SERVICE_ROLE_KEY is absent, which would break every handler in this
+// file (including ones that don't need admin). Load it lazily inside handlers.
+async function loadAdmin() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+async function tryLoadAdmin() {
+  try {
+    return await loadAdmin();
+  } catch (err) {
+    console.warn("[billing] admin client unavailable:", (err as Error)?.message);
+    return null;
+  }
+}
+
 
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
   basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
@@ -62,6 +77,7 @@ export const getBillingOverview = createServerFn({ method: "GET" })
     // stripe_customer_id / stripe_subscription_id are revoked from `authenticated`
     // by the security hardening migration — read via admin client AFTER we
     // already verified the user belongs to this tenant (profile.tenant_id).
+    const admin = await tryLoadAdmin();
     const [
       { data: tenant },
       { data: tenantPrivate },
@@ -70,11 +86,13 @@ export const getBillingOverview = createServerFn({ method: "GET" })
       { data: usage },
     ] = await Promise.all([
       supabase.from("tenants").select("plan, subscription_status").eq("id", tenantId).maybeSingle(),
-      supabaseAdmin
-        .from("tenants")
-        .select("stripe_customer_id, stripe_subscription_id")
-        .eq("id", tenantId)
-        .maybeSingle(),
+      admin
+        ? admin
+            .from("tenants")
+            .select("stripe_customer_id, stripe_subscription_id")
+            .eq("id", tenantId)
+            .maybeSingle()
+        : Promise.resolve({ data: null as { stripe_customer_id: string | null; stripe_subscription_id: string | null } | null }),
       supabase
         .from("subscriptions")
         .select("*")
@@ -116,6 +134,8 @@ export const changePlanManual = createServerFn({ method: "POST" })
     const { userId, claims } = context;
     if (!(await isPlatformAdminUser({ userId, claims, supabase: context.supabase })))
       throw new Error("forbidden");
+    const supabaseAdmin = await loadAdmin();
+
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -308,6 +328,7 @@ export const cancelSubscription = createServerFn({ method: "POST" })
     const tenantId = profile?.tenant_id;
     if (!tenantId) throw new Error("no_tenant");
 
+    const supabaseAdmin = await loadAdmin();
     const { data: tenant } = await supabaseAdmin
       .from("tenants")
       .select("stripe_subscription_id")
