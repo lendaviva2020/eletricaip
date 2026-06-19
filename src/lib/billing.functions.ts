@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+// NOTE: do NOT import `supabaseAdmin` at module scope — the getter throws if
+// SUPABASE_SERVICE_ROLE_KEY is absent, which would break every handler in this
+// file (including ones that don't need admin). Load it lazily inside handlers.
 
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
   basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
