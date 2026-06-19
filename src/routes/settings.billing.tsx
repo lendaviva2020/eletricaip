@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -66,15 +66,14 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/settings/billing")({
-  beforeLoad: async () => {
-    const { isPlatformAdmin } = await getIsPlatformAdmin();
-    if (!isPlatformAdmin) {
-      throw redirect({ to: "/settings" });
-    }
-  },
+  // Admin gate runs client-side in the component (see useEffect below).
+  // It cannot live in beforeLoad because SSR has no bearer token, so the
+  // protected server fn would 500 the whole route.
+  ssr: false,
   head: () => ({ meta: [{ title: "Central Financeira · EletricAI" }] }),
   component: BillingPage,
 });
+
 
 type PaidPlan = "basic" | "pro" | "premium";
 
@@ -113,6 +112,13 @@ function BillingPage() {
     },
   });
   const isPlatformAdmin = !!adminInfo?.isPlatformAdmin;
+
+  // Client-side gate: redirect non-admins after the check resolves.
+  useEffect(() => {
+    if (adminInfo && !adminInfo.isPlatformAdmin) {
+      navigate({ to: "/settings" });
+    }
+  }, [adminInfo, navigate]);
 
   const isDemo = backendError;
   const currentPlan = data?.plan ?? "free";
