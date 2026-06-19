@@ -77,6 +77,7 @@ export const getBillingOverview = createServerFn({ method: "GET" })
     // stripe_customer_id / stripe_subscription_id are revoked from `authenticated`
     // by the security hardening migration — read via admin client AFTER we
     // already verified the user belongs to this tenant (profile.tenant_id).
+    const admin = await tryLoadAdmin();
     const [
       { data: tenant },
       { data: tenantPrivate },
@@ -85,11 +86,13 @@ export const getBillingOverview = createServerFn({ method: "GET" })
       { data: usage },
     ] = await Promise.all([
       supabase.from("tenants").select("plan, subscription_status").eq("id", tenantId).maybeSingle(),
-      supabaseAdmin
-        .from("tenants")
-        .select("stripe_customer_id, stripe_subscription_id")
-        .eq("id", tenantId)
-        .maybeSingle(),
+      admin
+        ? admin
+            .from("tenants")
+            .select("stripe_customer_id, stripe_subscription_id")
+            .eq("id", tenantId)
+            .maybeSingle()
+        : Promise.resolve({ data: null as { stripe_customer_id: string | null; stripe_subscription_id: string | null } | null }),
       supabase
         .from("subscriptions")
         .select("*")
