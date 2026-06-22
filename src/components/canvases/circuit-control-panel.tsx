@@ -109,9 +109,26 @@ export function CircuitControlPanel() {
     }));
   }, [effectivePower]);
 
+  // Hash leve só com bits que afetam o resultado de detectFault.
+  // Evita recalcular o BFS a cada tick quando nada de relevante mudou.
+  const faultKey = useMemo(() => {
+    let s = `${effectivePower ? 1 : 0}|${edges.length}`;
+    for (const c of components) {
+      const st = c.simulationState;
+      const bits =
+        (st.tripped ? 1 : 0) |
+        (st.failed ? 2 : 0) |
+        (st.blown ? 4 : 0) |
+        (st.energized ? 8 : 0);
+      s += `|${c.id}:${bits}`;
+    }
+    return s;
+  }, [components, edges.length, effectivePower]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fault = useMemo(
     () => detectFault(components, edges, effectivePower),
-    [components, edges, effectivePower],
+    [faultKey],
   );
 
   // Lâmpada piscante quando há falha
