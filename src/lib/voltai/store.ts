@@ -445,10 +445,17 @@ export const useVoltaiStore = create<VoltaiStore>((set, get) => ({
 
   simulateStep: (stepMs) =>
     set((store) => {
-      const components = store.components.map((component) => simulateComponent(component, stepMs));
+      lastSimStepMs = stepMs;
+      let changed = false;
+      const components = store.components.map((component) => {
+        const next = simulateComponent(component, stepMs);
+        if (next !== component) changed = true;
+        return next;
+      });
+      if (!changed) return {};
       return {
         components,
-        lastSimulationJson: serializeSimulationPayload(components, stepMs),
+        lastSimulationTick: store.lastSimulationTick + 1,
       };
     }),
 
