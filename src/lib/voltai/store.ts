@@ -47,7 +47,10 @@ interface VoltaiStore {
   components: VoltaiDiagramComponent[];
   edges: VoltaiDiagramEdge[];
   selectedId: string | null;
-  lastSimulationJson: string;
+  /** Tick counter — incremented only when at least one component state mudou. */
+  lastSimulationTick: number;
+  /** Serializa o payload da última simulação sob demanda (lazy, cacheado por tick). */
+  getSimulationPayload: () => string;
   dirty: boolean;
 
   // Undo/Redo history stacks
