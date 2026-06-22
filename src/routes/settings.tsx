@@ -111,6 +111,16 @@ function SettingsPage() {
                 badge="Admin"
               />
             )}
+            {isPlatformAdmin && (
+              <SettingsLinkCard
+                icon={Shield}
+                title="Rate Limits da IA"
+                desc="Janelas de burst e limites de fallback por usuário"
+                to="/settings/rate-limits"
+                badge="Admin"
+              />
+            )}
+
             <SettingsLinkCard
               icon={Users}
               title="Equipe & Convites"
