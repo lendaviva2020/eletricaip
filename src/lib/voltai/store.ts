@@ -342,11 +342,22 @@ const cloneState = (components: VoltaiDiagramComponent[], edges: VoltaiDiagramEd
   edges: edges.map((e) => ({ ...e })),
 });
 
-export const useVoltaiStore = create<VoltaiStore>((set) => ({
+// Cache do payload serializado: invalidado quando o tick muda.
+let payloadCache: { tick: number; json: string } | null = null;
+let lastSimStepMs = 50;
+
+export const useVoltaiStore = create<VoltaiStore>((set, get) => ({
   components: [],
   edges: [],
   selectedId: null,
-  lastSimulationJson: "",
+  lastSimulationTick: 0,
+  getSimulationPayload: () => {
+    const { lastSimulationTick, components } = get();
+    if (payloadCache && payloadCache.tick === lastSimulationTick) return payloadCache.json;
+    const json = serializeSimulationPayload(components, lastSimStepMs);
+    payloadCache = { tick: lastSimulationTick, json };
+    return json;
+  },
   dirty: false,
   past: [],
   future: [],
