@@ -296,6 +296,38 @@ function simulateComponent(
     state.failed = state.batteryRemainingMin <= 0;
   }
 
+  // Compara campos visualmente/funcionalmente relevantes para evitar churn de refs.
+  const prev = component.simulationState;
+  const interestingChanged =
+    prev.energized !== state.energized ||
+    prev.tripped !== state.tripped ||
+    prev.open !== state.open ||
+    prev.failed !== state.failed ||
+    prev.blown !== state.blown ||
+    prev.running !== state.running ||
+    prev.contactClosed !== state.contactClosed ||
+    prev.coilEnergized !== state.coilEnergized ||
+    prev.alarm !== state.alarm ||
+    prev.timerMode !== state.timerMode ||
+    prev.output !== state.output ||
+    prev.count !== state.count ||
+    prev.currentA !== state.currentA ||
+    prev.voltageV !== state.voltageV ||
+    prev.pulseRemainingMs !== state.pulseRemainingMs;
+
+  // Componente ocioso (sem energia, sem ativação, sem falha): pula update por completo
+  // para que o array em `simulateStep` possa fazer early-return preservando refs.
+  const isIdle =
+    !prev.energized &&
+    !prev.coilEnergized &&
+    !prev.running &&
+    !prev.contactClosed &&
+    !prev.tripped &&
+    !prev.failed &&
+    !prev.blown &&
+    component.type !== "UPS";
+  if (isIdle && !interestingChanged) return component;
+
   return { ...component, simulationState: state };
 }
 
