@@ -62,54 +62,54 @@ describe("Settings switches — visual state", () => {
     render(<ProtocolRow name="Modbus TCP/RTU" />);
     const sw = screen.getByRole("switch", { name: "Modbus TCP/RTU" });
 
-    expect(sw).toHaveAttribute("data-state", "checked");
-    expect(sw).toHaveAttribute("aria-checked", "true");
+    expect(sw.getAttribute("data-state")).toBe("checked");
+    expect(sw.getAttribute("aria-checked")).toBe("true");
 
     act(() => sw.click());
 
     // sem qualquer await/timer — deve refletir já no próximo paint síncrono
-    expect(sw).toHaveAttribute("data-state", "unchecked");
-    expect(sw).toHaveAttribute("aria-checked", "false");
+    expect(sw.getAttribute("data-state")).toBe("unchecked");
+    expect(sw.getAttribute("aria-checked")).toBe("false");
   });
 
   it("Norma: alterna o estado visual instantaneamente", () => {
     render(<NormaRow name="NR-10" />);
     const sw = screen.getByRole("switch", { name: "NR-10" });
 
-    expect(sw).toHaveAttribute("data-state", "checked");
+    expect(sw.getAttribute("data-state")).toBe("checked");
     act(() => sw.click());
-    expect(sw).toHaveAttribute("data-state", "unchecked");
+    expect(sw.getAttribute("data-state")).toBe("unchecked");
     act(() => sw.click());
-    expect(sw).toHaveAttribute("data-state", "checked");
+    expect(sw.getAttribute("data-state")).toBe("checked");
   });
 
   it("permanece consistente após re-render (mesma instância)", () => {
     const { rerender } = render(<ProtocolRow name="Profinet" />);
     const sw = screen.getByRole("switch", { name: "Profinet" });
 
-    expect(sw).toHaveAttribute("data-state", "unchecked"); // default = false
+    expect(sw.getAttribute("data-state")).toBe("unchecked"); // default = false
     act(() => sw.click());
-    expect(sw).toHaveAttribute("data-state", "checked");
+    expect(sw.getAttribute("data-state")).toBe("checked");
 
     rerender(<ProtocolRow name="Profinet" />);
     const swAfter = screen.getByRole("switch", { name: "Profinet" });
-    expect(swAfter).toHaveAttribute("data-state", "checked");
+    expect(swAfter.getAttribute("data-state")).toBe("checked");
   });
 
   it("permanece consistente após refresh (unmount + remount lê do store)", () => {
     const { unmount } = render(<NormaRow name="IEC 61131" />);
     const sw = screen.getByRole("switch", { name: "IEC 61131" });
-    expect(sw).toHaveAttribute("data-state", "checked");
+    expect(sw.getAttribute("data-state")).toBe("checked");
 
     act(() => sw.click());
-    expect(sw).toHaveAttribute("data-state", "unchecked");
+    expect(sw.getAttribute("data-state")).toBe("unchecked");
     expect(store["protocols_normas"].normas["IEC 61131"]).toBe(false);
 
     unmount();
     // simula refresh — nova montagem da página deve ler o estado persistido
     render(<NormaRow name="IEC 61131" />);
     const swReloaded = screen.getByRole("switch", { name: "IEC 61131" });
-    expect(swReloaded).toHaveAttribute("data-state", "unchecked");
+    expect(swReloaded.getAttribute("data-state")).toBe("unchecked");
   });
 
   it("toggles independentes não interferem visualmente entre si", () => {
@@ -124,14 +124,14 @@ describe("Settings switches — visual state", () => {
     const opc = screen.getByRole("switch", { name: "OPC-UA" });
     const norma = screen.getByRole("switch", { name: "NBR 5410" });
 
-    expect(mqtt).toHaveAttribute("data-state", "checked");
-    expect(opc).toHaveAttribute("data-state", "checked");
-    expect(norma).toHaveAttribute("data-state", "checked");
+    expect(mqtt.getAttribute("data-state")).toBe("checked");
+    expect(opc.getAttribute("data-state")).toBe("checked");
+    expect(norma.getAttribute("data-state")).toBe("checked");
 
     act(() => mqtt.click());
 
-    expect(mqtt).toHaveAttribute("data-state", "unchecked");
-    expect(opc).toHaveAttribute("data-state", "checked");
-    expect(norma).toHaveAttribute("data-state", "checked");
+    expect(mqtt.getAttribute("data-state")).toBe("unchecked");
+    expect(opc.getAttribute("data-state")).toBe("checked");
+    expect(norma.getAttribute("data-state")).toBe("checked");
   });
 });
