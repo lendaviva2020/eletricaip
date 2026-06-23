@@ -1,16 +1,26 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, cleanup } from "@testing-library/react";
+import { useSyncExternalStore } from "react";
 import { Switch } from "@/components/ui/switch";
 
-// In-memory backing store shared across renders (simulates Supabase persistence).
+// In-memory backing store + pub/sub so the mocked hook re-renders on update.
 let store: Record<string, any> = {};
+const listeners = new Set<() => void>();
+const notify = () => listeners.forEach((l) => l());
 
 vi.mock("@/hooks/use-tenant-setting", () => ({
   useTenantSetting<T extends object>(key: string, defaults: T) {
-    const current = (store[key] ?? defaults) as T;
+    const value = useSyncExternalStore(
+      (cb) => {
+        listeners.add(cb);
+        return () => listeners.delete(cb);
+      },
+      () => (store[key] ?? defaults) as T,
+      () => (store[key] ?? defaults) as T,
+    );
     return {
-      value: current,
+      value,
       isLoading: false,
       isSaving: false,
       update: (patch: Partial<T> | ((prev: T) => T)) => {
@@ -20,11 +30,13 @@ vi.mock("@/hooks/use-tenant-setting", () => ({
             ? (patch as (p: T) => T)(prev)
             : ({ ...prev, ...patch } as T);
         store[key] = next;
+        notify();
         return next;
       },
     };
   },
 }));
+
 
 import { useSettingsStore } from "@/lib/settings-store";
 
