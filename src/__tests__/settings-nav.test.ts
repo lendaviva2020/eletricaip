@@ -62,10 +62,10 @@ describe("Settings page navigation", () => {
       const idx = settingsSrc.indexOf(`to="${path}"`);
       expect(idx).toBeGreaterThan(-1);
       const before = settingsSrc.slice(0, idx);
-      // either no guard, or the guard was already closed before this card
       const lastGuard = before.lastIndexOf("isPlatformAdmin &&");
+      if (lastGuard === -1) continue; // no guard at all → not gated
       const lastClose = before.lastIndexOf(")}");
-      expect(lastGuard).toBeLessThan(lastClose);
+      expect(lastClose).toBeGreaterThan(lastGuard);
     }
   });
 
