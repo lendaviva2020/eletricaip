@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import {
   LineChart,
   Line,
@@ -11,12 +13,13 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+import { getAiUsageSummary } from "@/lib/ai-usage.functions";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
       { title: "Analytics · EletricAI" },
-      { name: "description", content: "Métricas industriais consolidadas." },
+      { name: "description", content: "Métricas industriais e uso de IA por tenant." },
     ],
   }),
   component: AnalyticsPage,
@@ -29,11 +32,112 @@ const energy = Array.from({ length: 24 }, (_, i) => ({
 const oee = Array.from({ length: 14 }, (_, i) => ({ d: `D${i + 1}`, v: 70 + Math.random() * 25 }));
 
 function AnalyticsPage() {
+  const fetchUsage = useServerFn(getAiUsageSummary);
+  const { data: usage } = useQuery({
+    queryKey: ["ai-usage-summary"],
+    queryFn: () => fetchUsage({}),
+    staleTime: 60_000,
+  });
+
+  const usedPct =
+    usage && !usage.unlimited && usage.maxCredits > 0
+      ? Math.min(100, Math.round((usage.used / usage.maxCredits) * 100))
+      : 0;
+
   return (
     <div className="flex-1 overflow-auto scrollbar-thin p-6">
       <div className="max-w-[1400px] mx-auto space-y-6">
-        <h1 className="text-2xl font-semibold">Analytics industrial</h1>
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">Analytics industrial</h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              Energia, OEE, saúde dos PLCs e uso de IA do tenant atual.
+            </p>
+          </div>
+          {usage && (
+            <div className="text-right text-xs text-muted-foreground">
+              <div>
+                Plano <span className="text-foreground font-medium">{usage.plan.toUpperCase()}</span>
+              </div>
+              <div className="font-mono">
+                {usage.unlimited
+                  ? `${usage.used} créditos · ilimitado`
+                  : `${usage.used} / ${usage.maxCredits} créditos (${usedPct}%)`}
+              </div>
+            </div>
+          )}
+        </div>
 
+        {/* AI usage — dados reais */}
+        <div className="grid lg:grid-cols-2 gap-4">
+          <Card title="Tokens de IA consumidos (últimos 12 meses)">
+            <ResponsiveContainer>
+              <BarChart data={usage?.history ?? []}>
+                <XAxis
+                  dataKey="period"
+                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "oklch(0.20 0.015 250)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: 6,
+                    fontSize: 11,
+                  }}
+                />
+                <Bar
+                  dataKey="tokensUsed"
+                  fill="oklch(0.78 0.17 200)"
+                  radius={[4, 4, 0, 0]}
+                  name="Tokens"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+          <Card title="Custo de crédito por operação de IA">
+            <ResponsiveContainer>
+              <BarChart data={usage?.costsByOperation ?? []} layout="vertical">
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="operation"
+                  width={140}
+                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "oklch(0.20 0.015 250)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: 6,
+                    fontSize: 11,
+                  }}
+                />
+                <Bar
+                  dataKey="credits"
+                  fill="oklch(0.78 0.18 320)"
+                  radius={[0, 4, 4, 0]}
+                  name="Créditos"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+
+        {/* Industrial — placeholders enquanto agregamos telemetria real */}
         <div className="grid lg:grid-cols-2 gap-4">
           <Card title="Consumo de energia (24h)">
             <ResponsiveContainer>
