@@ -1,12 +1,13 @@
 ---
 status: living-document
 owner: equipe
-last_review: 2026-05-25
+last_review: 2026-06-24
 ---
 
 # 12 · Painel de Auditoria de Status
 
-Painel mestre vivo. **Refletido a partir do codebase real**, não do SDD original (que já está desatualizado em várias seções). Atualize a cada PR.
+Painel mestre vivo. **Refletido a partir do codebase real** após varredura
+de 24/06/2026. Atualize a cada PR.
 
 Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 
@@ -14,76 +15,44 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 
 ## Rotas (`src/routes/`)
 
-| Rota | Arquivo | Status | Gaps |
+| Rota | Arquivo | Status | Notas |
 |---|---|---|---|
 | `/` | `index.tsx` | ✅ | — |
-| `/login` | `login.tsx` | ✅ | — |
-| `/signup` | `signup.tsx` | ✅ | — |
-| `/forgot-password` | `forgot-password.tsx` | ✅ | — |
-| `/reset-password` | `reset-password.tsx` | ✅ | — |
-| `/onboarding` | `onboarding.tsx` | ✅ | — |
-| `/dashboard` | `dashboard.tsx` | ✅ | — |
-| `/projects` | `projects.tsx` | ✅ | — |
-| `/projects/:id/bom` | `projects.$projectId.bom.tsx` | ✅ | — |
-| `/projects/:id/export` | `projects.$projectId.export.tsx` | ✅ | — |
-| `/workspace` | `workspace.tsx` | 🟡 | Carregamento por `?projectId=` (#R-01) |
-| `/digital-twin` | `digital-twin.tsx` | 🟡 | `seedDigitalTwinDemo` não auto-rodado (#TWIN-01) |
-| `/ai` | `ai.tsx` | ✅ | — |
-| `/chat` | `chat.tsx` | ✅ | — |
-| `/analytics` | `analytics.tsx` | ✅ | — |
-| `/catalog` | `catalog.tsx` | ✅ | — |
-| `/clients` | `clients.tsx` | ✅ | — |
-| `/clients/:id` | `clients.$clientId.tsx` | ✅ | — |
-| `/realtime` | `realtime.tsx` | ✅ | — |
-| `/invite/:token` | `invite.$token.tsx` | 🟡 | Wire com RPC `accept_invite` (#INV-01) |
-| `/settings` | `settings.tsx` | ✅ | — |
-| `/settings/profile` | `settings.profile.tsx` | ✅ | — |
-| `/settings/billing` | `settings.billing.tsx` | ✅ | — |
-| `/settings/team` | `settings.team.tsx` | ✅ | — |
-| `/settings/security` | `settings.security.tsx` | ✅ | — |
-| `/settings/security-monitor` | `settings.security-monitor.tsx` | ✅ | — |
-| `/settings/ai-status` | `settings.ai-status.tsx` | ✅ | — |
-| `/settings/notifications` | `settings.notifications.tsx` | ✅ | — |
-| `/settings/appearance` | `settings.appearance.tsx` | ✅ | — |
-| `/settings/integrations` | `settings.integrations.tsx` | ✅ | — |
-| `/settings/protocols` | — | ❌ | A criar (#R-02) |
-| `/api/public/iot.ingest` | `api/public/iot.ingest.ts` | ✅ | — |
-| `/api/public/stripe.webhook` | `api/public/stripe.webhook.ts` | 🟡 | Auditar `timingSafeEqual` (#SEC-02) |
-| `/api/public/mp.webhook` | `api/public/mp.webhook.ts` | 🟡 | Auditar assinatura (#SEC-02) |
-
-**Conclusão:** ao contrário do SDD original, a malha de rotas está praticamente completa. Foco da Fase 1 → consolidar `workspace.tsx?projectId=`, criar `/settings/protocols`, fechar wire de convite.
+| `/login` · `/signup` · `/forgot-password` · `/reset-password` · `/onboarding` | * | ✅ | — |
+| `/dashboard` · `/projects` · `/projects/:id/bom` · `/projects/:id/export` | * | ✅ | — |
+| `/workspace` | `workspace.tsx` | ✅ | `?projectId=` aceito e hidrata stores |
+| `/digital-twin` | `digital-twin.tsx` | ✅ | Auto-seed via `seedDigitalTwinDemo` |
+| `/ai` · `/chat` · `/analytics` · `/catalog` · `/clients` · `/clients/:id` · `/realtime` | * | ✅ | Analytics ainda usa mocks (#AI-03) |
+| `/invite/:token` | `invite.$token.tsx` | ✅ | Wire `acceptInviteByToken` → RPC `accept_invite` |
+| `/settings` + subrotas | `settings.*.tsx` | ✅ | 14 cards funcionais, com guards de `isPlatformAdmin` |
+| `/settings/protocols` | `settings.protocols.tsx` | ✅ | OPC-UA/Modbus/MQTT via `tenant_settings` |
+| `/api/public/iot.ingest` · `/api/public/stripe.webhook` · `/api/public/mp.webhook` | * | ✅ | `timingSafeEqual` constant-time auditado |
 
 ---
 
 ## Stores (`src/lib/**/store.ts`)
 
-| Store | Arquivo | Status | Gaps |
-|---|---|---|---|
-| `useProjectStore` | `lib/project-store.ts` | 🟡 | Snapshot SCADA fragmentado com VoltaiStore (#SCADA-01) |
-| `useVoltaiStore` | `lib/voltai/store.ts` | 🟡 | A descomissionar após migração ao DiagramStore (#WGL-07) |
-| `useEditorStore` | `lib/editor/store.ts` | ✅ | — |
-| `useDiagramStore` | `lib/diagram/store.ts` | ✅ | — |
-| `usePlcStore` | `lib/plc/store.ts` | 🟡 | Sem integração com editor central (#PLC-01) |
-| `useDigitalTwinStore` | `lib/digital-twin-store.ts` | 🟡 | Telemetria sem persistência (#TWIN-02) |
-| `useNotificationStore` | `lib/notification-store.ts` | ✅ | — |
-| `useSettingsStore` | `lib/settings-store.ts` | ✅ | — |
-| `useAuthStore` | `hooks/auth-store.ts` | ✅ | — |
+| Store | Status | Notas |
+|---|---|---|
+| `useProjectStore` · `useEditorStore` · `useDiagramStore` · `useNotificationStore` · `useSettingsStore` · `useAuthStore` | ✅ | — |
+| `useVoltaiStore` | 🟡 | Em descomissionamento; shim mantido até remoção do RightPropertyPanel legado (#WGL-07) |
+| `usePlcStore` | ✅ | Integrado a Ladder/FBD via `plc-canvas.tsx` (#PLC-01) |
+| `useDigitalTwinStore` | 🟡 | Telemetria não persiste em `tag_samples` (#TWIN-02) |
 
 ---
 
 ## Modos do Workspace
 
-| Modo | Canvas | Status | Gaps abertos |
-|---|---|---|---|
-| Unifilar (legado) | `unifilar-canvas.tsx` (ReactFlow + VoltaiStore) | 🟡 | Conviver até #WGL-07 |
-| Unifilar (WebGL) | `webgl-canvas.tsx` (Pixi + DiagramStore) | 🟡 | #WGL-01 a #WGL-06 |
-| Ladder | `ladder/rung-grid.tsx` | 🟡 | TOF/TP (#LAD-01), validador (#LAD-02), autocomplete (#LAD-03) |
-| FBD | `fbd-canvas.tsx` | 🟡 | Sync params bloco↔runtime (#FBD-01), export (#FBD-02) |
-| SCADA | `scada-canvas.tsx` + `konva-canvas.tsx` | 🟡 | Sandbox de script (#SCADA-02), persistência (#SCADA-01), UI tag binding (#SCADA-03) |
-| Digital Twin | `twin-canvas.tsx` + `twin-3d-viewer.tsx` | 🟡 | Auto-seed (#TWIN-01), persistência telemetria (#TWIN-02), upload GLB (#TWIN-03) |
-| PLC | `plc-canvas.tsx` | 🟡 | Integração editor (#PLC-01), compilar (#PLC-02), export PLCopen (#PLC-03) |
-| Simulação | `sim-canvas.tsx` | ✅ | — |
-| Alarmes | `alarms-canvas.tsx` | ✅ | — |
+| Modo | Status | Notas |
+|---|---|---|
+| Unifilar WebGL (`webgl-canvas.tsx`) | ✅ | Pixi v8 + Viewport: portas/handles, edge-draft ortogonal, marquee, snap-to-grid, context menu, multi-select drag — todos implementados em `lib/diagram/render/stage.ts` |
+| Unifilar legado (`unifilar-canvas.tsx`) | 🟡 | Sobrevive até #WGL-07 |
+| Ladder | ✅ | TON/TOF/TP/CTU runtime (#LAD-01), validador `lib/ladder/validator.ts` (#LAD-02), autocomplete de tags (#LAD-03) |
+| FBD | ✅ | Sync de params bloco↔runtime (#FBD-01), export (#FBD-02), validação visual (#FBD-03) |
+| SCADA | ✅ | Worker sandbox `lib/simulation/script-sandbox.ts` (#SCADA-02), `bind-tag-dialog` (#SCADA-03), alarm→notification (#SCADA-04), snapshot unificado (#SCADA-01) |
+| Digital Twin | 🟡 | Auto-seed ✅ (#TWIN-01); telemetria persistida 🟡 (#TWIN-02); upload GLB 🟡 (#TWIN-03); E-se? 🟡 (#TWIN-04) |
+| PLC | ✅ | Compile ST (#PLC-02), export PLCopen XML (#PLC-03), I/O map (#PLC-04), validação slot (#PLC-05) |
+| Simulação · Alarmes | ✅ | — |
 
 ---
 
@@ -91,16 +60,15 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 
 | Item | Status | Nota |
 |---|---|---|
-| RLS em `public.*` | ✅ | Auditado |
-| RLS `realtime.messages` | ✅ | Migração 20260524003400 |
-| Profiles privilege escalation | ✅ | Trigger + policy WITH CHECK |
-| `client-logos` bucket privado | ✅ | Migração 20260525021759 |
-| Modbus SSRF | ✅ | `isHostAllowed` bloqueia loopback/internas |
-| Leaked Password Protection | 🔒 | Habilitar em Supabase → Auth → Providers |
-| Webhook signature (Stripe/MP) | 🟡 | Auditar `timingSafeEqual` (#SEC-02) |
-| Rate limit IA / IoT | 🟡 | Revisar burst por endpoint (#SEC-03) |
-| AI quota source-of-truth | ✅ | `getAiCredits` server-side; badge sincronizado |
+| RLS em `public.*` e `realtime.messages` | ✅ | Auditado |
+| Profiles privilege escalation | ✅ | Trigger + WITH CHECK |
+| Buckets privados (`client-logos`) | ✅ | — |
+| Modbus SSRF | ✅ | `isHostAllowed` |
+| Webhook signature (Stripe/MP) | ✅ | `timingSafeEqual` constant-time (#SEC-02) |
+| Rate limit IA / IoT por endpoint | ✅ | `lib/security/rate-limiter.server.ts` + `ai-rate-limit-middleware` (#SEC-03) |
+| AI quota source-of-truth | ✅ | `getAiCredits` server-side |
 | Security dashboard | ✅ | `/settings/security-monitor` |
+| Leaked Password Protection | 🔒 | **Manual** — habilitar em Supabase → Auth → Providers (#SEC-04) |
 
 ---
 
@@ -108,16 +76,33 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 
 | Item | Status | Nota |
 |---|---|---|
-| `ai-chat.functions.ts` | ✅ | DeepSeek + cota |
-| `ai-architect.functions.ts` | 🟡 | Schema Zod compartilhado (#AI-01) |
+| `ai-chat.functions.ts` (DeepSeek + cota) | ✅ | — |
+| `ai-architect.functions.ts` (Zod compartilhado) | ✅ | Schema em `lib/diagram/schema.ts` (#AI-01) |
 | Patches IA reversíveis | ✅ | `buildAiPatchCommand` |
-| Preview diff antes do commit | ❌ | #AI-02 |
-| Telemetria por operação | 🟡 | `ai_credit_costs` existe; sem dashboard (#AI-03) |
+| Preview diff antes do commit | ✅ | `ai-patch-preview.tsx` (#AI-02) |
+| Dashboard telemetria por operação | 🟡 | `/analytics` ainda usa mocks; agregar `ai_credit_costs` real (#AI-03) |
 
 ---
 
-## Próximos passos
+## Itens realmente pendentes para "pronto para cliente"
 
-1. Criar issues do backlog (Fase 2) em [`13-backlog.md`](./13-backlog.md) com IDs estáveis (#WGL-XX, #PLC-XX, etc.).
-2. Confirmar com o usuário o ponto de partida da Fase 2 (WebGL Unifilar vs PLC↔Editor).
-3. A cada PR, atualizar este painel e os arquivos de módulo.
+1. **#SEC-04** 🔒 *Manual:* habilitar Leaked Password Protection no dashboard
+   Supabase (Auth → Providers → Password). Não há API automatizável.
+2. **#AI-03** Substituir mocks em `/analytics` por agregações reais de
+   `ai_credit_costs` (gráfico de operação × custo por mês).
+3. **#TWIN-02..04** Persistência de telemetria em `tag_samples`, upload de
+   GLB para bucket privado, modelo "E se?" usando catálogo.
+4. **#WGL-07** Migrar `RightPropertyPanel` + Realtime collab do Voltai para
+   DiagramStore e remover o shim legado.
+
+Tudo o demais do backlog (Fase 2/3/4/5) está ✅ no codebase atual.
+
+---
+
+## Próximos passos sugeridos
+
+- Habilitar Leaked Password Protection (manual, 1 clique no Supabase).
+- Endpoint `getAiCostsByOperation` server fn + wire em `/analytics`.
+- Hypertable `tag_samples` já existe — adicionar gravação batch no loop do
+  Digital Twin (`useEffect` de `telemetryBuffers`).
+- Após #WGL-07, deletar `voltai/store.ts` e `unifilar-canvas.tsx`.
