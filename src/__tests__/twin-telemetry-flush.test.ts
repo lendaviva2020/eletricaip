@@ -44,9 +44,10 @@ describe("useTwinTelemetryPersistence (#TWIN-02)", () => {
     });
 
     expect(flushMock).toHaveBeenCalledTimes(1);
-    const call = (flushMock.mock.calls[0] ?? [])[0] as unknown as {
-      data: { samples: unknown[]; projectId: string };
-    };
+    const calls = flushMock.mock.calls as unknown as Array<
+      [{ data: { samples: unknown[]; projectId: string } }]
+    >;
+    const call = calls[0][0];
     expect(call.data.projectId).toBe("00000000-0000-0000-0000-000000000001");
     expect(call.data.samples.length).toBeLessThanOrEqual(200);
     expect(call.data.samples.length).toBeGreaterThan(0);
