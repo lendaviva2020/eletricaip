@@ -23,12 +23,12 @@ export function useTwinTelemetryPersistence(opts?: { intervalMs?: number }) {
   const inFlightRef = useRef(false);
 
   useEffect(() => {
-    // Captura novas amostras via diff em telemetryBuffers + lastRealtimeUpdate.
-    const unsub = useDigitalTwinStore.subscribe((state, prev) => {
-      if (state.lastRealtimeUpdate === prev.lastRealtimeUpdate) return;
+    // Captura novas amostras observando lastRealtimeUpdate.
+    const unsub = useDigitalTwinStore.subscribe((state) => {
+      const update = state.lastRealtimeUpdate;
+      if (update == null || update <= lastSeenRef.current) return;
       const since = lastSeenRef.current;
-      const now = state.lastRealtimeUpdate ?? Date.now();
-      lastSeenRef.current = now;
+      lastSeenRef.current = update;
 
       for (const buf of Object.values(state.telemetryBuffers)) {
         for (const s of buf.samples) {
