@@ -32,16 +32,12 @@ describe("useTwinTelemetryPersistence (#TWIN-02)", () => {
   });
 
   it("flushes pending samples in batches of up to 200 every 5s", async () => {
-    const { result } = renderHook(() => useTwinTelemetryPersistence({ intervalMs: 5000 }));
-    void result;
+    renderHook(() => useTwinTelemetryPersistence({ intervalMs: 5000 }));
 
     act(() => {
       const push = useDigitalTwinStore.getState().pushTelemetry;
       for (let i = 0; i < 250; i++) push(`TAG_${i % 5}`, i);
     });
-
-    // eslint-disable-next-line no-console
-    console.log("buffers:", Object.keys(useDigitalTwinStore.getState().telemetryBuffers).length);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5100);
@@ -49,10 +45,6 @@ describe("useTwinTelemetryPersistence (#TWIN-02)", () => {
 
     expect(flushMock).toHaveBeenCalledTimes(1);
     const call = flushMock.mock.calls[0]?.[0] as { data: { samples: unknown[]; projectId: string } };
-    expect(call.data.projectId).toBe("00000000-0000-0000-0000-000000000001");
-    expect(call.data.samples.length).toBeLessThanOrEqual(200);
-    expect(call.data.samples.length).toBeGreaterThan(0);
-  });
     expect(call.data.projectId).toBe("00000000-0000-0000-0000-000000000001");
     expect(call.data.samples.length).toBeLessThanOrEqual(200);
     expect(call.data.samples.length).toBeGreaterThan(0);
