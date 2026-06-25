@@ -19,20 +19,20 @@ const HARD_CAP = 500;
 export function useTwinTelemetryPersistence(opts?: { intervalMs?: number }) {
   const flush = useServerFn(flushTwinTelemetry);
   const pendingRef = useRef<PendingSample[]>([]);
-  const lastSeenRef = useRef<number>(Date.now());
+  const lastSeenRef = useRef<number>(0);
   const inFlightRef = useRef(false);
 
   useEffect(() => {
     // Captura novas amostras observando lastRealtimeUpdate.
     const unsub = useDigitalTwinStore.subscribe((state) => {
       const update = state.lastRealtimeUpdate;
-      if (update == null || update <= lastSeenRef.current) return;
+      if (update == null || update < lastSeenRef.current) return;
       const since = lastSeenRef.current;
       lastSeenRef.current = update;
 
       for (const buf of Object.values(state.telemetryBuffers)) {
         for (const s of buf.samples) {
-          if (s.ts > since) {
+          if (s.ts >= since) {
             pendingRef.current.push({
               tag_name: buf.tag,
               value: typeof s.value === "number" ? s.value : Number(s.value) || 0,
