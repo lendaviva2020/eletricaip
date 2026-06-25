@@ -37,7 +37,7 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 | `useProjectStore` · `useEditorStore` · `useDiagramStore` · `useNotificationStore` · `useSettingsStore` · `useAuthStore` | ✅ | — |
 | `useVoltaiStore` | 🟡 | Em descomissionamento; shim mantido até remoção do RightPropertyPanel legado (#WGL-07) |
 | `usePlcStore` | ✅ | Integrado a Ladder/FBD via `plc-canvas.tsx` (#PLC-01) |
-| `useDigitalTwinStore` | 🟡 | Telemetria não persiste em `tag_samples` (#TWIN-02) |
+| `useDigitalTwinStore` | 🟢 | Telemetria persistida via `flushTwinTelemetry` (#TWIN-02 ✅) |
 
 ---
 
@@ -50,7 +50,7 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 | Ladder | ✅ | TON/TOF/TP/CTU runtime (#LAD-01), validador `lib/ladder/validator.ts` (#LAD-02), autocomplete de tags (#LAD-03) |
 | FBD | ✅ | Sync de params bloco↔runtime (#FBD-01), export (#FBD-02), validação visual (#FBD-03) |
 | SCADA | ✅ | Worker sandbox `lib/simulation/script-sandbox.ts` (#SCADA-02), `bind-tag-dialog` (#SCADA-03), alarm→notification (#SCADA-04), snapshot unificado (#SCADA-01) |
-| Digital Twin | 🟡 | Auto-seed ✅ (#TWIN-01); telemetria persistida 🟡 (#TWIN-02); upload GLB 🟡 (#TWIN-03); E-se? 🟡 (#TWIN-04) |
+| Digital Twin | 🟡 | Auto-seed ✅ (#TWIN-01); telemetria persistida ✅ (#TWIN-02); upload GLB 🟡 (#TWIN-03); E-se? 🟡 (#TWIN-04) |
 | PLC | ✅ | Compile ST (#PLC-02), export PLCopen XML (#PLC-03), I/O map (#PLC-04), validação slot (#PLC-05) |
 | Simulação · Alarmes | ✅ | — |
 

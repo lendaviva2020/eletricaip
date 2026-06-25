@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { LazyTwin3DViewer as Twin3DViewer } from "@/components/canvases/lazy";
 import { useDigitalTwinStore, type HotspotConfig, type TwinAlarm } from "@/lib/digital-twin-store";
+import { useTwinTelemetryPersistence } from "@/hooks/use-twin-telemetry-persistence";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,10 @@ function DigitalTwinPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const seeded = useRef(false);
+
+  useTwinTelemetryPersistence();
+
+
 
   useEffect(() => {
     if (!seeded.current) {
