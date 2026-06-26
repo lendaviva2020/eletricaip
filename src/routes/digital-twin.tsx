@@ -245,12 +245,23 @@ function DigitalTwinPage() {
           >
             {showFlowLines ? <Radio className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+            className="hidden"
+            onChange={handleFilePicked}
+          />
           <button
             type="button"
-            className="h-7 px-2 rounded border border-border hover:bg-accent text-[10px] font-mono text-muted-foreground flex items-center gap-1"
+            onClick={handleImportClick}
+            disabled={uploading}
+            className="h-7 px-2 rounded border border-border hover:bg-accent text-[10px] font-mono text-muted-foreground flex items-center gap-1 disabled:opacity-50"
+            title={project?.id ? "Importar modelo GLB/GLTF" : "Selecione um projeto"}
           >
-            <Upload className="h-3 w-3" /> Importar
+            <Upload className="h-3 w-3" /> {uploading ? "Enviando..." : "Importar"}
           </button>
+
         </div>
       </header>
 
