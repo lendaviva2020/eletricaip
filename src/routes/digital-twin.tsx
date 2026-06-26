@@ -27,10 +27,18 @@ import {
 import { LazyTwin3DViewer as Twin3DViewer } from "@/components/canvases/lazy";
 import { useDigitalTwinStore, type HotspotConfig, type TwinAlarm } from "@/lib/digital-twin-store";
 import { useTwinTelemetryPersistence } from "@/hooks/use-twin-telemetry-persistence";
+import { useCurrentProject } from "@/lib/current-project";
+import {
+  createTwinModelUploadUrl,
+  getTwinModelSignedUrl,
+} from "@/lib/digital-twin.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 
 export const Route = createFileRoute("/digital-twin")({
   head: () => ({
@@ -47,9 +55,60 @@ function DigitalTwinPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const seeded = useRef(false);
 
   useTwinTelemetryPersistence();
+
+  const project = useCurrentProject((s) => s.project);
+  const setModelUrl = useDigitalTwinStore((s) => s.setModelUrl);
+  const requestUploadUrl = useServerFn(createTwinModelUploadUrl);
+  const requestSignedUrl = useServerFn(getTwinModelSignedUrl);
+
+  const handleImportClick = () => {
+    if (!project?.id) {
+      toast.error("Selecione um projeto antes de importar um modelo 3D.");
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFilePicked = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !project?.id) return;
+    if (!/\.(glb|gltf)$/i.test(file.name)) {
+      toast.error("Apenas arquivos .glb ou .gltf são suportados.");
+      return;
+    }
+    if (file.size > 75 * 1024 * 1024) {
+      toast.error("Modelo excede o limite de 75 MB.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const { signedUrl, path } = await requestUploadUrl({
+        data: { projectId: project.id, filename: file.name, sizeBytes: file.size },
+      });
+      const upload = await fetch(signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "model/gltf-binary" },
+        body: file,
+      });
+      if (!upload.ok) throw new Error(`upload_failed_${upload.status}`);
+      const read = await requestSignedUrl({ data: { path, expiresIn: 3600 } });
+      setModelUrl(read.signedUrl);
+      toast.success("Modelo 3D importado com sucesso.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Falha no upload";
+      toast.error(`Erro ao importar modelo: ${msg}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+
 
 
 
@@ -186,12 +245,23 @@ function DigitalTwinPage() {
           >
             {showFlowLines ? <Radio className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+            className="hidden"
+            onChange={handleFilePicked}
+          />
           <button
             type="button"
-            className="h-7 px-2 rounded border border-border hover:bg-accent text-[10px] font-mono text-muted-foreground flex items-center gap-1"
+            onClick={handleImportClick}
+            disabled={uploading}
+            className="h-7 px-2 rounded border border-border hover:bg-accent text-[10px] font-mono text-muted-foreground flex items-center gap-1 disabled:opacity-50"
+            title={project?.id ? "Importar modelo GLB/GLTF" : "Selecione um projeto"}
           >
-            <Upload className="h-3 w-3" /> Importar
+            <Upload className="h-3 w-3" /> {uploading ? "Enviando..." : "Importar"}
           </button>
+
         </div>
       </header>
 
