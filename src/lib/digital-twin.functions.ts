@@ -60,41 +60,29 @@ const UploadUrlInput = z.object({
   sizeBytes: z.number().int().positive().max(MAX_BYTES),
 });
 
-async function resolveTenantForProject(
-  supabase: Awaited<ReturnType<typeof getAuth>>["supabase"],
-  userId: string,
-  projectId: string,
-) {
-  const { data: project, error } = await supabase
-    .from("projects")
-    .select("id, tenant_id")
-    .eq("id", projectId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!project?.tenant_id) throw new Error("project_not_found_or_forbidden");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("tenant_id")
-    .eq("id", userId)
-    .maybeSingle();
-  if (!profile || profile.tenant_id !== project.tenant_id) {
-    throw new Error("forbidden");
-  }
-  return project.tenant_id as string;
-}
-
-// Helper só p/ tipar o retorno de context.supabase no helper acima.
-async function getAuth() {
-  return { supabase: null as never };
-}
-
 export const createTwinModelUploadUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => UploadUrlInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const tenantId = await resolveTenantForProject(supabase as never, userId, data.projectId);
+
+    const { data: project, error: projErr } = await supabase
+      .from("projects")
+      .select("id, tenant_id")
+      .eq("id", data.projectId)
+      .maybeSingle();
+    if (projErr) throw new Error(projErr.message);
+    if (!project?.tenant_id) throw new Error("project_not_found_or_forbidden");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("tenant_id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!profile || profile.tenant_id !== project.tenant_id) {
+      throw new Error("forbidden");
+    }
+    const tenantId = project.tenant_id;
 
     const safe = data.filename.replace(/[^A-Za-z0-9._-]/g, "_");
     const path = `${tenantId}/${data.projectId}/${Date.now()}-${safe}`;
@@ -106,6 +94,7 @@ export const createTwinModelUploadUrl = createServerFn({ method: "POST" })
 
     return { path, token: signed.token, signedUrl: signed.signedUrl, bucket: BUCKET };
   });
+
 
 const SignedReadInput = z.object({
   path: z.string().min(1).max(512),
