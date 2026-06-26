@@ -55,9 +55,60 @@ function DigitalTwinPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const seeded = useRef(false);
 
   useTwinTelemetryPersistence();
+
+  const project = useCurrentProject((s) => s.project);
+  const setModelUrl = useDigitalTwinStore((s) => s.setModelUrl);
+  const requestUploadUrl = useServerFn(createTwinModelUploadUrl);
+  const requestSignedUrl = useServerFn(getTwinModelSignedUrl);
+
+  const handleImportClick = () => {
+    if (!project?.id) {
+      toast.error("Selecione um projeto antes de importar um modelo 3D.");
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFilePicked = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !project?.id) return;
+    if (!/\.(glb|gltf)$/i.test(file.name)) {
+      toast.error("Apenas arquivos .glb ou .gltf são suportados.");
+      return;
+    }
+    if (file.size > 75 * 1024 * 1024) {
+      toast.error("Modelo excede o limite de 75 MB.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const { signedUrl, path } = await requestUploadUrl({
+        data: { projectId: project.id, filename: file.name, sizeBytes: file.size },
+      });
+      const upload = await fetch(signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "model/gltf-binary" },
+        body: file,
+      });
+      if (!upload.ok) throw new Error(`upload_failed_${upload.status}`);
+      const read = await requestSignedUrl({ data: { path, expiresIn: 3600 } });
+      setModelUrl(read.signedUrl);
+      toast.success("Modelo 3D importado com sucesso.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Falha no upload";
+      toast.error(`Erro ao importar modelo: ${msg}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+
 
 
 
