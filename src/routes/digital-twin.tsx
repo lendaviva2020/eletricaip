@@ -27,10 +27,18 @@ import {
 import { LazyTwin3DViewer as Twin3DViewer } from "@/components/canvases/lazy";
 import { useDigitalTwinStore, type HotspotConfig, type TwinAlarm } from "@/lib/digital-twin-store";
 import { useTwinTelemetryPersistence } from "@/hooks/use-twin-telemetry-persistence";
+import { useCurrentProject } from "@/lib/current-project";
+import {
+  createTwinModelUploadUrl,
+  getTwinModelSignedUrl,
+} from "@/lib/digital-twin.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 
 export const Route = createFileRoute("/digital-twin")({
   head: () => ({
