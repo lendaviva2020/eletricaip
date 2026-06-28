@@ -273,8 +273,18 @@ function DigitalTwinPage() {
           >
             <Upload className="h-3 w-3" /> {uploading ? "Enviando..." : "Importar"}
           </button>
-
+          <button
+            type="button"
+            onClick={() => setWhatIfOpen((o) => !o)}
+            className={`h-7 px-2 rounded border border-border hover:bg-accent text-[10px] font-mono flex items-center gap-1 ${
+              whatIfOpen || whatIfEnabled ? "text-warning border-warning/50" : "text-muted-foreground"
+            }`}
+            title="Modo E-se? (simulação hipotética)"
+          >
+            <FlaskConical className="h-3 w-3" /> E-se?
+          </button>
         </div>
+
       </header>
 
       <div className="flex-1 flex overflow-hidden">
