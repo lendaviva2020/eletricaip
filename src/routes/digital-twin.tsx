@@ -158,6 +158,8 @@ function DigitalTwinPage() {
   const toggleFlowLines = useDigitalTwinStore((s) => s.toggleFlowLines);
   const acknowledgeAlarm = useDigitalTwinStore((s) => s.acknowledgeAlarm);
   const clearAlarm = useDigitalTwinStore((s) => s.clearAlarm);
+  const whatIfEnabled = useDigitalTwinStore((s) => s.whatIfEnabled);
+
 
   const unackedAlarms = alarms.filter((a) => !a.acknowledged);
 
