@@ -221,7 +221,13 @@ function DigitalTwinPage() {
             )}
             {realtimeConnected ? "Live" : "Offline"}
           </Badge>
+          {whatIfEnabled && (
+            <Badge variant="outline" className="gap-1 text-[10px] border-warning text-warning">
+              <FlaskConical className="h-3 w-3" /> E-se?
+            </Badge>
+          )}
         </div>
+
 
         <div className="flex items-center gap-1.5">
           <div className="flex rounded-md border border-border overflow-hidden">
