@@ -90,9 +90,7 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
    Supabase (Auth → Providers → Password). Não há API automatizável.
 2. **#AI-03** Substituir mocks em `/analytics` por agregações reais de
    `ai_credit_costs` (gráfico de operação × custo por mês).
-3. **#TWIN-02..04** Persistência de telemetria em `tag_samples`, upload de
-   GLB para bucket privado, modelo "E se?" usando catálogo.
-4. **#WGL-07** Migrar `RightPropertyPanel` + Realtime collab do Voltai para
+3. **#WGL-07** Migrar `RightPropertyPanel` + Realtime collab do Voltai para
    DiagramStore e remover o shim legado.
 
 Tudo o demais do backlog (Fase 2/3/4/5) está ✅ no codebase atual.
