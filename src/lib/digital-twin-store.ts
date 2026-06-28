@@ -56,6 +56,15 @@ interface TwinTelemetryBuffer {
   samples: TwinTelemetrySample[];
 }
 
+export type WhatIfValue = number | boolean | string;
+
+export interface WhatIfScenario {
+  id: string;
+  name: string;
+  overrides: Record<string, WhatIfValue>;
+  savedAt: number;
+}
+
 interface DigitalTwinState {
   mappings: TwinMapping[];
   alarms: TwinAlarm[];
@@ -68,6 +77,12 @@ interface DigitalTwinState {
   lastRealtimeUpdate: number | null;
   modelUrl: string | null;
   nameplates: Record<string, MotorNameplate>;
+
+  // #TWIN-04 "E-se?" — overrides locais que substituem o valor real apenas
+  // na visualização. Persistência de telemetria é pausada quando ativo.
+  whatIfEnabled: boolean;
+  whatIfOverrides: Record<string, WhatIfValue>;
+  whatIfScenarios: WhatIfScenario[];
 
   addMapping: (mapping: TwinMapping) => void;
   removeMapping: (equipmentId: string) => void;
@@ -86,7 +101,17 @@ interface DigitalTwinState {
   setRealtimeConnected: (connected: boolean) => void;
   setModelUrl: (url: string | null) => void;
   upsertNameplate: (nameplate: MotorNameplate) => void;
+
+  // #TWIN-04
+  setWhatIfEnabled: (enabled: boolean) => void;
+  setWhatIfOverride: (tag: string, value: WhatIfValue) => void;
+  clearWhatIfOverride: (tag: string) => void;
+  resetWhatIf: () => void;
+  saveWhatIfScenario: (name: string) => void;
+  loadWhatIfScenario: (id: string) => void;
+  deleteWhatIfScenario: (id: string) => void;
 }
+
 
 const MAX_SAMPLES = 60; // 60 samples per buffer
 
