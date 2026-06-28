@@ -129,6 +129,10 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
       lastRealtimeUpdate: null,
       modelUrl: null,
       nameplates: {},
+      whatIfEnabled: false,
+      whatIfOverrides: {},
+      whatIfScenarios: [],
+
 
       addMapping: (mapping) => set((s) => ({ mappings: [...s.mappings, mapping] })),
 
