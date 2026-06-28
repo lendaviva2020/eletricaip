@@ -59,7 +59,9 @@ export function useTwinTelemetryPersistence(opts?: { intervalMs?: number }) {
 
     async function doFlush() {
       if (inFlightRef.current || pendingRef.current.length === 0) return;
+      if (useDigitalTwinStore.getState().whatIfEnabled) return;
       const projectId = useCurrentProject.getState().project?.id;
+
       if (!projectId) {
         // Sem projeto ativo: descarta para não acumular.
         if (pendingRef.current.length > HARD_CAP) {
