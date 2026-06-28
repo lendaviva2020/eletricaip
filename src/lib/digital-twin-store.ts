@@ -275,3 +275,16 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
     },
   ),
 );
+
+/**
+ * Retorna o valor "efetivo" de uma tag: override do modo What-If quando
+ * ativo, senão o último valor real do buffer de telemetria.
+ */
+export function getEffectiveTagValue(tag: string): WhatIfValue | null {
+  const s = useDigitalTwinStore.getState();
+  if (s.whatIfEnabled && tag in s.whatIfOverrides) return s.whatIfOverrides[tag];
+  const buf = s.telemetryBuffers[tag];
+  if (!buf || buf.samples.length === 0) return null;
+  return buf.samples[buf.samples.length - 1].value;
+}
+
