@@ -212,9 +212,54 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
         set((s) => ({
           nameplates: { ...s.nameplates, [nameplate.equipmentId]: nameplate },
         })),
+
+      setWhatIfEnabled: (enabled) =>
+        set((s) => ({
+          whatIfEnabled: enabled,
+          whatIfOverrides: enabled ? s.whatIfOverrides : {},
+        })),
+
+      setWhatIfOverride: (tag, value) =>
+        set((s) => ({
+          whatIfEnabled: true,
+          whatIfOverrides: { ...s.whatIfOverrides, [tag]: value },
+        })),
+
+      clearWhatIfOverride: (tag) =>
+        set((s) => {
+          const next = { ...s.whatIfOverrides };
+          delete next[tag];
+          return { whatIfOverrides: next };
+        }),
+
+      resetWhatIf: () => set({ whatIfEnabled: false, whatIfOverrides: {} }),
+
+      saveWhatIfScenario: (name) =>
+        set((s) => ({
+          whatIfScenarios: [
+            ...s.whatIfScenarios.filter((sc) => sc.name !== name),
+            {
+              id: `wi_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+              name,
+              overrides: { ...s.whatIfOverrides },
+              savedAt: Date.now(),
+            },
+          ].slice(-20),
+        })),
+
+      loadWhatIfScenario: (id) =>
+        set((s) => {
+          const sc = s.whatIfScenarios.find((x) => x.id === id);
+          if (!sc) return s;
+          return { whatIfEnabled: true, whatIfOverrides: { ...sc.overrides } };
+        }),
+
+      deleteWhatIfScenario: (id) =>
+        set((s) => ({ whatIfScenarios: s.whatIfScenarios.filter((x) => x.id !== id) })),
     }),
     {
       name: "eletricai-digital-twin",
+
       partialize: (state) => ({
         mappings: state.mappings,
         alarms: state.alarms,
