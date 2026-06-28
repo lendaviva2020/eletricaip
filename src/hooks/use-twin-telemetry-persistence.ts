@@ -25,6 +25,8 @@ export function useTwinTelemetryPersistence(opts?: { intervalMs?: number }) {
   useEffect(() => {
     // Captura novas amostras observando lastRealtimeUpdate.
     const unsub = useDigitalTwinStore.subscribe((state) => {
+      // #TWIN-04: Não persistir telemetria enquanto modo What-If estiver ativo.
+      if (state.whatIfEnabled) return;
       const update = state.lastRealtimeUpdate;
       if (update == null || update < lastSeenRef.current) return;
       const since = lastSeenRef.current;
@@ -50,13 +52,16 @@ export function useTwinTelemetryPersistence(opts?: { intervalMs?: number }) {
     return unsub;
   }, []);
 
+
   useEffect(() => {
     const interval = opts?.intervalMs ?? FLUSH_INTERVAL_MS;
     let cancelled = false;
 
     async function doFlush() {
       if (inFlightRef.current || pendingRef.current.length === 0) return;
+      if (useDigitalTwinStore.getState().whatIfEnabled) return;
       const projectId = useCurrentProject.getState().project?.id;
+
       if (!projectId) {
         // Sem projeto ativo: descarta para não acumular.
         if (pendingRef.current.length > HARD_CAP) {

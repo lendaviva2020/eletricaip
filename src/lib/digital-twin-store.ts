@@ -56,6 +56,15 @@ interface TwinTelemetryBuffer {
   samples: TwinTelemetrySample[];
 }
 
+export type WhatIfValue = number | boolean | string;
+
+export interface WhatIfScenario {
+  id: string;
+  name: string;
+  overrides: Record<string, WhatIfValue>;
+  savedAt: number;
+}
+
 interface DigitalTwinState {
   mappings: TwinMapping[];
   alarms: TwinAlarm[];
@@ -68,6 +77,12 @@ interface DigitalTwinState {
   lastRealtimeUpdate: number | null;
   modelUrl: string | null;
   nameplates: Record<string, MotorNameplate>;
+
+  // #TWIN-04 "E-se?" — overrides locais que substituem o valor real apenas
+  // na visualização. Persistência de telemetria é pausada quando ativo.
+  whatIfEnabled: boolean;
+  whatIfOverrides: Record<string, WhatIfValue>;
+  whatIfScenarios: WhatIfScenario[];
 
   addMapping: (mapping: TwinMapping) => void;
   removeMapping: (equipmentId: string) => void;
@@ -86,7 +101,17 @@ interface DigitalTwinState {
   setRealtimeConnected: (connected: boolean) => void;
   setModelUrl: (url: string | null) => void;
   upsertNameplate: (nameplate: MotorNameplate) => void;
+
+  // #TWIN-04
+  setWhatIfEnabled: (enabled: boolean) => void;
+  setWhatIfOverride: (tag: string, value: WhatIfValue) => void;
+  clearWhatIfOverride: (tag: string) => void;
+  resetWhatIf: () => void;
+  saveWhatIfScenario: (name: string) => void;
+  loadWhatIfScenario: (id: string) => void;
+  deleteWhatIfScenario: (id: string) => void;
 }
+
 
 const MAX_SAMPLES = 60; // 60 samples per buffer
 
@@ -104,6 +129,10 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
       lastRealtimeUpdate: null,
       modelUrl: null,
       nameplates: {},
+      whatIfEnabled: false,
+      whatIfOverrides: {},
+      whatIfScenarios: [],
+
 
       addMapping: (mapping) => set((s) => ({ mappings: [...s.mappings, mapping] })),
 
@@ -183,9 +212,54 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
         set((s) => ({
           nameplates: { ...s.nameplates, [nameplate.equipmentId]: nameplate },
         })),
+
+      setWhatIfEnabled: (enabled) =>
+        set((s) => ({
+          whatIfEnabled: enabled,
+          whatIfOverrides: enabled ? s.whatIfOverrides : {},
+        })),
+
+      setWhatIfOverride: (tag, value) =>
+        set((s) => ({
+          whatIfEnabled: true,
+          whatIfOverrides: { ...s.whatIfOverrides, [tag]: value },
+        })),
+
+      clearWhatIfOverride: (tag) =>
+        set((s) => {
+          const next = { ...s.whatIfOverrides };
+          delete next[tag];
+          return { whatIfOverrides: next };
+        }),
+
+      resetWhatIf: () => set({ whatIfEnabled: false, whatIfOverrides: {} }),
+
+      saveWhatIfScenario: (name) =>
+        set((s) => ({
+          whatIfScenarios: [
+            ...s.whatIfScenarios.filter((sc) => sc.name !== name),
+            {
+              id: `wi_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+              name,
+              overrides: { ...s.whatIfOverrides },
+              savedAt: Date.now(),
+            },
+          ].slice(-20),
+        })),
+
+      loadWhatIfScenario: (id) =>
+        set((s) => {
+          const sc = s.whatIfScenarios.find((x) => x.id === id);
+          if (!sc) return s;
+          return { whatIfEnabled: true, whatIfOverrides: { ...sc.overrides } };
+        }),
+
+      deleteWhatIfScenario: (id) =>
+        set((s) => ({ whatIfScenarios: s.whatIfScenarios.filter((x) => x.id !== id) })),
     }),
     {
       name: "eletricai-digital-twin",
+
       partialize: (state) => ({
         mappings: state.mappings,
         alarms: state.alarms,
@@ -195,7 +269,22 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
         telemetryBuffers: state.telemetryBuffers,
         modelUrl: state.modelUrl,
         nameplates: state.nameplates,
+        whatIfScenarios: state.whatIfScenarios,
       }),
+
     },
   ),
 );
+
+/**
+ * Retorna o valor "efetivo" de uma tag: override do modo What-If quando
+ * ativo, senão o último valor real do buffer de telemetria.
+ */
+export function getEffectiveTagValue(tag: string): WhatIfValue | null {
+  const s = useDigitalTwinStore.getState();
+  if (s.whatIfEnabled && tag in s.whatIfOverrides) return s.whatIfOverrides[tag];
+  const buf = s.telemetryBuffers[tag];
+  if (!buf || buf.samples.length === 0) return null;
+  return buf.samples[buf.samples.length - 1].value;
+}
+
