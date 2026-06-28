@@ -38,6 +38,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WhatIfPanel } from "@/components/digital-twin/what-if-panel";
+
 
 
 export const Route = createFileRoute("/digital-twin")({
