@@ -473,7 +473,10 @@ function DigitalTwinPage() {
             </div>
           </aside>
         )}
+
+        {whatIfOpen && <WhatIfPanel onClose={() => setWhatIfOpen(false)} />}
       </div>
+
     </div>
   );
 }
