@@ -269,7 +269,9 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
         telemetryBuffers: state.telemetryBuffers,
         modelUrl: state.modelUrl,
         nameplates: state.nameplates,
+        whatIfScenarios: state.whatIfScenarios,
       }),
+
     },
   ),
 );
