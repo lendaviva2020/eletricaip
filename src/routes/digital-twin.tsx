@@ -56,10 +56,12 @@ function DigitalTwinPage() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [whatIfOpen, setWhatIfOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const seeded = useRef(false);
+
 
   useTwinTelemetryPersistence();
 
