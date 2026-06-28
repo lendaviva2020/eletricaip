@@ -1,46 +1,41 @@
-# #TWIN-02 — Persistência de telemetria do Digital Twin
+## Próxima tarefa do plano: #TWIN-04 — Motor "E-se?" no Digital Twin
 
-## Objetivo
-Gravar as amostras geradas em `pushTelemetry` do `useDigitalTwinStore` na hypertable particionada `public.tag_samples` via RPC `batch_insert_tag_samples`, com flush em lote, respeitando tenant/projeto ativo e RLS.
+Seguindo a ordem da auditoria (`docs/sdd/12-auditoria-status.md`), a próxima entrega é o motor de simulação hipotética que permite ao operador alterar valores de tags manualmente e ver o impacto visual nos hotspots do gêmeo digital, sem afetar a telemetria real persistida.
 
-## Entregas
+### Objetivo
+Permitir overrides manuais em tags do `useDigitalTwinStore` (modo "What-if"), com isolamento total da telemetria real, indicação visual clara e capacidade de reverter.
 
-### 1. Server function `flushTwinTelemetry`
-Arquivo novo: `src/lib/digital-twin.functions.ts`
-- `createServerFn({ method: 'POST' })` + `.middleware([requireSupabaseAuth])`.
-- Input (Zod): `{ projectId: string, samples: Array<{ tag_name, value, quality? }> }` (máx 500 por chamada).
-- Valida que o `projectId` pertence ao tenant do usuário (`projects.tenant_id = profile.tenant_id`) — usa `context.supabase` (RLS já bloqueia, mas faz check explícito para erro claro).
-- Garante partição do mês via `select create_monthly_tag_samples_partition()` antes do insert (idempotente).
-- Chama `rpc('batch_insert_tag_samples', { p_project_id, p_samples })`.
-- Retorna `{ inserted: n }`.
+### Entregáveis
 
-### 2. Hook de flush no cliente
-Arquivo novo: `src/hooks/use-twin-telemetry-persistence.ts`
-- Lê `currentProjectId` de `useProjectStore` e `telemetryBuffers` de `useDigitalTwinStore`.
-- Mantém um buffer pendente em ref (`Array<{ tag_name, value, quality, ts }>`) alimentado por uma subscription a `useDigitalTwinStore` que detecta novas amostras via `lastRealtimeUpdate`.
-- Flush a cada 5s (configurável) ou quando buffer ≥ 200 amostras, usando `useServerFn(flushTwinTelemetry)`.
-- Drop silencioso (com `console.warn`) se não houver `projectId` ou usuário não autenticado.
-- Cleanup em unmount; cancela timer pendente.
+1. **Store — `src/lib/digital-twin/store.ts`**
+   - Novo slice `whatIf`: `{ enabled: boolean; overrides: Record<tagId, number|boolean|string>; baseline: snapshot }`.
+   - Ações: `enableWhatIf()`, `setOverride(tagId, value)`, `clearOverride(tagId)`, `resetWhatIf()`.
+   - Seletor `getEffectiveTagValue(tagId)` que aplica override quando ativo, senão valor real.
 
-### 3. Wire no Digital Twin
-- `src/routes/digital-twin.tsx`: chamar `useTwinTelemetryPersistence()` no componente da rota (já é `_authenticated` na prática — verificar; se for público gate via `useAuth`).
-- Sem mudanças no `digital-twin-store.ts` além de manter `lastRealtimeUpdate` (já existe).
+2. **Isolamento da persistência**
+   - `useTwinTelemetryPersistence` (hook existente) deve ignorar amostras enquanto `whatIf.enabled === true` para nunca contaminar `tag_samples`.
 
-### 4. Verificação RLS de `tag_samples`
-- Confirmar policies via `supabase--read_query` antes de migration. Se faltar policy de INSERT para `authenticated` scoped por tenant do projeto, criar migration adicional. (Esperado: já existe — só validar.)
+3. **UI — `src/components/digital-twin/what-if-panel.tsx`**
+   - Painel lateral com toggle "Modo E-se?", lista de tags editáveis (input numérico/switch), botão "Resetar".
+   - Badge global no header de `/digital-twin` quando ativo (cor de aviso).
+   - Hotspots renderizados consomem `getEffectiveTagValue` e ganham contorno distinto quando overriden.
 
-### 5. Testes
-- `src/__tests__/twin-telemetry-flush.test.ts`: mocka `useServerFn`, dispara 250 `pushTelemetry`, verifica que flush envia em batches corretos e respeita debounce.
+4. **Cenários salvos (mínimo viável)**
+   - `whatIfScenarios` em `localStorage` (chave por `projectId`) — salvar/carregar conjuntos de overrides.
+   - Sem persistência em DB nesta entrega (escopo enxuto).
 
-### 6. Documentação
-- Atualizar `docs/sdd/12-auditoria-status.md`: #TWIN-02 ✅, atualizar seção "Itens pendentes".
+5. **Testes — `src/__tests__/twin-what-if.test.ts`**
+   - Override aplica e reverte corretamente.
+   - Flush de telemetria não envia amostras com What-if ativo.
+   - Cenários round-trip via localStorage.
 
-## Detalhes técnicos
-- `tag_samples` é particionada por mês; `create_monthly_tag_samples_partition()` cria o próximo mês. Chamamos no servidor antes do insert (custo desprezível, idempotente).
-- Quality default `GOOD`. Para tags binárias (status), gravar 0/1 como `double precision`.
-- Não removemos amostras do buffer local — Zustand mantém apenas últimos 60 para gráfico; persistência é write-only.
-- Nada de `supabaseAdmin`: usuário escreve com sua própria sessão, RLS valida tenant via `projects`.
+6. **Documentação**
+   - Marcar #TWIN-04 ✅ em `docs/sdd/12-auditoria-status.md` e remover o item da seção "pendentes".
 
-## Fora de escopo
-- #TWIN-03 (upload GLB) e #TWIN-04 (E se?) — próximas iterações.
-- Backfill histórico ou retenção/rollup.
+### Detalhes técnicos
+- Sem mudanças de schema Supabase nesta tarefa.
+- Sem novas dependências.
+- Respeita Zustand + seletores existentes; nada de `any`.
+
+### Próxima tarefa após #TWIN-04
+Conforme solicitado, ao concluir avisarei a próxima — sequência prevista: **#AI-03** (agregações reais de `ai_credit_costs` em `/analytics`), depois **#WGL-07** (decommission do Voltai shim).
