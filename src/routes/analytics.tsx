@@ -332,3 +332,11 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
     </div>
   );
 }
+
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="h-full flex items-center justify-center text-xs text-muted-foreground text-center px-4">
+      {label}
+    </div>
+  );
+}
