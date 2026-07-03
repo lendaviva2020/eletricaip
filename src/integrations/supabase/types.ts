@@ -188,6 +188,33 @@ export type Database = {
           },
         ]
       }
+      ai_usage_events: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          operation: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits: number
+          id?: string
+          operation: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          operation?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       alarm_configs: {
         Row: {
           area: string
