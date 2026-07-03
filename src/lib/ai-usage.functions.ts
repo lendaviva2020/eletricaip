@@ -17,6 +17,9 @@ export interface AiUsageSummary {
   unlimited: boolean;
   history: AiUsagePoint[];
   costsByOperation: Array<{ operation: string; credits: number }>;
+  monthlyByOperation: Array<{ period: string } & Record<string, string | number>>;
+  operationKeys: string[];
+  topOperations: Array<{ operation: string; credits: number; events: number }>;
 }
 
 export const getAiUsageSummary = createServerFn({ method: "GET" })
