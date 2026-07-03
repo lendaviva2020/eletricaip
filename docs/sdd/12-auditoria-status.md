@@ -80,7 +80,7 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 | `ai-architect.functions.ts` (Zod compartilhado) | ✅ | Schema em `lib/diagram/schema.ts` (#AI-01) |
 | Patches IA reversíveis | ✅ | `buildAiPatchCommand` |
 | Preview diff antes do commit | ✅ | `ai-patch-preview.tsx` (#AI-02) |
-| Dashboard telemetria por operação | 🟡 | `/analytics` ainda usa mocks; agregar `ai_credit_costs` real (#AI-03) |
+| Dashboard telemetria por operação | ✅ | `/analytics` agrega `ai_usage_events` real por mês/operação (#AI-03) |
 
 ---
 
@@ -88,9 +88,7 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 
 1. **#SEC-04** 🔒 *Manual:* habilitar Leaked Password Protection no dashboard
    Supabase (Auth → Providers → Password). Não há API automatizável.
-2. **#AI-03** Substituir mocks em `/analytics` por agregações reais de
-   `ai_credit_costs` (gráfico de operação × custo por mês).
-3. **#WGL-07** Migrar `RightPropertyPanel` + Realtime collab do Voltai para
+2. **#WGL-07** Migrar `RightPropertyPanel` + Realtime collab do Voltai para
    DiagramStore e remover o shim legado.
 
 Tudo o demais do backlog (Fase 2/3/4/5) está ✅ no codebase atual.
