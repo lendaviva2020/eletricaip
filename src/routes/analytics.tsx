@@ -137,6 +137,90 @@ function AnalyticsPage() {
           </Card>
         </div>
 
+        {/* #AI-03 — Custo real por operação e evolução mensal */}
+        <div className="grid lg:grid-cols-2 gap-4">
+          <Card title="Custo real por operação (últimos 12 meses)">
+            {usage && usage.topOperations.length > 0 ? (
+              <ResponsiveContainer>
+                <BarChart data={usage.topOperations} layout="vertical">
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="operation"
+                    width={160}
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "oklch(0.20 0.015 250)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 6,
+                      fontSize: 11,
+                    }}
+                    formatter={(v: number, _n, p) => [
+                      `${v} créditos · ${p.payload.events} chamadas`,
+                      p.payload.operation,
+                    ]}
+                  />
+                  <Bar
+                    dataKey="credits"
+                    fill="oklch(0.78 0.18 40)"
+                    radius={[0, 4, 4, 0]}
+                    name="Créditos consumidos"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Sem eventos de IA registrados ainda." />
+            )}
+          </Card>
+          <Card title="Créditos consumidos por operação · mensal">
+            {usage && usage.monthlyByOperation.length > 0 ? (
+              <ResponsiveContainer>
+                <BarChart data={usage.monthlyByOperation}>
+                  <XAxis
+                    dataKey="period"
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "oklch(0.20 0.015 250)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 6,
+                      fontSize: 11,
+                    }}
+                  />
+                  {usage.operationKeys.map((op, i) => (
+                    <Bar
+                      key={op}
+                      dataKey={op}
+                      stackId="ops"
+                      fill={`oklch(0.75 0.17 ${(i * 47) % 360})`}
+                      name={op}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Sem consumo agregado por operação neste período." />
+            )}
+          </Card>
+        </div>
+
         {/* Industrial — placeholders enquanto agregamos telemetria real */}
         <div className="grid lg:grid-cols-2 gap-4">
           <Card title="Consumo de energia (24h)">
