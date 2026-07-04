@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Lock, Unlock } from "lucide-react";
-import { getVoltaiCompDef } from "@/lib/voltai/component-definitions";
-import { useVoltaiStore } from "@/lib/voltai/store";
+import { useDiagramStore } from "@/lib/diagram/store";
+import { cmd } from "@/lib/diagram/commands";
+import { getParamSpecs } from "@/lib/diagram/param-specs";
+import { NodeParamsSchema, type NodeParams } from "@/lib/diagram/schema";
 import { useEditorStore, type EditorTag, type EditorTagType } from "@/lib/editor/store";
 import { validateTagName } from "@/lib/editor/property-schemas";
 import { ValidatedParamField } from "./property-fields/validated-param-field";
@@ -11,16 +13,16 @@ import { cn } from "@/lib/utils";
 const TAG_TYPES: EditorTagType[] = ["BOOL", "INT", "REAL", "STRING"];
 
 /**
- * Type-aware property panel.
- * Reads selected component from voltai store; writes back via store actions.
- * Tag binding section reads/writes the shared editor store (cross-module).
+ * Type-aware property panel — versão migrada para o DiagramStore canônico
+ * (#WGL-07 · etapa 2). Lê o nó selecionado, resolve `paramSpecs` a partir do
+ * `NodeKind`, e despacha `UpdateNodeParams` (reversível via undo/redo).
  */
 export function RightPropertyPanel() {
-  const voltaiNode = useVoltaiStore((s) => s.components.find((n) => n.id === s.selectedId));
-  const updateParam = useVoltaiStore((s) => s.updateComponentParam);
-  const restoreFactory = useVoltaiStore((s) => s.restoreFactoryParams);
+  const selectedId = useDiagramStore((s) => s.selectedNodeIds[0] ?? null);
+  const node = useDiagramStore((s) => (selectedId ? s.doc.nodes[selectedId] : null));
+  const dispatch = useDiagramStore((s) => s.dispatch);
 
-  if (!voltaiNode) {
+  if (!node) {
     return (
       <div className="p-4 text-[12px] text-muted-foreground">
         Selecione um componente no canvas para editar suas propriedades.
@@ -28,17 +30,56 @@ export function RightPropertyPanel() {
     );
   }
 
-  const definition = getVoltaiCompDef(voltaiNode.type);
-  const paramSpecs = definition.paramSpecs ?? {};
+  const kind = node.params.kind;
+  const paramSpecs = getParamSpecs(kind);
+
+  const commitParam = (key: string, value: string | number | boolean) => {
+    const nextRaw = { ...node.params, [key]: value } as unknown;
+    const parsed = NodeParamsSchema.safeParse(nextRaw);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message ?? "Valor inválido");
+      return;
+    }
+    dispatch(
+      cmd.batch([
+        {
+          type: "UpdateNodeParams",
+          nodeId: node.id,
+          from: node.params,
+          to: parsed.data,
+        },
+      ]),
+    );
+  };
+
+  const restoreFactory = () => {
+    const defaults: Record<string, unknown> = { kind };
+    for (const [key, spec] of Object.entries(paramSpecs)) {
+      if (key === "notes" || key === "tag") continue;
+      defaults[key] = spec.defaultValue;
+    }
+    const parsed = NodeParamsSchema.safeParse(defaults);
+    if (!parsed.success) {
+      toast.error("Não foi possível restaurar padrões");
+      return;
+    }
+    dispatch({
+      type: "UpdateNodeParams",
+      nodeId: node.id,
+      from: node.params,
+      to: parsed.data,
+    });
+    toast.success(`Padrões restaurados para ${node.label || node.id}`);
+  };
 
   return (
     <div className="p-4 space-y-3 text-[12px]">
       <Section title="Selecionado">
         <div className="text-sm font-medium">
-          {voltaiNode.label} · {definition.name}
+          {node.label || node.id} · {kind}
         </div>
         <div className="text-[11px] text-muted-foreground">
-          {definition.category} · {definition.standard.join(", ")}
+          Folha: {node.sheet}
         </div>
       </Section>
 
@@ -53,33 +94,21 @@ export function RightPropertyPanel() {
               <ValidatedParamField
                 key={key}
                 spec={spec}
-                value={voltaiNode.params[key] ?? spec.defaultValue}
-                onCommit={(value) => updateParam(voltaiNode.id, key, value)}
+                value={(node.params as unknown as Record<string, unknown>)[key] ?? spec.defaultValue}
+                onCommit={(value) => commitParam(key, value)}
               />
             ))}
           </div>
         )}
       </Section>
 
-      <TagsSection nodeId={voltaiNode.id} />
-
-      <Section title="Estado de simulação">
-        {Object.entries(voltaiNode.simulationState).map(([k, v]) => (
-          <div key={k} className="flex justify-between text-[11px]">
-            <span className="text-muted-foreground">{k}</span>
-            <span className="font-mono text-foreground">{String(v)}</span>
-          </div>
-        ))}
-      </Section>
+      <TagsSection nodeId={node.id} />
 
       <button
-        onClick={() => {
-          restoreFactory(voltaiNode.id);
-          toast.success(`Configurações de fábrica restauradas para ${voltaiNode.label}`);
-        }}
+        onClick={restoreFactory}
         className="w-full text-[11px] py-1.5 rounded border border-primary/40 text-primary hover:bg-primary/10"
       >
-        Restaurar fábrica
+        Restaurar padrões
       </button>
     </div>
   );
@@ -222,3 +251,5 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </div>
   );
 }
+
+export type { NodeParams };

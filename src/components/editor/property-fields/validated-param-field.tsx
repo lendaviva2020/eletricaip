@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ParamSpec } from "@/lib/voltai/component-definitions";
+import type { ParamSpec } from "@/lib/diagram/param-specs";
 import { validateParam } from "@/lib/editor/property-schemas";
 import { cn } from "@/lib/utils";
 

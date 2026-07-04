@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ParamSpec } from "@/lib/voltai/component-definitions";
+import type { ParamSpec } from "@/lib/diagram/param-specs";
 
 /**
  * Build a Zod schema for a single ParamSpec entry.
