@@ -1,41 +1,35 @@
-## Próxima tarefa do plano: #TWIN-04 — Motor "E-se?" no Digital Twin
+# #WGL-07 — Decomissionar shim Voltai
 
-Seguindo a ordem da auditoria (`docs/sdd/12-auditoria-status.md`), a próxima entrega é o motor de simulação hipotética que permite ao operador alterar valores de tags manualmente e ver o impacto visual nos hotspots do gêmeo digital, sem afetar a telemetria real persistida.
+Migrar `RightPropertyPanel` e o hook de realtime collab para o `DiagramStore` canônico e remover o shim legado `useVoltaiStore` + canvas Unifilar antigo.
 
-### Objetivo
-Permitir overrides manuais em tags do `useDigitalTwinStore` (modo "What-if"), com isolamento total da telemetria real, indicação visual clara e capacidade de reverter.
+## Escopo
 
-### Entregáveis
+### 1. Migrar `RightPropertyPanel` para `DiagramStore`
+- `src/components/editor/right-property-panel.tsx`: substituir leituras/writes de `useVoltaiStore` (`selectedNodeId`, `updateNode`, `deleteNode`, `nodes`) pelas ações equivalentes em `useDiagramStore` (`selection`, `patchNode`, `removeNodes`, `doc.nodes`).
+- Ajustar `validated-param-field.tsx` e `property-schemas.ts` para consumir o `doc` do DiagramStore.
 
-1. **Store — `src/lib/digital-twin/store.ts`**
-   - Novo slice `whatIf`: `{ enabled: boolean; overrides: Record<tagId, number|boolean|string>; baseline: snapshot }`.
-   - Ações: `enableWhatIf()`, `setOverride(tagId, value)`, `clearOverride(tagId)`, `resetWhatIf()`.
-   - Seletor `getEffectiveTagValue(tagId)` que aplica override quando ativo, senão valor real.
+### 2. Migrar collab realtime
+- `src/hooks/use-collab.ts`: broadcast/receive baseado em `DiagramStore.applyPatch` em vez de mutações Voltai. Manter presence channel.
+- Atualizar `industrial-workspace.tsx` para não passar mais o store Voltai para o hook.
 
-2. **Isolamento da persistência**
-   - `useTwinTelemetryPersistence` (hook existente) deve ignorar amostras enquanto `whatIf.enabled === true` para nunca contaminar `tag_samples`.
+### 3. Remover shim + arquivos legados
+- Deletar: `src/lib/voltai/{store.ts,use-voltai-simulation.ts,component-definitions.ts,symbols.ts}`, `src/components/canvases/{unifilar-canvas.tsx,voltai-node.tsx,circuit-control-panel.tsx}`.
+- Limpar imports em: `webgl-canvas.tsx`, `editor-unifilar-sidebar.tsx`, `use-project-persistence.ts`, `projects.functions.ts`, `current-project.ts`, `ai-architect-client.ts`, `editor/store.ts`, `svg-sanitizer.ts`, `ladder/definitions.ts`.
+- `use-project-persistence.ts`: remover branch de hidratação Voltai (já duplicado pelo DiagramStore).
+- `projects.functions.ts` / `current-project.ts`: snapshot só grava/lê `diagram` (drop `voltai`).
 
-3. **UI — `src/components/digital-twin/what-if-panel.tsx`**
-   - Painel lateral com toggle "Modo E-se?", lista de tags editáveis (input numérico/switch), botão "Resetar".
-   - Badge global no header de `/digital-twin` quando ativo (cor de aviso).
-   - Hotspots renderizados consomem `getEffectiveTagValue` e ganham contorno distinto quando overriden.
+### 4. Testes e docs
+- Novo teste `src/__tests__/right-property-panel-diagram.test.tsx` cobrindo edição via DiagramStore.
+- Ajustar testes existentes que mockam `useVoltaiStore` (deletar mocks obsoletos).
+- `docs/sdd/12-auditoria-status.md`: marcar `useVoltaiStore` e `unifilar-canvas.tsx` como ✅ removidos e #WGL-07 concluído.
 
-4. **Cenários salvos (mínimo viável)**
-   - `whatIfScenarios` em `localStorage` (chave por `projectId`) — salvar/carregar conjuntos de overrides.
-   - Sem persistência em DB nesta entrega (escopo enxuto).
+## Riscos
+- Projetos salvos com snapshot Voltai antigo: adicionar migração de payload em `loadDoc` (converter `voltai.nodes` → `diagram.nodes` uma vez).
+- Realtime channels com clientes conectados na versão antiga: nomear novo canal (`diagram:v2:${projectId}`) para evitar mistura.
 
-5. **Testes — `src/__tests__/twin-what-if.test.ts`**
-   - Override aplica e reverte corretamente.
-   - Flush de telemetria não envia amostras com What-if ativo.
-   - Cenários round-trip via localStorage.
+## Detalhes técnicos
+- `DiagramStore.patchNode(id, partial)` já existe; extender se faltar suporte a `params` aninhados.
+- Preservar API pública `useSelectedNode()` re-exportada para minimizar churn nos consumidores restantes.
+- `webgl-canvas.tsx` já usa DiagramStore; apenas remover fallback Voltai residual.
 
-6. **Documentação**
-   - Marcar #TWIN-04 ✅ em `docs/sdd/12-auditoria-status.md` e remover o item da seção "pendentes".
-
-### Detalhes técnicos
-- Sem mudanças de schema Supabase nesta tarefa.
-- Sem novas dependências.
-- Respeita Zustand + seletores existentes; nada de `any`.
-
-### Próxima tarefa após #TWIN-04
-Conforme solicitado, ao concluir avisarei a próxima — sequência prevista: **#AI-03** (agregações reais de `ai_credit_costs` em `/analytics`), depois **#WGL-07** (decommission do Voltai shim).
+Confirma que sigo com essa remoção agressiva (deleta ~1300 linhas, quebra compat com snapshots muito antigos que não passaram por `loadDoc` v2)?
