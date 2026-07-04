@@ -16,7 +16,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { Download, FileCode, Play, Trash2, Settings, Sparkles } from "lucide-react";
-import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
+import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useEditorStore } from "@/lib/editor/store";
 import { toast } from "sonner";
 

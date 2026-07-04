@@ -88,8 +88,17 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 
 1. **#SEC-04** 🔒 *Manual:* habilitar Leaked Password Protection no dashboard
    Supabase (Auth → Providers → Password). Não há API automatizável.
-2. **#WGL-07** Migrar `RightPropertyPanel` + Realtime collab do Voltai para
-   DiagramStore e remover o shim legado.
+2. **#WGL-07** Descomissionar shim Voltai — em execução:
+   - **Etapa 1 ✅** Chrome extraído para `canvas-chrome.tsx`; 6 canvases
+     (twin/konva/sim/plc/fbd/alarms) desacoplados de `unifilar-canvas.tsx`.
+   - **Etapa 2 🟡** Migrar `RightPropertyPanel` para editor por-`kind` do
+     DiagramStore (requer novo `paramSpecs` derivado do Zod discriminated union).
+   - **Etapa 3 🟡** Reescrever `useCollab` para broadcast/receive de `Command`
+     do DiagramStore (canal `diagram:v2:${projectId}`).
+   - **Etapa 4 🟡** Deletar `src/lib/voltai/*`, `unifilar-canvas.tsx`,
+     `voltai-node.tsx`, `circuit-control-panel.tsx` + limpar imports em
+     `ai-architect-client.ts`, `use-project-persistence.ts`,
+     `projects.functions.ts`, `current-project.ts`, `editor/store.ts`.
 
 Tudo o demais do backlog (Fase 2/3/4/5) está ✅ no codebase atual.
 
