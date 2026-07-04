@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { Pause, Play, RefreshCw, Activity, Layers, Disc, Table2, Bell } from "lucide-react";
-import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
+import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { WatchTable } from "@/components/simulation/watch-table";

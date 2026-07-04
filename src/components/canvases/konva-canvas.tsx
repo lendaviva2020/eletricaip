@@ -3,7 +3,7 @@ import { Stage, Layer, Rect, Circle, Line, Text, Group, RegularPolygon, Ring } f
 import Konva from "konva";
 import { useProjectStore, type IndustrialNode } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
-import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
+import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { Maximize2, Minus, Plus } from "lucide-react";
 
 type Variant = "scada" | "twin";

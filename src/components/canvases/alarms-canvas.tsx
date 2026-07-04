@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, BellRing } from "lucide-react";
-import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
+import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useAlarmStore, type LiveAlarm } from "@/lib/alarm-store";
 import { toast } from "sonner";
 import { useNotificationStore } from "@/lib/notification-store";

@@ -39,7 +39,7 @@ import { compileFbdToSt } from "@/lib/fbd/compiler";
 import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { LucideIcon } from "lucide-react";
-import { FloatingLegend } from "./unifilar-canvas";
+import { FloatingLegend } from "./canvas-chrome";
 
 const LANG_LABELS: Record<ProgramLang, string> = { ladder: "LAD", fbd: "FBD", st: "ST" };
 

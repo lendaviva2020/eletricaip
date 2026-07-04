@@ -14,7 +14,7 @@ import {
   Box,
   Monitor,
 } from "lucide-react";
-import { BottomStrip, FloatingLegend } from "./unifilar-canvas";
+import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { LazyTwin3DViewer as Twin3DViewer } from "./lazy";
