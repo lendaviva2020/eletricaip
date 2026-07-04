@@ -8,7 +8,7 @@
 // de `voltai/component-definitions.ts`.
 import type { NodeKind } from "./schema";
 
-export type ParamSpecType = "number" | "boolean" | "select" | "text";
+export type ParamSpecType = "number" | "boolean" | "select" | "text" | "time";
 
 export interface ParamSpec {
   key: string;
