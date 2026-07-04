@@ -402,8 +402,10 @@ export function UnifilarCanvas() {
   );
 }
 
-// BottomStrip e FloatingLegend foram extraídos para `./canvas-chrome` (#WGL-07 · etapa 1).
+// BottomStrip e FloatingLegend agora vivem em `./canvas-chrome` (#WGL-07 · etapa 1).
+// Re-export mantido para compat com imports externos legados.
 export { BottomStrip, FloatingLegend } from "./canvas-chrome";
+
 
 
 export function FlowSurface({
