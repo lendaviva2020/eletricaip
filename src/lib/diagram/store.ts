@@ -28,6 +28,12 @@ interface DiagramState {
 
   dispatch: (command: Command) => void;
   applyAiPatch: (patch: AiDiagramPatch) => void;
+  /**
+   * Aplica um comando sem gravar no histórico. Usado pela sincronização
+   * realtime (#WGL-07 · etapa 3) para reprocessar comandos vindos de outros
+   * clientes sem inflar o próprio stack de undo/redo do usuário local.
+   */
+  applyRemoteCommand: (command: Command) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
@@ -79,6 +85,11 @@ export const useDiagramStore = create<DiagramState>()(
     applyAiPatch: (patch) => {
       const { doc } = get();
       get().dispatch(buildAiPatchCommand(doc, patch));
+    },
+
+    applyRemoteCommand: (command) => {
+      const { doc } = get();
+      set({ doc: applyCommand(doc, command) });
     },
 
     undo: () => {

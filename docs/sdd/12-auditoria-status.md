@@ -95,8 +95,11 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
      `NODE_PARAM_SPECS` derivado do `NodeParamsSchema`; edição via
      `UpdateNodeParams` (reversível), validação Zod, teste dedicado
      `right-property-panel-diagram.test.ts`.
-   - **Etapa 3 🟡** Reescrever `useCollab` para broadcast/receive de `Command`
-     do DiagramStore (canal `diagram:v2:${projectId}`).
+   - **Etapa 3 ✅** `useCollab` reescrito sobre o DiagramStore: broadcast de
+     `Command` (dispatch/undo/redo) e recepção via `applyRemoteCommand`
+     (sem inflar histórico local) em canal versionado `diagram:v2:${projectId}`.
+     Removida a dependência de `useVoltaiStore`/`useProjectStore` no realtime.
+     Teste: `collab-remote-command.test.ts`.
    - **Etapa 4 🟡** Deletar `src/lib/voltai/*`, `unifilar-canvas.tsx`,
      `voltai-node.tsx`, `circuit-control-panel.tsx` + limpar imports em
      `ai-architect-client.ts`, `use-project-persistence.ts`,
