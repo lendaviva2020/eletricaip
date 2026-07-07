@@ -28,6 +28,12 @@ interface DiagramState {
 
   dispatch: (command: Command) => void;
   applyAiPatch: (patch: AiDiagramPatch) => void;
+  /**
+   * Aplica um comando sem gravar no histórico. Usado pela sincronização
+   * realtime (#WGL-07 · etapa 3) para reprocessar comandos vindos de outros
+   * clientes sem inflar o próprio stack de undo/redo do usuário local.
+   */
+  applyRemoteCommand: (command: Command) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
