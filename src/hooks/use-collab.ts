@@ -1,8 +1,12 @@
-import { useEffect, useState, useRef } from "react";
+// #WGL-07 · etapa 3 — collab realtime reescrito sobre o DiagramStore canônico.
+// Broadcast/receive de `Command`s (undo/redo inclusos) em canal versionado
+// `diagram:v2:${projectId}`. Sem mais dependência de useVoltaiStore/useProjectStore
+// para sincronizar geometria do desenho.
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useProjectStore } from "@/lib/project-store";
-import { useVoltaiStore } from "@/lib/voltai/store";
+import { useDiagramStore } from "@/lib/diagram/store";
+import type { Command } from "@/lib/diagram/commands";
 import { toast } from "sonner";
 
 export interface CollabUser {
@@ -21,13 +25,13 @@ export interface CollabCursor {
 }
 
 const USER_COLORS = [
-  "#3b82f6", // blue
-  "#10b981", // emerald
-  "#f59e0b", // amber
-  "#ec4899", // pink
-  "#8b5cf6", // violet
-  "#f97316", // orange
-  "#14b8a6", // teal
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ec4899",
+  "#8b5cf6",
+  "#f97316",
+  "#14b8a6",
 ];
 
 function stringToColor(str: string): string {
@@ -35,16 +39,22 @@ function stringToColor(str: string): string {
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const index = Math.abs(hash) % USER_COLORS.length;
-  return USER_COLORS[index];
+  return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+}
+
+interface CommandPayload {
+  command: Command;
+  senderId: string;
+  seq: number;
 }
 
 export function useCollab(projectId: string | null) {
   const { user } = useAuth();
   const [users, setUsers] = useState<CollabUser[]>([]);
   const [cursors, setCursors] = useState<CollabCursor[]>([]);
-  const channelRef = useRef<any>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const myColor = useRef<string>("#3b82f6");
+  const seqRef = useRef(0);
 
   const userId = user?.id ?? "anonymous";
   const userName = user?.email?.split("@")[0] ?? "Engenheiro";
@@ -53,88 +63,59 @@ export function useCollab(projectId: string | null) {
     myColor.current = stringToColor(userId);
   }, [userId]);
 
-  // Function to broadcast custom events (e.g. Node Drag / State Edit)
-  const broadcastStateChange = (project?: any, voltai?: any) => {
-    if (!channelRef.current) return;
-    channelRef.current.send({
-      type: "broadcast",
-      event: "canvas-change",
-      payload: {
-        project,
-        voltai,
-        senderId: userId,
-      },
-    });
-  };
-
-  // Handle Realtime Subscription
   useEffect(() => {
     if (!projectId) return;
 
-    const channelName = `project-collab-${projectId}`;
+    const channelName = `diagram:v2:${projectId}`;
     const channel = supabase.channel(channelName, {
-      config: {
-        presence: {
-          key: userId,
-        },
-      },
+      config: { presence: { key: userId } },
     });
-
     channelRef.current = channel;
 
-    // CRITICAL: ALL .on() callbacks MUST be registered BEFORE .subscribe().
-    // Supabase Realtime rejects callbacks added after subscribe() with:
-    // "cannot add `presence` callbacks after subscribe()"
     channel
       .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-        const activeUsers: CollabUser[] = [];
-        Object.keys(state).forEach((key) => {
-          const presence = (state as any)[key]?.[0];
+        const state = channel.presenceState() as Record<
+          string,
+          Array<{ userName?: string; color?: string; status?: "active" | "away" }>
+        >;
+        const active: CollabUser[] = [];
+        for (const key of Object.keys(state)) {
+          const presence = state[key]?.[0];
           if (presence) {
-            activeUsers.push({
+            active.push({
               userId: key,
               userName: presence.userName || "Colaborador",
               color: presence.color || "#3b82f6",
               status: presence.status || "active",
             });
           }
-        });
-        setUsers(activeUsers);
+        }
+        setUsers(active);
       })
       .on("presence", { event: "join" }, ({ key, newPresences }) => {
-        const presence = (newPresences as any)?.[0];
-        if (presence && key !== userId) {
-          toast.success(`${presence.userName || "Um colaborador"} entrou no workspace.`);
+        const p = (newPresences as Array<{ userName?: string }>)?.[0];
+        if (p && key !== userId) {
+          toast.success(`${p.userName || "Um colaborador"} entrou no workspace.`);
         }
       })
       .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
-        const presence = (leftPresences as any)?.[0];
-        if (presence && key !== userId) {
-          toast.info(`${presence.userName || "Um colaborador"} saiu.`);
+        const p = (leftPresences as Array<{ userName?: string }>)?.[0];
+        if (p && key !== userId) {
+          toast.info(`${p.userName || "Um colaborador"} saiu.`);
           setCursors((prev) => prev.filter((c) => c.userId !== key));
         }
       })
-      .on("broadcast", { event: "cursor" }, (payload: any) => {
+      .on("broadcast", { event: "cursor" }, (payload) => {
         const data = payload.payload as CollabCursor;
         if (data.userId === userId) return;
-        setCursors((prev) => {
-          const filtered = prev.filter((c) => c.userId !== data.userId);
-          return [...filtered, data];
-        });
+        setCursors((prev) => [...prev.filter((c) => c.userId !== data.userId), data]);
       })
-      .on("broadcast", { event: "canvas-change" }, (payload: any) => {
-        const data = payload.payload;
-        if (data.senderId === userId) return;
-        if (data.project) {
-          useProjectStore.getState().setAll(data.project.nodes ?? [], data.project.edges ?? []);
-        }
-        if (data.voltai) {
-          useVoltaiStore.getState().setAll(data.voltai.components ?? [], data.voltai.edges ?? []);
-        }
+      .on("broadcast", { event: "diagram-command" }, (payload) => {
+        const data = payload.payload as CommandPayload;
+        if (!data?.command || data.senderId === userId) return;
+        useDiagramStore.getState().applyRemoteCommand(data.command);
       });
 
-    // Subscribe LAST — after every .on() is registered.
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         await channel.track({
@@ -146,66 +127,68 @@ export function useCollab(projectId: string | null) {
       }
     });
 
-    const unsubProject = useProjectStore.subscribe((state, prev) => {
-      if (state.dirty && state.dirty !== prev.dirty) {
-        broadcastStateChange(
-          { nodes: state.nodes, edges: state.edges },
-          {
-            components: useVoltaiStore.getState().components,
-            edges: useVoltaiStore.getState().edges,
-          },
-        );
-      }
-    });
+    // Broadcast comandos locais observando o histórico do DiagramStore.
+    // dispatch → past cresce; undo → past encolhe, future cresce (aplica inverse);
+    // redo → future encolhe, past cresce (reaplica command).
+    const unsubHistory = useDiagramStore.subscribe(
+      (s) => s.history,
+      (next, prev) => {
+        if (!channelRef.current) return;
+        let outgoing: Command | null = null;
 
-    const unsubVoltai = useVoltaiStore.subscribe((state, prev) => {
-      if (state.dirty && state.dirty !== prev.dirty) {
-        broadcastStateChange(
-          {
-            nodes: useProjectStore.getState().nodes,
-            edges: useProjectStore.getState().edges,
-          },
-          { components: state.components, edges: state.edges },
-        );
-      }
-    });
+        if (next.past.length > prev.past.length && next.future.length === 0) {
+          // dispatch novo
+          outgoing = next.past[next.past.length - 1]?.command ?? null;
+        } else if (
+          next.past.length < prev.past.length &&
+          next.future.length > prev.future.length
+        ) {
+          // undo → aplica o inverso do entry que saiu de past
+          const entry = prev.past[prev.past.length - 1];
+          outgoing = entry?.inverse ?? null;
+        } else if (
+          next.future.length < prev.future.length &&
+          next.past.length > prev.past.length
+        ) {
+          // redo → reaplica o command do entry que saiu de future
+          const entry = prev.future[prev.future.length - 1];
+          outgoing = entry?.command ?? null;
+        }
+
+        if (!outgoing) return;
+        seqRef.current += 1;
+        channelRef.current.send({
+          type: "broadcast",
+          event: "diagram-command",
+          payload: {
+            command: outgoing,
+            senderId: userId,
+            seq: seqRef.current,
+          } satisfies CommandPayload,
+        });
+      },
+    );
 
     return () => {
-      unsubProject();
-      unsubVoltai();
+      unsubHistory();
       try {
         channel.untrack();
       } catch {
         // ignore
       }
       supabase.removeChannel(channel);
-      if (channelRef.current === channel) {
-        channelRef.current = null;
-      }
+      if (channelRef.current === channel) channelRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, userId, userName]);
 
-  // Function to broadcast own cursor position
   const broadcastCursor = (x: number, y: number) => {
     if (!channelRef.current) return;
     channelRef.current.send({
       type: "broadcast",
       event: "cursor",
-      payload: {
-        userId,
-        userName,
-        color: myColor.current,
-        x,
-        y,
-      },
+      payload: { userId, userName, color: myColor.current, x, y },
     });
   };
 
-  return {
-    users,
-    cursors,
-    broadcastCursor,
-    myColor: myColor.current,
-  };
+  return { users, cursors, broadcastCursor, myColor: myColor.current };
 }
