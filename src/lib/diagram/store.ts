@@ -87,6 +87,11 @@ export const useDiagramStore = create<DiagramState>()(
       get().dispatch(buildAiPatchCommand(doc, patch));
     },
 
+    applyRemoteCommand: (command) => {
+      const { doc } = get();
+      set({ doc: applyCommand(doc, command) });
+    },
+
     undo: () => {
       const { history, doc } = get();
       const { entry, next } = popUndo(history);
