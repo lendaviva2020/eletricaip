@@ -167,7 +167,6 @@ export function useProjectPersistence(projectId: string | null) {
         return;
       }
       const ps = useProjectStore.getState();
-      const vs = useVoltaiStore.getState();
       const es = useEditorStore.getState();
 
       const snapshot = buildProjectSnapshot();
