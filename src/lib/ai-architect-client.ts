@@ -16,7 +16,7 @@ import {
   getVoltaiFactoryParams,
   createVoltaiDefaultState,
   type VoltaiComponentType,
-} from "@/lib/voltai/component-definitions";
+} from "@/lib/palette/component-catalog";
 import type { LadderRung } from "@/lib/ladder/types";
 
 export interface ArchitectResult {

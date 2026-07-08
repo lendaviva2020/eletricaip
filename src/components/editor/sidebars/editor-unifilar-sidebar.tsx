@@ -3,7 +3,7 @@ import {
   isBreakerComponent,
   VOLTAI_COMPONENT_DEFINITIONS,
   type VoltaiComponentDefinition,
-} from "@/lib/voltai/component-definitions";
+} from "@/lib/palette/component-catalog";
 import { PaletteGroup, SidebarSearch, SidebarShell } from "./sidebar-primitives";
 import { useEditorStore } from "@/lib/editor/store";
 
