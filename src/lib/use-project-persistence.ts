@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useProjectStore } from "@/lib/project-store";
-import { useVoltaiStore } from "@/lib/voltai/store";
+
 import { useEditorStore } from "@/lib/editor/store";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { usePlcStore } from "@/lib/plc/store";
