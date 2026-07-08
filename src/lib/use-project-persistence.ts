@@ -95,7 +95,9 @@ export function useProjectPersistence(projectId: string | null) {
           ds.resetDoc();
         }
 
-        useVoltaiStore.getState().setAll(snap.voltai.components ?? [], snap.voltai.edges ?? []);
+        // #WGL-07 · etapa 4 — slot `voltai` do snapshot ficou legado; ignorado
+        // silenciosamente aqui para preservar compat de leitura de projetos antigos.
+
         useEditorStore.getState().hydrateSnapshot(snap.editor);
 
         const scadaLayout = snap.project.scadaLayout;
