@@ -124,7 +124,7 @@ export function useProjectPersistence(projectId: string | null) {
             projectEdges: (snap.project.edges ?? []).length,
             diagramNodes: diagramDoc ? Object.keys(diagramDoc.nodes ?? {}).length : 0,
             diagramEdges: diagramDoc ? Object.keys(diagramDoc.edges ?? {}).length : 0,
-            voltaiComponents: (snap.voltai.components ?? []).length,
+            voltaiComponents: 0,
           },
         });
       })
