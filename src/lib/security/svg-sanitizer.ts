@@ -1,7 +1,7 @@
 // SVG sanitizer — defense-in-depth for any string passed to dangerouslySetInnerHTML.
 // Uses DOMPurify in the browser; falls back to regex-based stripping in SSR/Worker
 // runtime (no DOM available). Even though our SVG strings are generated server-side
-// from a hardcoded whitelist (see src/lib/voltai/symbols.ts), this layer prevents
+// from a hardcoded whitelist (see src/lib/palette/component-catalog.ts (símbolos renderizados via `diagram/render/symbols.ts`)), this layer prevents
 // any future regression where untrusted markup could reach the renderer.
 import DOMPurify, { type Config } from "dompurify";
 
