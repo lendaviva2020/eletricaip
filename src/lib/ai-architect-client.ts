@@ -10,13 +10,7 @@ import { useCurrentProject } from "@/lib/current-project";
 import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
 import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.functions";
 
-import { useVoltaiStore, type VoltaiDiagramEdge } from "@/lib/voltai/store";
 import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
-import {
-  getVoltaiFactoryParams,
-  createVoltaiDefaultState,
-  type VoltaiComponentType,
-} from "@/lib/palette/component-catalog";
 import type { LadderRung } from "@/lib/ladder/types";
 
 export interface ArchitectResult {
