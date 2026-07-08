@@ -10,13 +10,7 @@ import { useCurrentProject } from "@/lib/current-project";
 import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
 import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.functions";
 
-import { useVoltaiStore, type VoltaiDiagramEdge } from "@/lib/voltai/store";
 import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
-import {
-  getVoltaiFactoryParams,
-  createVoltaiDefaultState,
-  type VoltaiComponentType,
-} from "@/lib/voltai/component-definitions";
 import type { LadderRung } from "@/lib/ladder/types";
 
 export interface ArchitectResult {
@@ -237,52 +231,12 @@ export function applyArchitectToStore(
     ].slice(0, 200),
   }));
 
-  // 2. Map and deploy to Unifilar Canvas (useVoltaiStore)
-  const voltaiComponents = result.nodes.map((n) => {
-    let type: VoltaiComponentType = "QF";
-    const kindLower = n.kind.toLowerCase();
-    if (kindLower.includes("breaker") || kindLower.includes("disjuntor")) type = "QF";
-    else if (kindLower.includes("contactor") || kindLower.includes("contator")) type = "KM";
-    else if (
-      kindLower.includes("thermal") ||
-      kindLower.includes("termico") ||
-      kindLower.includes("rele")
-    )
-      type = "FR";
-    else if (kindLower.includes("motor")) type = "M";
-    else if (kindLower.includes("transformer") || kindLower.includes("trafo")) type = "TR";
-    else if (kindLower.includes("plc") || kindLower.includes("clp")) type = "PLC";
-    else if (kindLower.includes("source") || kindLower.includes("fonte")) type = "PS";
-    else if (kindLower.includes("bus") || kindLower.includes("barramento")) type = "BC";
-    else if (kindLower.includes("soft") || kindLower.includes("starter")) type = "SS";
-    else if (kindLower.includes("vfd") || kindLower.includes("inversor")) type = "VFD";
-    else if (kindLower.includes("switch") || kindLower.includes("seccionadora")) type = "QS";
+  // 2. (#WGL-07 · etapa 4) O deploy no antigo `useVoltaiStore` foi removido.
+  // O canvas unifilar hoje é WebGL sobre o `useDiagramStore`; a IA passa a
+  // publicar o desenho via `applyAiPatch`/preview no fluxo do DiagramStore
+  // (ver `src/lib/diagram/ai.functions.ts` + `ai-patch-preview.tsx`).
 
-    return {
-      id: n.id,
-      type,
-      label: n.label || n.id,
-      position: n.position || { x: 100, y: 100 },
-      rotation: 0,
-      params: getVoltaiFactoryParams(type),
-      simulationState: createVoltaiDefaultState(type),
-    };
-  });
 
-  const voltaiEdges = result.edges.map((e, index) => ({
-    id: `ve-ai-${Date.now()}-${index}`,
-    source: e.source,
-    target: e.target,
-    sourceHandle: null,
-    targetHandle: null,
-    role: (e.kind === "power"
-      ? "power"
-      : e.kind === "signal"
-        ? "signal"
-        : "control") as VoltaiDiagramEdge["role"],
-  }));
-
-  useVoltaiStore.getState().setAll(voltaiComponents, voltaiEdges);
 
   // 3. Map and deploy standard compliant Ladder rungs & Shared tags (useEditorStore)
   const ladderRungs: LadderRung[] = [];

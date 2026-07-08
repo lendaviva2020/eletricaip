@@ -5,7 +5,7 @@
 // este arquivo cuida somente da experiência de edição.
 //
 // Introduzido em #WGL-07 · etapa 2 como substituto do `paramSpecs` derivado
-// de `voltai/component-definitions.ts`.
+// de `palette/component-catalog.ts`.
 import type { NodeKind } from "./schema";
 
 export type ParamSpecType = "number" | "boolean" | "select" | "text" | "time";

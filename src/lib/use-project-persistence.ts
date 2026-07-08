@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useProjectStore } from "@/lib/project-store";
-import { useVoltaiStore } from "@/lib/voltai/store";
+
 import { useEditorStore } from "@/lib/editor/store";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { usePlcStore } from "@/lib/plc/store";
@@ -95,7 +95,9 @@ export function useProjectPersistence(projectId: string | null) {
           ds.resetDoc();
         }
 
-        useVoltaiStore.getState().setAll(snap.voltai.components ?? [], snap.voltai.edges ?? []);
+        // #WGL-07 · etapa 4 — slot `voltai` do snapshot ficou legado; ignorado
+        // silenciosamente aqui para preservar compat de leitura de projetos antigos.
+
         useEditorStore.getState().hydrateSnapshot(snap.editor);
 
         const scadaLayout = snap.project.scadaLayout;
@@ -122,7 +124,7 @@ export function useProjectPersistence(projectId: string | null) {
             projectEdges: (snap.project.edges ?? []).length,
             diagramNodes: diagramDoc ? Object.keys(diagramDoc.nodes ?? {}).length : 0,
             diagramEdges: diagramDoc ? Object.keys(diagramDoc.edges ?? {}).length : 0,
-            voltaiComponents: (snap.voltai.components ?? []).length,
+            voltaiComponents: 0,
           },
         });
       })
@@ -165,7 +167,6 @@ export function useProjectPersistence(projectId: string | null) {
         return;
       }
       const ps = useProjectStore.getState();
-      const vs = useVoltaiStore.getState();
       const es = useEditorStore.getState();
 
       const snapshot = buildProjectSnapshot();
@@ -188,7 +189,6 @@ export function useProjectPersistence(projectId: string | null) {
       try {
         await save({ data: { projectId, snapshot } });
         ps.markSaved();
-        vs.markSaved();
         es.markSaved();
         if (mountedRef.current) setSaveState("saved");
         useAutosaveLog.getState().log({
@@ -219,10 +219,8 @@ export function useProjectPersistence(projectId: string | null) {
       if (!s.dirty || s.dirty === prev.dirty) return;
       schedule("project-store");
     });
-    const unsub2 = useVoltaiStore.subscribe((s, prev) => {
-      if (!s.dirty || s.dirty === prev.dirty) return;
-      schedule("voltai-store");
-    });
+    // #WGL-07 · etapa 4 — `useVoltaiStore` foi removido; sem subscription equivalente.
+
     const unsub3 = useEditorStore.subscribe((s, prev) => {
       if (!s.dirty || s.dirty === prev.dirty) return;
       schedule("editor-store");
@@ -240,7 +238,6 @@ export function useProjectPersistence(projectId: string | null) {
 
     return () => {
       unsub();
-      unsub2();
       unsub3();
       unsub4();
       unsub5();
@@ -265,7 +262,6 @@ export async function snapshotVersion(
 
 export function buildProjectSnapshot(): ProjectSnapshot {
   const ps = useProjectStore.getState();
-  const vs = useVoltaiStore.getState();
   const es = useEditorStore.getState();
   const ds = useDiagramStore.getState();
   const pls = usePlcStore.getState();
@@ -283,7 +279,8 @@ export function buildProjectSnapshot(): ProjectSnapshot {
         edges: ps.edges,
       },
     },
-    voltai: { components: vs.components, edges: vs.edges },
+    // #WGL-07 · etapa 4 — slot legado; mantido no schema por retrocompat, vazio.
+    voltai: { components: [], edges: [] },
     editor: {
       tags: es.editorTags,
       rungs: es.rungs,

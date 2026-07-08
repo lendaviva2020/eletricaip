@@ -14,7 +14,7 @@ import type { SheetKind, NodeKind } from "@/lib/diagram/schema";
 import {
   type VoltaiComponentType,
   VOLTAI_COMPONENT_BY_TYPE,
-} from "@/lib/voltai/component-definitions";
+} from "@/lib/palette/component-catalog";
 
 function isVoltaiComponentType(value: string): value is VoltaiComponentType {
   return value in VOLTAI_COMPONENT_BY_TYPE;

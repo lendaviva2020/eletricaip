@@ -5,7 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { WorkspaceMode, ConsoleTab } from "@/lib/workspace-data";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { Node, Edge } from "reactflow";
-import type { VoltaiComponentType } from "@/lib/voltai/component-definitions";
+import type { VoltaiComponentType } from "@/lib/palette/component-catalog";
 
 export type EditorTagType = "BOOL" | "INT" | "REAL" | "STRING";
 

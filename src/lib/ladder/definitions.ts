@@ -1,4 +1,4 @@
-import type { ParamSpec } from "@/lib/voltai/component-definitions";
+import type { ParamSpec } from "@/lib/palette/component-catalog";
 
 export type LadderCategory =
   | "Contatos"

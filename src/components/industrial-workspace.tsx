@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { CanvasAiChat } from "@/components/canvas-ai-chat";
 import { useProjectPersistence } from "@/lib/use-project-persistence";
-import { isBreakerComponent, type VoltaiComponentType } from "@/lib/voltai/component-definitions";
+import { isBreakerComponent, type VoltaiComponentType } from "@/lib/palette/component-catalog";
 import { LeftSidebarHost } from "@/components/editor/left-sidebar-host";
 import { useEditorStore } from "@/lib/editor/store";
 import { ErrorBoundary } from "@/components/error-boundary";

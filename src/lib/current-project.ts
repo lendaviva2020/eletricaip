@@ -17,12 +17,6 @@ interface State {
 }
 
 const KEY = "eletricai.currentProject";
-const EMPTY_PROJECT_SNAPSHOT = {
-  schemaVersion: 2,
-  project: { nodes: [], edges: [], tags: {}, scadaLayout: { nodes: [], edges: [] } },
-  voltai: { components: [], edges: [] },
-  editor: { tags: {}, rungs: [], fbdNodes: [], fbdEdges: [] },
-};
 
 export const useCurrentProject = create<State>((set) => ({
   project: null,
