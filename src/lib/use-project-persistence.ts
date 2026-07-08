@@ -219,10 +219,8 @@ export function useProjectPersistence(projectId: string | null) {
       if (!s.dirty || s.dirty === prev.dirty) return;
       schedule("project-store");
     });
-    const unsub2 = useVoltaiStore.subscribe((s, prev) => {
-      if (!s.dirty || s.dirty === prev.dirty) return;
-      schedule("voltai-store");
-    });
+    // #WGL-07 · etapa 4 — `useVoltaiStore` foi removido; sem subscription equivalente.
+
     const unsub3 = useEditorStore.subscribe((s, prev) => {
       if (!s.dirty || s.dirty === prev.dirty) return;
       schedule("editor-store");
