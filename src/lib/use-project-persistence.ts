@@ -262,7 +262,6 @@ export async function snapshotVersion(
 
 export function buildProjectSnapshot(): ProjectSnapshot {
   const ps = useProjectStore.getState();
-  const vs = useVoltaiStore.getState();
   const es = useEditorStore.getState();
   const ds = useDiagramStore.getState();
   const pls = usePlcStore.getState();
@@ -280,7 +279,8 @@ export function buildProjectSnapshot(): ProjectSnapshot {
         edges: ps.edges,
       },
     },
-    voltai: { components: vs.components, edges: vs.edges },
+    // #WGL-07 · etapa 4 — slot legado; mantido no schema por retrocompat, vazio.
+    voltai: { components: [], edges: [] },
     editor: {
       tags: es.editorTags,
       rungs: es.rungs,
