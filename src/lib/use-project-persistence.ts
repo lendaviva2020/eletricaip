@@ -189,7 +189,6 @@ export function useProjectPersistence(projectId: string | null) {
       try {
         await save({ data: { projectId, snapshot } });
         ps.markSaved();
-        vs.markSaved();
         es.markSaved();
         if (mountedRef.current) setSaveState("saved");
         useAutosaveLog.getState().log({
