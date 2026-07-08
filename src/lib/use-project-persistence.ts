@@ -238,7 +238,6 @@ export function useProjectPersistence(projectId: string | null) {
 
     return () => {
       unsub();
-      unsub2();
       unsub3();
       unsub4();
       unsub5();
