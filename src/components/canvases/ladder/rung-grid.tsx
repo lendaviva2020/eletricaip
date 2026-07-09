@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { LadderRung, LadderCell } from "@/lib/ladder/types";
 import { newRung, emptyCell, RUNG_COLS } from "@/lib/ladder/types";
 import { compileProgram } from "@/lib/ladder/compiler";
+import { importLadderProgram } from "@/lib/ladder/importer";
 import {
   scanRungs,
   resetRuntimeState,
@@ -11,6 +12,7 @@ import {
 import { useEditorStore } from "@/lib/editor/store";
 import { LadderCellView } from "./ladder-cell";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Plus,
   Play,
@@ -19,6 +21,7 @@ import {
   Rows3,
   X,
   Download,
+  Upload,
   History,
   Pause,
   Trash2,
@@ -166,6 +169,35 @@ export function RungGrid() {
     URL.revokeObjectURL(url);
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const openImportPicker = () => fileInputRef.current?.click();
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite reimportar mesmo arquivo
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      const fmt = ext === "il" ? "IL" : ext === "st" ? "ST" : undefined;
+      const { rungs: parsed, warnings } = importLadderProgram(text, fmt);
+      if (parsed.length === 0) {
+        toast.error("Nenhum rung reconhecido no arquivo.");
+        return;
+      }
+      setRungs(parsed);
+      if (warnings.length > 0) {
+        toast.warning(`${parsed.length} rung(s) importado(s), ${warnings.length} aviso(s).`, {
+          description: warnings.slice(0, 3).join(" · "),
+        });
+      } else {
+        toast.success(`${parsed.length} rung(s) importado(s) de ${file.name}.`);
+      }
+    } catch (err) {
+      toast.error(`Falha ao importar: ${(err as Error).message}`);
+    }
+  };
+
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-border bg-card/40 px-4 py-2">
@@ -199,10 +231,21 @@ export function RungGrid() {
         <Button size="sm" variant="ghost" onClick={() => setShowHistory((v) => !v)}>
           <History className="mr-1 h-3 w-3" /> {showHistory ? "Ocultar histórico" : "Histórico"}
         </Button>
+        <Button size="sm" variant="ghost" onClick={openImportPicker} title="Importar programa IL/ST">
+          <Upload className="mr-1 h-3 w-3" /> Importar
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".st,.il,.txt,text/plain"
+          className="hidden"
+          onChange={handleImportFile}
+        />
         <div className="ml-auto text-[10px] font-mono text-muted-foreground">
           {rungs.length} rungs · scan 100ms · {running ? `RUN #${scanCountRef.current}` : "STOP"}
         </div>
       </div>
+
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto industrial-grid scan-overlay p-6">
