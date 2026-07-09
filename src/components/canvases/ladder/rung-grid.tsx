@@ -169,6 +169,35 @@ export function RungGrid() {
     URL.revokeObjectURL(url);
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const openImportPicker = () => fileInputRef.current?.click();
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite reimportar mesmo arquivo
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      const fmt = ext === "il" ? "IL" : ext === "st" ? "ST" : undefined;
+      const { rungs: parsed, warnings } = importLadderProgram(text, fmt);
+      if (parsed.length === 0) {
+        toast.error("Nenhum rung reconhecido no arquivo.");
+        return;
+      }
+      setRungs(parsed);
+      if (warnings.length > 0) {
+        toast.warning(`${parsed.length} rung(s) importado(s), ${warnings.length} aviso(s).`, {
+          description: warnings.slice(0, 3).join(" · "),
+        });
+      } else {
+        toast.success(`${parsed.length} rung(s) importado(s) de ${file.name}.`);
+      }
+    } catch (err) {
+      toast.error(`Falha ao importar: ${(err as Error).message}`);
+    }
+  };
+
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-border bg-card/40 px-4 py-2">
