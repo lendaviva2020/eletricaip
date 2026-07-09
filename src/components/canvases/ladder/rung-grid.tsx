@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { LadderRung, LadderCell } from "@/lib/ladder/types";
 import { newRung, emptyCell, RUNG_COLS } from "@/lib/ladder/types";
 import { compileProgram } from "@/lib/ladder/compiler";
+import { importLadderProgram } from "@/lib/ladder/importer";
 import {
   scanRungs,
   resetRuntimeState,
@@ -11,6 +12,7 @@ import {
 import { useEditorStore } from "@/lib/editor/store";
 import { LadderCellView } from "./ladder-cell";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Plus,
   Play,
@@ -19,6 +21,7 @@ import {
   Rows3,
   X,
   Download,
+  Upload,
   History,
   Pause,
   Trash2,
