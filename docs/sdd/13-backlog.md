@@ -36,7 +36,7 @@ Cada item tem ID estável (referenciado por commits e PRs). Não remova IDs — 
 - **#LAD-01** TOF e TP no `scanRungs`
 - **#LAD-02** Validador de operando com feedback inline
 - **#LAD-03** Autocomplete de tags
-- **#LAD-04** Importação IL/ST externo
+- **#LAD-04** Importação IL/ST externo — ✅ `lib/ladder/importer.ts` + botão "Importar" no toolbar; roundtrip contra `compileProgram` coberto por `ladder-import.test.ts`
 - **#LAD-05** Colunas configuráveis (atualmente fixo em 6)
 
 ### FBD
