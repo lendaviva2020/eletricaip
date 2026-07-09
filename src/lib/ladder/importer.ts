@@ -114,6 +114,10 @@ function splitStStatements(code: string, labelMap: Map<number, string>): Line[] 
 
 // ---------- Expressão booleana → cells em série/paralelo ----------
 
+interface Branch {
+  cells: LadderCell[]; // terms (XIC/XIO), sem contar coluna de saída
+}
+
 /** Remove parênteses externos apenas se envolverem TODA a expressão. */
 function unwrapParens(s: string): string {
   let cur = s.trim();
