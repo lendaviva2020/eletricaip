@@ -231,10 +231,21 @@ export function RungGrid() {
         <Button size="sm" variant="ghost" onClick={() => setShowHistory((v) => !v)}>
           <History className="mr-1 h-3 w-3" /> {showHistory ? "Ocultar histórico" : "Histórico"}
         </Button>
+        <Button size="sm" variant="ghost" onClick={openImportPicker} title="Importar programa IL/ST">
+          <Upload className="mr-1 h-3 w-3" /> Importar
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".st,.il,.txt,text/plain"
+          className="hidden"
+          onChange={handleImportFile}
+        />
         <div className="ml-auto text-[10px] font-mono text-muted-foreground">
           {rungs.length} rungs · scan 100ms · {running ? `RUN #${scanCountRef.current}` : "STOP"}
         </div>
       </div>
+
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto industrial-grid scan-overlay p-6">
