@@ -130,26 +130,39 @@ function parseTerm(text: string): LadderCell {
 /** Divide `expr` no operador top-level (respeita parênteses). Retorna null se não houver. */
 function splitTopLevel(expr: string, op: "OR" | "AND"): string[] | null {
   const parts: string[] = [];
+  const s = expr;
   let depth = 0;
   let buf = "";
-  const re = new RegExp(`^\\s*${op}\\s+`, "i");
-  const s = expr;
-  for (let i = 0; i < s.length; i++) {
+  let i = 0;
+  while (i < s.length) {
     const c = s[i];
-    if (c === "(") depth += 1;
-    else if (c === ")") depth -= 1;
-    if (depth === 0) {
+    if (c === "(") {
+      depth += 1;
+      buf += c;
+      i += 1;
+      continue;
+    }
+    if (c === ")") {
+      depth = Math.max(0, depth - 1);
+      buf += c;
+      i += 1;
+      continue;
+    }
+    if (depth === 0 && (c === " " || c === "\t" || c === "\n")) {
+      // Tenta casar ` OP ` a partir daqui (com espaços em torno)
       const rest = s.slice(i);
-      const m = rest.match(new RegExp(`^\\s+${op}\\s+`, "i"));
+      const m = rest.match(new RegExp(`^\\s+${op}(?=\\s+)`, "i"));
       if (m) {
         parts.push(buf);
         buf = "";
-        i += m[0].length - 1;
+        i += m[0].length;
+        // consome os espaços após o operador
+        while (i < s.length && /\s/.test(s[i])) i += 1;
         continue;
       }
     }
     buf += c;
-    void re;
+    i += 1;
   }
   parts.push(buf);
   return parts.length > 1 ? parts.map((p) => p.trim()) : null;
