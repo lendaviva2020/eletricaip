@@ -190,7 +190,7 @@ function splitTopLevel(expr: string, op: "OR" | "AND"): string[] | null {
 
 /** Faz o parse de uma expressão booleana em branches (OR) de terms (AND). */
 function parseBoolExpr(expr: string): Branch[] {
-  const trimmed = expr.trim().replace(/^\((.*)\)$/s, "$1").trim();
+  const trimmed = unwrapParens(expr);
   if (/^TRUE$/i.test(trimmed)) {
     return [{ cells: [{ kind: "XIC", operand: "TRUE" }] }];
   }
