@@ -114,14 +114,30 @@ function splitStStatements(code: string, labelMap: Map<number, string>): Line[] 
 
 // ---------- Expressão booleana → cells em série/paralelo ----------
 
-interface Branch {
-  cells: LadderCell[]; // terms (XIC/XIO), sem contar coluna de saída
+/** Remove parênteses externos apenas se envolverem TODA a expressão. */
+function unwrapParens(s: string): string {
+  let cur = s.trim();
+  while (cur.startsWith("(") && cur.endsWith(")")) {
+    let depth = 0;
+    let wrapsAll = true;
+    for (let i = 0; i < cur.length; i++) {
+      if (cur[i] === "(") depth += 1;
+      else if (cur[i] === ")") depth -= 1;
+      if (depth === 0 && i < cur.length - 1) {
+        wrapsAll = false;
+        break;
+      }
+    }
+    if (!wrapsAll) break;
+    cur = cur.slice(1, -1).trim();
+  }
+  return cur;
 }
 
 function parseTerm(text: string): LadderCell {
-  const s = text.trim().replace(/^\((.*)\)$/s, "$1").trim();
+  const s = unwrapParens(text);
   if (/^NOT\s+/i.test(s)) {
-    const op = s.replace(/^NOT\s+/i, "").trim().replace(/^\((.*)\)$/s, "$1").trim();
+    const op = unwrapParens(s.replace(/^NOT\s+/i, "").trim());
     return { kind: "XIO", operand: op };
   }
   return { kind: "XIC", operand: s };
