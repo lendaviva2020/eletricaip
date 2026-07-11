@@ -37,7 +37,7 @@ Cada item tem ID estável (referenciado por commits e PRs). Não remova IDs — 
 - **#LAD-02** Validador de operando com feedback inline
 - **#LAD-03** Autocomplete de tags
 - **#LAD-04** Importação IL/ST externo — ✅ `lib/ladder/importer.ts` + botão "Importar" no toolbar; roundtrip contra `compileProgram` coberto por `ladder-import.test.ts`
-- **#LAD-05** Colunas configuráveis (atualmente fixo em 6)
+- **#LAD-05** Colunas configuráveis — ✅ `LadderRung.cols` opcional + `resizeRungCols` (limites 3–12) + controles ± no header de cada rung; runtime/compilador usam largura real por row. Cobertura: `ladder-rung-cols.test.ts`
 
 ### FBD
 - **#FBD-01** Parâmetros de bloco (PT, PV) sincronizados com runtime
