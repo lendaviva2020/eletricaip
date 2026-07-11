@@ -6,6 +6,8 @@ export default defineConfig({
   test: {
     environmentMatchGlobs: [
       ["src/__tests__/settings-store.test.tsx", "jsdom"],
+      ["src/__tests__/settings-switches-ui.test.tsx", "jsdom"],
+      ["src/__tests__/onboarding-tour.test.tsx", "jsdom"],
     ],
   },
 });

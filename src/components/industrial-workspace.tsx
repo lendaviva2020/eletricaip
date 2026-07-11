@@ -19,6 +19,7 @@ import { LeftSidebarHost } from "@/components/editor/left-sidebar-host";
 import { useEditorStore } from "@/lib/editor/store";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { EditorAiConfigBanner } from "@/components/editor-ai-config-banner";
+import { OnboardingTour } from "@/components/onboarding-tour";
 
 const UnifilarCanvas = lazy(() =>
   import("@/components/canvases/webgl-canvas").then((m) => ({ default: m.WebglCanvas })),
@@ -164,6 +165,8 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
       )}
+
+      <OnboardingTour />
     </div>
   );
 }

@@ -15,6 +15,7 @@ export function ModeTabs() {
           return (
             <button
               key={m.id}
+              data-tour={`mode-${m.id}`}
               onClick={() => setMode(m.id)}
               className={cn(
                 "relative h-9 px-3 text-xs font-medium rounded-t-md flex items-center gap-2 transition-all shrink-0",

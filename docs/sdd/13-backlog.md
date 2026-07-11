@@ -68,7 +68,7 @@ Cada item tem ID estável (referenciado por commits e PRs). Não remova IDs — 
 
 - **#BIL-01** Fluxo upgrade Stripe/MP com atualização imediata via webhook
 - **#INV-01** Wire `/invite/:token` ao RPC `accept_invite`
-- **#ONB-01** Tour guiado pós-criação de tenant
+- **#ONB-01** Tour guiado pós-criação de tenant — ✅ `components/onboarding-tour.tsx` (overlay 6 passos: Welcome → Unifilar → Ladder → FBD → SCADA → Fim, ativando cada modo) + gatilho via `markTourPending()` no `/onboarding` após `createProject`; flags `eletricai:tour-pending` / `eletricai:tour-seen:v1` no localStorage. Cobertura: `onboarding-tour.test.tsx`
 
 ## Transversais
 

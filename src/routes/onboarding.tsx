@@ -2,6 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Loader2, FolderKanban, ArrowRight, Sparkles } from "lucide-react";
 import { BrandBolt } from "@/components/brand-bolt";
+import { markTourPending } from "@/components/onboarding-tour";
 import { useAuth } from "@/hooks/use-auth";
 import {
   listMyProjects,
@@ -52,8 +53,9 @@ function OnboardingPage() {
     void loadProjects();
   }, [authLoading, loadProjects, router, user]);
 
-  const open = (project: CurrentProject) => {
+  const open = (project: CurrentProject, { withTour = false }: { withTour?: boolean } = {}) => {
     setProject(project);
+    if (withTour) markTourPending();
     router.navigate({ to: "/workspace", search: { projectId: project.id } });
   };
 
@@ -76,7 +78,7 @@ function OnboardingPage() {
         return;
       }
 
-      open(project);
+      open(project, { withTour: true });
     } catch (error) {
       setFormError((error as Error)?.message || "Falha ao criar projeto.");
     } finally {
