@@ -52,7 +52,8 @@ describe("#LAD-05 · rung cols", () => {
 
   it("runtime respeita cols per-rung (energiza saída corretamente)", () => {
     const r = newRung(0, 4);
-    r.cells[0][0] = { kind: "XIC", operand: "TRUE" };
+    // XIO com operand não-existente ⇒ leitura false ⇒ contato NF conduz.
+    r.cells[0][0] = { kind: "XIO", operand: "__unbound_lad05__" };
     r.cells[0][3] = { kind: "OTE", operand: "Y_LAD05" };
     const results = scanRungs([r]);
     expect(results[0].poweredOut).toBe(true);
