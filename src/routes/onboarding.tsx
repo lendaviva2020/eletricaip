@@ -53,8 +53,9 @@ function OnboardingPage() {
     void loadProjects();
   }, [authLoading, loadProjects, router, user]);
 
-  const open = (project: CurrentProject) => {
+  const open = (project: CurrentProject, { withTour = false }: { withTour?: boolean } = {}) => {
     setProject(project);
+    if (withTour) markTourPending();
     router.navigate({ to: "/workspace", search: { projectId: project.id } });
   };
 
