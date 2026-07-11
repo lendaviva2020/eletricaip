@@ -78,7 +78,7 @@ function OnboardingPage() {
         return;
       }
 
-      open(project);
+      open(project, { withTour: true });
     } catch (error) {
       setFormError((error as Error)?.message || "Falha ao criar projeto.");
     } finally {
