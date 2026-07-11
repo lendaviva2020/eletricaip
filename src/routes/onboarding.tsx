@@ -2,6 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Loader2, FolderKanban, ArrowRight, Sparkles } from "lucide-react";
 import { BrandBolt } from "@/components/brand-bolt";
+import { markTourPending } from "@/components/onboarding-tour";
 import { useAuth } from "@/hooks/use-auth";
 import {
   listMyProjects,
