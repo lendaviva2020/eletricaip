@@ -295,6 +295,31 @@ export function RungGrid() {
                       )}
                     </div>
                     <div className="flex items-center gap-1">
+                      <div
+                        className="flex items-center gap-0.5 rounded border border-border bg-muted/40 px-1"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Colunas do rung"
+                      >
+                        <button
+                          onClick={() => changeCols(rung.id, -1)}
+                          disabled={rungCols(rung) <= RUNG_COLS_MIN}
+                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                          aria-label={`Reduzir colunas do rung ${idx + 1}`}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="min-w-4 text-center font-mono text-[10px] text-muted-foreground">
+                          {rungCols(rung)}
+                        </span>
+                        <button
+                          onClick={() => changeCols(rung.id, +1)}
+                          disabled={rungCols(rung) >= RUNG_COLS_MAX}
+                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                          aria-label={`Aumentar colunas do rung ${idx + 1}`}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
