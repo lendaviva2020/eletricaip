@@ -165,6 +165,8 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
       )}
+
+      <OnboardingTour />
     </div>
   );
 }
