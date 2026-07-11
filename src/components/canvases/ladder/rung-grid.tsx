@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LadderRung, LadderCell } from "@/lib/ladder/types";
-import { newRung, emptyCell, RUNG_COLS } from "@/lib/ladder/types";
+import {
+  newRung,
+  emptyCell,
+  rungCols,
+  resizeRungCols,
+  RUNG_COLS_MIN,
+  RUNG_COLS_MAX,
+} from "@/lib/ladder/types";
 import { compileProgram } from "@/lib/ladder/compiler";
 import { importLadderProgram } from "@/lib/ladder/importer";
 import {
@@ -25,6 +32,7 @@ import {
   History,
   Pause,
   Trash2,
+  Minus,
 } from "lucide-react";
 
 interface HistoryEntry {
@@ -144,9 +152,20 @@ export function RungGrid() {
     setRungs((rs) =>
       rs.map((r) =>
         r.id === rungId
-          ? { ...r, cells: [...r.cells, Array.from({ length: RUNG_COLS }, emptyCell)] }
+          ? { ...r, cells: [...r.cells, Array.from({ length: rungCols(r) }, emptyCell)] }
           : r,
       ),
+    );
+  };
+
+  const changeCols = (rungId: string, delta: number) => {
+    setRungs((rs) =>
+      rs.map((r) => {
+        if (r.id !== rungId) return r;
+        const next = rungCols(r) + delta;
+        if (next < RUNG_COLS_MIN || next > RUNG_COLS_MAX) return r;
+        return resizeRungCols(r, next);
+      }),
     );
   };
 
@@ -276,6 +295,31 @@ export function RungGrid() {
                       )}
                     </div>
                     <div className="flex items-center gap-1">
+                      <div
+                        className="flex items-center gap-0.5 rounded border border-border bg-muted/40 px-1"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Colunas do rung"
+                      >
+                        <button
+                          onClick={() => changeCols(rung.id, -1)}
+                          disabled={rungCols(rung) <= RUNG_COLS_MIN}
+                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                          aria-label={`Reduzir colunas do rung ${idx + 1}`}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="min-w-4 text-center font-mono text-[10px] text-muted-foreground">
+                          {rungCols(rung)}
+                        </span>
+                        <button
+                          onClick={() => changeCols(rung.id, +1)}
+                          disabled={rungCols(rung) >= RUNG_COLS_MAX}
+                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                          aria-label={`Aumentar colunas do rung ${idx + 1}`}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
