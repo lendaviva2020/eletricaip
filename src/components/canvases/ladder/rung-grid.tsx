@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LadderRung, LadderCell } from "@/lib/ladder/types";
-import { newRung, emptyCell, RUNG_COLS } from "@/lib/ladder/types";
+import {
+  newRung,
+  emptyCell,
+  rungCols,
+  resizeRungCols,
+  RUNG_COLS_MIN,
+  RUNG_COLS_MAX,
+} from "@/lib/ladder/types";
 import { compileProgram } from "@/lib/ladder/compiler";
 import { importLadderProgram } from "@/lib/ladder/importer";
 import {
@@ -25,6 +32,7 @@ import {
   History,
   Pause,
   Trash2,
+  Minus,
 } from "lucide-react";
 
 interface HistoryEntry {
