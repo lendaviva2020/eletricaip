@@ -152,9 +152,20 @@ export function RungGrid() {
     setRungs((rs) =>
       rs.map((r) =>
         r.id === rungId
-          ? { ...r, cells: [...r.cells, Array.from({ length: RUNG_COLS }, emptyCell)] }
+          ? { ...r, cells: [...r.cells, Array.from({ length: rungCols(r) }, emptyCell)] }
           : r,
       ),
+    );
+  };
+
+  const changeCols = (rungId: string, delta: number) => {
+    setRungs((rs) =>
+      rs.map((r) => {
+        if (r.id !== rungId) return r;
+        const next = rungCols(r) + delta;
+        if (next < RUNG_COLS_MIN || next > RUNG_COLS_MAX) return r;
+        return resizeRungCols(r, next);
+      }),
     );
   };
 
