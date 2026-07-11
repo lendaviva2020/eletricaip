@@ -28,7 +28,9 @@ export interface LadderCell {
 export interface LadderRung {
   id: string;
   label: string;
-  /** rows × cols matrix. rows >= 1, cols >= 2 (last col = output). */
+  /** Colunas efetivas (opcional, default RUNG_COLS). Persistido para retomar. */
+  cols?: number;
+  /** rows × cols matrix. rows >= 1, cols >= RUNG_COLS_MIN (last col = output). */
   cells: LadderCell[][];
   /** Latest energization of the output cell (visual). */
   poweredOut?: boolean;
