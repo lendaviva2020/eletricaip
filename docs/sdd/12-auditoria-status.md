@@ -46,7 +46,7 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 | Modo | Status | Notas |
 |---|---|---|
 | Unifilar WebGL (`webgl-canvas.tsx`) | ✅ | Pixi v8 + Viewport: portas/handles, edge-draft ortogonal, marquee, snap-to-grid, context menu, multi-select drag — todos implementados em `lib/diagram/render/stage.ts` |
-| Unifilar legado (`unifilar-canvas.tsx`) | 🟡 | Sobrevive até #WGL-07 |
+| Unifilar legado | ✅ removido | Canvas `unifilar-canvas.tsx` e store Voltai excluídos (#WGL-07) |
 | Ladder | ✅ | TON/TOF/TP/CTU runtime (#LAD-01), validador `lib/ladder/validator.ts` (#LAD-02), autocomplete de tags (#LAD-03), importador IL/ST (#LAD-04) |
 | FBD | ✅ | Sync de params bloco↔runtime (#FBD-01), export (#FBD-02), validação visual (#FBD-03) |
 | SCADA | ✅ | Worker sandbox `lib/simulation/script-sandbox.ts` (#SCADA-02), `bind-tag-dialog` (#SCADA-03), alarm→notification (#SCADA-04), snapshot unificado (#SCADA-01) |
