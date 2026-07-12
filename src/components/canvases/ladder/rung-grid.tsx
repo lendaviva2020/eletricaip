@@ -190,6 +190,12 @@ export function RungGrid() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openImportPicker = () => fileInputRef.current?.click();
+  const [importPreview, setImportPreview] = useState<{
+    fileName: string;
+    rungs: LadderRung[];
+    warnings: string[];
+  } | null>(null);
+
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // permite reimportar mesmo arquivo
@@ -203,18 +209,31 @@ export function RungGrid() {
         toast.error("Nenhum rung reconhecido no arquivo.");
         return;
       }
-      setRungs(parsed);
-      if (warnings.length > 0) {
-        toast.warning(`${parsed.length} rung(s) importado(s), ${warnings.length} aviso(s).`, {
-          description: warnings.slice(0, 3).join(" · "),
-        });
-      } else {
-        toast.success(`${parsed.length} rung(s) importado(s) de ${file.name}.`);
-      }
+      setImportPreview({ fileName: file.name, rungs: parsed, warnings });
     } catch (err) {
       toast.error(`Falha ao importar: ${(err as Error).message}`);
     }
   };
+
+  const confirmImport = (mode: "replace" | "append") => {
+    if (!importPreview) return;
+    const { rungs: parsed, warnings, fileName } = importPreview;
+    if (mode === "replace") {
+      setRungs(parsed);
+    } else {
+      setRungs((rs) => [...rs, ...parsed]);
+    }
+    if (warnings.length > 0) {
+      toast.warning(`${parsed.length} rung(s) importado(s), ${warnings.length} aviso(s).`, {
+        description: warnings.slice(0, 3).join(" · "),
+      });
+    } else {
+      toast.success(`${parsed.length} rung(s) importado(s) de ${fileName}.`);
+    }
+    setImportPreview(null);
+  };
+
+
 
 
   return (
@@ -512,6 +531,130 @@ export function RungGrid() {
           </aside>
         )}
       </div>
+
+
+      {importPreview && (
+        <ImportPreviewDialog
+          preview={importPreview}
+          onCancel={() => setImportPreview(null)}
+          onConfirm={confirmImport}
+        />
+      )}
     </div>
   );
+
 }
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+const KIND_GLYPH_PREVIEW: Record<string, string> = {
+  EMPTY: "───",
+  XIC: "─┤ ├─",
+  XIO: "─┤/├─",
+  OTE: "─( )─",
+  OTL: "─(S)─",
+  OTU: "─(R)─",
+  TON: "[TON]",
+  TOF: "[TOF]",
+  TP: "[TP]",
+  CTU: "[CTU]",
+};
+
+function ImportPreviewDialog({
+  preview,
+  onCancel,
+  onConfirm,
+}: {
+  preview: { fileName: string; rungs: LadderRung[]; warnings: string[] };
+  onCancel: () => void;
+  onConfirm: (mode: "replace" | "append") => void;
+}) {
+  return (
+    <Dialog open onOpenChange={(o) => !o && onCancel()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Preview da importação</DialogTitle>
+          <DialogDescription>
+            <span className="font-mono text-xs">{preview.fileName}</span> · {preview.rungs.length}{" "}
+            rung(s) reconhecido(s)
+            {preview.warnings.length > 0 && ` · ${preview.warnings.length} aviso(s)`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[50vh] overflow-auto rounded-md border border-border bg-muted/20 p-3">
+          <div className="space-y-3">
+            {preview.rungs.map((r, idx) => (
+              <div key={r.id} className="rounded border border-border/60 bg-card p-2">
+                <div className="mb-1 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">
+                    #{idx + 1}
+                  </span>
+                  <span>{r.label}</span>
+                </div>
+                <div className="space-y-1 font-mono text-[11px] leading-tight">
+                  {r.cells.map((row, ri) => (
+                    <div key={ri} className="flex items-center gap-1">
+                      <span className="text-muted-foreground">│</span>
+                      {row.map((c, ci) => (
+                        <span
+                          key={ci}
+                          className={`inline-flex min-w-[3.5rem] items-center justify-center rounded px-1 ${
+                            c.kind === "EMPTY"
+                              ? "text-muted-foreground/40"
+                              : "bg-primary/5 text-foreground"
+                          }`}
+                          title={c.operand ?? c.kind}
+                        >
+                          <span>{KIND_GLYPH_PREVIEW[c.kind] ?? c.kind}</span>
+                          {c.operand && (
+                            <span className="ml-1 text-[9px] text-primary">{c.operand}</span>
+                          )}
+                        </span>
+                      ))}
+                      <span className="text-muted-foreground">│</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {preview.warnings.length > 0 && (
+            <div className="mt-3 rounded border border-warning/40 bg-warning/5 p-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-warning">
+                Avisos
+              </div>
+              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                {preview.warnings.map((w, i) => (
+                  <li key={i}>• {w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2 sm:justify-between">
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => onConfirm("append")}>
+              Anexar ao final
+            </Button>
+            <Button size="sm" onClick={() => onConfirm("replace")}>
+              Substituir tudo
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
