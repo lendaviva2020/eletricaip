@@ -17,7 +17,7 @@ Cada item tem ID estável (referenciado por commits e PRs). Não remova IDs — 
 - **#WGL-04** Snap-to-grid em `MoveNode`
 - **#WGL-05** Context menu HTML overlay
 - **#WGL-06** Export DXF/PDF a partir de `DiagramDoc`
-- **#WGL-07** Plano de descomissionamento do `VoltaiStore` (migrar RightPropertyPanel + colaboração Realtime para DiagramStore)
+- **#WGL-07** Descomissionamento do `VoltaiStore` — ✅ store, canvas legado (`unifilar-canvas.tsx`) e symbols removidos; `RightPropertyPanel` e colaboração Realtime (`use-collab.ts`) agora consomem `useDiagramStore` (`diagram:v2:${projectId}`). Slot `voltai` do snapshot mantido apenas como passthrough legado em `projects.functions.ts` para leitura de projetos antigos.
 
 ### PLC ↔ Editor
 - **#PLC-01** Bloco do PlcStore abre Ladder/FBD com `rungs`/`fbdNodes` carregados; persistir na troca de aba
