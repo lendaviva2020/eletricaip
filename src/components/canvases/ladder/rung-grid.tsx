@@ -190,6 +190,12 @@ export function RungGrid() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openImportPicker = () => fileInputRef.current?.click();
+  const [importPreview, setImportPreview] = useState<{
+    fileName: string;
+    rungs: LadderRung[];
+    warnings: string[];
+  } | null>(null);
+
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // permite reimportar mesmo arquivo
@@ -203,18 +209,31 @@ export function RungGrid() {
         toast.error("Nenhum rung reconhecido no arquivo.");
         return;
       }
-      setRungs(parsed);
-      if (warnings.length > 0) {
-        toast.warning(`${parsed.length} rung(s) importado(s), ${warnings.length} aviso(s).`, {
-          description: warnings.slice(0, 3).join(" · "),
-        });
-      } else {
-        toast.success(`${parsed.length} rung(s) importado(s) de ${file.name}.`);
-      }
+      setImportPreview({ fileName: file.name, rungs: parsed, warnings });
     } catch (err) {
       toast.error(`Falha ao importar: ${(err as Error).message}`);
     }
   };
+
+  const confirmImport = (mode: "replace" | "append") => {
+    if (!importPreview) return;
+    const { rungs: parsed, warnings, fileName } = importPreview;
+    if (mode === "replace") {
+      setRungs(parsed);
+    } else {
+      setRungs((rs) => [...rs, ...parsed]);
+    }
+    if (warnings.length > 0) {
+      toast.warning(`${parsed.length} rung(s) importado(s), ${warnings.length} aviso(s).`, {
+        description: warnings.slice(0, 3).join(" · "),
+      });
+    } else {
+      toast.success(`${parsed.length} rung(s) importado(s) de ${fileName}.`);
+    }
+    setImportPreview(null);
+  };
+
+
 
 
   return (
