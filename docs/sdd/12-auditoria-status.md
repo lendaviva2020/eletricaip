@@ -35,7 +35,7 @@ Legenda: ✅ done · 🟡 partial (gaps) · ❌ missing · 🔒 manual
 | Store | Status | Notas |
 |---|---|---|
 | `useProjectStore` · `useEditorStore` · `useDiagramStore` · `useNotificationStore` · `useSettingsStore` · `useAuthStore` | ✅ | — |
-| `useVoltaiStore` | 🟡 | Em descomissionamento; shim mantido até remoção do RightPropertyPanel legado (#WGL-07) |
+| `useVoltaiStore` | ✅ removido | #WGL-07 concluído — RightPropertyPanel e collab migrados para `useDiagramStore`; slot `voltai` do snapshot mantido como passthrough legado |
 | `usePlcStore` | ✅ | Integrado a Ladder/FBD via `plc-canvas.tsx` (#PLC-01) |
 | `useDigitalTwinStore` | 🟢 | Telemetria persistida via `flushTwinTelemetry` (#TWIN-02 ✅) |
 
