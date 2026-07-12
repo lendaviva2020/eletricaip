@@ -529,8 +529,16 @@ export function RungGrid() {
               })}
             </div>
           </aside>
-        )}
       </div>
+
+      {importPreview && (
+        <ImportPreviewDialog
+          preview={importPreview}
+          onCancel={() => setImportPreview(null)}
+          onConfirm={confirmImport}
+        />
+      )}
     </div>
   );
+
 }
