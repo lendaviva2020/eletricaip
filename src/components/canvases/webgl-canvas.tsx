@@ -9,7 +9,7 @@ import { DiagramStage, type EdgeDraftCommit, type MoveDelta } from "@/lib/diagra
 import { cmd } from "@/lib/diagram/commands";
 import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
-import { buildProjectPdf } from "@/lib/pdf-export";
+// jsPDF entra por import dinâmico no handler (browser-only, ~400KB).
 import type { SheetKind, NodeKind } from "@/lib/diagram/schema";
 import {
   type VoltaiComponentType,
