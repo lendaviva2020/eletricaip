@@ -179,8 +179,9 @@ function SessionExpired({ path }: { path: string }) {
   );
 }
 
-
+function useAuthRedirect(
   loading: boolean,
+
   user: unknown,
   isPublic: boolean,
   path: string,
