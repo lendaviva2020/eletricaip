@@ -138,8 +138,11 @@ function AuthGate() {
   }
 
   if (!user) {
-    return null;
+    // NUNCA retornar null aqui: um render vazio é indistinguível de "tela branca".
+    // O redirect do useAuthRedirect é best-effort; esta tela é o fallback visível.
+    return <SessionExpired path={path} />;
   }
+
 
   if (AUTH_NO_CHROME.includes(path)) {
     return <Outlet />;
