@@ -14,7 +14,6 @@ export interface ServerFnEvent {
   kind: DiagnosticsKind;
 }
 
-
 interface DiagnosticsState {
   total: number;
   ok: number;
@@ -30,7 +29,6 @@ interface DiagnosticsState {
     durationMs: number;
     kind?: DiagnosticsKind;
   }) => void;
-
 }
 
 export const useDiagnosticsCounter = create<DiagnosticsState>((set) => ({
@@ -100,7 +98,6 @@ function shortPath(url: string): string {
 
 let installed = false;
 
-
 export function installDiagnosticsInterceptor() {
   if (installed || typeof window === "undefined") return;
   installed = true;
@@ -140,5 +137,4 @@ export function installDiagnosticsInterceptor() {
       throw e;
     }
   };
-
 }

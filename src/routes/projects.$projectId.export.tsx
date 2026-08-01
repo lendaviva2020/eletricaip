@@ -36,7 +36,6 @@ function ExportPage() {
     try {
       const { buildProjectPdf } = await import("@/lib/pdf-export");
       const pdf = buildProjectPdf({
-
         project: data.project,
         bom: data.bom as any,
         totalBRL: data.totalBRL,

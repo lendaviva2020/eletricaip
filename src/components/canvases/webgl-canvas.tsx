@@ -289,7 +289,6 @@ export function WebglCanvas({ sheet }: Props) {
       const { buildProjectPdf } = await import("@/lib/pdf-export");
       const safe = (doc.metadata.title || "diagrama").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
       const pdf = buildProjectPdf({
-
         project: { name: doc.metadata.title || "Diagrama sem título" },
         bom: [],
         totalBRL: 0,
