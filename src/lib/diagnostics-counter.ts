@@ -100,23 +100,36 @@ export function installDiagnosticsInterceptor() {
     const url =
       typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const isServerFn = url.includes("/_serverFn/");
-    if (!isServerFn) return orig(input as RequestInfo, init);
+    const isSameOrigin = url.startsWith("/") || url.startsWith(window.location.origin);
+    // Fora de server functions só nos interessam falhas 5xx de SSR/navegação
+    // (documento ou payload de rota), para separar "500 de SSR" de "500 de server fn".
+    if (!isServerFn && !isSameOrigin) return orig(input as RequestInfo, init);
+
     const started = performance.now();
+    const kind: DiagnosticsKind = isServerFn ? "serverFn" : "ssr";
+    const path = isServerFn ? decodeServerFnPath(url) : shortPath(url);
     try {
       const res = await orig(input as RequestInfo, init);
-      useDiagnosticsCounter.getState()._record({
-        status: res.status,
-        path: decodeServerFnPath(url),
-        durationMs: Math.round(performance.now() - started),
-      });
+      if (isServerFn || res.status >= 500) {
+        useDiagnosticsCounter.getState()._record({
+          status: res.status,
+          path,
+          durationMs: Math.round(performance.now() - started),
+          kind,
+        });
+      }
       return res;
     } catch (e) {
-      useDiagnosticsCounter.getState()._record({
-        status: 0,
-        path: decodeServerFnPath(url),
-        durationMs: Math.round(performance.now() - started),
-      });
+      if (isServerFn) {
+        useDiagnosticsCounter.getState()._record({
+          status: 0,
+          path,
+          durationMs: Math.round(performance.now() - started),
+          kind,
+        });
+      }
       throw e;
     }
   };
+
 }
