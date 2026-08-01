@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect } from "react";
-import { useRouter } from "@tanstack/react-router";
+import { ClientOnly, useRouter } from "@tanstack/react-router";
 import { ModeTabs } from "@/components/mode-tabs";
 import { BottomPanel } from "@/components/bottom-panel";
 import { RightPanel } from "@/components/right-panel";
