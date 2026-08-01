@@ -77,10 +77,12 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return await normalizeCatastrophicSsrResponse(response, request.url);
     } catch (error) {
+      console.error(`[ssr:throw] ${request.url}`);
       console.error(error);
       return brandedErrorResponse();
+
     }
   },
 };
