@@ -51,7 +51,7 @@ export const useDiagnosticsCounter = create<DiagnosticsState>((set) => ({
       countOtherErr: 0,
       recentErrors: [],
     }),
-  _record: ({ status, path, durationMs }) =>
+  _record: ({ status, path, durationMs, kind = "serverFn" }) =>
     set((s) => {
       const isOk = status >= 200 && status < 300;
       const next: Partial<DiagnosticsState> = {
@@ -65,7 +65,8 @@ export const useDiagnosticsCounter = create<DiagnosticsState>((set) => ({
           (!isOk && status !== 500 && status !== 503 && !(status >= 400 && status < 500) ? 1 : 0),
       };
       if (!isOk) {
-        const ev: ServerFnEvent = { ts: Date.now(), status, path, durationMs };
+        const ev: ServerFnEvent = { ts: Date.now(), status, path, durationMs, kind };
+
         next.recentErrors = [ev, ...s.recentErrors].slice(0, 25);
       }
       return next as DiagnosticsState;
