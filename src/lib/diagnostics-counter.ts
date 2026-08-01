@@ -24,7 +24,13 @@ interface DiagnosticsState {
   countOtherErr: number;
   recentErrors: ServerFnEvent[];
   reset: () => void;
-  _record: (ev: { status: number; path: string; durationMs: number }) => void;
+  _record: (ev: {
+    status: number;
+    path: string;
+    durationMs: number;
+    kind?: DiagnosticsKind;
+  }) => void;
+
 }
 
 export const useDiagnosticsCounter = create<DiagnosticsState>((set) => ({
