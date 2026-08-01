@@ -90,7 +90,16 @@ function decodeServerFnPath(url: string): string {
   }
 }
 
+function shortPath(url: string): string {
+  try {
+    return new URL(url, window.location.origin).pathname.slice(0, 40);
+  } catch {
+    return url.slice(0, 40);
+  }
+}
+
 let installed = false;
+
 
 export function installDiagnosticsInterceptor() {
   if (installed || typeof window === "undefined") return;
