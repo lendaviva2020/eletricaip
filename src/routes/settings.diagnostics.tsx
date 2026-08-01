@@ -492,7 +492,11 @@ function DiagnosticsPage() {
                     >
                       {e.status || "ERR"}
                     </Badge>
+                    <Badge variant="outline" className="text-[10px] h-5">
+                      {e.kind === "ssr" ? "SSR" : "fn"}
+                    </Badge>
                     <span className="flex-1 truncate">{e.path}</span>
+
                     <span className="text-muted-foreground">{e.durationMs}ms</span>
                   </div>
                 ))
