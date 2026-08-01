@@ -3,12 +3,17 @@
 // + the last N error events, so the diagnostics panel can render live data.
 import { create } from "zustand";
 
+export type DiagnosticsKind = "serverFn" | "ssr";
+
 export interface ServerFnEvent {
   ts: number;
   status: number;
   path: string; // last segment of the serverFn id, decoded best-effort
   durationMs: number;
+  /** Origem do erro: chamada de server function ou navegação/documento SSR. */
+  kind: DiagnosticsKind;
 }
+
 
 interface DiagnosticsState {
   total: number;
