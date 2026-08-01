@@ -138,8 +138,11 @@ function AuthGate() {
   }
 
   if (!user) {
-    return null;
+    // NUNCA retornar null aqui: um render vazio é indistinguível de "tela branca".
+    // O redirect do useAuthRedirect é best-effort; esta tela é o fallback visível.
+    return <SessionExpired path={path} />;
   }
+
 
   if (AUTH_NO_CHROME.includes(path)) {
     return <Outlet />;
@@ -156,8 +159,29 @@ function AuthGate() {
   );
 }
 
+function SessionExpired({ path }: { path: string }) {
+  return (
+    <div className="min-h-screen grid place-items-center bg-background px-6">
+      <div className="text-center max-w-sm">
+        <h1 className="text-lg font-semibold">Sessão necessária</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Sua sessão expirou ou você ainda não entrou. Faça login para acessar esta área.
+        </p>
+        <Link
+          to="/login"
+          search={{ redirect: path }}
+          className="mt-4 inline-block px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
+        >
+          Entrar
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function useAuthRedirect(
   loading: boolean,
+
   user: unknown,
   isPublic: boolean,
   path: string,

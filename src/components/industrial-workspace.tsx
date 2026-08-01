@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect } from "react";
-import { useRouter } from "@tanstack/react-router";
+import { ClientOnly, useRouter } from "@tanstack/react-router";
 import { ModeTabs } from "@/components/mode-tabs";
 import { BottomPanel } from "@/components/bottom-panel";
 import { RightPanel } from "@/components/right-panel";
@@ -122,17 +122,23 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           {/* ErrorBoundary keyed por `mode`: isola crashes (ex.: React #185)
               ao canvas ativo e cria um boundary fresco ao trocar de aba. */}
           <ErrorBoundary key={mode}>
-            <Suspense fallback={<CanvasFallback />}>
-              {mode === "unifilar" && <UnifilarCanvas />}
-              {mode === "ladder" && <LadderCanvas />}
-              {mode === "fbd" && <FbdCanvas />}
-              {mode === "scada" && <ScadaCanvas />}
-              {mode === "twin" && <TwinCanvas />}
-              {mode === "plc" && <PlcCanvas />}
-              {mode === "sim" && <SimCanvas />}
-              {mode === "alarms" && <AlarmsCanvas />}
-            </Suspense>
+            {/* ClientOnly é obrigatório: sem ele o SSR resolve os React.lazy abaixo
+                e avalia Pixi/Three/Konva no servidor (Worker), o que derruba a
+                renderização inteira da rota. */}
+            <ClientOnly fallback={<CanvasFallback />}>
+              <Suspense fallback={<CanvasFallback />}>
+                {mode === "unifilar" && <UnifilarCanvas />}
+                {mode === "ladder" && <LadderCanvas />}
+                {mode === "fbd" && <FbdCanvas />}
+                {mode === "scada" && <ScadaCanvas />}
+                {mode === "twin" && <TwinCanvas />}
+                {mode === "plc" && <PlcCanvas />}
+                {mode === "sim" && <SimCanvas />}
+                {mode === "alarms" && <AlarmsCanvas />}
+              </Suspense>
+            </ClientOnly>
           </ErrorBoundary>
+
           <ErrorBoundary fallback={null}>
             <CanvasAiChat />
           </ErrorBoundary>

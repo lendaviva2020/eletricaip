@@ -3,11 +3,15 @@
 // + the last N error events, so the diagnostics panel can render live data.
 import { create } from "zustand";
 
+export type DiagnosticsKind = "serverFn" | "ssr";
+
 export interface ServerFnEvent {
   ts: number;
   status: number;
   path: string; // last segment of the serverFn id, decoded best-effort
   durationMs: number;
+  /** Origem do erro: chamada de server function ou navegação/documento SSR. */
+  kind: DiagnosticsKind;
 }
 
 interface DiagnosticsState {
@@ -19,7 +23,12 @@ interface DiagnosticsState {
   countOtherErr: number;
   recentErrors: ServerFnEvent[];
   reset: () => void;
-  _record: (ev: { status: number; path: string; durationMs: number }) => void;
+  _record: (ev: {
+    status: number;
+    path: string;
+    durationMs: number;
+    kind?: DiagnosticsKind;
+  }) => void;
 }
 
 export const useDiagnosticsCounter = create<DiagnosticsState>((set) => ({
@@ -40,7 +49,7 @@ export const useDiagnosticsCounter = create<DiagnosticsState>((set) => ({
       countOtherErr: 0,
       recentErrors: [],
     }),
-  _record: ({ status, path, durationMs }) =>
+  _record: ({ status, path, durationMs, kind = "serverFn" }) =>
     set((s) => {
       const isOk = status >= 200 && status < 300;
       const next: Partial<DiagnosticsState> = {
@@ -54,7 +63,8 @@ export const useDiagnosticsCounter = create<DiagnosticsState>((set) => ({
           (!isOk && status !== 500 && status !== 503 && !(status >= 400 && status < 500) ? 1 : 0),
       };
       if (!isOk) {
-        const ev: ServerFnEvent = { ts: Date.now(), status, path, durationMs };
+        const ev: ServerFnEvent = { ts: Date.now(), status, path, durationMs, kind };
+
         next.recentErrors = [ev, ...s.recentErrors].slice(0, 25);
       }
       return next as DiagnosticsState;
@@ -78,6 +88,14 @@ function decodeServerFnPath(url: string): string {
   }
 }
 
+function shortPath(url: string): string {
+  try {
+    return new URL(url, window.location.origin).pathname.slice(0, 40);
+  } catch {
+    return url.slice(0, 40);
+  }
+}
+
 let installed = false;
 
 export function installDiagnosticsInterceptor() {
@@ -88,22 +106,34 @@ export function installDiagnosticsInterceptor() {
     const url =
       typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const isServerFn = url.includes("/_serverFn/");
-    if (!isServerFn) return orig(input as RequestInfo, init);
+    const isSameOrigin = url.startsWith("/") || url.startsWith(window.location.origin);
+    // Fora de server functions só nos interessam falhas 5xx de SSR/navegação
+    // (documento ou payload de rota), para separar "500 de SSR" de "500 de server fn".
+    if (!isServerFn && !isSameOrigin) return orig(input as RequestInfo, init);
+
     const started = performance.now();
+    const kind: DiagnosticsKind = isServerFn ? "serverFn" : "ssr";
+    const path = isServerFn ? decodeServerFnPath(url) : shortPath(url);
     try {
       const res = await orig(input as RequestInfo, init);
-      useDiagnosticsCounter.getState()._record({
-        status: res.status,
-        path: decodeServerFnPath(url),
-        durationMs: Math.round(performance.now() - started),
-      });
+      if (isServerFn || res.status >= 500) {
+        useDiagnosticsCounter.getState()._record({
+          status: res.status,
+          path,
+          durationMs: Math.round(performance.now() - started),
+          kind,
+        });
+      }
       return res;
     } catch (e) {
-      useDiagnosticsCounter.getState()._record({
-        status: 0,
-        path: decodeServerFnPath(url),
-        durationMs: Math.round(performance.now() - started),
-      });
+      if (isServerFn) {
+        useDiagnosticsCounter.getState()._record({
+          status: 0,
+          path,
+          durationMs: Math.round(performance.now() - started),
+          kind,
+        });
+      }
       throw e;
     }
   };

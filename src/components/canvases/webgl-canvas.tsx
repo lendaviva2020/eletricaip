@@ -9,7 +9,7 @@ import { DiagramStage, type EdgeDraftCommit, type MoveDelta } from "@/lib/diagra
 import { cmd } from "@/lib/diagram/commands";
 import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
-import { buildProjectPdf } from "@/lib/pdf-export";
+// jsPDF entra por import dinâmico no handler (browser-only, ~400KB).
 import type { SheetKind, NodeKind } from "@/lib/diagram/schema";
 import {
   type VoltaiComponentType,
@@ -284,8 +284,9 @@ export function WebglCanvas({ sheet }: Props) {
     }
   }, [doc, effectiveSheet]);
 
-  const handleExportPdf = useCallback(() => {
+  const handleExportPdf = useCallback(async () => {
     try {
+      const { buildProjectPdf } = await import("@/lib/pdf-export");
       const safe = (doc.metadata.title || "diagrama").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
       const pdf = buildProjectPdf({
         project: { name: doc.metadata.title || "Diagrama sem título" },

@@ -48,7 +48,6 @@ interface CreditSample {
   remaining: number;
 }
 
-
 export const Route = createFileRoute("/settings/diagnostics")({
   head: () => ({
     meta: [
@@ -259,7 +258,11 @@ function DiagnosticsPage() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 10 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
                       <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                       <Tooltip
                         contentStyle={{
@@ -306,8 +309,16 @@ function DiagnosticsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={rateSeries}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 10 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fontSize: 10 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
                       <Tooltip
                         contentStyle={{
                           background: "hsl(var(--card))",
@@ -316,11 +327,41 @@ function DiagnosticsPage() {
                         }}
                       />
                       <Legend wrapperStyle={{ fontSize: 10 }} />
-                      <Line type="monotone" dataKey="upstashAllowed" stroke="hsl(var(--primary))" dot={false} name="ups OK" />
-                      <Line type="monotone" dataKey="upstashBlocked" stroke="hsl(var(--destructive))" dot={false} name="ups 429" />
-                      <Line type="monotone" dataKey="fallbackAllowed" stroke="hsl(var(--success))" dot={false} name="fb OK" />
-                      <Line type="monotone" dataKey="fallbackBlocked" stroke="#f59e0b" dot={false} name="fb 429" />
-                      <Line type="monotone" dataKey="quotaBlocked" stroke="#a855f7" dot={false} name="quota" />
+                      <Line
+                        type="monotone"
+                        dataKey="upstashAllowed"
+                        stroke="hsl(var(--primary))"
+                        dot={false}
+                        name="ups OK"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="upstashBlocked"
+                        stroke="hsl(var(--destructive))"
+                        dot={false}
+                        name="ups 429"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="fallbackAllowed"
+                        stroke="hsl(var(--success))"
+                        dot={false}
+                        name="fb OK"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="fallbackBlocked"
+                        stroke="#f59e0b"
+                        dot={false}
+                        name="fb 429"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="quotaBlocked"
+                        stroke="#a855f7"
+                        dot={false}
+                        name="quota"
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -352,8 +393,16 @@ function DiagnosticsPage() {
                       }))}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="userId" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <XAxis
+                        dataKey="userId"
+                        tick={{ fontSize: 10 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fontSize: 10 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
                       <Tooltip
                         contentStyle={{
                           background: "hsl(var(--card))",
@@ -362,9 +411,24 @@ function DiagnosticsPage() {
                         }}
                       />
                       <Legend wrapperStyle={{ fontSize: 10 }} />
-                      <Line type="monotone" dataKey="upstash" stroke="hsl(var(--primary))" name="upstash" />
-                      <Line type="monotone" dataKey="fallback" stroke="hsl(var(--success))" name="fallback" />
-                      <Line type="monotone" dataKey="bloqueios" stroke="hsl(var(--destructive))" name="bloqueios" />
+                      <Line
+                        type="monotone"
+                        dataKey="upstash"
+                        stroke="hsl(var(--primary))"
+                        name="upstash"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="fallback"
+                        stroke="hsl(var(--success))"
+                        name="fallback"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="bloqueios"
+                        stroke="hsl(var(--destructive))"
+                        name="bloqueios"
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -372,7 +436,6 @@ function DiagnosticsPage() {
             </CardContent>
           </Card>
         </section>
-
 
         {/* AI Rate-limit metrics */}
         <section>
@@ -465,7 +528,6 @@ function DiagnosticsPage() {
           </Card>
         </section>
 
-
         {/* Recent client errors */}
         <section>
           <h2 className="text-sm font-medium mb-2 flex items-center gap-2">
@@ -492,7 +554,11 @@ function DiagnosticsPage() {
                     >
                       {e.status || "ERR"}
                     </Badge>
+                    <Badge variant="outline" className="text-[10px] h-5">
+                      {e.kind === "ssr" ? "SSR" : "fn"}
+                    </Badge>
                     <span className="flex-1 truncate">{e.path}</span>
+
                     <span className="text-muted-foreground">{e.durationMs}ms</span>
                   </div>
                 ))

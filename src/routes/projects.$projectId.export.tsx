@@ -5,7 +5,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, FileText, FileBox } from "lucide-react";
 import { getProjectExportData } from "@/lib/export.functions";
-import { buildProjectPdf } from "@/lib/pdf-export";
+// jsPDF é browser-only e pesado: importado dinamicamente no handler para não
+// entrar no grafo do SSR.
+
 import { buildDxf, downloadDxf, type DxfNode, type DxfEdge } from "@/lib/dxf-export";
 import { Button } from "@/components/ui/button";
 
@@ -32,6 +34,7 @@ function ExportPage() {
     if (!data) return;
     setBusy("pdf");
     try {
+      const { buildProjectPdf } = await import("@/lib/pdf-export");
       const pdf = buildProjectPdf({
         project: data.project,
         bom: data.bom as any,
