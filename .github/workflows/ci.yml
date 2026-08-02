@@ -35,6 +35,9 @@ jobs:
       - name: 🧹 Lint
         run: npm run lint
 
+      - name: 🏗️ Production build
+        run: npm run build
+
   deploy-supabase:
     needs: quality
     if: github.ref == 'refs/heads/main'
