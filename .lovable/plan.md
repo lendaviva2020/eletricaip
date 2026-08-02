@@ -1,48 +1,116 @@
-# Mapa das causas de tela branca (renderização vazia)
+# EletricAI Industrial OS — Tudo que já foi construído
 
-## O que eu confirmei lendo/rodando o app agora
+SaaS multi-tenant, 100% no navegador, para engenharia elétrica e automação industrial: CAD elétrico, programação de CLP, SCADA, Digital Twin e geração de projetos por IA — num único workspace.
 
-**1. `AuthGate` renderiza literalmente nada em rota protegida sem sessão — causa nº 1 confirmada**
-`src/routes/__root.tsx` (linhas 140-142): quando `loading === false` e `user === null` numa rota não pública, o gate faz `return null`. Não há fallback, nem skeleton, nem redirect síncrono — a página fica em branco e depende inteiramente de `useAuthRedirect` conseguir navegar. Se o redirect não dispara (sessão expirada, falha de rede no `getSession`, hidratação divergente, rota nova fora de `isPublicPath`), o resultado visual é exatamente "tela branca sem nada".
+---
 
-Isso também explica o comportamento que observei no navegador: `/workspace` e `/digital-twin` retornam 200 mas exibem só o conteúdo de marketing/login — o gate está trocando a árvore em runtime.
+## 1. Conta, acesso e empresa (tenant)
 
-**2. Bibliotecas pesadas entram no grafo do SSR via `React.lazy`**
-`src/components/industrial-workspace.tsx` faz `lazy()` de 8 canvases, e `src/components/canvases/lazy.tsx` de Monaco/Konva/Three. Durante SSR o React resolve esses `lazy()` (não é gate de import), então Pixi, Three, Konva e Monaco são avaliados no servidor. Medida real: o processo do dev server está com **2,5 GB de RSS**, e requisições SSR a `/workspace` e `/digital-twin` chegaram a fechar a conexão sem resposta (`code=000`) enquanto `/analytics` e `/settings/profile` responderam 200. Nenhum desses canvases está atrás de `<ClientOnly>`.
+- Cadastro, login, "esqueci minha senha" e redefinição de senha.
+- Onboarding de criação da empresa (tenant) com dados básicos.
+- Convite de membros por link/token, com aceite pela página de convite.
+- Equipe com papéis e permissões; separação total de dados entre empresas.
+- Tour guiado pós-criação da empresa, levando o usuário até o Workspace Industrial e mostrando os modos Unifilar / Ladder / FBD / SCADA.
+- Tela de sessão expirada em vez de tela vazia.
 
-**3. Erro em SSR não vira tela branca, vira página de erro genérica — e isso está mascarando diagnóstico**
-`src/server.ts` normaliza o 500 do h3 para o HTML de `src/lib/error-page.ts` ("This page didn't load"). Confirmei no log do dev server: `Error: h3 swallowed SSR error: {"status":500,...}`. Ou seja, parte dos relatos de "não renderiza nada" é essa página, não React vazio — e a mensagem não diz qual módulo falhou.
+## 2. Painel e gestão de projetos
 
-**4. `manualChunks` atual está correto e não é a causa**
-`vite.config.ts` não separa React/scheduler/@tanstack (só 3D, konva, pixi, reactflow, charts, monaco, pdf). Esse vetor de tela branca já foi eliminado; não vou mexer nele sem evidência do build de produção.
+- Dashboard inicial com visão geral.
+- Lista de projetos: criar, abrir, renomear, organizar.
+- Autosave contínuo do projeto, com log de salvamentos e status de persistência.
+- Histórico de revisões e restauração de versões.
+- Compartilhamento de projeto por modal (link/convidados).
+- Clientes: cadastro de clientes, ficha individual e logo (armazenamento privado).
 
-**5. Ainda não verificado (vira etapa 1 do plano, não afirmo como causa)**
-Não rodei build de produção nem prerender neste modo. Falta confirmar: se alguma rota protegida está sendo pré-renderizada com `user=null` (o que congela o caso 1 no HTML estático), e se o bundle de produção quebra na avaliação de algum chunk. Sem esse dado eu não sei ainda se a tela branca da Vercel é o caso 1, o caso 2 ou os dois.
+## 3. Workspace Industrial (o coração do app)
 
-# Plano de correção
+Um único editor com abas de modo, painel de propriedades à direita, painel inferior e barra superior.
 
-## Etapa 1 — Reproduzir com build de produção (diagnóstico, antes de qualquer fix)
-Rodar `npm run build` completo, ler a saída de prerender (quantas páginas, quais rotas, quais erros), e servir o build para carregar `/`, `/workspace`, `/digital-twin`, `/dashboard`, `/analytics` no navegador headless capturando console + `pageerror`. Sem isso, qualquer correção é chute.
+**Unifilar (WebGL)** — desenho de diagramas elétricos com:
+- Paleta/catálogo de componentes industriais.
+- Portas e handles nos componentes, ligação de cabos ortogonais, seleção por marquee, multi-seleção com arraste, snap na grade, menu de contexto.
+- Undo/redo completo em todas as ações.
+- Cálculos elétricos e validação normativa (NBR 5410, NR-10, NR-12).
 
-## Etapa 2 — Eliminar a tela branca do AuthGate (fix definitivo do caso 1)
-- Trocar `return null` por um estado visível: card "Sessão expirada / Entrar" com link para `/login`, mais o skeleton enquanto o redirect está em voo.
-- Fazer o redirect de rota protegida acontecer de forma determinística (não só num `useEffect` best-effort), preservando `redirect=<path>` para voltar depois do login.
-- Garantir que uma rota desconhecida/nova nunca caia num render vazio: default seguro é a tela de login, não `null`.
+**Ladder (IEC 61131-3)**
+- Grade de rungs com colunas configuráveis (3 a 12).
+- Contatos, bobinas, selo, temporizadores TON/TOF/TP e contador CTU rodando em runtime.
+- Validador de lógica com apontamento de erros.
+- Autocomplete de tags.
+- Importação de arquivos IL/ST com preview do rung importado (glyphs `─┤ ├─`, `─( )─`), avisos de parsing e opção de anexar ou substituir.
 
-## Etapa 3 — Tirar Pixi / Three / Konva / Monaco do SSR
-- Envolver os canvases em `<ClientOnly>` (gate de render) **e** manter o `lazy()` (gate de download), para que o módulo não seja avaliado no servidor.
-- Onde houver import estático de módulo browser-only numa cadeia SSR (ex.: `webgl-canvas.tsx` → `lib/diagram/render/stage.ts` → `pixi.js`), mover o import para dentro do componente client-only e extrair tipos/constantes compartilhadas para um módulo browser-safe.
-- Meta verificável: RSS do dev server cai substancialmente e `/workspace` e `/digital-twin` respondem SSR de forma estável em requisições repetidas.
+**FBD (Blocos de função)**
+- Edição de blocos com parâmetros sincronizados ao runtime.
+- Validação visual de ligações e exportação.
 
-## Etapa 4 — Tornar a falha diagnosticável em vez de silenciosa
-- No `normalizeCatastrophicSsrResponse`, logar o `url` e o `Error` capturado com stack (hoje o log não diz a rota).
-- Registrar essas ocorrências no painel `/settings/diagnostics` que já existe, separando 500 de SSR de 500 de server function.
+**SCADA**
+- Telas de supervisão com widgets vinculados a tags (diálogo de bind de tag).
+- Scripts do usuário executados em sandbox isolada (worker), sem risco para a aplicação.
+- Motor SCADA em tempo real.
 
-## Etapa 5 — Verificação final
-Rebuild de produção, prerender ≥ 1 página, e passada no navegador headless por todas as rotas principais (logado e deslogado) confirmando que nenhuma renderiza vazio. Rodar a suíte de testes (`npm run test`) para não regredir os 101 testes atuais.
+**CLP**
+- Compilação de ST, mapa de I/O, validação de slots.
+- Exportação PLCopen XML.
 
-# Detalhes técnicos
+**Simulação e alarmes**
+- Simulação determinística da lógica antes de ir para o hardware.
+- Central de alarmes que gera notificações no app.
+- Painel de controle de circuito (Play/Stop, pulso/manopla), lâmpada indicadora e rastreio de energização ("linha vermelha") com diagnóstico de falha.
+- Colaboração em tempo real: cursores de múltiplos usuários no mesmo diagrama.
 
-- Arquivos que serão editados: `src/routes/__root.tsx` (AuthGate + redirect), `src/components/industrial-workspace.tsx` e `src/components/canvases/lazy.tsx` (ClientOnly), `src/components/canvases/webgl-canvas.tsx` + `src/lib/diagram/render/stage.ts` (fronteira de import Pixi), `src/server.ts` (log com URL), `src/lib/diagnostics-counter.ts` / `src/routes/settings.diagnostics.tsx` (visibilidade).
-- Nada de mudança em `manualChunks` sem evidência do build; nada de mudança de banco ou RLS nesta onda.
-- `vercel.json` (CSP) e `package.json` (`nitro` beta pinado) ficam sob observação na etapa 1 — só toco se o build/console apontar bloqueio real.
+## 4. Digital Twin
+
+- Cena 3D do ativo com dados de demonstração carregados automaticamente.
+- Upload de modelos 3D próprios (GLB/GLTF até 75 MB) em bucket privado por empresa, com acesso por URL assinada.
+- Telemetria em tempo real gravada em lote no histórico de amostras de tags.
+- Modo "E-se?" (What-If): sobrescrever valores de tags, criar e comparar cenários, com a gravação de telemetria pausada durante a simulação hipotética.
+
+## 5. Inteligência Artificial
+
+- Arquiteto Industrial por IA: descreve o projeto em português e a IA gera/edita o diagrama.
+- Preview do diff antes de aplicar qualquer alteração da IA; todo patch é reversível (undo).
+- Chat com IA dentro do canvas e página de chat dedicada.
+- Créditos de IA com validação exclusivamente no servidor (não é possível burlar pelo navegador), badge de créditos e modal de upgrade.
+- Analytics reais de uso e custo de IA: consumo por mês e ranking de operações mais caras.
+
+## 6. Integrações industriais e tempo real
+
+- OPC-UA e Modbus TCP (com proteção contra acesso a hosts não autorizados).
+- MQTT e ingestão de IoT por endpoint público autenticado.
+- Página de tempo real com leituras de dispositivos.
+- Configuração de protocolos e normas por empresa em Configurações.
+
+## 7. Catálogo, BOM e exportações
+
+- Catálogo de componentes/materiais.
+- BOM (lista de materiais) gerada a partir do projeto.
+- Exportação do projeto em PDF e DXF.
+
+## 8. Cobrança e planos
+
+- Planos, limites por plano e tela de faturamento.
+- Stripe e Mercado Pago integrados por webhook assinado e verificado.
+
+## 9. Configurações (14 áreas)
+
+Perfil (com avatar e detecção de alterações não salvas), aparência/tema, notificações, equipe, integrações, protocolos, segurança, faturamento, status da IA, autosave, diagnósticos, monitor de segurança, limites de uso (rate limits) — com áreas restritas a administradores.
+
+## 10. Observabilidade e confiabilidade (uso interno)
+
+- Painel de Diagnósticos: status do Supabase, permissões, contadores de erros 500/503 em tempo real, distinção entre falhas de servidor e de renderização, e gráficos ao vivo.
+- Monitor de Segurança com auditoria de RLS, buckets privados e políticas.
+- Rate limiting de IA e IoT com fallback local e circuit breaker quando o serviço externo cai; limites ajustáveis por usuário ou globais na tela de Rate Limits.
+- Notificações internas, captura de erros e páginas de erro amigáveis.
+- 101 testes automatizados passando (navegação, persistência, switches de UI, importação Ladder, telemetria do Twin, What-If, etc.).
+- CI no GitHub Actions com lint, format check, testes e build de produção; deploy na Vercel.
+
+---
+
+## Pendências conhecidas
+
+1. **Leaked Password Protection** — precisa ser habilitado manualmente no painel do Supabase (Auth → Providers → Password). Não há API para automatizar.
+2. **Publicação** — a correção da tela branca em produção (bootstrap SPA legado removido) já está no preview; produção só atualiza após republicar.
+
+---
+
+Nenhuma alteração de código é necessária para esta entrega — é apenas o inventário solicitado.
