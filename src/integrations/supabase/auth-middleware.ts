@@ -38,7 +38,6 @@ export interface AuthContext {
   claims: Record<string, unknown>;
 }
 
-
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
     const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = getServerSupabasePublicEnv();
@@ -112,6 +111,5 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
         claims,
       } satisfies AuthContext,
     });
-
   },
 );
