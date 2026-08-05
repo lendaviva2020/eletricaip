@@ -149,7 +149,6 @@ export function getStatusEvents(): StatusEvent[] {
   }
 }
 
-
 export async function callArchitect(
   prompt: string,
   includeContext = true,
@@ -235,8 +234,6 @@ export function applyArchitectToStore(
   // O canvas unifilar hoje é WebGL sobre o `useDiagramStore`; a IA passa a
   // publicar o desenho via `applyAiPatch`/preview no fluxo do DiagramStore
   // (ver `src/lib/diagram/ai.functions.ts` + `ai-patch-preview.tsx`).
-
-
 
   // 3. Map and deploy standard compliant Ladder rungs & Shared tags (useEditorStore)
   const ladderRungs: LadderRung[] = [];

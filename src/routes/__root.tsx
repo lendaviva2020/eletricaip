@@ -143,7 +143,6 @@ function AuthGate() {
     return <SessionExpired path={path} />;
   }
 
-
   if (AUTH_NO_CHROME.includes(path)) {
     return <Outlet />;
   }

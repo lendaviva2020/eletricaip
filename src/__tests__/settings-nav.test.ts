@@ -2,14 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const settingsSrc = readFileSync(
-  resolve(__dirname, "../routes/settings.tsx"),
-  "utf8",
-);
-const routeTreeSrc = readFileSync(
-  resolve(__dirname, "../routeTree.gen.ts"),
-  "utf8",
-);
+const settingsSrc = readFileSync(resolve(__dirname, "../routes/settings.tsx"), "utf8");
+const routeTreeSrc = readFileSync(resolve(__dirname, "../routeTree.gen.ts"), "utf8");
 
 // Extract every `to="..."` declared by SettingsLinkCard / Link usage.
 function extractToTargets(src: string): string[] {
@@ -31,12 +25,9 @@ describe("Settings page navigation", () => {
     expect(targets.length).toBeGreaterThanOrEqual(13);
   });
 
-  it.each(extractToTargets(settingsSrc))(
-    "links to a registered route: %s",
-    (target) => {
-      expect(REGISTERED_ROUTES.has(target)).toBe(true);
-    },
-  );
+  it.each(extractToTargets(settingsSrc))("links to a registered route: %s", (target) => {
+    expect(REGISTERED_ROUTES.has(target)).toBe(true);
+  });
 
   it("gates the billing card behind isPlatformAdmin", () => {
     // The billing card must be inside an `isPlatformAdmin && (...)` block.

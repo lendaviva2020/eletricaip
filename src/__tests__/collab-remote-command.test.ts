@@ -17,12 +17,14 @@ describe("#WGL-07 · applyRemoteCommand (collab)", () => {
       params: { kind: "breaker", in_A: 16, curve: "C", poles: 1 },
     });
 
-    useDiagramStore.getState().applyRemoteCommand(cmd.addNode({
-      sheet: node.sheet,
-      position: node.position,
-      label: node.label,
-      params: node.params,
-    }));
+    useDiagramStore.getState().applyRemoteCommand(
+      cmd.addNode({
+        sheet: node.sheet,
+        position: node.position,
+        label: node.label,
+        params: node.params,
+      }),
+    );
 
     const state = useDiagramStore.getState();
     expect(Object.values(state.doc.nodes)).toHaveLength(1);
@@ -31,12 +33,14 @@ describe("#WGL-07 · applyRemoteCommand (collab)", () => {
   });
 
   it("dispatch local ainda grava no histórico normalmente", () => {
-    useDiagramStore.getState().dispatch(cmd.addNode({
-      sheet: "unifilar",
-      position: { x: 0, y: 0 },
-      label: "QF-LOC",
-      params: { kind: "breaker", in_A: 16, curve: "C", poles: 1 },
-    }));
+    useDiagramStore.getState().dispatch(
+      cmd.addNode({
+        sheet: "unifilar",
+        position: { x: 0, y: 0 },
+        label: "QF-LOC",
+        params: { kind: "breaker", in_A: 16, curve: "C", poles: 1 },
+      }),
+    );
     expect(useDiagramStore.getState().history.past).toHaveLength(1);
   });
 });

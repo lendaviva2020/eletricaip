@@ -87,18 +87,20 @@ export const createTwinModelUploadUrl = createServerFn({ method: "POST" })
     const safe = data.filename.replace(/[^A-Za-z0-9._-]/g, "_");
     const path = `${tenantId}/${data.projectId}/${Date.now()}-${safe}`;
 
-    const { data: signed, error } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUploadUrl(path);
+    const { data: signed, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
     if (error || !signed) throw new Error(error?.message ?? "sign_upload_failed");
 
     return { path, token: signed.token, signedUrl: signed.signedUrl, bucket: BUCKET };
   });
 
-
 const SignedReadInput = z.object({
   path: z.string().min(1).max(512),
-  expiresIn: z.number().int().min(60).max(60 * 60 * 24).optional(),
+  expiresIn: z
+    .number()
+    .int()
+    .min(60)
+    .max(60 * 60 * 24)
+    .optional(),
 });
 
 export const getTwinModelSignedUrl = createServerFn({ method: "POST" })

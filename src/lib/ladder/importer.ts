@@ -86,7 +86,11 @@ function splitStStatements(code: string, labelMap: Map<number, string>): Line[] 
     if (!insideIf && /\bIF\b\s*$/.test(upper + c.toUpperCase())) {
       // heurística: entra em IF quando encontra "IF " (com espaço subsequente)
     }
-    if (/\bIF\b/.test((buf + c).toUpperCase()) && !insideIf && /\bIF\s/.test((buf + c).toUpperCase())) {
+    if (
+      /\bIF\b/.test((buf + c).toUpperCase()) &&
+      !insideIf &&
+      /\bIF\s/.test((buf + c).toUpperCase())
+    ) {
       insideIf = true;
     }
     if (insideIf && /\bEND_IF\b\s*;?\s*$/i.test(buf + c)) {
@@ -225,12 +229,7 @@ function padExtraBranch(cells: LadderCell[]): LadderCell[] {
   return row;
 }
 
-function buildRung(
-  id: string,
-  label: string,
-  branches: Branch[],
-  output: LadderCell,
-): LadderRung {
+function buildRung(id: string, label: string, branches: Branch[], output: LadderCell): LadderRung {
   const rows: LadderCell[][] = [];
   const [first, ...rest] = branches;
   rows.push(padRow(first?.cells ?? [], output));
@@ -263,7 +262,7 @@ function parseStStatement(stmt: string): {
   );
   if (timerMatch) {
     const [, name, altKind, expr, timeText] = timerMatch;
-    const kind: LadderCellKind = altKind ? TIMER_KINDS[altKind.toUpperCase()] ?? "TON" : "TON";
+    const kind: LadderCellKind = altKind ? (TIMER_KINDS[altKind.toUpperCase()] ?? "TON") : "TON";
     const preset = parseTimeMs(timeText);
     const branches = parseBoolExpr(expr);
     return { branches, output: { kind, operand: name, preset } };

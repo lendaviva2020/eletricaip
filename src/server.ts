@@ -71,7 +71,6 @@ async function normalizeCatastrophicSsrResponse(
   return brandedErrorResponse();
 }
 
-
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
@@ -82,7 +81,6 @@ export default {
       console.error(`[ssr:throw] ${request.url}`);
       console.error(error);
       return brandedErrorResponse();
-
     }
   },
 };

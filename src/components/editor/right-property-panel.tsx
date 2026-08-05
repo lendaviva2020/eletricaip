@@ -78,9 +78,7 @@ export function RightPropertyPanel() {
         <div className="text-sm font-medium">
           {node.label || node.id} · {kind}
         </div>
-        <div className="text-[11px] text-muted-foreground">
-          Folha: {node.sheet}
-        </div>
+        <div className="text-[11px] text-muted-foreground">Folha: {node.sheet}</div>
       </Section>
 
       <Section title="Parâmetros">
@@ -94,7 +92,9 @@ export function RightPropertyPanel() {
               <ValidatedParamField
                 key={key}
                 spec={spec}
-                value={(node.params as unknown as Record<string, unknown>)[key] ?? spec.defaultValue}
+                value={
+                  (node.params as unknown as Record<string, unknown>)[key] ?? spec.defaultValue
+                }
                 onCommit={(value) => commitParam(key, value)}
               />
             ))}

@@ -24,15 +24,7 @@ export interface CollabCursor {
   y: number;
 }
 
-const USER_COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#ec4899",
-  "#8b5cf6",
-  "#f97316",
-  "#14b8a6",
-];
+const USER_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#f97316", "#14b8a6"];
 
 function stringToColor(str: string): string {
   let hash = 0;
@@ -139,17 +131,11 @@ export function useCollab(projectId: string | null) {
         if (next.past.length > prev.past.length && next.future.length === 0) {
           // dispatch novo
           outgoing = next.past[next.past.length - 1]?.command ?? null;
-        } else if (
-          next.past.length < prev.past.length &&
-          next.future.length > prev.future.length
-        ) {
+        } else if (next.past.length < prev.past.length && next.future.length > prev.future.length) {
           // undo → aplica o inverso do entry que saiu de past
           const entry = prev.past[prev.past.length - 1];
           outgoing = entry?.inverse ?? null;
-        } else if (
-          next.future.length < prev.future.length &&
-          next.past.length > prev.past.length
-        ) {
+        } else if (next.future.length < prev.future.length && next.past.length > prev.past.length) {
           // redo → reaplica o command do entry que saiu de future
           const entry = prev.future[prev.future.length - 1];
           outgoing = entry?.command ?? null;

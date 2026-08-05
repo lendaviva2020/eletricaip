@@ -3,12 +3,7 @@ import { create } from "zustand";
 import type { Json } from "@/integrations/supabase/types";
 
 export type NotificationType =
-  | "simulation_complete"
-  | "credits_low"
-  | "team_invite"
-  | "alarm"
-  | "export_ready"
-  | "info";
+  "simulation_complete" | "credits_low" | "team_invite" | "alarm" | "export_ready" | "info";
 
 export interface AppNotification {
   id: string;

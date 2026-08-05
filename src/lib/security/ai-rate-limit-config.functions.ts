@@ -26,7 +26,9 @@ export const listAiRateLimitConfigs = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { data, error } = await context.supabase
       .from("ai_rate_limit_configs")
-      .select("id,user_id,burst_window_ms,burst_max,fallback_window_ms,fallback_max,note,updated_at,updated_by")
+      .select(
+        "id,user_id,burst_window_ms,burst_max,fallback_window_ms,fallback_max,note,updated_at,updated_by",
+      )
       .order("user_id", { ascending: true, nullsFirst: true });
     if (error) throw new Error(error.message);
     return { ok: true as const, rows: data ?? [] };
@@ -53,7 +55,8 @@ export const upsertAiRateLimitConfig = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw new Error(error.message);
-    const { invalidateAiRateLimitCache } = await import("@/lib/security/ai-rate-limit-config.server");
+    const { invalidateAiRateLimitCache } =
+      await import("@/lib/security/ai-rate-limit-config.server");
     invalidateAiRateLimitCache(data.user_id);
     return { ok: true as const, row };
   });
@@ -73,7 +76,8 @@ export const deleteAiRateLimitConfig = createServerFn({ method: "POST" })
       .delete()
       .eq("id", data.id);
     if (error) throw new Error(error.message);
-    const { invalidateAiRateLimitCache } = await import("@/lib/security/ai-rate-limit-config.server");
+    const { invalidateAiRateLimitCache } =
+      await import("@/lib/security/ai-rate-limit-config.server");
     invalidateAiRateLimitCache(existing?.user_id ?? null);
     return { ok: true as const };
   });

@@ -26,9 +26,7 @@ vi.mock("@/hooks/use-tenant-setting", () => ({
       update: (patch: Partial<T> | ((prev: T) => T)) => {
         const prev = (store[key] ?? defaults) as T;
         const next =
-          typeof patch === "function"
-            ? (patch as (p: T) => T)(prev)
-            : ({ ...prev, ...patch } as T);
+          typeof patch === "function" ? (patch as (p: T) => T)(prev) : ({ ...prev, ...patch } as T);
         store[key] = next;
         notify();
         return next;
@@ -37,31 +35,18 @@ vi.mock("@/hooks/use-tenant-setting", () => ({
   },
 }));
 
-
 import { useSettingsStore } from "@/lib/settings-store";
 
 function ProtocolRow({ name }: { name: string }) {
   const on = useSettingsStore((s) => s.protocols[name]);
   const toggle = useSettingsStore((s) => s.toggleProtocol);
-  return (
-    <Switch
-      aria-label={name}
-      checked={!!on}
-      onCheckedChange={() => toggle(name)}
-    />
-  );
+  return <Switch aria-label={name} checked={!!on} onCheckedChange={() => toggle(name)} />;
 }
 
 function NormaRow({ name }: { name: string }) {
   const on = useSettingsStore((s) => s.normas[name]);
   const toggle = useSettingsStore((s) => s.toggleNorma);
-  return (
-    <Switch
-      aria-label={name}
-      checked={!!on}
-      onCheckedChange={() => toggle(name)}
-    />
-  );
+  return <Switch aria-label={name} checked={!!on} onCheckedChange={() => toggle(name)} />;
 }
 
 beforeEach(() => {

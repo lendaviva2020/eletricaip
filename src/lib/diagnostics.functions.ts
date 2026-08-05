@@ -18,7 +18,6 @@ export const getAiRateLimitMetrics = createServerFn({ method: "GET" })
     };
   });
 
-
 export interface DiagnosticCheck {
   name: string;
   ok: boolean;
