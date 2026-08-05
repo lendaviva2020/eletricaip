@@ -87,22 +87,31 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       },
     });
 
-    // Use getUser() instead of getClaims() for more reliable auth validation
-    const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data?.user) {
+    // Verificação local e stateless do JWT (JWKS cacheado) — sem chamada HTTP
+    // ao servidor de Auth em cada invocação.
+    let userId: string | undefined;
+    let claims: Record<string, unknown> = {};
+    try {
+      const { payload } = await jwtVerify(token, getJwks(SUPABASE_URL), {
+        issuer: `${SUPABASE_URL.replace(/\/$/, "")}/auth/v1`,
+      });
+      userId = typeof payload.sub === "string" ? payload.sub : undefined;
+      claims = (payload["app_metadata"] as Record<string, unknown> | undefined) ?? {};
+    } catch {
       throw new Response("Unauthorized: Invalid token", { status: 401 });
     }
 
-    if (!data.user.id) {
+    if (!userId) {
       throw new Response("Unauthorized: No user ID found in token", { status: 401 });
     }
 
     return next({
       context: {
         supabase,
-        userId: data.user.id,
-        claims: data.user.app_metadata ?? {},
+        userId,
+        claims,
       } satisfies AuthContext,
     });
+
   },
 );
