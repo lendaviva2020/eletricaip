@@ -1,7 +1,10 @@
-// Auth middleware for server functions — validates Bearer token and injects supabase client + userId
+// Auth middleware for server functions — valida o Bearer token localmente
+// (JWKS do projeto Supabase, sem round-trip de rede por invocação) e injeta
+// supabase client + userId no contexto.
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Database } from "./types";
 import { getSupabasePublicEnv } from "./env";
 
@@ -12,11 +15,29 @@ function getServerSupabasePublicEnv() {
   return { url, anonKey };
 }
 
+// JWKS cacheado em memória entre invocações (o próprio createRemoteJWKSet faz
+// cache + rotação de chaves; aqui garantimos uma única instância por URL).
+const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+function getJwks(supabaseUrl: string) {
+  const jwksUrl = `${supabaseUrl.replace(/\/$/, "")}/auth/v1/.well-known/jwks.json`;
+  let jwks = jwksCache.get(jwksUrl);
+  if (!jwks) {
+    jwks = createRemoteJWKSet(new URL(jwksUrl), {
+      cacheMaxAge: 24 * 60 * 60 * 1000,
+      cooldownDuration: 30_000,
+    });
+    jwksCache.set(jwksUrl, jwks);
+  }
+  return jwks;
+}
+
 export interface AuthContext {
   supabase: ReturnType<typeof createClient<Database>>;
   userId: string;
   claims: Record<string, unknown>;
 }
+
 
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
