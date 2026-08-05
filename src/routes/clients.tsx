@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
+import { prefetchRouteQuery } from "@/lib/query-prefetch";
 import {
   listClients,
   deleteClient,
@@ -39,6 +40,15 @@ import {
 } from "@/lib/clients.functions";
 
 export const Route = createFileRoute("/clients")({
+  loader: ({ context }) => {
+    prefetchRouteQuery(context.queryClient, {
+      queryKey: ["clients", { search: "", status: "all", sector: "all" }],
+      queryFn: () =>
+        listClients({
+          data: { search: undefined, status: undefined, sector: undefined },
+        }),
+    });
+  },
   head: () => ({
     meta: [
       { title: "Clientes · EletricAI" },
