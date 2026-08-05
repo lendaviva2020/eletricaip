@@ -57,7 +57,8 @@ function AnalyticsPage() {
           {usage && (
             <div className="text-right text-xs text-muted-foreground">
               <div>
-                Plano <span className="text-foreground font-medium">{usage.plan.toUpperCase()}</span>
+                Plano{" "}
+                <span className="text-foreground font-medium">{usage.plan.toUpperCase()}</span>
               </div>
               <div className="font-mono">
                 {usage.unlimited

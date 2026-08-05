@@ -74,7 +74,6 @@ export const Route = createFileRoute("/settings/billing")({
   component: BillingPage,
 });
 
-
 type PaidPlan = "basic" | "pro" | "premium";
 
 function BillingPage() {

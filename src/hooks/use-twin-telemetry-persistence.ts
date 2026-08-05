@@ -52,7 +52,6 @@ export function useTwinTelemetryPersistence(opts?: { intervalMs?: number }) {
     return unsub;
   }, []);
 
-
   useEffect(() => {
     const interval = opts?.intervalMs ?? FLUSH_INTERVAL_MS;
     let cancelled = false;

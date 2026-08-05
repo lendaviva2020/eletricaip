@@ -233,9 +233,6 @@ export function RungGrid() {
     setImportPreview(null);
   };
 
-
-
-
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-border bg-card/40 px-4 py-2">
@@ -269,7 +266,12 @@ export function RungGrid() {
         <Button size="sm" variant="ghost" onClick={() => setShowHistory((v) => !v)}>
           <History className="mr-1 h-3 w-3" /> {showHistory ? "Ocultar histórico" : "Histórico"}
         </Button>
-        <Button size="sm" variant="ghost" onClick={openImportPicker} title="Importar programa IL/ST">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={openImportPicker}
+          title="Importar programa IL/ST"
+        >
           <Upload className="mr-1 h-3 w-3" /> Importar
         </Button>
         <input
@@ -283,7 +285,6 @@ export function RungGrid() {
           {rungs.length} rungs · scan 100ms · {running ? `RUN #${scanCountRef.current}` : "STOP"}
         </div>
       </div>
-
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto industrial-grid scan-overlay p-6">
@@ -532,7 +533,6 @@ export function RungGrid() {
         )}
       </div>
 
-
       {importPreview && (
         <ImportPreviewDialog
           preview={importPreview}
@@ -542,7 +542,6 @@ export function RungGrid() {
       )}
     </div>
   );
-
 }
 
 import {
@@ -657,4 +656,3 @@ function ImportPreviewDialog({
     </Dialog>
   );
 }
-

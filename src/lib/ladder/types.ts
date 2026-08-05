@@ -55,9 +55,7 @@ export const newRung = (idx: number, cols: number = RUNG_COLS): LadderRung => {
     id: `rung-${Date.now()}-${idx}`,
     label: `Rung ${idx + 1}`,
     cols: c,
-    cells: Array.from({ length: RUNG_ROWS_DEFAULT }, () =>
-      Array.from({ length: c }, emptyCell),
-    ),
+    cells: Array.from({ length: RUNG_ROWS_DEFAULT }, () => Array.from({ length: c }, emptyCell)),
   };
 };
 
@@ -72,10 +70,7 @@ export const resizeRungCols = (rung: LadderRung, newCols: number): LadderRung =>
     if (series.length >= seriesTarget) {
       nextSeries = series.slice(0, seriesTarget);
     } else {
-      nextSeries = [
-        ...series,
-        ...Array.from({ length: seriesTarget - series.length }, emptyCell),
-      ];
+      nextSeries = [...series, ...Array.from({ length: seriesTarget - series.length }, emptyCell)];
     }
     return [...nextSeries, out];
   });

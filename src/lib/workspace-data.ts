@@ -1,24 +1,10 @@
 // Workspace data — shared types for the industrial workspace
 
 export type WorkspaceMode =
-  | "unifilar"
-  | "ladder"
-  | "fbd"
-  | "scada"
-  | "twin"
-  | "plc"
-  | "sim"
-  | "alarms";
+  "unifilar" | "ladder" | "fbd" | "scada" | "twin" | "plc" | "sim" | "alarms";
 
 export type ConsoleTab =
-  | "Logs"
-  | "Alarmes"
-  | "IA"
-  | "Terminal"
-  | "Eventos"
-  | "OPC-UA"
-  | "Modbus"
-  | "Runtime";
+  "Logs" | "Alarmes" | "IA" | "Terminal" | "Eventos" | "OPC-UA" | "Modbus" | "Runtime";
 
 export const MODES: { id: WorkspaceMode; label: string; hint: string }[] = [
   { id: "unifilar", label: "Unifilar", hint: "IEC 60617" },

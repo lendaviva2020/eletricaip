@@ -27,12 +27,14 @@ describe("#WGL-07 · painel de propriedades sobre DiagramStore", () => {
       params: { kind: "breaker", in_A: 16, curve: "C", poles: 1 },
     });
     const s = useDiagramStore.getState();
-    s.dispatch(cmd.addNode({
-      sheet: node.sheet,
-      position: node.position,
-      label: node.label,
-      params: node.params,
-    }));
+    s.dispatch(
+      cmd.addNode({
+        sheet: node.sheet,
+        position: node.position,
+        label: node.label,
+        params: node.params,
+      }),
+    );
 
     const created = Object.values(useDiagramStore.getState().doc.nodes)[0];
     expect(created).toBeDefined();
@@ -45,13 +47,17 @@ describe("#WGL-07 · painel de propriedades sobre DiagramStore", () => {
       to: next,
     });
 
-    const after = useDiagramStore.getState().doc.nodes[created.id]
-      .params as Extract<typeof created.params, { kind: "breaker" }>;
+    const after = useDiagramStore.getState().doc.nodes[created.id].params as Extract<
+      typeof created.params,
+      { kind: "breaker" }
+    >;
     expect(after.in_A).toBe(32);
 
     useDiagramStore.getState().undo();
-    const reverted = useDiagramStore.getState().doc.nodes[created.id]
-      .params as Extract<typeof created.params, { kind: "breaker" }>;
+    const reverted = useDiagramStore.getState().doc.nodes[created.id].params as Extract<
+      typeof created.params,
+      { kind: "breaker" }
+    >;
     expect(reverted.in_A).toBe(16);
   });
 

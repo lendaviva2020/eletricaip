@@ -9,8 +9,6 @@ import type { AuthContext } from "./auth-middleware";
 import { checkRateLimit } from "@/lib/security/rate-limiter.server";
 import { recordAiDecision } from "@/lib/security/ai-metrics.server";
 
-
-
 export const requireAiQuota = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
@@ -129,5 +127,3 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     }
     return next();
   });
-
-

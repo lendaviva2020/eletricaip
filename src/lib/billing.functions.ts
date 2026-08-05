@@ -18,7 +18,6 @@ async function tryLoadAdmin() {
   }
 }
 
-
 const PLAN_TO_STRIPE_ENV: Record<string, string> = {
   basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
   pro: "VITE_STRIPE_PRICE_PRO_MONTHLY",
@@ -92,7 +91,12 @@ export const getBillingOverview = createServerFn({ method: "GET" })
             .select("stripe_customer_id, stripe_subscription_id")
             .eq("id", tenantId)
             .maybeSingle()
-        : Promise.resolve({ data: null as { stripe_customer_id: string | null; stripe_subscription_id: string | null } | null }),
+        : Promise.resolve({
+            data: null as {
+              stripe_customer_id: string | null;
+              stripe_subscription_id: string | null;
+            } | null,
+          }),
       supabase
         .from("subscriptions")
         .select("*")
@@ -135,7 +139,6 @@ export const changePlanManual = createServerFn({ method: "POST" })
     if (!(await isPlatformAdminUser({ userId, claims, supabase: context.supabase })))
       throw new Error("forbidden");
     const supabaseAdmin = await loadAdmin();
-
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")

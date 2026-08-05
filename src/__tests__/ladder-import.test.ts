@@ -1,7 +1,12 @@
 // #LAD-04 · round-trip do importador ST/IL contra o compilador existente.
 import { describe, expect, it } from "vitest";
 import { compileProgram } from "@/lib/ladder/compiler";
-import { importLadderProgram, parseStProgram, parseIlProgram, detectFormat } from "@/lib/ladder/importer";
+import {
+  importLadderProgram,
+  parseStProgram,
+  parseIlProgram,
+  detectFormat,
+} from "@/lib/ladder/importer";
 import { RUNG_COLS, emptyCell } from "@/lib/ladder/types";
 import type { LadderRung, LadderCell } from "@/lib/ladder/types";
 

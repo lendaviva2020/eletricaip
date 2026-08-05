@@ -110,14 +110,7 @@ export interface VoltaiComponentDefinition<
   tagPrefix: string;
   name: string;
   category:
-    | "Protecao"
-    | "Potencia"
-    | "Controle"
-    | "Sinal"
-    | "Medicao"
-    | "Seguranca"
-    | "Carga"
-    | "Fonte";
+    "Protecao" | "Potencia" | "Controle" | "Sinal" | "Medicao" | "Seguranca" | "Carga" | "Fonte";
   standard: string[];
   params: TParams;
   paramSpecs?: Record<string, ParamSpec>;

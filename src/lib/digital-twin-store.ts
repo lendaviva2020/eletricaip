@@ -112,7 +112,6 @@ interface DigitalTwinState {
   deleteWhatIfScenario: (id: string) => void;
 }
 
-
 const MAX_SAMPLES = 60; // 60 samples per buffer
 
 export const useDigitalTwinStore = create<DigitalTwinState>()(
@@ -132,7 +131,6 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
       whatIfEnabled: false,
       whatIfOverrides: {},
       whatIfScenarios: [],
-
 
       addMapping: (mapping) => set((s) => ({ mappings: [...s.mappings, mapping] })),
 
@@ -271,7 +269,6 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
         nameplates: state.nameplates,
         whatIfScenarios: state.whatIfScenarios,
       }),
-
     },
   ),
 );
@@ -287,4 +284,3 @@ export function getEffectiveTagValue(tag: string): WhatIfValue | null {
   if (!buf || buf.samples.length === 0) return null;
   return buf.samples[buf.samples.length - 1].value;
 }
-

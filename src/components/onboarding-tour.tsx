@@ -175,9 +175,7 @@ export function OnboardingTour() {
                 Passo {step + 1} de {STEPS.length}
               </div>
               <h3 className="mt-1 text-sm font-semibold">{current.title}</h3>
-              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                {current.body}
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{current.body}</p>
             </div>
             <button
               type="button"

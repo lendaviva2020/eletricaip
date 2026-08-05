@@ -14,29 +14,28 @@ jobs:
       - name: 🔽 Checkout
         uses: actions/checkout@v4
 
-      - name: 📦 Setup Node
-        uses: actions/setup-node@v4
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: "npm"
+          bun-version: 1.3.3
 
       - name: 📥 Install dependencies
-        run: npm install
+        run: bun install --frozen-lockfile
 
       - name: 🎨 Format check
-        run: npx prettier --check "src/**/*.{ts,tsx}"
+        run: bunx prettier --check "src/**/*.{ts,tsx}"
 
       - name: 🧪 Run tests
-        run: npm test
+        run: bun run test
 
       - name: 🔍 TypeScript check
-        run: npx tsc --noEmit
+        run: bunx tsc --noEmit
 
       - name: 🧹 Lint
-        run: npm run lint
+        run: bun run lint
 
       - name: 🏗️ Production build
-        run: npm run build
+        run: bun run build
 
   deploy-supabase:
     needs: quality
@@ -64,19 +63,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 📦 Setup Node
-        uses: actions/setup-node@v4
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: "npm"
+          bun-version: 1.3.3
       - name: 📥 Install dependencies
-        run: npm install
+        run: bun install --frozen-lockfile
       - name: 🚀 Deploy to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          npx vercel --prod \
+          bunx vercel --prod \
             --token=${{ secrets.VERCEL_TOKEN }} \
             --yes

@@ -19,9 +19,7 @@ vi.mock("@/hooks/use-tenant-setting", () => ({
       update: (patch: Partial<T> | ((prev: T) => T)) => {
         const prev = (store[key] ?? defaults) as T;
         const next =
-          typeof patch === "function"
-            ? (patch as (p: T) => T)(prev)
-            : ({ ...prev, ...patch } as T);
+          typeof patch === "function" ? (patch as (p: T) => T)(prev) : ({ ...prev, ...patch } as T);
         store[key] = next;
         updateCalls.push({ key, next });
         return next;

@@ -20,7 +20,10 @@ export const Route = createFileRoute("/settings/rate-limits")({
   head: () => ({
     meta: [
       { title: "Rate Limits · EletricAI" },
-      { name: "description", content: "Ajuste janelas de burst e limites de fallback por usuário." },
+      {
+        name: "description",
+        content: "Ajuste janelas de burst e limites de fallback por usuário.",
+      },
     ],
   }),
   component: RateLimitsPage,
@@ -122,8 +125,8 @@ function RateLimitsPage() {
         <div>
           <h1 className="text-xl font-semibold">Rate Limits de IA</h1>
           <p className="text-sm text-muted-foreground">
-            Janelas de burst (Upstash) e limites de fallback per-instance. Deixe
-            o usuário vazio para definir a configuração <strong>global</strong>.
+            Janelas de burst (Upstash) e limites de fallback per-instance. Deixe o usuário vazio
+            para definir a configuração <strong>global</strong>.
           </p>
         </div>
         <Button
@@ -144,9 +147,7 @@ function RateLimitsPage() {
             <Field label="User ID (UUID, vazio = global)">
               <Input
                 value={draft.user_id ?? ""}
-                onChange={(e) =>
-                  setDraft({ ...draft, user_id: e.target.value.trim() || null })
-                }
+                onChange={(e) => setDraft({ ...draft, user_id: e.target.value.trim() || null })}
                 placeholder="00000000-0000-0000-0000-000000000000"
               />
             </Field>
@@ -200,11 +201,7 @@ function RateLimitsPage() {
                 Cancelar
               </Button>
             )}
-            <Button
-              size="sm"
-              disabled={upsertM.isPending}
-              onClick={() => upsertM.mutate(draft)}
-            >
+            <Button size="sm" disabled={upsertM.isPending} onClick={() => upsertM.mutate(draft)}>
               <Save className="mr-2 h-4 w-4" /> Salvar
             </Button>
           </div>
@@ -242,11 +239,7 @@ function RateLimitsPage() {
                 {rows.map((r) => (
                   <tr key={r.id} className="border-t border-border">
                     <td className="px-3 py-2 font-mono text-xs">
-                      {r.user_id ? (
-                        r.user_id
-                      ) : (
-                        <Badge variant="secondary">global</Badge>
-                      )}
+                      {r.user_id ? r.user_id : <Badge variant="secondary">global</Badge>}
                     </td>
                     <td className="px-3 py-2">
                       {r.burst_max} / {r.burst_window_ms}ms

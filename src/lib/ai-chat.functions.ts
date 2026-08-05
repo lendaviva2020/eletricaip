@@ -116,9 +116,9 @@ export const streamChat = createServerFn({ method: "POST" })
   )
   .handler(async function* ({ data, context }) {
     const { supabase, userId } = context;
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
-      yield { type: "error" as const, message: "LOVABLE_API_KEY ausente no servidor." };
+      yield { type: "error" as const, message: "DEEPSEEK_API_KEY ausente no servidor." };
       return;
     }
 
@@ -166,14 +166,14 @@ export const streamChat = createServerFn({ method: "POST" })
       })),
     ];
 
-    const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const upstream = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "deepseek-chat",
         messages,
         stream: true,
       }),
