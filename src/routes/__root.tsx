@@ -1,10 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   HeadContent,
   Link,
   Outlet,
   Scripts,
-  createRootRoute,
+  createRootRouteWithContext,
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
@@ -19,8 +20,6 @@ import { ShareModal } from "@/components/share-modal";
 import { installDiagnosticsInterceptor } from "@/lib/diagnostics-counter";
 
 if (typeof window !== "undefined") installDiagnosticsInterceptor();
-
-const queryClient = new QueryClient();
 
 const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
 const PUBLIC_PREFIXES = ["/auth/callback", "/invite/"];
@@ -69,7 +68,7 @@ function ErrorComp({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -194,6 +193,9 @@ function useAuthRedirect(
 }
 
 function RootComponent() {
+  // Instância única de QueryClient: criada em getRouter() e compartilhada
+  // entre loaders (router context) e componentes (QueryClientProvider).
+  const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

@@ -64,12 +64,23 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { prefetchRouteQuery } from "@/lib/query-prefetch";
 
 export const Route = createFileRoute("/settings/billing")({
   // Admin gate runs client-side in the component (see useEffect below).
   // It cannot live in beforeLoad because SSR has no bearer token, so the
   // protected server fn would 500 the whole route.
   ssr: false,
+  loader: ({ context }) => {
+    prefetchRouteQuery(context.queryClient, {
+      queryKey: ["billing-overview"],
+      queryFn: () => getBillingOverview({}),
+    });
+    prefetchRouteQuery(context.queryClient, {
+      queryKey: ["is-platform-admin"],
+      queryFn: () => getIsPlatformAdmin({}),
+    });
+  },
   head: () => ({ meta: [{ title: "Central Financeira · EletricAI" }] }),
   component: BillingPage,
 });

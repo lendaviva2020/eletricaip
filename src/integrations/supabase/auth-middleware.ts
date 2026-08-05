@@ -1,7 +1,10 @@
-// Auth middleware for server functions — validates Bearer token and injects supabase client + userId
+// Auth middleware for server functions — valida o Bearer token localmente
+// (JWKS do projeto Supabase, sem round-trip de rede por invocação) e injeta
+// supabase client + userId no contexto.
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Database } from "./types";
 import { getSupabasePublicEnv } from "./env";
 
@@ -10,6 +13,23 @@ import { getSupabasePublicEnv } from "./env";
 function getServerSupabasePublicEnv() {
   const { url, anonKey } = getSupabasePublicEnv();
   return { url, anonKey };
+}
+
+// JWKS cacheado em memória entre invocações (o próprio createRemoteJWKSet faz
+// cache + rotação de chaves; aqui garantimos uma única instância por URL).
+const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+function getJwks(supabaseUrl: string) {
+  const jwksUrl = `${supabaseUrl.replace(/\/$/, "")}/auth/v1/.well-known/jwks.json`;
+  let jwks = jwksCache.get(jwksUrl);
+  if (!jwks) {
+    jwks = createRemoteJWKSet(new URL(jwksUrl), {
+      cacheMaxAge: 24 * 60 * 60 * 1000,
+      cooldownDuration: 30_000,
+    });
+    jwksCache.set(jwksUrl, jwks);
+  }
+  return jwks;
 }
 
 export interface AuthContext {
@@ -66,21 +86,29 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       },
     });
 
-    // Use getUser() instead of getClaims() for more reliable auth validation
-    const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data?.user) {
+    // Verificação local e stateless do JWT (JWKS cacheado) — sem chamada HTTP
+    // ao servidor de Auth em cada invocação.
+    let userId: string | undefined;
+    let claims: Record<string, unknown> = {};
+    try {
+      const { payload } = await jwtVerify(token, getJwks(SUPABASE_URL), {
+        issuer: `${SUPABASE_URL.replace(/\/$/, "")}/auth/v1`,
+      });
+      userId = typeof payload.sub === "string" ? payload.sub : undefined;
+      claims = (payload["app_metadata"] as Record<string, unknown> | undefined) ?? {};
+    } catch {
       throw new Response("Unauthorized: Invalid token", { status: 401 });
     }
 
-    if (!data.user.id) {
+    if (!userId) {
       throw new Response("Unauthorized: No user ID found in token", { status: 401 });
     }
 
     return next({
       context: {
         supabase,
-        userId: data.user.id,
-        claims: data.user.app_metadata ?? {},
+        userId,
+        claims,
       } satisfies AuthContext,
     });
   },

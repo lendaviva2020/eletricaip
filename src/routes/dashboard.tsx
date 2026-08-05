@@ -24,8 +24,19 @@ import { ptBR } from "date-fns/locale";
 import { getAiCredits } from "@/lib/ai-architect.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { prefetchRouteQuery } from "@/lib/query-prefetch";
 
 export const Route = createFileRoute("/dashboard")({
+  loader: ({ context }) => {
+    prefetchRouteQuery(context.queryClient, {
+      queryKey: ["dashboard", "projects"],
+      queryFn: () => listProjects({}),
+    });
+    prefetchRouteQuery(context.queryClient, {
+      queryKey: ["dashboard", "ai-credits"],
+      queryFn: () => getAiCredits({}),
+    });
+  },
   head: () => ({
     meta: [
       { title: "Dashboard - EletricAI Industrial OS" },
