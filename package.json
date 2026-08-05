@@ -68,6 +68,7 @@
     "framer-motion": "^12.38.0",
     "immer": "^11.1.8",
     "input-otp": "^1.4.2",
+    "jose": "^6.2.8",
     "jspdf": "^4.2.1",
     "konva": "^10.3.0",
     "lucide-react": "^0.575.0",
