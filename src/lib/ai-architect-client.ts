@@ -12,6 +12,7 @@ import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.f
 
 import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
 import type { LadderRung } from "@/lib/ladder/types";
+import type { NormFinding } from "@/lib/norm-validator";
 
 export interface ArchitectResult {
   title: string;
@@ -34,6 +35,12 @@ export interface ArchitectResult {
     position: { x: number; y: number };
   }>;
   edges: Array<{ source: string; target: string; kind: "power" | "signal" | "pipe" }>;
+  verification?: {
+    rounds: number;
+    findings: NormFinding[];
+    summary: { errors: number; warns: number; infos: number };
+    correctionFailed?: boolean;
+  };
 }
 
 export class AIServiceError extends Error {
@@ -165,7 +172,10 @@ export async function callArchitect(
     }
     pushStatus({ ts: Date.now(), ok: true, ms: Date.now() - t0 });
     notifyAiUsageChanged();
-    return res.system as unknown as ArchitectResult;
+    return {
+      ...(res.system as unknown as ArchitectResult),
+      verification: res.verification,
+    };
   } catch (e) {
     if (e instanceof AIServiceError) throw e;
     pushStatus({ ts: Date.now(), ok: false, code: "NETWORK", ms: Date.now() - t0 });

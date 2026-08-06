@@ -10,14 +10,14 @@ import {
   ShieldCheck,
   Info,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   callArchitect,
   applyArchitectToStore,
   type ArchitectResult,
 } from "@/lib/ai-architect-client";
 import { calcDemand, calcMotor } from "@/lib/electrical-calc";
-import { validateProject, summarize, type NormFinding } from "@/lib/norm-validator";
+import type { NormFinding } from "@/lib/norm-validator";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
@@ -186,17 +186,9 @@ function ResultCard({
     result.motors.map((m) => ({ id: m.id, power_kW: m.power_kW, voltage_V: m.voltage_V })),
   );
   const totalIn = motorSpecs.reduce((s, m) => s + m.In_A, 0);
-  const findings = useMemo(() => {
-    const nodes = result.nodes.map((n) => ({
-      ...n,
-      kind: n.kind as any,
-      category: n.category as any,
-      params: n.params ?? {},
-    })) as any;
-    const edges = result.edges.map((e, i) => ({ ...e, id: `tmp-${i}` })) as any;
-    return validateProject(nodes, edges);
-  }, [result]);
-  const sum = summarize(findings);
+  const verification = result.verification;
+  const findings = verification?.findings ?? [];
+  const sum = verification?.summary ?? { errors: 0, warns: 0, infos: 0 };
 
   return (
     <div className="mt-4 space-y-3">
@@ -266,6 +258,21 @@ function ResultCard({
           </table>
         </div>
       </details>
+
+      {verification && verification.rounds > 0 && (
+        <div className="rounded-md border border-primary/40 bg-primary/5 p-3 flex items-start gap-2 text-xs">
+          <ShieldCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <div>
+            A IA autocorrigiu violação(ões) normativa(s) em {verification.rounds} rodada(s) antes de
+            entregar o projeto.
+            {verification.correctionFailed && (
+              <div className="text-warning mt-0.5">
+                Uma rodada de correção não completou — revise os pontos abaixo manualmente.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <NormPanel findings={findings} summary={sum} />
 

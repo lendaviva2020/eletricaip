@@ -8,6 +8,8 @@ import {
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { sanitizePromptText, sanitizeProjectContext } from "@/lib/ai/context-sanitizer";
+import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
+import { validateProject, summarize, type NormFinding } from "@/lib/norm-validator";
 
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
 
@@ -134,7 +136,131 @@ type ArchitectOk = {
     plan?: string;
     unlimited?: boolean;
   };
+  verification: {
+    rounds: number;
+    findings: NormFinding[];
+    summary: { errors: number; warns: number; infos: number };
+    correctionFailed?: boolean;
+  };
 };
+
+// ── Chamada única ao DeepSeek, parametrizada pelas mensagens ──
+async function callArchitectModel(
+  apiKey: string,
+  messages: Array<{ role: string; content: string }>,
+): Promise<
+  | { ok: true; parsed: JsonValue; tokensUsed: number }
+  | { ok: false; error: ArchitectError["error"] }
+> {
+  let resp: Response;
+  try {
+    resp = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages,
+        tools: [TOOL],
+        tool_choice: { type: "function", function: { name: "design_industrial_system" } },
+        temperature: 0.3,
+      }),
+    });
+  } catch (e) {
+    console.error("DeepSeek network error:", e);
+    return {
+      ok: false,
+      error: { code: "NETWORK", message: "Falha de rede ao contatar a IA." },
+    };
+  }
+
+  if (resp.status === 401)
+    return { ok: false, error: { code: "AUTH_401", message: "Chave de IA inválida ou revogada." } };
+  if (resp.status === 429)
+    return {
+      ok: false,
+      error: {
+        code: "RATE_LIMIT_429",
+        message: "Muitas requisições à IA. Aguarde alguns segundos.",
+      },
+    };
+  if (resp.status === 402)
+    return {
+      ok: false,
+      error: { code: "NO_CREDITS_402", message: "Créditos da conta DeepSeek esgotados." },
+    };
+  if (resp.status >= 500) {
+    const t = await resp.text().catch(() => "");
+    console.error("DeepSeek 5xx:", resp.status, t);
+    return {
+      ok: false,
+      error: { code: "UPSTREAM_5XX", message: "Serviço DeepSeek temporariamente indisponível." },
+    };
+  }
+  if (!resp.ok) {
+    const t = await resp.text().catch(() => "");
+    console.error("DeepSeek erro:", resp.status, t);
+    return {
+      ok: false,
+      error: { code: "BAD_RESPONSE", message: `Resposta inesperada (${resp.status}).` },
+    };
+  }
+
+  const json = await resp.json();
+  const call = json?.choices?.[0]?.message?.tool_calls?.[0];
+  if (!call?.function?.arguments) {
+    console.error("DeepSeek bad response:", JSON.stringify(json).slice(0, 500));
+    return {
+      ok: false,
+      error: { code: "BAD_RESPONSE", message: "A IA não devolveu estrutura válida." },
+    };
+  }
+  let parsed: JsonValue;
+  try {
+    parsed = JSON.parse(call.function.arguments);
+  } catch (e) {
+    console.error("JSON parse:", e);
+    return {
+      ok: false,
+      error: { code: "BAD_RESPONSE", message: "JSON inválido devolvido pela IA." },
+    };
+  }
+  return { ok: true, parsed, tokensUsed: Number(json?.usage?.total_tokens) || 0 };
+}
+
+function nodesOf(parsed: JsonValue): any[] {
+  const n = (parsed as any)?.nodes;
+  return Array.isArray(n) ? n : [];
+}
+function edgesOf(parsed: JsonValue): any[] {
+  const e = (parsed as any)?.edges;
+  return Array.isArray(e) ? e : [];
+}
+
+// Mapeia a saída bruta da IA para o grafo tipado consumido por validateProject.
+function toIndustrialGraph(
+  nodes: any[],
+  edges: any[],
+): { nodes: IndustrialNode[]; edges: IndustrialEdge[] } {
+  return {
+    nodes: nodes.map((n) => ({
+      id: String(n?.id ?? ""),
+      kind: (n?.kind ?? "motor") as IndustrialNode["kind"],
+      category: (n?.category ?? "mech") as IndustrialNode["category"],
+      label: String(n?.label ?? n?.id ?? ""),
+      position: {
+        x: Number(n?.position?.x) || 0,
+        y: Number(n?.position?.y) || 0,
+      },
+      params: (n?.params ?? {}) as IndustrialNode["params"],
+    })),
+    edges: edges.map((e, i) => ({
+      id: `ai-${i}`,
+      source: String(e?.source ?? ""),
+      target: String(e?.target ?? ""),
+      kind: (e?.kind ?? "power") as IndustrialEdge["kind"],
+    })),
+  };
+}
 
 // Lightweight RAG: pull top normative_chunks matching keywords from the prompt.
 // Avoids embedding generation cost; uses ILIKE on chunk_text. Caller is auth'd
@@ -273,77 +399,54 @@ export const generateArchitecture = createServerFn({ method: "POST" })
 
     const userMsg = `Briefing:\n${safePrompt}${ragBlock}${contextStr ? `\n\nContexto atual do projeto (JSON):\n${contextStr}` : ""}`;
 
-    const resp = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: userMsg },
-        ],
-        tools: [TOOL],
-        tool_choice: { type: "function", function: { name: "design_industrial_system" } },
-        temperature: 0.3,
-      }),
-    });
+    const messages: Array<{ role: string; content: string }> = [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: userMsg },
+    ];
 
-    if (resp.status === 401)
-      return {
-        ok: false,
-        error: { code: "AUTH_401", message: "Chave de IA inválida ou revogada." },
-      };
-    if (resp.status === 429)
-      return {
-        ok: false,
-        error: {
-          code: "RATE_LIMIT_429",
-          message: "Muitas requisições à IA. Aguarde alguns segundos.",
-        },
-      };
-    if (resp.status === 402)
-      return {
-        ok: false,
-        error: { code: "NO_CREDITS_402", message: "Créditos da conta DeepSeek esgotados." },
-      };
-    if (resp.status >= 500) {
-      const t = await resp.text();
-      console.error("DeepSeek 5xx:", resp.status, t);
-      return {
-        ok: false,
-        error: { code: "UPSTREAM_5XX", message: "Serviço DeepSeek temporariamente indisponível." },
-      };
-    }
-    if (!resp.ok) {
-      const t = await resp.text();
-      console.error("DeepSeek erro:", resp.status, t);
-      return {
-        ok: false,
-        error: { code: "BAD_RESPONSE", message: `Resposta inesperada (${resp.status}).` },
-      };
+    const first = await callArchitectModel(apiKey, messages);
+    if (!first.ok) return { ok: false, error: first.error };
+
+    let parsed = first.parsed;
+    let tokensUsed = first.tokensUsed;
+
+    // ── Loop de autovalidação normativa (reaproveita validateProject) ──
+    let graph = toIndustrialGraph(nodesOf(parsed), edgesOf(parsed));
+    let findings = validateProject(graph.nodes, graph.edges);
+    let rounds = 0;
+    let correctionFailed = false;
+
+    while (findings.some((f) => f.severity === "error") && rounds < 2) {
+      const errors = findings.filter((f) => f.severity === "error");
+      const fixMsg = `MODO 2 — CORREÇÃO NORMATIVA.
+As violações CRÍTICAS abaixo foram detectadas pelo validador normativo automático. Corrija TODAS elas, mantendo os nós/edges já existentes e adicionando/ajustando apenas o necessário. Devolva o projeto COMPLETO corrigido.
+
+Violações:
+${errors
+  .map(
+    (f, i) =>
+      `${i + 1}. [${f.norm}] ${f.title}\n   Detalhe: ${f.detail}${f.fixHint ? `\n   Correção sugerida: ${f.fixHint}` : ""}${f.nodeId ? `\n   Nó: ${f.nodeId}` : ""}`,
+  )
+  .join("\n")}
+
+Contexto atual do projeto (JSON):
+${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20000)}`;
+
+      const fix = await callArchitectModel(apiKey, [
+        ...messages,
+        { role: "user", content: fixMsg },
+      ]);
+      rounds++;
+      if (!fix.ok) {
+        correctionFailed = true;
+        break;
+      }
+      parsed = fix.parsed;
+      tokensUsed += fix.tokensUsed;
+      graph = toIndustrialGraph(nodesOf(parsed), edgesOf(parsed));
+      findings = validateProject(graph.nodes, graph.edges);
     }
 
-    const json = await resp.json();
-    const call = json?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!call?.function?.arguments) {
-      console.error("DeepSeek bad response:", JSON.stringify(json).slice(0, 500));
-      return {
-        ok: false,
-        error: { code: "BAD_RESPONSE", message: "A IA não devolveu estrutura válida." },
-      };
-    }
-    let parsed: JsonValue;
-    try {
-      parsed = JSON.parse(call.function.arguments);
-    } catch (e) {
-      console.error("JSON parse:", e);
-      return {
-        ok: false,
-        error: { code: "BAD_RESPONSE", message: "JSON inválido devolvido pela IA." },
-      };
-    }
-
-    const tokensUsed = Number(json?.usage?.total_tokens) || 0;
     return {
       ok: true,
       system: parsed,
@@ -351,6 +454,12 @@ export const generateArchitecture = createServerFn({ method: "POST" })
       tokensUsed,
       ragHits: rag.hits,
       credits: gateInfo,
+      verification: {
+        rounds,
+        findings,
+        summary: summarize(findings),
+        ...(correctionFailed ? { correctionFailed: true } : {}),
+      },
     };
   });
 
