@@ -273,77 +273,51 @@ export const generateArchitecture = createServerFn({ method: "POST" })
 
     const userMsg = `Briefing:\n${safePrompt}${ragBlock}${contextStr ? `\n\nContexto atual do projeto (JSON):\n${contextStr}` : ""}`;
 
-    const resp = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: userMsg },
-        ],
-        tools: [TOOL],
-        tool_choice: { type: "function", function: { name: "design_industrial_system" } },
-        temperature: 0.3,
-      }),
-    });
+    const messages: Array<{ role: string; content: string }> = [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: userMsg },
+    ];
 
-    if (resp.status === 401)
-      return {
-        ok: false,
-        error: { code: "AUTH_401", message: "Chave de IA inválida ou revogada." },
-      };
-    if (resp.status === 429)
-      return {
-        ok: false,
-        error: {
-          code: "RATE_LIMIT_429",
-          message: "Muitas requisições à IA. Aguarde alguns segundos.",
-        },
-      };
-    if (resp.status === 402)
-      return {
-        ok: false,
-        error: { code: "NO_CREDITS_402", message: "Créditos da conta DeepSeek esgotados." },
-      };
-    if (resp.status >= 500) {
-      const t = await resp.text();
-      console.error("DeepSeek 5xx:", resp.status, t);
-      return {
-        ok: false,
-        error: { code: "UPSTREAM_5XX", message: "Serviço DeepSeek temporariamente indisponível." },
-      };
-    }
-    if (!resp.ok) {
-      const t = await resp.text();
-      console.error("DeepSeek erro:", resp.status, t);
-      return {
-        ok: false,
-        error: { code: "BAD_RESPONSE", message: `Resposta inesperada (${resp.status}).` },
-      };
+    const first = await callArchitectModel(apiKey, messages);
+    if (!first.ok) return { ok: false, error: first.error };
+
+    let parsed = first.parsed;
+    let tokensUsed = first.tokensUsed;
+
+    // ── Loop de autovalidação normativa (reaproveita validateProject) ──
+    let graph = toIndustrialGraph(nodesOf(parsed), edgesOf(parsed));
+    let findings = validateProject(graph.nodes, graph.edges);
+    let rounds = 0;
+    let correctionFailed = false;
+
+    while (findings.some((f) => f.severity === "error") && rounds < 2) {
+      const errors = findings.filter((f) => f.severity === "error");
+      const fixMsg = `MODO 2 — CORREÇÃO NORMATIVA.
+As violações CRÍTICAS abaixo foram detectadas pelo validador normativo automático. Corrija TODAS elas, mantendo os nós/edges já existentes e adicionando/ajustando apenas o necessário. Devolva o projeto COMPLETO corrigido.
+
+Violações:
+${errors
+  .map(
+    (f, i) =>
+      `${i + 1}. [${f.norm}] ${f.title}\n   Detalhe: ${f.detail}${f.fixHint ? `\n   Correção sugerida: ${f.fixHint}` : ""}${f.nodeId ? `\n   Nó: ${f.nodeId}` : ""}`,
+  )
+  .join("\n")}
+
+Contexto atual do projeto (JSON):
+${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20000)}`;
+
+      const fix = await callArchitectModel(apiKey, [...messages, { role: "user", content: fixMsg }]);
+      rounds++;
+      if (!fix.ok) {
+        correctionFailed = true;
+        break;
+      }
+      parsed = fix.parsed;
+      tokensUsed += fix.tokensUsed;
+      graph = toIndustrialGraph(nodesOf(parsed), edgesOf(parsed));
+      findings = validateProject(graph.nodes, graph.edges);
     }
 
-    const json = await resp.json();
-    const call = json?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!call?.function?.arguments) {
-      console.error("DeepSeek bad response:", JSON.stringify(json).slice(0, 500));
-      return {
-        ok: false,
-        error: { code: "BAD_RESPONSE", message: "A IA não devolveu estrutura válida." },
-      };
-    }
-    let parsed: JsonValue;
-    try {
-      parsed = JSON.parse(call.function.arguments);
-    } catch (e) {
-      console.error("JSON parse:", e);
-      return {
-        ok: false,
-        error: { code: "BAD_RESPONSE", message: "JSON inválido devolvido pela IA." },
-      };
-    }
-
-    const tokensUsed = Number(json?.usage?.total_tokens) || 0;
     return {
       ok: true,
       system: parsed,
@@ -351,8 +325,15 @@ export const generateArchitecture = createServerFn({ method: "POST" })
       tokensUsed,
       ragHits: rag.hits,
       credits: gateInfo,
+      verification: {
+        rounds,
+        findings,
+        summary: summarize(findings),
+        ...(correctionFailed ? { correctionFailed: true } : {}),
+      },
     };
   });
+
 
 export const getAiCredits = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
