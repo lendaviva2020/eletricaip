@@ -86,19 +86,47 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       },
     });
 
-    // Verificação local e stateless do JWT (JWKS cacheado) — sem chamada HTTP
-    // ao servidor de Auth em cada invocação.
+    // Verificação do JWT tolerante ao tipo de chave do projeto:
+    // 1) JWKS (chaves assimétricas ES256/RS256) — sem round-trip por invocação;
+    // 2) segredo legado compartilhado (HS256) quando SUPABASE_JWT_SECRET existir;
+    // 3) fallback final para auth.getUser(token) — garante que nenhuma
+    //    incompatibilidade de assinatura derrube TODAS as rotas autenticadas.
     let userId: string | undefined;
     let claims: Record<string, unknown> = {};
-    try {
-      const { payload } = await jwtVerify(token, getJwks(SUPABASE_URL), {
-        issuer: `${SUPABASE_URL.replace(/\/$/, "")}/auth/v1`,
-      });
+
+    const applyPayload = (payload: Record<string, unknown>) => {
       userId = typeof payload.sub === "string" ? payload.sub : undefined;
       claims = (payload["app_metadata"] as Record<string, unknown> | undefined) ?? {};
+    };
+
+    const issuer = `${SUPABASE_URL.replace(/\/$/, "")}/auth/v1`;
+
+    try {
+      const { payload } = await jwtVerify(token, getJwks(SUPABASE_URL), { issuer });
+      applyPayload(payload as Record<string, unknown>);
     } catch {
-      throw new Response("Unauthorized: Invalid token", { status: 401 });
+      const legacySecret = process.env["SUPABASE_JWT_SECRET"];
+      if (legacySecret) {
+        try {
+          const { payload } = await jwtVerify(token, new TextEncoder().encode(legacySecret), {
+            issuer,
+          });
+          applyPayload(payload as Record<string, unknown>);
+        } catch {
+          /* cai no fallback remoto abaixo */
+        }
+      }
+
+      if (!userId) {
+        const { data, error } = await supabase.auth.getUser(token);
+        if (error || !data.user) {
+          throw new Response("Unauthorized: Invalid token", { status: 401 });
+        }
+        userId = data.user.id;
+        claims = (data.user.app_metadata as Record<string, unknown> | undefined) ?? {};
+      }
     }
+
 
     if (!userId) {
       throw new Response("Unauthorized: No user ID found in token", { status: 401 });
