@@ -10,14 +10,14 @@ import {
   ShieldCheck,
   Info,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   callArchitect,
   applyArchitectToStore,
   type ArchitectResult,
 } from "@/lib/ai-architect-client";
 import { calcDemand, calcMotor } from "@/lib/electrical-calc";
-import { validateProject, summarize, type NormFinding } from "@/lib/norm-validator";
+import type { NormFinding } from "@/lib/norm-validator";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
