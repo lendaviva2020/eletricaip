@@ -8,6 +8,8 @@ import {
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { sanitizePromptText, sanitizeProjectContext } from "@/lib/ai/context-sanitizer";
+import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
+import { validateProject, summarize, type NormFinding } from "@/lib/norm-validator";
 
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
 
