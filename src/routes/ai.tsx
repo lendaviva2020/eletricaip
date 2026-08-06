@@ -260,7 +260,23 @@ function ResultCard({
         </div>
       </details>
 
+      {verification && verification.rounds > 0 && (
+        <div className="rounded-md border border-primary/40 bg-primary/5 p-3 flex items-start gap-2 text-xs">
+          <ShieldCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <div>
+            A IA autocorrigiu violação(ões) normativa(s) em {verification.rounds} rodada(s) antes de
+            entregar o projeto.
+            {verification.correctionFailed && (
+              <div className="text-warning mt-0.5">
+                Uma rodada de correção não completou — revise os pontos abaixo manualmente.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <NormPanel findings={findings} summary={sum} />
+
 
       <div className="flex flex-wrap gap-2">
         <button
