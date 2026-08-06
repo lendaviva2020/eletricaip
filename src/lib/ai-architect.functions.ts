@@ -149,7 +149,8 @@ async function callArchitectModel(
   apiKey: string,
   messages: Array<{ role: string; content: string }>,
 ): Promise<
-  { ok: true; parsed: JsonValue; tokensUsed: number } | { ok: false; error: ArchitectError["error"] }
+  | { ok: true; parsed: JsonValue; tokensUsed: number }
+  | { ok: false; error: ArchitectError["error"] }
 > {
   let resp: Response;
   try {
@@ -431,7 +432,10 @@ ${errors
 Contexto atual do projeto (JSON):
 ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20000)}`;
 
-      const fix = await callArchitectModel(apiKey, [...messages, { role: "user", content: fixMsg }]);
+      const fix = await callArchitectModel(apiKey, [
+        ...messages,
+        { role: "user", content: fixMsg },
+      ]);
       rounds++;
       if (!fix.ok) {
         correctionFailed = true;
@@ -458,7 +462,6 @@ ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20
       },
     };
   });
-
 
 export const getAiCredits = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

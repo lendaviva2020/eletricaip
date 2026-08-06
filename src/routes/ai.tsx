@@ -190,7 +190,6 @@ function ResultCard({
   const findings = verification?.findings ?? [];
   const sum = verification?.summary ?? { errors: 0, warns: 0, infos: 0 };
 
-
   return (
     <div className="mt-4 space-y-3">
       <div className="grid sm:grid-cols-3 gap-2">
@@ -276,7 +275,6 @@ function ResultCard({
       )}
 
       <NormPanel findings={findings} summary={sum} />
-
 
       <div className="flex flex-wrap gap-2">
         <button
