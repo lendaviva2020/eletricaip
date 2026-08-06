@@ -186,17 +186,10 @@ function ResultCard({
     result.motors.map((m) => ({ id: m.id, power_kW: m.power_kW, voltage_V: m.voltage_V })),
   );
   const totalIn = motorSpecs.reduce((s, m) => s + m.In_A, 0);
-  const findings = useMemo(() => {
-    const nodes = result.nodes.map((n) => ({
-      ...n,
-      kind: n.kind as any,
-      category: n.category as any,
-      params: n.params ?? {},
-    })) as any;
-    const edges = result.edges.map((e, i) => ({ ...e, id: `tmp-${i}` })) as any;
-    return validateProject(nodes, edges);
-  }, [result]);
-  const sum = summarize(findings);
+  const verification = result.verification;
+  const findings = verification?.findings ?? [];
+  const sum = verification?.summary ?? { errors: 0, warns: 0, infos: 0 };
+
 
   return (
     <div className="mt-4 space-y-3">
