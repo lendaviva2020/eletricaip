@@ -34,6 +34,12 @@ export interface ArchitectResult {
     position: { x: number; y: number };
   }>;
   edges: Array<{ source: string; target: string; kind: "power" | "signal" | "pipe" }>;
+  verification?: {
+    rounds: number;
+    findings: NormFinding[];
+    summary: { errors: number; warns: number; infos: number };
+    correctionFailed?: boolean;
+  };
 }
 
 export class AIServiceError extends Error {
