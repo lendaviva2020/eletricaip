@@ -12,6 +12,7 @@ import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.f
 
 import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
 import type { LadderRung } from "@/lib/ladder/types";
+import type { NormFinding } from "@/lib/norm-validator";
 
 export interface ArchitectResult {
   title: string;
