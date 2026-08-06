@@ -172,7 +172,10 @@ export async function callArchitect(
     }
     pushStatus({ ts: Date.now(), ok: true, ms: Date.now() - t0 });
     notifyAiUsageChanged();
-    return res.system as unknown as ArchitectResult;
+    return {
+      ...(res.system as unknown as ArchitectResult),
+      verification: res.verification,
+    };
   } catch (e) {
     if (e instanceof AIServiceError) throw e;
     pushStatus({ ts: Date.now(), ok: false, code: "NETWORK", ms: Date.now() - t0 });
