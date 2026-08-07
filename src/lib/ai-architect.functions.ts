@@ -9,7 +9,14 @@ import {
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { sanitizePromptText, sanitizeProjectContext } from "@/lib/ai/context-sanitizer";
 import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
-import { validateProject, summarize, type NormFinding } from "@/lib/norm-validator";
+import { validateProject } from "@/lib/norm-validator";
+import { fromAiRungSpecs } from "@/lib/ladder/from-ai-spec";
+import { verifyEstopInterlock } from "@/lib/ladder/verify-estop";
+import {
+  summarizeVerification,
+  type VerificationFinding,
+  type VerificationReport,
+} from "@/lib/ai/verification-types";
 
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
 
