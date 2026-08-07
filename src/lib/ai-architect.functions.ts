@@ -143,12 +143,7 @@ type ArchitectOk = {
     plan?: string;
     unlimited?: boolean;
   };
-  verification: {
-    rounds: number;
-    findings: NormFinding[];
-    summary: { errors: number; warns: number; infos: number };
-    correctionFailed?: boolean;
-  };
+  verification: VerificationReport;
 };
 
 // ── Chamada única ao DeepSeek, parametrizada pelas mensagens ──
