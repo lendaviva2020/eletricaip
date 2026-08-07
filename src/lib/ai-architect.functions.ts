@@ -412,27 +412,26 @@ export const generateArchitecture = createServerFn({ method: "POST" })
     let parsed = first.parsed;
     let tokensUsed = first.tokensUsed;
 
-    // ── Loop de autovalidação normativa (reaproveita validateProject) ──
-    let graph = toIndustrialGraph(nodesOf(parsed), edgesOf(parsed));
-    let findings = validateProject(graph.nodes, graph.edges);
+    // ── Loop de autovalidação: normativa (validateProject) + simulação (E-STOP) ──
+    let findings = runVerification(parsed);
     let rounds = 0;
     let correctionFailed = false;
 
     while (findings.some((f) => f.severity === "error") && rounds < 2) {
       const errors = findings.filter((f) => f.severity === "error");
       const fixMsg = `MODO 2 — CORREÇÃO NORMATIVA.
-As violações CRÍTICAS abaixo foram detectadas pelo validador normativo automático. Corrija TODAS elas, mantendo os nós/edges já existentes e adicionando/ajustando apenas o necessário. Devolva o projeto COMPLETO corrigido.
+As violações CRÍTICAS abaixo foram detectadas pelos validadores automáticos. Corrija TODAS elas, mantendo os nós/edges já existentes e adicionando/ajustando apenas o necessário. Devolva o projeto COMPLETO corrigido (inclusive plcLogic.rungs quando aplicável).
 
 Violações:
 ${errors
   .map(
     (f, i) =>
-      `${i + 1}. [${f.norm}] ${f.title}\n   Detalhe: ${f.detail}${f.fixHint ? `\n   Correção sugerida: ${f.fixHint}` : ""}${f.nodeId ? `\n   Nó: ${f.nodeId}` : ""}`,
+      `${i + 1}. [${f.kind === "norm" ? f.norm : "SIMULAÇÃO"}] ${f.title}\n   Detalhe: ${f.detail}${f.fixHint ? `\n   Correção sugerida: ${f.fixHint}` : ""}${f.kind === "norm" && f.nodeId ? `\n   Nó: ${f.nodeId}` : ""}`,
   )
   .join("\n")}
 
 Contexto atual do projeto (JSON):
-${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20000)}`;
+${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed), plcLogic: (parsed as any)?.plcLogic }).slice(0, 20000)}`;
 
       const fix = await callArchitectModel(apiKey, [
         ...messages,
@@ -445,8 +444,7 @@ ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20
       }
       parsed = fix.parsed;
       tokensUsed += fix.tokensUsed;
-      graph = toIndustrialGraph(nodesOf(parsed), edgesOf(parsed));
-      findings = validateProject(graph.nodes, graph.edges);
+      findings = runVerification(parsed);
     }
 
     return {
@@ -459,7 +457,7 @@ ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20
       verification: {
         rounds,
         findings,
-        summary: summarize(findings),
+        summary: summarizeVerification(findings),
         ...(correctionFailed ? { correctionFailed: true } : {}),
       },
     };
