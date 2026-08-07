@@ -8,8 +8,12 @@ import {
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { sanitizePromptText, sanitizeProjectContext } from "@/lib/ai/context-sanitizer";
-import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
-import { validateProject, summarize, type NormFinding } from "@/lib/norm-validator";
+import { runVerification } from "@/lib/ai/verify-architecture";
+import {
+  summarizeVerification,
+  type VerificationFinding,
+  type VerificationReport,
+} from "@/lib/ai/verification-types";
 
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
 
@@ -34,7 +38,17 @@ REGRAS GLOBAIS:
 - Explique decisões em "rationale" curto e técnico em PT-BR citando normas e parágrafos.
 KINDS: breaker, contactor, relay, transformer, vfd, softstarter, psu, busbar, ccm, motor, conveyor, screw, valve, pump, tank, reactor, cylinder, pt100, pressure, flow, level, estop, lightcurtain, encoder, rcd.
 CATEGORIES: power | mech | inst | logic.
-POSIÇÕES: trafo no topo, barramento, CCM, motores em colunas. x: 60..1200, y: 40..900, espaçamento ≥ 160 px.`;
+POSIÇÕES: trafo no topo, barramento, CCM, motores em colunas. x: 60..1200, y: 40..900, espaçamento ≥ 160 px.
+
+LÓGICA PLC (plcLogic.rungs) — OBRIGATÓRIO QUANDO HOUVER E-STOP:
+- Sempre que o desenho tiver um nó kind "estop", emita em plcLogic.rungs o rung de INTERLOCK de segurança:
+  contato NF (XIO) do operand do E-STOP em SÉRIE com o comando de partida do motor (XIC), energizando
+  a bobina (OTE) do contator correspondente.
+- Use como operand o mesmo id/label (em MAIÚSCULAS com _) do nó de E-STOP e do contator.
+- Formato de cada rung: { id, label, output: { kind: "OTE", operand: "<bobina do contator>" },
+  branches: [ [ { kind: "XIO", operand: "<E-STOP>" }, { kind: "XIC", operand: "<partida>" } ] ] }
+- Cada branch é uma linha em paralelo (OR); os contatos dentro da branch são em série (AND).
+- Um rung de interlock por motor protegido pelo E-STOP.`;
 
 const SCHEMA = {
   type: "object",
@@ -100,6 +114,51 @@ const SCHEMA = {
         required: ["source", "target", "kind"],
       },
     },
+    plcLogic: {
+      type: "object",
+      description:
+        "Lógica Ladder mínima do sistema. Obrigatório quando houver nó kind 'estop': rung de interlock por motor.",
+      properties: {
+        rungs: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              label: { type: "string" },
+              output: {
+                type: "object",
+                properties: {
+                  kind: {
+                    type: "string",
+                    enum: ["OTE", "OTL", "OTU", "TON", "TOF", "TP", "CTU"],
+                  },
+                  operand: { type: "string" },
+                  preset: { type: "number" },
+                },
+                required: ["kind", "operand"],
+              },
+              branches: {
+                type: "array",
+                items: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      kind: { type: "string", enum: ["XIC", "XIO"] },
+                      operand: { type: "string" },
+                    },
+                    required: ["kind", "operand"],
+                  },
+                },
+              },
+            },
+            required: ["id", "label", "output", "branches"],
+          },
+        },
+      },
+      required: ["rungs"],
+    },
   },
   required: ["title", "rationale", "transformer", "ccm", "motors", "nodes", "edges"],
 };
@@ -136,12 +195,7 @@ type ArchitectOk = {
     plan?: string;
     unlimited?: boolean;
   };
-  verification: {
-    rounds: number;
-    findings: NormFinding[];
-    summary: { errors: number; warns: number; infos: number };
-    correctionFailed?: boolean;
-  };
+  verification: VerificationReport;
 };
 
 // ── Chamada única ao DeepSeek, parametrizada pelas mensagens ──
@@ -234,32 +288,6 @@ function nodesOf(parsed: JsonValue): any[] {
 function edgesOf(parsed: JsonValue): any[] {
   const e = (parsed as any)?.edges;
   return Array.isArray(e) ? e : [];
-}
-
-// Mapeia a saída bruta da IA para o grafo tipado consumido por validateProject.
-function toIndustrialGraph(
-  nodes: any[],
-  edges: any[],
-): { nodes: IndustrialNode[]; edges: IndustrialEdge[] } {
-  return {
-    nodes: nodes.map((n) => ({
-      id: String(n?.id ?? ""),
-      kind: (n?.kind ?? "motor") as IndustrialNode["kind"],
-      category: (n?.category ?? "mech") as IndustrialNode["category"],
-      label: String(n?.label ?? n?.id ?? ""),
-      position: {
-        x: Number(n?.position?.x) || 0,
-        y: Number(n?.position?.y) || 0,
-      },
-      params: (n?.params ?? {}) as IndustrialNode["params"],
-    })),
-    edges: edges.map((e, i) => ({
-      id: `ai-${i}`,
-      source: String(e?.source ?? ""),
-      target: String(e?.target ?? ""),
-      kind: (e?.kind ?? "power") as IndustrialEdge["kind"],
-    })),
-  };
 }
 
 // Lightweight RAG: pull top normative_chunks matching keywords from the prompt.
@@ -410,27 +438,26 @@ export const generateArchitecture = createServerFn({ method: "POST" })
     let parsed = first.parsed;
     let tokensUsed = first.tokensUsed;
 
-    // ── Loop de autovalidação normativa (reaproveita validateProject) ──
-    let graph = toIndustrialGraph(nodesOf(parsed), edgesOf(parsed));
-    let findings = validateProject(graph.nodes, graph.edges);
+    // ── Loop de autovalidação: normativa (validateProject) + simulação (E-STOP) ──
+    let findings = runVerification(parsed);
     let rounds = 0;
     let correctionFailed = false;
 
     while (findings.some((f) => f.severity === "error") && rounds < 2) {
       const errors = findings.filter((f) => f.severity === "error");
       const fixMsg = `MODO 2 — CORREÇÃO NORMATIVA.
-As violações CRÍTICAS abaixo foram detectadas pelo validador normativo automático. Corrija TODAS elas, mantendo os nós/edges já existentes e adicionando/ajustando apenas o necessário. Devolva o projeto COMPLETO corrigido.
+As violações CRÍTICAS abaixo foram detectadas pelos validadores automáticos. Corrija TODAS elas, mantendo os nós/edges já existentes e adicionando/ajustando apenas o necessário. Devolva o projeto COMPLETO corrigido (inclusive plcLogic.rungs quando aplicável).
 
 Violações:
 ${errors
   .map(
     (f, i) =>
-      `${i + 1}. [${f.norm}] ${f.title}\n   Detalhe: ${f.detail}${f.fixHint ? `\n   Correção sugerida: ${f.fixHint}` : ""}${f.nodeId ? `\n   Nó: ${f.nodeId}` : ""}`,
+      `${i + 1}. [${f.kind === "norm" ? f.norm : "SIMULAÇÃO"}] ${f.title}\n   Detalhe: ${f.detail}${f.fixHint ? `\n   Correção sugerida: ${f.fixHint}` : ""}${f.kind === "norm" && f.nodeId ? `\n   Nó: ${f.nodeId}` : ""}`,
   )
   .join("\n")}
 
 Contexto atual do projeto (JSON):
-${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20000)}`;
+${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed), plcLogic: (parsed as any)?.plcLogic }).slice(0, 20000)}`;
 
       const fix = await callArchitectModel(apiKey, [
         ...messages,
@@ -443,8 +470,7 @@ ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20
       }
       parsed = fix.parsed;
       tokensUsed += fix.tokensUsed;
-      graph = toIndustrialGraph(nodesOf(parsed), edgesOf(parsed));
-      findings = validateProject(graph.nodes, graph.edges);
+      findings = runVerification(parsed);
     }
 
     return {
@@ -457,7 +483,7 @@ ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed) }).slice(0, 20
       verification: {
         rounds,
         findings,
-        summary: summarize(findings),
+        summary: summarizeVerification(findings),
         ...(correctionFailed ? { correctionFailed: true } : {}),
       },
     };

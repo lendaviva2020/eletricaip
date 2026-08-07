@@ -17,7 +17,7 @@ import {
   type ArchitectResult,
 } from "@/lib/ai-architect-client";
 import { calcDemand, calcMotor } from "@/lib/electrical-calc";
-import type { NormFinding } from "@/lib/norm-validator";
+import type { VerificationFinding } from "@/lib/ai/verification-types";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
@@ -305,7 +305,7 @@ function NormPanel({
   findings,
   summary,
 }: {
-  findings: NormFinding[];
+  findings: VerificationFinding[];
   summary: { errors: number; warns: number; infos: number };
 }) {
   if (findings.length === 0) {
@@ -348,7 +348,7 @@ function NormPanel({
             <div className="flex-1">
               <div>
                 <span className="font-mono text-[9px] uppercase text-muted-foreground mr-1.5">
-                  {f.norm}
+                  {f.kind === "norm" ? f.norm : "SIMULAÇÃO"}
                 </span>
                 <span className="font-semibold">{f.title}</span>
               </div>

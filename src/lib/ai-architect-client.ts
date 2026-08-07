@@ -12,7 +12,7 @@ import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.f
 
 import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
 import type { LadderRung } from "@/lib/ladder/types";
-import type { NormFinding } from "@/lib/norm-validator";
+import type { VerificationReport } from "@/lib/ai/verification-types";
 
 export interface ArchitectResult {
   title: string;
@@ -35,12 +35,7 @@ export interface ArchitectResult {
     position: { x: number; y: number };
   }>;
   edges: Array<{ source: string; target: string; kind: "power" | "signal" | "pipe" }>;
-  verification?: {
-    rounds: number;
-    findings: NormFinding[];
-    summary: { errors: number; warns: number; infos: number };
-    correctionFailed?: boolean;
-  };
+  verification?: VerificationReport;
 }
 
 export class AIServiceError extends Error {
