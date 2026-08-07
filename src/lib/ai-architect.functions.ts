@@ -41,7 +41,17 @@ REGRAS GLOBAIS:
 - Explique decisões em "rationale" curto e técnico em PT-BR citando normas e parágrafos.
 KINDS: breaker, contactor, relay, transformer, vfd, softstarter, psu, busbar, ccm, motor, conveyor, screw, valve, pump, tank, reactor, cylinder, pt100, pressure, flow, level, estop, lightcurtain, encoder, rcd.
 CATEGORIES: power | mech | inst | logic.
-POSIÇÕES: trafo no topo, barramento, CCM, motores em colunas. x: 60..1200, y: 40..900, espaçamento ≥ 160 px.`;
+POSIÇÕES: trafo no topo, barramento, CCM, motores em colunas. x: 60..1200, y: 40..900, espaçamento ≥ 160 px.
+
+LÓGICA PLC (plcLogic.rungs) — OBRIGATÓRIO QUANDO HOUVER E-STOP:
+- Sempre que o desenho tiver um nó kind "estop", emita em plcLogic.rungs o rung de INTERLOCK de segurança:
+  contato NF (XIO) do operand do E-STOP em SÉRIE com o comando de partida do motor (XIC), energizando
+  a bobina (OTE) do contator correspondente.
+- Use como operand o mesmo id/label (em MAIÚSCULAS com _) do nó de E-STOP e do contator.
+- Formato de cada rung: { id, label, output: { kind: "OTE", operand: "<bobina do contator>" },
+  branches: [ [ { kind: "XIO", operand: "<E-STOP>" }, { kind: "XIC", operand: "<partida>" } ] ] }
+- Cada branch é uma linha em paralelo (OR); os contatos dentro da branch são em série (AND).
+- Um rung de interlock por motor protegido pelo E-STOP.`;
 
 const SCHEMA = {
   type: "object",
