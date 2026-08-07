@@ -8,7 +8,6 @@ import {
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { sanitizePromptText, sanitizeProjectContext } from "@/lib/ai/context-sanitizer";
-import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
 import { runVerification } from "@/lib/ai/verify-architecture";
 import {
   summarizeVerification,
@@ -289,32 +288,6 @@ function nodesOf(parsed: JsonValue): any[] {
 function edgesOf(parsed: JsonValue): any[] {
   const e = (parsed as any)?.edges;
   return Array.isArray(e) ? e : [];
-}
-
-// Mapeia a saída bruta da IA para o grafo tipado consumido por validateProject.
-function toIndustrialGraph(
-  nodes: any[],
-  edges: any[],
-): { nodes: IndustrialNode[]; edges: IndustrialEdge[] } {
-  return {
-    nodes: nodes.map((n) => ({
-      id: String(n?.id ?? ""),
-      kind: (n?.kind ?? "motor") as IndustrialNode["kind"],
-      category: (n?.category ?? "mech") as IndustrialNode["category"],
-      label: String(n?.label ?? n?.id ?? ""),
-      position: {
-        x: Number(n?.position?.x) || 0,
-        y: Number(n?.position?.y) || 0,
-      },
-      params: (n?.params ?? {}) as IndustrialNode["params"],
-    })),
-    edges: edges.map((e, i) => ({
-      id: `ai-${i}`,
-      source: String(e?.source ?? ""),
-      target: String(e?.target ?? ""),
-      kind: (e?.kind ?? "power") as IndustrialEdge["kind"],
-    })),
-  };
 }
 
 // Lightweight RAG: pull top normative_chunks matching keywords from the prompt.
