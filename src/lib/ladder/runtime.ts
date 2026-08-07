@@ -1,47 +1,51 @@
-// Tiny scan-cycle runtime for the rung matrix.
-// Reads tag values from the editor store, evaluates rung-by-rung, writes outputs.
-// Maintains per-cell state for TON (timer on-delay) and CTU (counter up).
+// Scan-cycle runtime for the rung matrix.
+// `scanRungsPure` is the pure core: no store, no clock, no DOM — testable in isolation.
+// `scanRungs` is the thin editor shell: reads tags from useEditorStore, delegates to
+// the pure core, and writes results back via writeBool (unchanged public behavior).
 import type { LadderCell, LadderRung } from "./types";
 import { isOutputKind } from "./types";
 import { useEditorStore, type EditorTag } from "@/lib/editor/store";
 
-const truthy = (v: EditorTag["value"] | undefined): boolean => {
+/** Pure tag map consumed by the scan core. */
+export type PureTags = Record<string, boolean | number>;
+
+export interface TimerState {
+  accum: number; // ms accumulated
+  done: boolean;
+  prevIn: boolean;
+  lastTick: number;
+}
+export interface CounterState {
+  count: number;
+  done: boolean;
+  prevIn: boolean;
+}
+export interface ScanState {
+  timers: Map<string, TimerState>;
+  counters: Map<string, CounterState>;
+}
+
+export const createScanState = (): ScanState => ({ timers: new Map(), counters: new Map() });
+
+const truthy = (v: boolean | number | undefined): boolean => {
   if (typeof v === "boolean") return v;
   if (typeof v === "number") return v !== 0;
   return Boolean(v);
 };
 
-const readBool = (operand: string, tags: Record<string, EditorTag>): boolean => {
+const readBool = (operand: string, tags: PureTags): boolean => {
   if (!operand) return false;
-  const tag = Object.values(tags).find((t) => t.name === operand);
-  return tag ? truthy(tag.value) : false;
+  return truthy(tags[operand]);
 };
 
-const writeBool = (operand: string, value: boolean) => {
-  if (!operand) return;
-  const state = useEditorStore.getState();
-  const existing = Object.values(state.editorTags).find((t) => t.name === operand);
-  if (existing) {
-    state.setTagValue(existing.id, value);
-  } else {
-    state.upsertTag({
-      id: `auto-${operand}`,
-      name: operand,
-      type: "BOOL",
-      value,
-      forced: false,
-    });
-  }
-};
-
-const evalContact = (cell: LadderCell, tags: Record<string, EditorTag>): boolean => {
+const evalContact = (cell: LadderCell, tags: PureTags): boolean => {
   const v = readBool(cell.operand, tags);
   if (cell.kind === "XIC") return v;
   if (cell.kind === "XIO") return !v;
   return true;
 };
 
-const evalRow = (row: LadderCell[], tags: Record<string, EditorTag>): boolean => {
+const evalRow = (row: LadderCell[], tags: PureTags): boolean => {
   let result = true;
   let any = false;
   for (let i = 0; i < row.length - 1; i++) {
@@ -54,26 +58,14 @@ const evalRow = (row: LadderCell[], tags: Record<string, EditorTag>): boolean =>
   return any ? result : false;
 };
 
-// ---------- Timer / Counter persistent state ----------
-interface TimerState {
-  accum: number; // ms accumulated
-  done: boolean;
-  prevIn: boolean;
-  lastTick: number; // performance.now()
-}
-interface CounterState {
-  count: number;
-  done: boolean;
-  prevIn: boolean;
-}
-const timerState = new Map<string, TimerState>();
-const counterState = new Map<string, CounterState>();
-
 const cellKey = (rungId: string, row: number, col: number) => `${rungId}:${row}:${col}`;
 
+// ---------- Editor-level persistent state (shared across scans) ----------
+const editorState: ScanState = createScanState();
+
 export const resetRuntimeState = () => {
-  timerState.clear();
-  counterState.clear();
+  editorState.timers.clear();
+  editorState.counters.clear();
 };
 
 // IEC 61131-3 TON:
@@ -81,18 +73,18 @@ export const resetRuntimeState = () => {
 //   IN held true:       ET += dt; when ET >= PT → ET clamped to PT, DN=true.
 //   IN ↓ (falling/EN false): ET=0, DN=false (immediate reset).
 const tickTimer = (
+  timers: Map<string, TimerState>,
   key: string,
   input: boolean,
   presetMs: number,
   now: number,
 ): { done: boolean; accum: number } => {
-  let st = timerState.get(key);
+  let st = timers.get(key);
   if (!st) {
     st = { accum: 0, done: false, prevIn: false, lastTick: now };
-    timerState.set(key, st);
+    timers.set(key, st);
   }
   if (input && !st.prevIn) {
-    // Rising edge: (re)start timing from this scan.
     st.accum = 0;
     st.done = false;
     st.lastTick = now;
@@ -105,7 +97,6 @@ const tickTimer = (
       st.done = true;
     }
   } else {
-    // IN false → DN false and ET reset to 0 (immediate, every scan).
     st.accum = 0;
     st.done = false;
     st.lastTick = now;
@@ -117,15 +108,16 @@ const tickTimer = (
 // IEC 61131-3 TOF: OUT is TRUE while IN is TRUE; on IN falling edge starts
 // timing, OUT remains TRUE until ET>=PT, then OUT=FALSE.
 const tickTOF = (
+  timers: Map<string, TimerState>,
   key: string,
   input: boolean,
   presetMs: number,
   now: number,
 ): { active: boolean; accum: number } => {
-  let st = timerState.get(key);
+  let st = timers.get(key);
   if (!st) {
     st = { accum: 0, done: false, prevIn: false, lastTick: now };
-    timerState.set(key, st);
+    timers.set(key, st);
   }
   if (input) {
     st.accum = 0;
@@ -151,15 +143,16 @@ const tickTOF = (
 // IEC 61131-3 TP: rising edge fires a pulse of PT duration; OUT is held
 // regardless of IN until ET>=PT. Re-armable only after IN goes false.
 const tickTP = (
+  timers: Map<string, TimerState>,
   key: string,
   input: boolean,
   presetMs: number,
   now: number,
 ): { active: boolean; accum: number } => {
-  let st = timerState.get(key);
+  let st = timers.get(key);
   if (!st) {
     st = { accum: 0, done: false, prevIn: false, lastTick: now };
-    timerState.set(key, st);
+    timers.set(key, st);
   }
   if (input && !st.prevIn && !st.done && st.accum === 0) {
     st.accum = 0;
@@ -183,14 +176,15 @@ const tickTP = (
 
 // IEC 61131-3 CTU.
 const tickCounter = (
+  counters: Map<string, CounterState>,
   key: string,
   input: boolean,
   preset: number,
 ): { done: boolean; count: number } => {
-  let st = counterState.get(key);
+  let st = counters.get(key);
   if (!st) {
     st = { count: 0, done: false, prevIn: false };
-    counterState.set(key, st);
+    counters.set(key, st);
   }
   if (input && !st.prevIn) {
     st.count += 1;
@@ -231,30 +225,22 @@ export class LadderScanTimeoutError extends Error {
   }
 }
 
-export const scanRungs = (
+/**
+ * Núcleo puro do scan-cycle. Sem store, sem clock global.
+ * Contatos são avaliados sempre contra o snapshot `tags` recebido (writes de saída
+ * NÃO são visíveis para rungs do mesmo scan — comportamento idêntico ao editor).
+ * Retorna os resultados e o novo mapa de tags (snapshot + saídas escritas).
+ */
+export function scanRungsPure(
   rungs: LadderRung[],
-  opts: { budgetMs?: number; maxRungs?: number } = {},
-): ScanResult[] => {
-  const budgetMs = opts.budgetMs ?? LADDER_SCAN_BUDGET_MS;
-  const maxRungs = opts.maxRungs ?? LADDER_MAX_RUNGS;
-  if (rungs.length > maxRungs) {
-    throw new LadderScanTimeoutError(0, rungs.length, 0);
-  }
-
-  const tags = useEditorStore.getState().editorTags;
-  const nowFn = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
-  const start = nowFn();
-  const now = start;
+  tags: PureTags,
+  state: ScanState,
+  now: number,
+): { results: ScanResult[]; tags: PureTags } {
   const results: ScanResult[] = [];
+  const writes: PureTags = {};
 
   for (let idx = 0; idx < rungs.length; idx++) {
-    // Verifica orçamento a cada 32 rungs (amortiza custo do clock).
-    if ((idx & 31) === 0) {
-      const elapsed = nowFn() - start;
-      if (elapsed > budgetMs) {
-        throw new LadderScanTimeoutError(idx, rungs.length, elapsed);
-      }
-    }
     const rung = rungs[idx];
     const perCell: boolean[][] = [];
     const diagnostics: Record<
@@ -283,35 +269,100 @@ export const scanRungs = (
       const preset = outCell.preset ?? 0;
 
       if (outCell.kind === "OTE") {
-        writeBool(outCell.operand, powered);
+        writes[outCell.operand] = powered;
       } else if (outCell.kind === "OTL" && powered) {
-        writeBool(outCell.operand, true);
+        writes[outCell.operand] = true;
       } else if (outCell.kind === "OTU" && powered) {
-        writeBool(outCell.operand, false);
+        writes[outCell.operand] = false;
       } else if (outCell.kind === "TON") {
-        const { done, accum } = tickTimer(key, powered, preset, now);
-        writeBool(outCell.operand, done);
-        diagnostics[`${0}:${outCol}`] = { kind: "TON", value: accum, preset, done };
+        const { done, accum } = tickTimer(state.timers, key, powered, preset, now);
+        writes[outCell.operand] = done;
+        diagnostics[`0:${outCol}`] = { kind: "TON", value: accum, preset, done };
         perCell[0][outCol] = done;
       } else if (outCell.kind === "TOF") {
-        const { active, accum } = tickTOF(key, powered, preset, now);
-        writeBool(outCell.operand, active);
-        diagnostics[`${0}:${outCol}`] = { kind: "TOF", value: accum, preset, done: active };
+        const { active, accum } = tickTOF(state.timers, key, powered, preset, now);
+        writes[outCell.operand] = active;
+        diagnostics[`0:${outCol}`] = { kind: "TOF", value: accum, preset, done: active };
         perCell[0][outCol] = active;
       } else if (outCell.kind === "TP") {
-        const { active, accum } = tickTP(key, powered, preset, now);
-        writeBool(outCell.operand, active);
-        diagnostics[`${0}:${outCol}`] = { kind: "TP", value: accum, preset, done: active };
+        const { active, accum } = tickTP(state.timers, key, powered, preset, now);
+        writes[outCell.operand] = active;
+        diagnostics[`0:${outCol}`] = { kind: "TP", value: accum, preset, done: active };
         perCell[0][outCol] = active;
       } else if (outCell.kind === "CTU") {
-        const { done, count } = tickCounter(key, powered, preset);
-        writeBool(outCell.operand, done);
-        diagnostics[`${0}:${outCol}`] = { kind: "CTU", value: count, preset, done };
+        const { done, count } = tickCounter(state.counters, key, powered, preset);
+        writes[outCell.operand] = done;
+        diagnostics[`0:${outCol}`] = { kind: "CTU", value: count, preset, done };
         perCell[0][outCol] = done;
       }
     }
 
     results.push({ rungId: rung.id, poweredOut: powered, perCell, diagnostics });
   }
+
+  return { results, tags: { ...tags, ...writes } };
+}
+
+// ---------- Editor shell ----------
+
+const toPureTags = (editorTags: Record<string, EditorTag>): PureTags => {
+  const out: PureTags = {};
+  for (const t of Object.values(editorTags)) {
+    const v = t.value;
+    out[t.name] = typeof v === "boolean" || typeof v === "number" ? v : Boolean(v);
+  }
+  return out;
+};
+
+const writeBool = (operand: string, value: boolean) => {
+  if (!operand) return;
+  const state = useEditorStore.getState();
+  const existing = Object.values(state.editorTags).find((t) => t.name === operand);
+  if (existing) {
+    state.setTagValue(existing.id, value);
+  } else {
+    state.upsertTag({
+      id: `auto-${operand}`,
+      name: operand,
+      type: "BOOL",
+      value,
+      forced: false,
+    });
+  }
+};
+
+export const scanRungs = (
+  rungs: LadderRung[],
+  opts: { budgetMs?: number; maxRungs?: number } = {},
+): ScanResult[] => {
+  const budgetMs = opts.budgetMs ?? LADDER_SCAN_BUDGET_MS;
+  const maxRungs = opts.maxRungs ?? LADDER_MAX_RUNGS;
+  if (rungs.length > maxRungs) {
+    throw new LadderScanTimeoutError(0, rungs.length, 0);
+  }
+
+  const nowFn = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  const start = nowFn();
+  const before = toPureTags(useEditorStore.getState().editorTags);
+
+  // Executa em blocos de 32 rungs para preservar a checagem de orçamento.
+  const results: ScanResult[] = [];
+  let after: PureTags = before;
+  for (let i = 0; i < rungs.length; i += 32) {
+    const elapsed = nowFn() - start;
+    if (elapsed > budgetMs) {
+      throw new LadderScanTimeoutError(i, rungs.length, elapsed);
+    }
+    const chunk = rungs.slice(i, i + 32);
+    const out = scanRungsPure(chunk, before, editorState, start);
+    results.push(...out.results);
+    after = { ...after, ...out.tags };
+  }
+
+  // Escreve as saídas de volta no store (mesmo efeito colateral de antes).
+  for (const [name, value] of Object.entries(after)) {
+    if (before[name] !== value) writeBool(name, Boolean(value));
+  }
+
   return results;
 };
