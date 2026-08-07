@@ -2,7 +2,7 @@
 // Usa scanRungsPure (núcleo puro do scan-cycle) com tags sintéticas — sem store.
 import type { LadderRung } from "./types";
 import { isOutputKind } from "./types";
-import { scanRungsPure, createScanState, type PureTags } from "./runtime";
+import { scanRungsPure, createScanState, type PureTags } from "./scan-core";
 import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
 
 export interface LogicFinding {
