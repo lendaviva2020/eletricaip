@@ -319,6 +319,27 @@ function toIndustrialGraph(
   };
 }
 
+// Etapa 1 (normativa) + Etapa 2 (simulação de interlock E-STOP) num único array.
+function runVerification(parsed: JsonValue): VerificationFinding[] {
+  const graph = toIndustrialGraph(nodesOf(parsed), edgesOf(parsed));
+  const norms: VerificationFinding[] = validateProject(graph.nodes, graph.edges).map((f) => ({
+    ...f,
+    kind: "norm" as const,
+  }));
+  let logic: VerificationFinding[] = [];
+  try {
+    const rungs = fromAiRungSpecs((parsed as any)?.plcLogic?.rungs);
+    logic = verifyEstopInterlock(rungs, graph.nodes, graph.edges).map((f) => ({
+      ...f,
+      kind: "logic" as const,
+    }));
+  } catch (e) {
+    console.warn("[architect] verifyEstopInterlock falhou:", (e as Error).message);
+  }
+  return [...norms, ...logic];
+}
+
+
 // Lightweight RAG: pull top normative_chunks matching keywords from the prompt.
 // Avoids embedding generation cost; uses ILIKE on chunk_text. Caller is auth'd
 // so RLS on normative_chunks applies.
