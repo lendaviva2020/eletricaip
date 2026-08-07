@@ -3,8 +3,7 @@ import type { NormFinding } from "@/lib/norm-validator";
 import type { LogicFinding } from "@/lib/ladder/verify-estop";
 
 export type VerificationFinding =
-  | (NormFinding & { kind: "norm" })
-  | (LogicFinding & { kind: "logic" });
+  (NormFinding & { kind: "norm" }) | (LogicFinding & { kind: "logic" });
 
 export interface VerificationReport {
   rounds: number;

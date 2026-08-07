@@ -291,4 +291,3 @@ export function scanRungsPure(
 
   return { results, tags: { ...tags, ...writes } };
 }
-

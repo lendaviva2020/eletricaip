@@ -112,7 +112,9 @@ export function verifyEstopInterlock(
           const n = norm(op);
           return (
             n.length >= 2 &&
-            estopCandidates.some((c) => n === c || n.includes(c) || c.includes(n) || /ESTOP|EMERG/.test(n))
+            estopCandidates.some(
+              (c) => n === c || n.includes(c) || c.includes(n) || /ESTOP|EMERG/.test(n),
+            )
           );
         }) ?? estopCandidates[0];
 
