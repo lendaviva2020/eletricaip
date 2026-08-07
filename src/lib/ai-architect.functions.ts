@@ -117,6 +117,51 @@ const SCHEMA = {
         required: ["source", "target", "kind"],
       },
     },
+    plcLogic: {
+      type: "object",
+      description:
+        "Lógica Ladder mínima do sistema. Obrigatório quando houver nó kind 'estop': rung de interlock por motor.",
+      properties: {
+        rungs: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              label: { type: "string" },
+              output: {
+                type: "object",
+                properties: {
+                  kind: {
+                    type: "string",
+                    enum: ["OTE", "OTL", "OTU", "TON", "TOF", "TP", "CTU"],
+                  },
+                  operand: { type: "string" },
+                  preset: { type: "number" },
+                },
+                required: ["kind", "operand"],
+              },
+              branches: {
+                type: "array",
+                items: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      kind: { type: "string", enum: ["XIC", "XIO"] },
+                      operand: { type: "string" },
+                    },
+                    required: ["kind", "operand"],
+                  },
+                },
+              },
+            },
+            required: ["id", "label", "output", "branches"],
+          },
+        },
+      },
+      required: ["rungs"],
+    },
   },
   required: ["title", "rationale", "transformer", "ccm", "motors", "nodes", "edges"],
 };
