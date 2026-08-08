@@ -689,11 +689,15 @@ export type Database = {
           description: string | null
           discontinued: boolean
           embedding: string | null
+          etim_class: string | null
           id: string
           image_urls: string[] | null
           keywords: unknown
+          list_price_brl: number | null
           manufacturer_id: string
           part_number: string
+          rated_current_a: number | null
+          rated_voltage_v: number | null
           specs: Json
           updated_at: string
         }
@@ -706,11 +710,15 @@ export type Database = {
           description?: string | null
           discontinued?: boolean
           embedding?: string | null
+          etim_class?: string | null
           id?: string
           image_urls?: string[] | null
           keywords?: unknown
+          list_price_brl?: number | null
           manufacturer_id: string
           part_number: string
+          rated_current_a?: number | null
+          rated_voltage_v?: number | null
           specs?: Json
           updated_at?: string
         }
@@ -723,11 +731,15 @@ export type Database = {
           description?: string | null
           discontinued?: boolean
           embedding?: string | null
+          etim_class?: string | null
           id?: string
           image_urls?: string[] | null
           keywords?: unknown
+          list_price_brl?: number | null
           manufacturer_id?: string
           part_number?: string
+          rated_current_a?: number | null
+          rated_voltage_v?: number | null
           specs?: Json
           updated_at?: string
         }
