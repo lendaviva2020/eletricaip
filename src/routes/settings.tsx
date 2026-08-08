@@ -159,6 +159,14 @@ function SettingsPage() {
 
             <SettingsLinkCard
               icon={Box}
+              title="Importar catálogo"
+              desc="Importe componentes reais via CSV/XLSX com dedup por fabricante e part number"
+              to="/settings/catalog-import"
+              badge="Admin"
+            />
+
+            <SettingsLinkCard
+              icon={Box}
               title="Digital Twin 3D"
               desc="Gêmeo Digital interativo com visualização 3D e telemetria ao vivo"
               to="/digital-twin"

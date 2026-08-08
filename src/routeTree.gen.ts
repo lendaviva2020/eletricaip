@@ -33,6 +33,7 @@ import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-statu
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as SettingsAutosaveRouteImport } from './routes/settings.autosave'
 import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
+import { Route as SettingsCatalogImportRouteImport } from './routes/settings.catalog-import'
 import { Route as SettingsDiagnosticsRouteImport } from './routes/settings.diagnostics'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
@@ -168,6 +169,11 @@ const SettingsBillingRoute = SettingsBillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsCatalogImportRoute = SettingsCatalogImportRouteImport.update({
+  id: '/catalog-import',
+  path: '/catalog-import',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsDiagnosticsRoute = SettingsDiagnosticsRouteImport.update({
   id: '/diagnostics',
   path: '/diagnostics',
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/autosave': typeof SettingsAutosaveRoute
   '/settings/billing': typeof SettingsBillingRoute
+  '/settings/catalog-import': typeof SettingsCatalogImportRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/autosave': typeof SettingsAutosaveRoute
   '/settings/billing': typeof SettingsBillingRoute
+  '/settings/catalog-import': typeof SettingsCatalogImportRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
@@ -345,6 +353,7 @@ export interface FileRoutesById {
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/autosave': typeof SettingsAutosaveRoute
   '/settings/billing': typeof SettingsBillingRoute
+  '/settings/catalog-import': typeof SettingsCatalogImportRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
@@ -387,6 +396,7 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/autosave'
     | '/settings/billing'
+    | '/settings/catalog-import'
     | '/settings/diagnostics'
     | '/settings/integrations'
     | '/settings/notifications'
@@ -427,6 +437,7 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/autosave'
     | '/settings/billing'
+    | '/settings/catalog-import'
     | '/settings/diagnostics'
     | '/settings/integrations'
     | '/settings/notifications'
@@ -467,6 +478,7 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/autosave'
     | '/settings/billing'
+    | '/settings/catalog-import'
     | '/settings/diagnostics'
     | '/settings/integrations'
     | '/settings/notifications'
@@ -678,6 +690,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsBillingRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/catalog-import': {
+      id: '/settings/catalog-import'
+      path: '/catalog-import'
+      fullPath: '/settings/catalog-import'
+      preLoaderRoute: typeof SettingsCatalogImportRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/diagnostics': {
       id: '/settings/diagnostics'
       path: '/diagnostics'
@@ -809,6 +828,7 @@ interface SettingsRouteChildren {
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsAutosaveRoute: typeof SettingsAutosaveRoute
   SettingsBillingRoute: typeof SettingsBillingRoute
+  SettingsCatalogImportRoute: typeof SettingsCatalogImportRoute
   SettingsDiagnosticsRoute: typeof SettingsDiagnosticsRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
@@ -825,6 +845,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsAutosaveRoute: SettingsAutosaveRoute,
   SettingsBillingRoute: SettingsBillingRoute,
+  SettingsCatalogImportRoute: SettingsCatalogImportRoute,
   SettingsDiagnosticsRoute: SettingsDiagnosticsRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
