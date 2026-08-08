@@ -224,7 +224,6 @@ const REGISTRY: Partial<Record<NodeKind, Draw>> = {
   lightcurtain,
 };
 
-
 export function drawSymbol(kind: NodeKind): Graphics {
   const g = new Graphics();
   (REGISTRY[kind] ?? generic)(g);
