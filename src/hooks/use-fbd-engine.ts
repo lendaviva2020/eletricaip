@@ -120,7 +120,7 @@ export function useFbdEngine(): FbdEngineApi {
     restoredRef.current = saved;
 
     const sim = new FbdSimulation(rt, ir.cycleTimeMs);
-    const unsub = sim.subscribe((report) => setLive(readLive(rt, report.faults)));
+    const unsub = sim.subscribe((report) => setLive(readLiveAndPublish(rt, report.faults)));
     runtimeRef.current = rt;
     simRef.current = sim;
     setLive(readLive(rt, []));
@@ -178,7 +178,7 @@ export function useFbdEngine(): FbdEngineApi {
     const rt = runtimeRef.current;
     if (!rt) return;
     rt.setVariable(variable, value);
-    setLive(readLive(rt, []));
+    setLive(readLiveAndPublish(rt, []));
   }, []);
 
   return {
