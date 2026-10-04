@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore, type FbdSimSnapshot } from "@/lib/editor/store";
 import { editorToFbdDocument, getFbdRegistry, type SimInputBinding } from "@/lib/fbd/editor-bridge";
+import { publishFbdToScada } from "@/lib/fbd/scada-bridge";
 import {
   compileFbd,
   FbdRuntime,
@@ -43,6 +44,13 @@ function readLive(rt: FbdRuntime, faults: readonly RuntimeFault[]): FbdLiveState
   const inputs: Record<string, boolean> = {};
   for (const [k, v] of Object.entries(snap.variables)) if (typeof v === "boolean") inputs[k] = v;
   return { scans: snap.scans, elapsedMs: snap.elapsedMs, faults, outputs: snap.outputs, inputs };
+}
+
+/** Lê o estado ao vivo e publica nas tags globais do SCADA + feed de telemetria. */
+function readLiveAndPublish(rt: FbdRuntime, faults: readonly RuntimeFault[]): FbdLiveState {
+  const live = readLive(rt, faults);
+  publishFbdToScada({ outputs: live.outputs, inputs: live.inputs });
+  return live;
 }
 
 export function useFbdEngine(): FbdEngineApi {
