@@ -19,7 +19,9 @@ export interface FbdScadaSnapshot {
 }
 
 /** Converte o estado ao vivo do runtime em tags globais do SCADA. */
-export function fbdSnapshotToTags(snapshot: FbdScadaSnapshot): Record<string, number | boolean | string> {
+export function fbdSnapshotToTags(
+  snapshot: FbdScadaSnapshot,
+): Record<string, number | boolean | string> {
   const tags: Record<string, number | boolean | string> = {};
   for (const [instance, pins] of Object.entries(snapshot.outputs)) {
     for (const [pin, value] of Object.entries(pins)) {
