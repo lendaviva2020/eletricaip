@@ -66,7 +66,7 @@ function bumpUser(userId: string, patch: Partial<AiUserCounters>) {
 
 export function recordAiDecision(
   userId: string,
-  source: "upstash" | "unconfigured" | "breaker-open" | "upstash-error",
+  source: "upstash" | "unconfigured" | "breaker-open" | "upstash-error" | "local-fallback",
   allowed: boolean,
   kind: "burst" | "quota",
 ) {
@@ -89,7 +89,7 @@ export function recordAiDecision(
     });
     return;
   }
-  // Fallback path (unconfigured / breaker-open / upstash-error)
+  // Fallback path (unconfigured / breaker-open / upstash-error / local-fallback)
   if (source === "unconfigured") _state.totals.unconfigured += 1;
   if (source === "breaker-open") _state.totals.breakerOpenSkipped += 1;
   if (source === "upstash-error") _state.totals.upstashError += 1;

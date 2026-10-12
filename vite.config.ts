@@ -8,7 +8,7 @@
 // para libs pesadas e claramente isoladas por rota (3D, canvas, charts).
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv } from "vite";
-import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
+// import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite"; // Comentado para corrigir build no Windows
 
 const env = loadEnv(process.env.NODE_ENV || "development", process.cwd(), "");
 Object.assign(process.env, env);
@@ -19,7 +19,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin()],
+    plugins: [/* mcpPlugin() */], // Comentado para corrigir build no Windows
     build: {
       chunkSizeWarningLimit: 900,
       rollupOptions: {

@@ -7,6 +7,7 @@ import {
   requireAiQuota,
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
+import { sanitizePromptText } from "@/lib/ai/context-sanitizer";
 
 export type ChatConversation = {
   id: string;
@@ -144,7 +145,7 @@ export const streamChat = createServerFn({ method: "POST" })
       return;
     }
 
-    // Persist the user message.
+    // Persist the user message (store original, sanitize for LLM).
     await supabase.from("ai_messages").insert({
       conversation_id: data.conversationId,
       role: "user",
@@ -162,7 +163,8 @@ export const streamChat = createServerFn({ method: "POST" })
       { role: "system" as const, content: SYSTEM_PROMPT },
       ...((history ?? []) as Array<{ role: string; content: string }>).map((m) => ({
         role: m.role as "user" | "assistant" | "system",
-        content: m.content,
+        // Sanitize each message content to prevent stored prompt injection
+        content: sanitizePromptText(m.content, 2000),
       })),
     ];
 

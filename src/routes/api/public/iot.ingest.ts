@@ -37,7 +37,9 @@ export const Route = createFileRoute("/api/public/iot/ingest")({
 
         const keyId = createHash("sha256").update(apiKey).digest("hex");
         const rl = await checkRateLimit("iot", keyId);
-        if (!rl.allowed) {
+        // failClosed = true significa que o limiter está em modo fail-closed (bypassed)
+        // e a requisição deve ser negada mesmo que rl.allowed fosse true
+        if (!rl.allowed || rl.failClosed) {
           return new Response(
             JSON.stringify({ ok: false, error: "rate_limited", code: "BURST_LIMIT_429" }),
             {

@@ -1,7 +1,8 @@
 // AI rate limiting middleware — burst + monthly quota enforcement.
 // Burst limiting prefers Upstash Redis (distributed). When Upstash is
-// unavailable or its circuit breaker is open we degrade to a per-instance
-// fallback bucket so AI calls keep working instead of returning blank 503s.
+// unavailable or its circuit breaker is open:
+//   - By default: FAIL-CLOSED (deny AI requests) to prevent uncontrolled costs
+//   - Opt-in via AI_RATE_LIMIT_LOCAL_FALLBACK=true: per-instance fallback bucket
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "./auth-middleware";
@@ -58,8 +59,8 @@ export const requireAiQuota = createMiddleware({ type: "function" })
     return next();
   });
 
-// Per-instance fallback bucket used only when Upstash is not configured.
-// Window / max are loaded dynamically per-user from ai_rate_limit_configs.
+// Per-instance fallback bucket used ONLY when explicitly enabled via env var
+// and Upstash is unavailable. Window/max loaded from ai_rate_limit_configs.
 const _localBuckets = new Map<string, number[]>();
 function localBurstAllow(
   userId: string,
@@ -78,6 +79,8 @@ function localBurstAllow(
   return { allowed: true, retryAfterSeconds: 0 };
 }
 
+const LOCAL_FALLBACK_ENABLED = process.env.AI_RATE_LIMIT_LOCAL_FALLBACK === "true";
+
 export const requireBurstLimit = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
@@ -87,12 +90,59 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
     const { getAiRateLimitConfig } = await import("@/lib/security/ai-rate-limit-config.server");
     const cfg = await getAiRateLimitConfig(userId);
 
-    const upstash = await checkRateLimit("ai", userId);
-    // If Upstash isn't usable (unconfigured, breaker open, or errored) we
-    // degrade to a per-instance bucket instead of failing closed.
-    if (upstash.bypassed) {
+    const rl = await checkRateLimit("ai", userId);
+
+    // FAIL-CLOSED: if bypassed and failClosed=true, deny immediately
+    if (rl.failClosed) {
+      recordAiDecision(userId, rl.source, false, "burst");
+      throw new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: "RATE_LIMITER_UNAVAILABLE",
+            message: "Serviço de rate limiting indisponível. Tente novamente em instantes.",
+            retryAfter: rl.retryAfterSeconds,
+            source: rl.source,
+          },
+        }),
+        {
+          status: 503,
+          headers: {
+            "content-type": "application/json",
+            "Retry-After": String(rl.retryAfterSeconds),
+          },
+        },
+      );
+    }
+
+    // If bypassed but not fail-closed (shouldn't happen for AI, but defensive)
+    if (rl.bypassed) {
+      if (!LOCAL_FALLBACK_ENABLED) {
+        recordAiDecision(userId, rl.source, false, "burst");
+        throw new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              code: "RATE_LIMITER_UNAVAILABLE",
+              message:
+                "Serviço de rate limiting indisponível. Configure AI_RATE_LIMIT_LOCAL_FALLBACK=true para fallback local.",
+              retryAfter: rl.retryAfterSeconds,
+              source: rl.source,
+            },
+          }),
+          {
+            status: 503,
+            headers: {
+              "content-type": "application/json",
+              "Retry-After": String(rl.retryAfterSeconds),
+            },
+          },
+        );
+      }
+
+      // Local fallback enabled explicitly
       const local = localBurstAllow(userId, cfg.fallbackWindowMs, cfg.fallbackMax);
-      recordAiDecision(userId, upstash.source, local.allowed, "burst");
+      recordAiDecision(userId, rl.source, local.allowed, "burst");
       if (!local.allowed) {
         throw new Response(
           JSON.stringify({
@@ -101,7 +151,7 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
               code: "BURST_LIMIT_429",
               message: `Muitas requisições em sequência. Tente novamente em ${local.retryAfterSeconds}s.`,
               retryAfter: local.retryAfterSeconds,
-              source: upstash.source,
+              source: "local-fallback",
             },
           }),
           { status: 429, headers: { "content-type": "application/json" } },
@@ -110,16 +160,17 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
       return next();
     }
 
-    recordAiDecision(userId, upstash.source, upstash.allowed, "burst");
-    if (!upstash.allowed) {
+    // Normal path: Upstash responded
+    recordAiDecision(userId, rl.source, rl.allowed, "burst");
+    if (!rl.allowed) {
       throw new Response(
         JSON.stringify({
           ok: false,
           error: {
             code: "BURST_LIMIT_429",
-            message: `Muitas requisições em sequência. Tente novamente em ${upstash.retryAfterSeconds}s.`,
-            retryAfter: upstash.retryAfterSeconds,
-            source: upstash.source,
+            message: `Muitas requisições em sequência. Tente novamente em ${rl.retryAfterSeconds}s.`,
+            retryAfter: rl.retryAfterSeconds,
+            source: rl.source,
           },
         }),
         { status: 429, headers: { "content-type": "application/json" } },

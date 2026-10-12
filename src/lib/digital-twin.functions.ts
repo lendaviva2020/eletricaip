@@ -265,10 +265,10 @@ export const deleteTwinHotspot = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => DeleteHotspotInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    // Sem checagem manual de tenant aqui de propósito: a policy RLS
-    // "Engineers+ manage twin hotspots" já exige
-    // projects.tenant_id = get_user_tenant_id() no próprio DELETE — uma
-    // segunda checagem aqui seria redundante e RLS é a fonte de verdade.
+    // Sem checagem manual de tenant aqui de propósito: as policies RLS
+    // "Engineers+ * twin hotspots" (migration 20261012090000) já exigem
+    // papel owner/admin/engineer no tenant do projeto no próprio DELETE —
+    // uma segunda checagem aqui seria redundante e RLS é a fonte de verdade.
     const { error } = await untyped(supabase).from("twin_hotspots").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
