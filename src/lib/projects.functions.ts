@@ -492,14 +492,68 @@ export const archiveProject = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Tabelas filhas com coluna project_id e cobertura de DELETE para owner/admin
+// do tenant (ver policies no baseline + migration 20261012110000).
+// twin_hotspots sai por ON DELETE CASCADE (migration 20261012090000).
+// tag_samples (telemetria, sem policy de DELETE p/ cliente) e comments
+// (só próprios) ficam de fora — limpeza via rotina de expurgo com service role.
+const PROJECT_CHILD_TABLES = [
+  "diagrams",
+  "project_versions",
+  "project_bom_items",
+  "alarm_configs",
+  "alarm_history",
+  "simulations",
+  "simulation_tags",
+  "trend_configs",
+  "calculations",
+  "files",
+  "function_block_instances",
+] as const;
+
+type ProjectChildTable = (typeof PROJECT_CHILD_TABLES)[number];
+
+async function deleteProjectChildren(
+  supabase: AuthContext["supabase"],
+  projectId: string,
+): Promise<void> {
+  for (const table of PROJECT_CHILD_TABLES) {
+    const { error } = await supabase.from(table).delete().eq("project_id", projectId);
+    if (error) throw new Error(`delete_${table}_failed: ${error.message}`);
+  }
+}
+
 export const deleteProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ projectId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
-    const { supabase } = authCtx;
-    await supabase.from("diagrams").delete().eq("project_id", data.projectId);
-    await supabase.from("project_versions").delete().eq("project_id", data.projectId);
+    const { supabase, userId } = authCtx;
+
+    // Gate de papel ANTES de qualquer mutação: só owner/admin do tenant do
+    // projeto. Sem isso, um engineer apagava diagrams/versions e falhava no
+    // DELETE de projects (policy admin-only) — corrupção parcial.
+    const { data: project, error: projErr } = await supabase
+      .from("projects")
+      .select("id, tenant_id")
+      .eq("id", data.projectId)
+      .maybeSingle();
+    if (projErr) throw new Error(projErr.message);
+    if (!project?.tenant_id) throw new Error("project_not_found_or_forbidden");
+
+    const { data: membership, error: memberErr } = await supabase
+      .from("tenant_memberships")
+      .select("role")
+      .eq("tenant_id", project.tenant_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (memberErr) throw new Error(memberErr.message);
+    if (membership?.role !== "owner" && membership?.role !== "admin") {
+      throw new Error("forbidden: owner/admin required");
+    }
+
+    await deleteProjectChildren(supabase, data.projectId);
+
     const { error } = await supabase.from("projects").delete().eq("id", data.projectId);
     if (error) throw new Error(error.message);
     return { ok: true };

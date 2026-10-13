@@ -6,6 +6,12 @@ import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { WatchTable } from "@/components/simulation/watch-table";
 import { ScadaEngine, type Alarm, type AlarmRule } from "@/lib/simulation/scada-engine";
+import { PlantSimPanel } from "@/components/plant-sim-panel";
+import { UnifilarLadderBridgePanel } from "@/components/simulation/unifilar-ladder-bridge-panel";
+import { TestScenariosPanel } from "@/components/simulation/test-scenarios-panel";
+import { ElectricalStudyPanel } from "@/components/simulation/electrical-study-panel";
+import { usePlantStore } from "@/lib/simulation/plant-store";
+import { plantTags } from "@/lib/simulation/plant-engine";
 import { cn } from "@/lib/utils";
 import { pushNotification } from "@/lib/notification-service";
 
@@ -110,7 +116,18 @@ export function SimCanvas() {
       Object.entries(useProjectStore.getState().tags).forEach(([k, v]) => {
         flatProject[k] = { value: v };
       });
-      engineRef.current?.evaluate({ ...flatEditor, ...flatProject });
+
+      // Planta simulada: quando o tick está rodando, as tags derivadas do
+      // plant-engine alimentam alarmes e gráficos (valores simulados reais,
+      // não senoides de fallback).
+      const plantSnap = usePlantStore.getState();
+      const plantActive = plantSnap.ticking;
+      const merged = { ...flatEditor, ...flatProject };
+      if (plantActive) {
+        const pt = plantTags(plantSnap.plant);
+        for (const [k, v] of Object.entries(pt)) merged[k] = { value: v };
+      }
+      engineRef.current?.evaluate(merged);
 
       // 1. Gather live values from both stores
       let speed = 0;
@@ -136,6 +153,18 @@ export function SimCanvas() {
           current = Number(tag.value) / 5; // scaled down for current visualizer
         else if (name === "VALVE_OPEN" || name === "POS") valve = tag.value ? 100 : 0;
       });
+
+      // Planta simulada ativa: M01 alimenta os gráficos (derivado do motor).
+      if (plantActive) {
+        const pt = plantTags(plantSnap.plant);
+        if (pt["M01_RUN"]) {
+          speed = Number(pt["M01_SPEED"]);
+          current = Number(pt["M01_CURRENT"]);
+        } else {
+          speed = 0;
+          current = 0;
+        }
+      }
 
       // Fallbacks if nothing is active
       if (speed === 0 && useProjectStore.getState().runtime.connected) {
@@ -349,6 +378,26 @@ export function SimCanvas() {
           ["Qualidade", isLive ? "100% Excelente" : "Sem Sinal"],
         ]}
       />
+
+      {/* PLANTA SIMULADA 8M+2EX */}
+      <div className="mt-4">
+        <PlantSimPanel />
+      </div>
+
+      {/* TEST SCENARIOS */}
+      <div className="mt-4">
+        <TestScenariosPanel />
+      </div>
+
+      {/* PONTE UNIFILAR → LADDER */}
+      <div className="mt-4">
+        <UnifilarLadderBridgePanel />
+      </div>
+
+      {/* ESTUDOS ELÉTRICOS DE POTÊNCIA */}
+      <div className="mt-4">
+        <ElectricalStudyPanel />
+      </div>
     </div>
   );
 }

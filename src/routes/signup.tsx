@@ -16,6 +16,7 @@ function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [adult, setAdult] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,13 +29,17 @@ function SignupPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
+    if (!adult) {
+      setError("É necessário confirmar que você tem 18 anos ou mais para criar uma conta.");
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?redirect=/onboarding`,
-        data: { full_name: name },
+        data: { full_name: name, age_declared_18_plus: true },
       },
     });
     setLoading(false);
@@ -44,6 +49,10 @@ function SignupPage() {
 
   const handleGoogle = async () => {
     setError("");
+    if (!adult) {
+      setError("É necessário confirmar que você tem 18 anos ou mais para criar uma conta.");
+      return;
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback?redirect=/onboarding` },
@@ -70,6 +79,16 @@ function SignupPage() {
           onChange={setPassword}
           required
         />
+        <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            aria-label="Confirmo que tenho 18 anos ou mais"
+            checked={adult}
+            onChange={(e) => setAdult(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+          />
+          <span>Confirmo que tenho 18 anos ou mais e uso profissional (B2B).</span>
+        </label>
         {error && <p className="text-xs text-destructive">{error}</p>}
         {success && <p className="text-xs text-success">{success}</p>}
         <button
@@ -82,7 +101,15 @@ function SignupPage() {
         </button>
       </form>
       <p className="text-[10px] text-muted-foreground mt-3 text-center">
-        Ao criar conta, você concorda com os Termos e a Política de Privacidade.
+        Ao criar conta, você concorda com os{" "}
+        <Link to="/termos" className="underline hover:text-foreground">
+          Termos
+        </Link>{" "}
+        e a{" "}
+        <Link to="/privacidade" className="underline hover:text-foreground">
+          Política de Privacidade
+        </Link>
+        .
       </p>
       <p className="text-xs text-center text-muted-foreground mt-6">
         Já tem conta?{" "}

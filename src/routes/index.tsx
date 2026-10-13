@@ -558,12 +558,12 @@ function Footer() {
           <span>© 2026 EletricAI Industrial OS</span>
         </div>
         <div className="flex items-center gap-5">
-          <a href="#" className="hover:text-foreground">
+          <Link to="/privacidade" className="hover:text-foreground">
             Privacidade
-          </a>
-          <a href="#" className="hover:text-foreground">
+          </Link>
+          <Link to="/termos" className="hover:text-foreground">
             Termos
-          </a>
+          </Link>
           <a href="#" className="hover:text-foreground inline-flex items-center gap-1.5">
             <Github className="h-3.5 w-3.5" /> GitHub
           </a>

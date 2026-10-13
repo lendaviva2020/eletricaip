@@ -73,8 +73,14 @@ export const deleteConversation = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ conversationId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    // Cascade delete messages first (no FK cascade defined).
-    await supabase.from("ai_messages").delete().eq("conversation_id", data.conversationId);
+    // Ordem importa: mensagens primeiro. Erro aqui aborta antes de tocar
+    // na conversa (sem isso, as mensagens ficavam órfãs no banco — a policy
+    // de DELETE em ai_messages não existia; ver migration 20261012110000).
+    const { error: msgErr } = await supabase
+      .from("ai_messages")
+      .delete()
+      .eq("conversation_id", data.conversationId);
+    if (msgErr) throw new Error(msgErr.message);
     const { error } = await supabase
       .from("ai_conversations")
       .delete()

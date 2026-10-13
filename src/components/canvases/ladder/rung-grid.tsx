@@ -10,6 +10,7 @@ import {
 } from "@/lib/ladder/types";
 import { compileProgram } from "@/lib/ladder/compiler";
 import { importLadderProgram } from "@/lib/ladder/importer";
+import { loadPlantReferenceProgram } from "@/lib/simulation/plant-ladder-program";
 import {
   scanRungs,
   resetRuntimeState,
@@ -37,6 +38,8 @@ import {
   Minus,
   AlertTriangle,
   AlertCircle,
+  Database,
+  FolderOpen,
 } from "lucide-react";
 
 interface HistoryEntry {
@@ -279,6 +282,19 @@ export function RungGrid() {
           title="Importar programa IL/ST"
         >
           <Upload className="mr-1 h-3 w-3" /> Importar
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={async () => {
+            const result = await loadPlantReferenceProgram();
+            if (result.success) {
+              toast.success(`Programa de referência 8M+2EX carregado (${result.rungsCount} rungs)`);
+            }
+          }}
+          title="Carregar programa de referência 8M+2EX"
+        >
+          <FolderOpen className="mr-1 h-3 w-3" /> Referência 8M+2EX
         </Button>
         <input
           ref={fileInputRef}

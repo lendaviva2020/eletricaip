@@ -79,6 +79,20 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
         detail: `Disjuntor ${brk} A muito acima da In=${calc.In_A} A — pode não proteger o cabo.`,
       });
     }
+    // Circuito sem nenhum dado de proteção declarado: não há como atestar
+    // proteção contra sobrecorrente (NBR 5410 §5.3). Warn — não error, pois os
+    // dados podem ser preenchidos depois; o dimensionamento sugerido acompanha.
+    if (cable <= 0 && brk <= 0) {
+      f.push({
+        id: `noprotect-${m.id}`,
+        norm: "NBR 5410",
+        severity: "warn",
+        nodeId: m.id,
+        title: `Motor ${m.id} sem proteção declarada`,
+        detail: `Nenhum cabo/disjuntor informado para In=${calc.In_A} A — impossível atestar proteção do circuito.`,
+        fixHint: `Sugestão de partida: cabo ${calc.cable_mm2} mm² e disjuntor ≥ ${calc.breaker_A} A (confirmar com dados reais da instalação).`,
+      });
+    }
   }
 
   // ── NBR 5410 — Proteção diferencial-residual (DR / RCD) ──

@@ -205,7 +205,7 @@ Observações:
 ## 5. Principais telas e funcionalidades
 
 ### 5.1 Landing page — `/` (`src/routes/index.tsx`) ✅ UI
-Apresentação, features, workflow, pricing (planos hardcoded R$0/100/580/1000 → `/settings/billing`), CTA. Links de termos/privacidade apontam para `#` (RISK-027). Redireciona usuário autenticado para `/dashboard`.
+Apresentação, features, workflow, pricing (planos hardcoded R$0/100/580/1000 → `/settings/billing`), CTA. Links de termos/privacidade apontam para `/termos` e `/privacidade` (RISK-027 mitigado em 2026-10-12). Redireciona usuário autenticado para `/dashboard`.
 
 ### 5.2 Autenticação
 - `/login`, `/signup` (e-mail/senha + Google OAuth), `/forgot-password`, `/reset-password`, `/auth/callback` (PKCE `exchangeCodeForSession`) — todos com Supabase Auth.
@@ -230,7 +230,7 @@ CRUD, duplicar, arquivar, excluir (server functions com limite por plano via `pl
 - **FBD** — `fbd-canvas.tsx` (React Flow) + `lib/fbd/engine`: compilação com grafo de dependências → AST → IR tipado, EN/ENO IEC, runtime determinístico, simulação de passo fixo, forçamento de saídas, diagnósticos; ponte para SCADA (`scada-bridge.ts`). Caminho legado (`lib/fbd/{types,compiler,runtime}.ts`) ainda usado para FBD→ST no PLC. **Sem blocos customizados/fabricante no motor.** ✅
 - **PLC** — `plc-canvas.tsx` (839 linhas): hardware (catálogo S7-like), rack com validação, variáveis (I/Q/M/DB), blocos (OB/FC/FB/DB) com Monaco, compilação de Ladder/FBD → ST, export PLCopen XML. **Sem download/execução em PLC físico.** ✅ (camada de projeto)
 - **SCADA/HMI** — `scada-canvas.tsx` (Konva): widgets HMI, dialog de bind de tags, banner de alarmes, editor de scripts Monaco executados em **Web Worker sandbox** (`scada-worker.ts`, com testes). Alarmes com estados ISA-18.2 e persistência (`alarm_configs`, `alarm_history`). ✅
-- **Simulação** — `sim-canvas.tsx` + `lib/simulation/scada-engine.ts`: engine com play/pause/reset; runtime local no navegador (`runtime-client.ts`) ou canal Realtime externo; **não resolve circuitos elétricos**. 🟡
+- **Simulação** — `sim-canvas.tsx` + `lib/simulation/scada-engine.ts` (alarmes ISA-18.2 por regras sobre tags) + **planta simulada 8M+2EX** (`lib/simulation/plant-engine.ts` puro/determinístico com rampa, térmica, proteções, histerese e E-STOP + `plant-store.ts` efêmero + `plant-sim-panel.tsx` com selo SIMULAÇÃO; tags derivadas alimentam alarmes e gráficos do Sim; 16 testes). Motores derivam In/Istart de `electrical-calc.ts`; **não resolve circuitos elétricos de potência nem atesta operação (Termos §10)**. 🟡→✅ (planta lógica; elétrica de potência segue fora)
 - **Twin (no workspace e rota dedicada `/digital-twin`)** — visual 3D (Three.js/R3F), hotspots persistidos (`twin_hotspots`), upload de modelo GLB/GLTF (bucket privado `twin-models`, signed URLs), telemetria com flush em lote (`tag_samples`), painel What-If com gate de persistência, saúde da telemetria. ✅
 - **Alarmes** — `alarms-canvas.tsx` + server functions de config/histórico. ✅
 
@@ -264,7 +264,7 @@ Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdo
 ## 6. Banco de dados
 
 ### 6.1 Visão geral
-- **65 tabelas** com RLS habilitado e **168 policies** — conforme dump literal do banco vivo consolidado em `supabase/migrations/20260906072900_baseline_rls_consolidation.sql`.
+- **66 tabelas** com RLS habilitado e **169 policies** — conforme dump literal do banco vivo consolidado em `supabase/migrations/20260906072900_baseline_rls_consolidation.sql` (contagem verificada em 2026-10-12; `twin_hotspots` ausente no dump — coberta pela migration `20261012090000`).
 - Apenas **9 tabelas** são criadas em migrations locais (`ai_credit_costs`, `project_bom_items`, `notifications`, `runtime_logs`, `clients`, `tenant_settings`, `ai_status_events`, `ai_rate_limit_configs`, `ai_usage_events`). Os 11 arquivos `*_remote_history_placeholder.sql` indicam que **o schema central existe apenas no projeto remoto** — a cadeia local **não recria o banco do zero** (RISK-014).
 - Tipos gerados: `src/integrations/supabase/types.ts` (65 tabelas, 34 funções RPC; nenhuma view).
 
@@ -398,7 +398,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 | RISK-024 | P3 | Confirmado | Autenticação | Política de senha | Baixa | Unificar mínimo (8) nos dois fluxos e testar |
 | RISK-025 | P3 | Confirmado | Infraestrutura | CI/CD, scripts, `.env.example` | Normal | Restaurar workflow versionado e script typecheck; conferir nomes de env |
 | RISK-026 | P3 | Não verificado | Autenticação | Supabase Auth (e-mail/OAuth) | Normal | Conferir dashboard: exigência de confirmação e URIs de redirect |
-| RISK-027 | P3 | Confirmado | Outro | Landing (termos/privacidade) | Normal | Publicar páginas e corrigir links |
+| RISK-027 | P3 | Mitigado | Outro | Landing (termos/privacidade) | Normal | Publicadas em `/privacidade` e `/termos`; pendente revisão jurídica + aceite versionado |
 | RISK-028 | P3 | Confirmado | Outro | Dashboard/analytics/billing/team | Baixa | Isolar modo demo; sinalizar dados sintéticos na UI |
 | RISK-029 | P3 | Confirmado | Frontend | localStorage | Baixa | Reduzir espelhos operacionais; validar URLs/keys coladas |
 | RISK-030 | P3 | Confirmado | API | CORS dos endpoints públicos | Baixa | Restringir origem quando viável; teste de preflight |
@@ -406,6 +406,9 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 | RISK-032 | P3 | Confirmado | Auditoria | Observabilidade | Normal | Integrar error tracking e alertas de custo de IA |
 | RISK-033 | P3 | Confirmado | Upload | Antivírus/quarentena | Baixa | Avaliar scanning na ingestão quando houver upload de documentos |
 | RISK-034 | P3 | Mitigado | Outro | Código morto/legado | Baixa | `bun run lint && bun run test && bun run build` após remoções (lint+test+typecheck executados e verdes) |
+| RISK-035 | P2 | Mitigado | Exclusão/LGPD | `ai_messages` órfãs no delete | Alta | Migration 20261012110000 (policy DELETE) + erro checado; 9 testes em `deletion.test.ts` |
+| RISK-036 | P2 | Mitigado | Exclusão/Integridade | `deleteProject` parcial + órfãs | Alta | Gate owner/admin pré-mutação + 11 tabelas filhas + erro por etapa; testes com Supabase mocado |
+| RISK-037 | P2 | Mitigado | Exclusão/LGPD | Sem fluxo de eliminação de conta | Alta | `requestAccountDeletion` + `eraseUserData` (platform admin) + tabela `deletion_requests`; Storage/tag_samples pendentes |
 
 ### 10.2 Registros individuais
 
@@ -700,7 +703,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 - **Impacto potencial:** Impossibilidade de restore completo "código como fonte"; risco em continuidade e auditoria
 - **Probabilidade:** Alta
 - **Abrangência:** Infraestrutura e recuperação
-- **Controles existentes:** Dump de baseline com 65 tabelas/168 policies como referência; tipos gerados
+- **Controles existentes:** Dump de baseline com 66 tabelas/169 policies como referência; tipos gerados
 - **Controles ausentes ou insuficientes:** DDL completo versionado; pipeline de schema drift
 - **Recomendação:** Exportar o DDL real (pg_dump schema-only) como migrations iniciais; configurar detecção de drift no CI
 - **Prioridade de tratamento:** Normal
@@ -964,23 +967,23 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-027 — Termos de uso e política de privacidade sem páginas reais
 
 - **Severidade:** P3
-- **Status:** Confirmado
+- **Status:** Mitigado (2026-10-12)
 - **Categoria:** Outro
 - **Ativo afetado:** Landing page / conformidade legal (LGPD)
-- **Localização:** `src/routes/index.tsx:561-566` (links `href="#"`)
-- **Evidência:** Footer sem páginas de termos/privacidade; plataforma coleta dados pessoais e de faturamento
+- **Localização:** `public/legal/privacy-policy.md`, `public/legal/terms-of-service.md` (v1.1 com §17 de confidencialidade industrial), rotas `/privacidade` (`src/routes/privacidade.tsx`) e `/termos` (`src/routes/termos.tsx`), componente `src/components/legal-page.tsx`
+- **Evidência:** Documentos v1.0 publicados e versionados no repo; footer da landing (`index.tsx`) e aviso do signup vinculados às rotas reais; rotas adicionadas a `PUBLIC_PATHS` no `__root.tsx` (acesso sem login)
 - **Cenário de risco:** Não conformidade legal e desconfiança comercial
 - **Impacto potencial:** Passivo jurídico; bloqueio em assessment de clientes corporativos
 - **Probabilidade:** Alta (para operação comercial)
 - **Abrangência:** Todos os usuários
-- **Controles existentes:** Nenhum
-- **Controles ausentes ou insuficientes:** Documentos publicados e vinculados no cadastro
-- **Recomendação:** Publicar termos e política de privacidade e vinculá-los ao signup
+- **Controles existentes:** Documentos publicados, vinculados no cadastro e no footer
+- **Controles ausentes ou insuficientes:** Revisão jurídica final (CNPJ/endereço placeholder), aceite explícito versionado no signup (checkbox + timestamp)
+- **Recomendação:** Implementada em 2026-10-12. Pendente: preencher CNPJ/endereço reais, revisão por jurídico, adicionar checkbox de aceite com versão no signup
 - **Prioridade de tratamento:** Normal
 - **Dependências:** Jurídico
 - **Risco da correção:** Baixo
-- **Validação necessária:** Links levam a páginas publicadas
-- **Referências:** `index.tsx:561-566`
+- **Validação necessária:** Executada: `/privacidade` e `/termos` renderizam o Markdown; typecheck + lint + 196 testes verdes
+- **Referências:** `public/legal/*.md`; `legal-page.tsx`; `privacidade.tsx`; `termos.tsx`
 
 ## RISK-028 — Dados sintéticos/demo apresentados em telas de operação
 
@@ -1129,11 +1132,74 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 - **Validação necessária:** Executada: `tsc --noEmit` limpo, `eslint` limpo, `bun run test` 27 arquivos/196 testes verdes
 - **Referências:** Deletados: `src/hooks/auth-store.ts`, `src/lib/security/svg-sanitizer.ts`; retido com prova de uso: `src/components/canvases/konva-canvas.tsx` via `lazy.tsx:124-138`
 
+## RISK-035 — `deleteConversation` deixava mensagens órfãs (falha silenciosa de RLS)
+
+- **Severidade:** P2
+- **Status:** Mitigado (2026-10-12)
+- **Categoria:** Exclusão/LGPD
+- **Ativo afetado:** `ai_messages` (conteúdo de prompts do usuário)
+- **Localização:** `src/lib/ai-chat.functions.ts:77` (delete sem checar erro); ausência de policy `FOR DELETE` em `ai_messages` (baseline `:101-110` só tem INSERT/SELECT)
+- **Evidência:** O delete das mensagens era negado pelo RLS e o erro ignorado; a conversa era apagada e as mensagens permaneciam invisíveis porém armazenadas — violação da §6 da Política
+- **Cenário de risco:** Titular "exclui" conversa e os prompts permanecem no banco
+- **Impacto potencial:** Descumprimento do Art. 18, VI da LGPD
+- **Probabilidade:** Alta (todo delete de conversa)
+- **Abrangência:** Todos os usuários do chat
+- **Controles existentes:** Policy de DELETE criada; erro agora aborta antes de tocar na conversa
+- **Controles ausentes ou insuficientes:** Nenhum após a correção
+- **Recomendação:** Executada em 2026-10-12: migration `20261012110000` (policy DELETE) + checagem de erro + testes
+- **Prioridade de tratamento:** Alta
+- **Dependências:** `ai_messages`, `ai_conversations`
+- **Risco da correção:** Baixo
+- **Validação necessária:** Executada: `deletion.test.ts` (ordem mensagens→conversa; abort sem tocar na conversa sob negação RLS). Pendente: `supabase db push` da migration + teste em staging com as queries do protocolo
+- **Referências:** `ai-chat.functions.ts:71-88`; `20261012110000_fix_deletion_policies_and_requests.sql`; `deletion.test.ts`
+
+## RISK-036 — `deleteProject` corrompia projeto e deixava tabelas órfãs
+
+- **Severidade:** P2
+- **Status:** Mitigado (2026-10-12)
+- **Categoria:** Exclusão/Integridade
+- **Ativo afetado:** `projects` + 11 tabelas filhas
+- **Localização:** `src/lib/projects.functions.ts:495-506` (versão anterior: sem gate de papel, sem checar erros, só 2 tabelas filhas)
+- **Evidência:** (a) engineer apagava `diagrams`/`project_versions` e falhava no `DELETE projects` (policy admin-only via `profiles.role`) — corrupção parcial; (b) BOM, alarmes, simulações, trends, cálculos, arquivos e FB instances permaneciam órfãos
+- **Cenário de risco:** Exclusão parcial destrói canvas/histórico sem remover o projeto; dados órfãos acumulam e escapam da eliminação LGPD
+- **Impacto potencial:** Perda de dados + descumprimento de eliminação
+- **Probabilidade:** Alta
+- **Abrangência:** Todos os tenants
+- **Controles existentes:** Gate owner/admin via `tenant_memberships` antes de qualquer mutação; 11 filhas com erro nomeado por tabela; `twin_hotspots` por `ON DELETE CASCADE`
+- **Controles ausentes ou insuficientes:** `tag_samples` (sem policy DELETE p/ cliente) e `comments` (só próprias) — limpeza via expurgo com service role (follow-up)
+- **Recomendação:** Executada em 2026-10-12 + testes
+- **Prioridade de tratamento:** Alta
+- **Dependências:** Policies DELETE das filhas (verificadas no baseline); migration `20261012110000` (policy DELETE p/ `alarm_history`)
+- **Risco da correção:** Médio (mudança de semântica: engineer perde o botão efetivo de excluir — passa a receber 403 explícito em vez de corrupção silenciosa)
+- **Validação necessária:** Executada: `deletion.test.ts` (403 sem mutação p/ engineer; 404 sem mutação; ordem filhas→projeto; erro nomeado por tabela). Pendente: apply da migration + protocolo de staging
+- **Referências:** `projects.functions.ts` (`PROJECT_CHILD_TABLES`, `deleteProjectChildren`); `deletion.test.ts`
+
+## RISK-037 — Sem fluxo de eliminação de conta (LGPD Art. 18, VI)
+
+- **Severidade:** P2
+- **Status:** Mitigado (2026-10-12; Storage/tag_samples pendentes)
+- **Categoria:** Exclusão/LGPD
+- **Ativo afetado:** Identidade do titular (`auth.users`, `profiles`, `tenant_memberships`, conversas IA, API keys)
+- **Localização:** Novo módulo `src/lib/account-deletion.functions.ts`; tabela `deletion_requests` (migration `20261012110000`)
+- **Evidência:** Grep por `deleteUser|profiles.delete` retornava 0 resultados — eliminação de conta era 100% manual via dashboard
+- **Cenário de risco:** Pedido de eliminação sem fluxo rastreável nem SLA
+- **Impacto potencial:** Descumprimento de prazo (15 dias úteis) e de eliminação
+- **Probabilidade:** Média
+- **Abrangência:** Todos os titulares
+- **Controles existentes:** `requestAccountDeletion` (deduplicado, fila auditável com RLS) + `listMyDeletionRequests` + `eraseUserData` (gate platform admin via `is_platform_admin()`, relatório por etapa, rollback de status em falha)
+- **Controles ausentes ou insuficientes:** Limpeza de objetos no Storage e de `tag_samples`; `created_by` NOT NULL impede anonimização total (UUIDs órfãos sem identidade vinculável — risco residual documentado)
+- **Recomendação:** Executada em 2026-10-12. Follow-ups: expurgo Storage/tag_samples com service role; migration tornando `created_by` nulável se exigido
+- **Prioridade de tratamento:** Alta
+- **Dependências:** `is_platform_admin()`, service role, tabela `deletion_requests`
+- **Risco da correção:** Alto (operação destrutiva irreversível — por isso gate admin + relatório + status)
+- **Validação necessária:** Executada: `deletion.test.ts` (negação não-admin sem mutação; relatório completo + ordem mensagens→conversas). Pendente: apply da migration + ensaio em staging + runbook de restore (RISK-018)
+- **Referências:** `account-deletion.functions.ts`; `20261012110000_fix_deletion_policies_and_requests.sql`; `deletion.test.ts`
+
 ### 10.3 Resumo executivo
 
-- **Total de riscos identificados:** 34 (0 P0 confirmados nesta inspeção estática — a ausência de P0 **não** atesta segurança; ver limitações)
-- **Por severidade:** P0: 0 · P1: 4 · P2: 15 · P3: 15
-- **Por status:** Confirmado: 23 · Suspeito: 1 · Não verificado: 4 · Mitigado: 6
+- **Total de riscos identificados:** 37 (0 P0 confirmados nesta inspeção estática — a ausência de P0 **não** atesta segurança; ver limitações)
+- **Por severidade:** P0: 0 · P1: 4 · P2: 18 · P3: 15
+- **Por status:** Confirmado: 22 · Suspeito: 1 · Não verificado: 4 · Mitigado: 10
 - **Riscos que exigem avaliação imediata (pós-correção 2026-10-12):**
   1. RISK-001 (`twin_hotspots`) — migration `20261012090000` criada; **aguarda apply em produção + teste de acesso cruzado**
   2. RISK-002 (trigger de e-mail hardcoded) — migration `20261012090001` criada; **aguarda apply + auditoria manual de `platform_admins`**
@@ -1148,7 +1214,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ### 10.4 Controles positivos verificados (evidência de boas práticas)
 
 - Autorização no servidor: 91 server functions com `requireSupabaseAuth`/`requireTenantAdmin`; JWT verificado localmente (JWKS/`jose`) com fallback `auth.getUser`.
-- RLS em 65 tabelas com 168 policies; deny-all para escritas de cliente em `iot_readings`, `stripe_webhook_events`, `mp_webhook_processed`, `plant_telemetry`, partições de `tag_samples`.
+- RLS em 66 tabelas com 169 policies no dump de baseline (mais `twin_hotspots` via migration `20261012090000`, pendente de apply); deny-all para escritas de cliente em `iot_readings`, `stripe_webhook_events`, `mp_webhook_processed`, `plant_telemetry`, partições de `tag_samples`.
 - Proteção de colunas: ids Stripe e token de convito com SELECT revogado de clientes; token de API IoT armazenado como hash SHA-256.
 - Webhooks Stripe/MP com verificação de assinatura constant-time, tolerância de replay e (na rota do servidor) idempotência; MP reconsulta o pagamento na API oficial.
 - SSRF guard em Modbus (RFC1918, bloqueio de loopback/metadata/IPv6, defesa contra DNS-rebinding) com testes.

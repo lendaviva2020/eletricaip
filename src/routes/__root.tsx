@@ -21,7 +21,15 @@ import { installDiagnosticsInterceptor } from "@/lib/diagnostics-counter";
 
 if (typeof window !== "undefined") installDiagnosticsInterceptor();
 
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/privacidade",
+  "/termos",
+];
 const PUBLIC_PREFIXES = ["/auth/callback", "/invite/"];
 const AUTH_NO_CHROME = ["/onboarding"];
 
