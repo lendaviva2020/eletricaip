@@ -18,11 +18,22 @@ GRANT ALL ON public.ai_usage_events TO service_role;
 
 ALTER TABLE public.ai_usage_events ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "tenant members read own ai usage events" ON public.ai_usage_events;
-CREATE POLICY "tenant members read own ai usage events"
-  ON public.ai_usage_events FOR SELECT
-  TO authenticated
-  USING (tenant_id = public.get_user_tenant_id() OR public.is_platform_admin());
+-- Idempotente: pula se as funções auxiliares ainda não existirem (fora do repo).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+             WHERE n.nspname = 'public' AND p.proname = 'get_user_tenant_id')
+     AND EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                 WHERE n.nspname = 'public' AND p.proname = 'is_platform_admin') THEN
+    DROP POLICY IF EXISTS "tenant members read own ai usage events" ON public.ai_usage_events;
+    EXECUTE $pol$
+      CREATE POLICY "tenant members read own ai usage events"
+        ON public.ai_usage_events FOR SELECT
+        TO authenticated
+        USING (tenant_id = public.get_user_tenant_id() OR public.is_platform_admin());
+    $pol$;
+  END IF;
+END $$;
 
 -- Update consume_ai_credits to log per-operation event
 CREATE OR REPLACE FUNCTION public.consume_ai_credits(p_operation text)

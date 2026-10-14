@@ -1,5 +1,6 @@
 
 -- Realtime publication
+-- Idempotente: pula tabelas ainda inexistentes (DDL central fora do repo).
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
@@ -7,35 +8,48 @@ BEGIN
   END IF;
 END $$;
 
-ALTER TABLE public.iot_readings    REPLICA IDENTITY FULL;
-ALTER TABLE public.iot_alerts      REPLICA IDENTITY FULL;
-ALTER TABLE public.iot_command_log REPLICA IDENTITY FULL;
-
 DO $$
+DECLARE t text;
 BEGIN
-  PERFORM 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='iot_readings';
-  IF NOT FOUND THEN ALTER PUBLICATION supabase_realtime ADD TABLE public.iot_readings; END IF;
-  PERFORM 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='iot_alerts';
-  IF NOT FOUND THEN ALTER PUBLICATION supabase_realtime ADD TABLE public.iot_alerts; END IF;
-  PERFORM 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='iot_command_log';
-  IF NOT FOUND THEN ALTER PUBLICATION supabase_realtime ADD TABLE public.iot_command_log; END IF;
+  FOREACH t IN ARRAY ARRAY['iot_readings', 'iot_alerts', 'iot_command_log'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = t) THEN
+      EXECUTE format('ALTER TABLE public.%I REPLICA IDENTITY FULL', t);
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = t
+      ) THEN
+        EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+      END IF;
+    END IF;
+  END LOOP;
 END $$;
 
 -- Plan feature gate
-CREATE OR REPLACE FUNCTION public.tenant_has_feature(p_feature text)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.profiles pr
-    JOIN public.tenants t ON t.id = pr.tenant_id
-    JOIN public.plan_limits pl ON pl.plan = COALESCE(t.plan,'free')
-    WHERE pr.id = auth.uid()
-      AND (
-        pl.features ? p_feature
-        OR pl.features @> '["all_features"]'::jsonb
-      )
-  );
-$$;
+-- Funções LANGUAGE sql validam as tabelas na CRIAÇÃO (≠ plpgsql, que adia
+-- para a execução). Só cria se profiles+tenants+plan_limits existirem.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'profiles')
+     AND EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'tenants')
+     AND EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'plan_limits') THEN
+    EXECUTE $fn$
+      CREATE OR REPLACE FUNCTION public.tenant_has_feature(p_feature text)
+      RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $body$
+        SELECT EXISTS (
+          SELECT 1
+          FROM public.profiles pr
+          JOIN public.tenants t ON t.id = pr.tenant_id
+          JOIN public.plan_limits pl ON pl.plan = COALESCE(t.plan,'free')
+          WHERE pr.id = auth.uid()
+            AND (
+              pl.features ? p_feature
+              OR pl.features @> '["all_features"]'::jsonb
+            )
+        );
+      $body$;
+    $fn$;
+  END IF;
+END $$;
 
 -- ===== Ingest endpoint via API key (no auth.uid) =====
 CREATE OR REPLACE FUNCTION public.ingest_iot_reading(

@@ -1,15 +1,21 @@
 
-INSERT INTO public.plan_limits (plan, max_projects, max_users, max_storage_mb, max_ai_tokens_month, features) VALUES
-  ('free',    3,     1,  100,   10,        '["basic_diagrams","pdf_export","community_support"]'::jsonb),
-  ('basic',   10,    3,  1000,  100,       '["standard_ai","pdf_export","email_support"]'::jsonb),
-  ('pro',     -1,    10, 10000, 250,       '["advanced_ai","digital_twin","realtime","opcua","modbus","priority_support"]'::jsonb),
-  ('premium', -1,    -1, -1,    -1,        '["all_features","dedicated_capacity","sla","custom_integrations"]'::jsonb)
-ON CONFLICT (plan) DO UPDATE SET
-  max_projects = EXCLUDED.max_projects,
-  max_users = EXCLUDED.max_users,
-  max_storage_mb = EXCLUDED.max_storage_mb,
-  max_ai_tokens_month = EXCLUDED.max_ai_tokens_month,
-  features = EXCLUDED.features;
+-- Idempotente: pula se a tabela ainda não existir (DDL central fora do repo).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'plan_limits') THEN
+    INSERT INTO public.plan_limits (plan, max_projects, max_users, max_storage_mb, max_ai_tokens_month, features) VALUES
+      ('free',    3,     1,  100,   10,        '["basic_diagrams","pdf_export","community_support"]'::jsonb),
+      ('basic',   10,    3,  1000,  100,       '["standard_ai","pdf_export","email_support"]'::jsonb),
+      ('pro',     -1,    10, 10000, 250,       '["advanced_ai","digital_twin","realtime","opcua","modbus","priority_support"]'::jsonb),
+      ('premium', -1,    -1, -1,    -1,        '["all_features","dedicated_capacity","sla","custom_integrations"]'::jsonb)
+    ON CONFLICT (plan) DO UPDATE SET
+      max_projects = EXCLUDED.max_projects,
+      max_users = EXCLUDED.max_users,
+      max_storage_mb = EXCLUDED.max_storage_mb,
+      max_ai_tokens_month = EXCLUDED.max_ai_tokens_month,
+      features = EXCLUDED.features;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.ai_credit_costs (
   operation text PRIMARY KEY,
@@ -37,6 +43,20 @@ ON CONFLICT (operation) DO UPDATE SET
   credits = EXCLUDED.credits,
   description = EXCLUDED.description,
   updated_at = now();
+
+-- update_updated_at() é referenciada por 7 migrations mas nunca foi definida
+-- em nenhuma (vivia fora do repo). Cria se ausente com o contrato canônico:
+-- BEFORE UPDATE ... FOR EACH ROW em tabelas com coluna updated_at.
+CREATE OR REPLACE FUNCTION public.update_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$;
 
 DROP TRIGGER IF EXISTS trg_ai_credit_costs_updated ON public.ai_credit_costs;
 CREATE TRIGGER trg_ai_credit_costs_updated

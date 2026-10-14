@@ -23,6 +23,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getAiCredits } from "@/lib/ai-architect.functions";
 import { listProjects } from "@/lib/projects.functions";
+import { getDashboardTelemetry } from "@/lib/iot.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { prefetchRouteQuery } from "@/lib/query-prefetch";
 
@@ -45,10 +46,6 @@ export const Route = createFileRoute("/dashboard")({
   }),
   component: Dashboard,
 });
-
-const trend = Array.from({ length: 24 }, (_, index) => ({
-  v: 50 + Math.sin(index / 2) * 12 + ((index * 7) % 6),
-}));
 
 type ProjectSummary = {
   id: string;
@@ -82,6 +79,7 @@ function Dashboard() {
   const { user } = useAuth();
   const list = useServerFn(listProjects);
   const creditsFn = useServerFn(getAiCredits);
+  const telemetryFn = useServerFn(getDashboardTelemetry);
 
   const projectsQuery = useQuery({
     queryKey: ["dashboard", "projects"],
@@ -91,6 +89,11 @@ function Dashboard() {
   const creditsQuery = useQuery({
     queryKey: ["dashboard", "ai-credits"],
     queryFn: () => creditsFn({}),
+  });
+
+  const telemetryQuery = useQuery({
+    queryKey: ["dashboard", "telemetry"],
+    queryFn: () => telemetryFn({ data: { hours: 24 } }),
   });
 
   const projects = (projectsQuery.data?.projects ?? []) as ProjectSummary[];
@@ -129,6 +132,12 @@ function Dashboard() {
     : activeProjects.length === 0
       ? { label: "Aguardando primeiro projeto", tone: "primary" as const }
       : { label: "Tudo operando bem", tone: "success" as const };
+
+  // Processar telemetria real para os gráficos
+  const telemetrySeries = telemetryQuery.data?.ok ? telemetryQuery.data.series : {};
+  const energyData = telemetrySeries.energy ?? telemetrySeries.power ?? telemetrySeries.consumption ?? [];
+  const productionData = telemetrySeries.production ?? telemetrySeries.count ?? telemetrySeries.output ?? [];
+  const temperatureData = telemetrySeries.temperature ?? telemetrySeries.temp ?? [];
 
   return (
     <div className="flex-1 overflow-auto scrollbar-thin">
@@ -230,18 +239,24 @@ function Dashboard() {
             title="Energia"
             subtitle="consumo agregado · kWh"
             color="oklch(0.78 0.17 200)"
+            data={energyData}
+            live={telemetryQuery.data?.ok === true && energyData.length > 0}
           />
           <ChartCard
             id="production"
             title="Produção"
             subtitle="unidades/hora médias"
             color="oklch(0.78 0.18 150)"
+            data={productionData}
+            live={telemetryQuery.data?.ok === true && productionData.length > 0}
           />
           <ChartCard
             id="temperature"
             title="Temperatura"
             subtitle="média ponderada · °C"
             color="oklch(0.86 0.20 90)"
+            data={temperatureData}
+            live={telemetryQuery.data?.ok === true && temperatureData.length > 0}
           />
         </div>
 
@@ -311,18 +326,10 @@ function Dashboard() {
                           atualizado {when}
                         </div>
                       </div>
-                      <div className="w-32 h-8 hidden sm:block">
-                        <ResponsiveContainer>
-                          <LineChart data={trend}>
-                            <Line
-                              type="monotone"
-                              dataKey="v"
-                              stroke="oklch(0.78 0.17 200)"
-                              strokeWidth={1.5}
-                              dot={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
+                      <div className="w-32 h-8 hidden sm:block flex items-center justify-end">
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {project.status === "archived" ? "arquivado" : "ativo"}
+                        </span>
                       </div>
                     </Link>
                   );
@@ -406,15 +413,25 @@ function ChartCard({
   title,
   subtitle,
   color,
+  data,
+  dataKey = "value",
+  live = false,
 }: {
   id: string;
   title: string;
   subtitle: string;
   color: string;
+  data?: Array<{ timestamp: string; value: number }>;
+  dataKey?: string;
+  live?: boolean;
 }) {
-  const data = Array.from({ length: 30 }, (_, index) => ({
-    v: 30 + Math.sin(index / 2) * 10 + ((index * 5) % 8),
-  }));
+  const hasData = data && data.length > 0;
+  const chartData = hasData
+    ? data.map((d) => ({ timestamp: d.timestamp, value: d.value }))
+    : Array.from({ length: 24 }, (_, index) => ({
+        timestamp: new Date(Date.now() - (23 - index) * 60 * 60 * 1000).toISOString(),
+        value: 0,
+      }));
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -424,28 +441,34 @@ function ChartCard({
           <div className="text-[10px] text-muted-foreground">{subtitle}</div>
         </div>
         <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color }}>
-          ● ao vivo
+          {live && hasData ? "● ao vivo" : hasData ? "● dados reais" : "● sem dados"}
         </span>
       </div>
       <div className="h-32">
         <ResponsiveContainer>
-          <AreaChart data={data}>
+          <AreaChart data={chartData}>
             <defs>
               <linearGradient id={`chart-${id}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.5} />
-                <stop offset="100%" stopColor={color} stopOpacity={0} />
+                <stop offset="0%" stopColor={color} stopOpacity={hasData ? 0.5 : 0.1} />
+                <stop offset="100%" stopColor={color} stopOpacity={hasData ? 0 : 0} />
               </linearGradient>
             </defs>
             <Area
               type="monotone"
-              dataKey="v"
+              dataKey={dataKey}
               stroke={color}
               strokeWidth={2}
               fill={`url(#chart-${id})`}
+              opacity={hasData ? 1 : 0.3}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      {!hasData && (
+        <div className="mt-2 text-center text-[10px] text-muted-foreground">
+          Nenhum dado de telemetria disponível. Conecte dispositivos IoT ou inicie a simulação.
+        </div>
+      )}
     </div>
   );
 }

@@ -226,3 +226,89 @@ export const createIotApiKey = createServerFn({ method: "POST" })
     if (error) return { ok: false as const, error: error.message };
     return { ok: true as const, apiKey: raw };
   });
+
+// === Telemetria agregada para Dashboard ===
+export const getDashboardTelemetry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        projectId: z.string().uuid().optional(),
+        hours: z.number().min(1).max(720).default(24), // até 30 dias
+        tagPatterns: z.array(z.string()).default(["energy", "power", "consumption", "production", "count", "output", "temperature", "temp"]),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    // Buscar tenant do usuário
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("tenant_id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (profileError || !profile?.tenant_id) {
+      return { ok: false as const, error: "no_tenant" };
+    }
+
+    // Buscar projetos do tenant (ou projeto específico)
+    let projectsQuery = supabase
+      .from("projects")
+      .select("id")
+      .eq("tenant_id", profile.tenant_id);
+    if (data.projectId) {
+      projectsQuery = projectsQuery.eq("id", data.projectId);
+    }
+    const { data: projects, error: projectsError } = await projectsQuery;
+    if (projectsError) return { ok: false as const, error: projectsError.message };
+    const projectIds = (projects ?? []).map((p) => p.id);
+    if (projectIds.length === 0) {
+      return { ok: true as const, series: {} };
+    }
+
+    // Janela de tempo
+    const since = new Date(Date.now() - data.hours * 60 * 60 * 1000).toISOString();
+
+    // Query tag_samples com ILIKE patterns
+    // Usamos or() para combinar múltiplos ILIKE
+    const orFilters = data.tagPatterns.map((p) => `tag_name.ilike.%${p}%`).join(",");
+    const { data: samples, error: samplesError } = await supabase
+      .from("tag_samples")
+      .select("project_id, tag_name, value, sampled_at")
+      .in("project_id", projectIds)
+      .gte("sampled_at", since)
+      .or(orFilters)
+      .order("sampled_at", { ascending: true })
+      .limit(5000);
+
+    if (samplesError) return { ok: false as const, error: samplesError.message };
+
+    // Agregar por tag_name e bucket de tempo (1 hora)
+    const bucketMs = 60 * 60 * 1000; // 1 hora
+    const seriesMap = new Map<string, Map<number, { sum: number; count: number }>>();
+
+    for (const s of samples ?? []) {
+      const ts = new Date(s.sampled_at).getTime();
+      const bucket = Math.floor(ts / bucketMs) * bucketMs;
+      if (!seriesMap.has(s.tag_name)) seriesMap.set(s.tag_name, new Map());
+      const bucketMap = seriesMap.get(s.tag_name)!;
+      const existing = bucketMap.get(bucket) ?? { sum: 0, count: 0 };
+      existing.sum += s.value;
+      existing.count += 1;
+      bucketMap.set(bucket, existing);
+    }
+
+    // Converter para array ordenado por timestamp
+    const series: Record<string, Array<{ timestamp: string; value: number }>> = {};
+    for (const [tagName, buckets] of seriesMap) {
+      series[tagName] = Array.from(buckets.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([bucket, { sum, count }]) => ({
+          timestamp: new Date(bucket).toISOString(),
+          value: count > 0 ? sum / count : 0,
+        }));
+    }
+
+    return { ok: true as const, series };
+  });

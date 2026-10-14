@@ -79,7 +79,8 @@ function sanitizePromptText(value: string, maxLen = 32000): string {
 function sanitizeValue(value: unknown, depth = 0): unknown {
   if (depth > MAX_DEPTH) return "[nested_too_deep]";
   if (typeof value === "string") return sanitizePromptText(value, MAX_STRING_LENGTH);
-  if (Array.isArray(value)) return value.slice(0, MAX_ARRAY_ITEMS).map((i) => sanitizeValue(i, depth + 1));
+  if (Array.isArray(value))
+    return value.slice(0, MAX_ARRAY_ITEMS).map((i) => sanitizeValue(i, depth + 1));
   if (value !== null && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
@@ -92,7 +93,6 @@ function sanitizeValue(value: unknown, depth = 0): unknown {
 function sanitizeProjectContext(ctx: unknown): string {
   return JSON.stringify(sanitizeValue(ctx)).slice(0, MAX_CONTEXT_CHARS);
 }
-
 
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro.
 Projete um SISTEMA ELÉTRICO COMPLETO seguindo NBR 5410, NBR 14039, NR-10, NR-12 e IEC 61131-3.
@@ -281,8 +281,6 @@ Deno.serve(async (req) => {
     }
     const safePrompt = sanitizePromptText(prompt, 4000);
 
-
-
     const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
     const v = validateKeyFormat(apiKey);
     if (!v.ok) return err(apiKey ? "INVALID_KEY_FORMAT" : "MISSING_KEY", v.reason!);
@@ -315,7 +313,6 @@ Deno.serve(async (req) => {
     const userMsg = contextStr
       ? `Briefing:\n${safePrompt}\n\nContexto atual do projeto (JSON):\n${contextStr}`
       : safePrompt;
-
 
     const resp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",

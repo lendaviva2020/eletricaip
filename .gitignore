@@ -28,7 +28,10 @@ dist-ssr
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
-supabase/.temp/
+# Estado local da CLI do Supabase — o CLI cria `.temp/` tanto em `supabase/`
+# quanto aninhado (`supabase/supabase/.temp/`) dependendo do diretório de
+# execução. A regra antiga `supabase/.temp/` não casava com o caminho real.
+supabase/**/.temp/
 
 # Editor directories and files
 .vscode/*

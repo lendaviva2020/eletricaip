@@ -38,53 +38,73 @@ CREATE INDEX IF NOT EXISTS idx_clients_status ON public.clients(status);
 
 ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Tenant members can view clients" ON public.clients;
-CREATE POLICY "Tenant members can view clients"
-ON public.clients FOR SELECT
-USING (EXISTS (
-  SELECT 1 FROM public.tenant_memberships tm
-  WHERE tm.tenant_id = clients.tenant_id AND tm.user_id = auth.uid()
-));
+-- Policies sobre clients (idempotente: pula se tenant_memberships ainda não existir).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'tenant_memberships') THEN
+    DROP POLICY IF EXISTS "Tenant members can view clients" ON public.clients;
+    EXECUTE $pol$
+      CREATE POLICY "Tenant members can view clients"
+      ON public.clients FOR SELECT
+      USING (EXISTS (
+        SELECT 1 FROM public.tenant_memberships tm
+        WHERE tm.tenant_id = clients.tenant_id AND tm.user_id = auth.uid()
+      ));
+    $pol$;
 
-DROP POLICY IF EXISTS "Engineers+ can insert clients" ON public.clients;
-CREATE POLICY "Engineers+ can insert clients"
-ON public.clients FOR INSERT
-WITH CHECK (
-  created_by = auth.uid() AND EXISTS (
-    SELECT 1 FROM public.tenant_memberships tm
-    WHERE tm.tenant_id = clients.tenant_id
-      AND tm.user_id = auth.uid()
-      AND tm.role IN ('owner','admin','engineer')
-  )
-);
+    DROP POLICY IF EXISTS "Engineers+ can insert clients" ON public.clients;
+    EXECUTE $pol$
+      CREATE POLICY "Engineers+ can insert clients"
+      ON public.clients FOR INSERT
+      WITH CHECK (
+        created_by = auth.uid() AND EXISTS (
+          SELECT 1 FROM public.tenant_memberships tm
+          WHERE tm.tenant_id = clients.tenant_id
+            AND tm.user_id = auth.uid()
+            AND tm.role IN ('owner','admin','engineer')
+        )
+      );
+    $pol$;
 
-DROP POLICY IF EXISTS "Engineers+ can update clients" ON public.clients;
-CREATE POLICY "Engineers+ can update clients"
-ON public.clients FOR UPDATE
-USING (EXISTS (
-  SELECT 1 FROM public.tenant_memberships tm
-  WHERE tm.tenant_id = clients.tenant_id
-    AND tm.user_id = auth.uid()
-    AND tm.role IN ('owner','admin','engineer')
-));
+    DROP POLICY IF EXISTS "Engineers+ can update clients" ON public.clients;
+    EXECUTE $pol$
+      CREATE POLICY "Engineers+ can update clients"
+      ON public.clients FOR UPDATE
+      USING (EXISTS (
+        SELECT 1 FROM public.tenant_memberships tm
+        WHERE tm.tenant_id = clients.tenant_id
+          AND tm.user_id = auth.uid()
+          AND tm.role IN ('owner','admin','engineer')
+      ));
+    $pol$;
 
-DROP POLICY IF EXISTS "Engineers+ can delete clients" ON public.clients;
-CREATE POLICY "Engineers+ can delete clients"
-ON public.clients FOR DELETE
-USING (EXISTS (
-  SELECT 1 FROM public.tenant_memberships tm
-  WHERE tm.tenant_id = clients.tenant_id
-    AND tm.user_id = auth.uid()
-    AND tm.role IN ('owner','admin','engineer')
-));
+    DROP POLICY IF EXISTS "Engineers+ can delete clients" ON public.clients;
+    EXECUTE $pol$
+      CREATE POLICY "Engineers+ can delete clients"
+      ON public.clients FOR DELETE
+      USING (EXISTS (
+        SELECT 1 FROM public.tenant_memberships tm
+        WHERE tm.tenant_id = clients.tenant_id
+          AND tm.user_id = auth.uid()
+          AND tm.role IN ('owner','admin','engineer')
+      ));
+    $pol$;
+  END IF;
+END $$;
 
 DROP TRIGGER IF EXISTS trg_clients_updated_at ON public.clients;
 CREATE TRIGGER trg_clients_updated_at
 BEFORE UPDATE ON public.clients
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS client_id UUID REFERENCES public.clients(id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS idx_projects_client ON public.projects(client_id);
+-- Idempotente: pula se projects ainda não existir (DDL central fora do repo).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'projects') THEN
+    ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS client_id UUID REFERENCES public.clients(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS idx_projects_client ON public.projects(client_id);
+  END IF;
+END $$;
 
 INSERT INTO storage.buckets (id, name, public) VALUES ('client-logos','client-logos', true)
 ON CONFLICT (id) DO NOTHING;

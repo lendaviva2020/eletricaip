@@ -224,30 +224,116 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.accept_invite(text) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.bootstrap_personal_tenant_if_missing() FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.change_tenant_plan(text) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.check_ai_quota() FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.consume_ai_credits(text) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.generate_bom_from_canvas(uuid) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_ai_credits_remaining() FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.increment_ai_tokens(integer) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.increment_usage(uuid, text, integer) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.is_platform_admin() FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.search_normative_chunks(extensions.vector, double precision, integer, text) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.tenant_has_feature(text) FROM PUBLIC, anon, authenticated;
+-- Revokes abaixo (idempotente: pula funções ainda inexistentes).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'accept_invite'
+      AND pg_get_function_identity_arguments(p.oid) = 'text'
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.accept_invite(text) FROM PUBLIC, anon, authenticated';
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.check_ai_quota_for_user(uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.check_ai_quota_for_user(uuid) TO service_role;
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'bootstrap_personal_tenant_if_missing'
+      AND pg_get_function_identity_arguments(p.oid) = ''
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.bootstrap_personal_tenant_if_missing() FROM PUBLIC, anon, authenticated';
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.increment_ai_tokens_for_user(uuid, integer) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.increment_ai_tokens_for_user(uuid, integer) TO service_role;
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'change_tenant_plan'
+      AND pg_get_function_identity_arguments(p.oid) = 'text'
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.change_tenant_plan(text) FROM PUBLIC, anon, authenticated';
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.get_ai_credits_remaining_for_user(uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_ai_credits_remaining_for_user(uuid) TO service_role;
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'check_ai_quota'
+      AND pg_get_function_identity_arguments(p.oid) = ''
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.check_ai_quota() FROM PUBLIC, anon, authenticated';
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.consume_ai_credits_for_user(uuid, text) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.consume_ai_credits_for_user(uuid, text) TO service_role;
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'consume_ai_credits'
+      AND pg_get_function_identity_arguments(p.oid) = 'text'
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.consume_ai_credits(text) FROM PUBLIC, anon, authenticated';
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.generate_bom_from_canvas_for_user(uuid, uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.generate_bom_from_canvas_for_user(uuid, uuid) TO service_role;
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'generate_bom_from_canvas'
+      AND pg_get_function_identity_arguments(p.oid) = 'uuid'
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.generate_bom_from_canvas(uuid) FROM PUBLIC, anon, authenticated';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'get_ai_credits_remaining'
+      AND pg_get_function_identity_arguments(p.oid) = ''
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.get_ai_credits_remaining() FROM PUBLIC, anon, authenticated';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'increment_ai_tokens'
+      AND pg_get_function_identity_arguments(p.oid) = 'integer'
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.increment_ai_tokens(integer) FROM PUBLIC, anon, authenticated';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'increment_usage'
+      AND pg_get_function_identity_arguments(p.oid) = 'uuid, text, integer'
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.increment_usage(uuid, text, integer) FROM PUBLIC, anon, authenticated';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'is_platform_admin'
+      AND pg_get_function_identity_arguments(p.oid) = ''
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.is_platform_admin() FROM PUBLIC, anon, authenticated';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'search_normative_chunks'
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.search_normative_chunks(extensions.vector, double precision, integer, text) FROM PUBLIC, anon, authenticated';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'tenant_has_feature'
+      AND pg_get_function_identity_arguments(p.oid) = 'text'
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.tenant_has_feature(text) FROM PUBLIC, anon, authenticated';
+  END IF;
+
+  EXECUTE 'REVOKE EXECUTE ON FUNCTION public.check_ai_quota_for_user(uuid) FROM PUBLIC, anon, authenticated';
+  EXECUTE 'GRANT EXECUTE ON FUNCTION public.check_ai_quota_for_user(uuid) TO service_role';
+
+  EXECUTE 'REVOKE EXECUTE ON FUNCTION public.increment_ai_tokens_for_user(uuid, integer) FROM PUBLIC, anon, authenticated';
+  EXECUTE 'GRANT EXECUTE ON FUNCTION public.increment_ai_tokens_for_user(uuid, integer) TO service_role';
+
+  EXECUTE 'REVOKE EXECUTE ON FUNCTION public.get_ai_credits_remaining_for_user(uuid) FROM PUBLIC, anon, authenticated';
+  EXECUTE 'GRANT EXECUTE ON FUNCTION public.get_ai_credits_remaining_for_user(uuid) TO service_role';
+
+  EXECUTE 'REVOKE EXECUTE ON FUNCTION public.consume_ai_credits_for_user(uuid, text) FROM PUBLIC, anon, authenticated';
+  EXECUTE 'GRANT EXECUTE ON FUNCTION public.consume_ai_credits_for_user(uuid, text) TO service_role';
+
+  EXECUTE 'REVOKE EXECUTE ON FUNCTION public.generate_bom_from_canvas_for_user(uuid, uuid) FROM PUBLIC, anon, authenticated';
+  EXECUTE 'GRANT EXECUTE ON FUNCTION public.generate_bom_from_canvas_for_user(uuid, uuid) TO service_role';
+END $$;

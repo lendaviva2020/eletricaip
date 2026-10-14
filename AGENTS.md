@@ -10,16 +10,16 @@
 
 ## 1. Identificação do sistema
 
-| Campo | Valor verificado |
-|---|---|
-| Nome | **ElétricAi** (README: "ELETRICAI"; nome interno do pacote: `tanstack_start_ts`, sem campo `version` no `package.json`) |
-| Versão | ❓ Não verificável — não há campo de versão no projeto |
-| Objetivo | Plataforma de engenharia elétrica e automação industrial assistida por IA: projetos elétricos (unifilar/multifilar), lógica de controle (Ladder/FBD), configuração de PLC, SCADA/HMI, digital twin 3D, cálculos, catálogo de componentes, IoT/telemetria e cobrança por assinatura |
-| Público-alvo | Engenheiros elétricos, automatistas, integradores e plantas industriais — mercado brasileiro (preços em BRL, Mercado Pago, normas NBR/ABNT e IEC) |
-| Arquitetura | SPA/SSR **TanStack Start** (React 19) na Vercel; camada de API por **server functions** (`createServerFn`); **Supabase** (Postgres + RLS, Auth, Storage, Realtime, Edge Functions); IA via **DeepSeek** somente no servidor |
-| Hospedagem | Vercel (preset `nitro: vercel`) + projeto Supabase cloud (`project_id = "hcjkwqyxqxnbqikwltvc"` em `supabase/config.toml`) + Upstash (rate limiting, quando configurado) |
-| Integrações externas confirmadas | DeepSeek (`api.deepseek.com`), Stripe, Mercado Pago, Supabase (Auth/DB/Storage/Realtime), Google OAuth, Upstash Redis REST, Lovable (`@lovable.dev/mcp-js`, broker de preview), Modbus TCP (socket no servidor, com guarda SSRF) |
-| Estado real | Substancialmente implementado nos editores e persistência; várias telas exibem dados sintéticos/demo; alguns módulos do briefing não têm UI (documentos, relatórios dedicados, tela de cálculos, admin dedicado) |
+| Campo                            | Valor verificado                                                                                                                                                                                                                                                                   |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nome                             | **ElétricAi** (README: "ELETRICAI"; nome interno do pacote: `tanstack_start_ts`, sem campo `version` no `package.json`)                                                                                                                                                            |
+| Versão                           | ❓ Não verificável — não há campo de versão no projeto                                                                                                                                                                                                                             |
+| Objetivo                         | Plataforma de engenharia elétrica e automação industrial assistida por IA: projetos elétricos (unifilar/multifilar), lógica de controle (Ladder/FBD), configuração de PLC, SCADA/HMI, digital twin 3D, cálculos, catálogo de componentes, IoT/telemetria e cobrança por assinatura |
+| Público-alvo                     | Engenheiros elétricos, automatistas, integradores e plantas industriais — mercado brasileiro (preços em BRL, Mercado Pago, normas NBR/ABNT e IEC)                                                                                                                                  |
+| Arquitetura                      | SPA/SSR **TanStack Start** (React 19) na Vercel; camada de API por **server functions** (`createServerFn`); **Supabase** (Postgres + RLS, Auth, Storage, Realtime, Edge Functions); IA via **DeepSeek** somente no servidor                                                        |
+| Hospedagem                       | Vercel (preset `nitro: vercel`) + projeto Supabase cloud (`project_id = "hcjkwqyxqxnbqikwltvc"` em `supabase/config.toml`) + Upstash (rate limiting, quando configurado)                                                                                                           |
+| Integrações externas confirmadas | DeepSeek (`api.deepseek.com`), Stripe, Mercado Pago, Supabase (Auth/DB/Storage/Realtime), Google OAuth, Upstash Redis REST, Lovable (`@lovable.dev/mcp-js`, broker de preview), Modbus TCP (socket no servidor, com guarda SSRF)                                                   |
+| Estado real                      | Substancialmente implementado nos editores e persistência; várias telas exibem dados sintéticos/demo; alguns módulos do briefing não têm UI (documentos, relatórios dedicados, tela de cálculos, admin dedicado)                                                                   |
 
 ---
 
@@ -35,31 +35,31 @@ O ElétricAi permite a um engenheiro criar e gerir **projetos de automação ind
 
 ### Estado real das funcionalidades
 
-| Área | Estado | Evidência resumida |
-|---|---|---|
-| Cadastro/login/OAuth/recuperação de senha | ✅ | Supabase Auth; redirect validado por `isSafeRedirect` |
-| Dashboard | 🟡 | Projetos recentes reais; gráficos de tendência com dados sintéticos (seno) |
-| Gestão de projetos (CRUD, duplicar, arquivar, versões, autosave) | ✅ | `projects.functions.ts`, `project_versions`, snapshot + debounce 2 s |
-| Editor unifilar/multifilar (Pixi.js + viewport) | ✅ | `lib/diagram/*`, `render/stage.ts`, testes `multifilar` |
-| Multifilar gerado do unifilar | ✅ | `lib/diagram/multifilar.ts` (inferência F/N/3F/N, memorial de condutores) |
-| Editor Ladder + runtime de scan (TON/TOF/TP/CTU) | ✅ | `lib/ladder/scan-core.ts` (puro), compilador IL/ST, importador, validador, verificação de E-STOP por simulação |
-| Editor FBD + motor IEC (AST→IR, EN/ENO, runtime, simulação) | ✅ | `lib/fbd/engine/*`; paleta além dos blocos IEC é limitada; **sem blocos customizados no motor** |
-| PLC (rack, variáveis, blocos, PLCopen XML) | ✅ (camada de projeto) | `lib/plc/*`, `plcopen-export.ts`; **sem download/execução em PLC real** |
-| Comunicação Modbus | 🟡 | Conexão TCP real com guarda SSRF, mas **sem framing Modbus**; registradores em memória simulada |
-| Comunicação OPC-UA | 🟡/❌ | Sessão simulada; conexão real lança erro — `node-opcua` não está em `package.json` |
-| SCADA/HMI (telas, tags, alarmes ISA-18.2, trends) | ✅ | `scada-canvas.tsx`, `scada-engine.ts`, sandbox de scripts em Web Worker |
-| Simulação | 🟡 | Ladder/FBD simulam lógica real; circuitos elétricos/PLC real **não** são simulados; painel "Simulação" é sobretudo visualizador |
-| Digital twin 3D + telemetria + what-if | ✅ | `/digital-twin`, upload GLB (bucket privado, signed URLs), flush de telemetria, Realtime |
-| Cálculos elétricos | 🟡 | `electrical-calc.ts`: motor, demanda, queda de tensão, dimensionamento de cabo/corrente; **sem** curto-circuito, seletividade, harmônicas, arc flash, aterramento |
-| IA (architect, chat, patches, RAG normativo, créditos, rate limits) | ✅ | `ai-architect.functions.ts`, `ai-chat.functions.ts`, `diagram/ai.functions.ts`; **upload/OCR de PDF na IA é mock** |
-| Catálogo de componentes + importação CSV/XLSX | ✅ | `/catalog`, `/settings/catalog-import` (tenant-admin) |
-| Documentos/manuais (upload, OCR, indexação) | ❌ | Tabelas `knowledge_*` existem no banco, mas **não há UI nem fluxo de upload** no frontend |
-| Relatórios (PDF/DXF/BOM) | ✅/🟡 | `/projects/$id/export` (PDF jsPDF + DXF), BOM; **sem exportação Excel de relatórios** |
-| Assinaturas/billing (Stripe + Mercado Pago) | ✅ | Checkout, webhooks assinados idempotentes (rota do servidor); **UI com fallback demo** |
-| Equipe/convites/roles | ✅ | `settings.team.tsx` + RPC `accept_invite`; **fallback demo** quando backend indisponível |
-| Administração de plataforma | 🟡 | Sem rota `/admin`; gating por `is_platform_admin()` em billing, rate limits, catálogo, blog |
-| MCP server para agentes (OAuth 2.1) | ✅/❓ | `/mcp` + consent screen; enforcement interno da lib `@lovable.dev/mcp-js` não verificado |
-| Termos de uso / privacidade | ❌ | Links no footer da landing apontam para `#` |
+| Área                                                                | Estado                 | Evidência resumida                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cadastro/login/OAuth/recuperação de senha                           | ✅                     | Supabase Auth; redirect validado por `isSafeRedirect`                                                                                                                                                                                                                                                     |
+| Dashboard                                                           | 🟡                     | Projetos recentes reais; gráficos de tendência com dados sintéticos (seno)                                                                                                                                                                                                                                |
+| Gestão de projetos (CRUD, duplicar, arquivar, versões, autosave)    | ✅                     | `projects.functions.ts`, `project_versions`, snapshot + debounce 2 s                                                                                                                                                                                                                                      |
+| Editor unifilar/multifilar (Pixi.js + viewport)                     | ✅                     | `lib/diagram/*`, `render/stage.ts`, testes `multifilar`                                                                                                                                                                                                                                                   |
+| Multifilar gerado do unifilar                                       | ✅                     | `lib/diagram/multifilar.ts` (inferência F/N/3F/N, memorial de condutores)                                                                                                                                                                                                                                 |
+| Editor Ladder + runtime de scan (TON/TOF/TP/CTU)                    | ✅                     | `lib/ladder/scan-core.ts` (puro), compilador IL/ST, importador, validador, verificação de E-STOP por simulação                                                                                                                                                                                            |
+| Editor FBD + motor IEC (AST→IR, EN/ENO, runtime, simulação)         | ✅                     | `lib/fbd/engine/*`; paleta além dos blocos IEC é limitada; **sem blocos customizados no motor**                                                                                                                                                                                                           |
+| PLC (rack, variáveis, blocos, PLCopen XML)                          | ✅ (camada de projeto) | `lib/plc/*`, `plcopen-export.ts`; **sem download/execução em PLC real**                                                                                                                                                                                                                                   |
+| Comunicação Modbus                                                  | 🟡                     | Conexão TCP real com guarda SSRF, mas **sem framing Modbus**; registradores em memória simulada                                                                                                                                                                                                           |
+| Comunicação OPC-UA                                                  | 🟡/❌                  | Sessão simulada; conexão real lança erro — `node-opcua` não está em `package.json`                                                                                                                                                                                                                        |
+| SCADA/HMI (telas, tags, alarmes ISA-18.2, trends)                   | ✅                     | `scada-canvas.tsx`, `scada-engine.ts`, sandbox de scripts em Web Worker                                                                                                                                                                                                                                   |
+| Simulação                                                           | 🟡                     | Ladder/FBD simulam lógica real; planta 8M+2EX com motor determinístico; **circuitos de potência e PLC real não são simulados**; painel "Simulação" reúne planta, cenários, ponte e estudos                                                                                                                |
+| Digital twin 3D + telemetria + what-if                              | ✅                     | `/digital-twin`, upload GLB (bucket privado, signed URLs), flush de telemetria, Realtime                                                                                                                                                                                                                  |
+| Cálculos elétricos                                                  | ✅                     | `electrical-calc.ts`: motor, demanda, queda de tensão, dimensionamento de cabo/corrente. `electrical-sim.ts` (novo): curto-circuito IEC 60909, seletividade IEC 60947, ruptura, arco elétrico IEEE 1584, esforço térmico de partida, com painel em Simulação. **Ainda ausentes:** harmônicas, aterramento |
+| IA (architect, chat, patches, RAG normativo, créditos, rate limits) | ✅                     | `ai-architect.functions.ts`, `ai-chat.functions.ts`, `diagram/ai.functions.ts`; **upload/OCR de PDF na IA é mock**                                                                                                                                                                                        |
+| Catálogo de componentes + importação CSV/XLSX                       | ✅                     | `/catalog`, `/settings/catalog-import` (tenant-admin)                                                                                                                                                                                                                                                     |
+| Documentos/manuais (upload, OCR, indexação)                         | ❌                     | Tabelas `knowledge_*` existem no banco, mas **não há UI nem fluxo de upload** no frontend                                                                                                                                                                                                                 |
+| Relatórios (PDF/DXF/BOM)                                            | ✅/🟡                  | `/projects/$id/export` (PDF jsPDF + DXF), BOM; **sem exportação Excel de relatórios**                                                                                                                                                                                                                     |
+| Assinaturas/billing (Stripe + Mercado Pago)                         | ✅                     | Checkout, webhooks assinados idempotentes (rota do servidor); **UI com fallback demo**                                                                                                                                                                                                                    |
+| Equipe/convites/roles                                               | ✅                     | `settings.team.tsx` + RPC `accept_invite`; **fallback demo** quando backend indisponível                                                                                                                                                                                                                  |
+| Administração de plataforma                                         | 🟡                     | Sem rota `/admin`; gating por `is_platform_admin()` em billing, rate limits, catálogo, blog                                                                                                                                                                                                               |
+| MCP server para agentes (OAuth 2.1)                                 | ✅/❓                  | `/mcp` + consent screen; enforcement interno da lib `@lovable.dev/mcp-js` não verificado                                                                                                                                                                                                                  |
+| Termos de uso / privacidade                                         | ❌                     | Links no footer da landing apontam para `#`                                                                                                                                                                                                                                                               |
 
 ---
 
@@ -67,22 +67,22 @@ O ElétricAi permite a um engenheiro criar e gerir **projetos de automação ind
 
 ### Stack verificada
 
-| Camada | Tecnologias |
-|---|---|
-| Framework/linguagem | TanStack Start 1.168 (React 19, TanStack Router 1.170, file-based routing), TypeScript 5.8 (`strict: true`), Vite 7, Nitro (preset Vercel) |
-| UI | Tailwind CSS v4, Radix UI, shadcn/ui (`components.json`), lucide-react, framer-motion, sonner, cmdk, vaul, react-resizable-panels |
-| Canvas/gráficos | Pixi.js 8 + pixi-viewport (unifilar/multifilar), Konva + react-konva (SCADA/twin), React Flow (FBD), Three.js + @react-three/fiber/drei (twin 3D), Recharts (gráficos), html-to-image |
-| Estado | Zustand + Immer (stores), TanStack Query (server state) |
-| Formulários/validação | react-hook-form + Zod (`@hookform/resolvers`), validação Zod em rotas, server functions, schema do diagrama e saídas de IA |
-| Editor de código | Monaco Editor |
-| Exportação | jsPDF (PDF), dxf próprio, xlsx (importação de catálogo) |
-| Backend/BaaS | Supabase: Postgres (RLS), Auth (e-mail/senha + Google OAuth), Storage, Realtime, Edge Functions (Deno) |
-| IA | DeepSeek (`deepseek-chat`) — chamado **somente** em server functions e Edge Function, com chave via `DEEPSEEK_API_KEY` |
-| Pagamentos | Stripe (API REST via `fetch`, sem SDK) e Mercado Pago |
-| Rate limiting | `@upstash/ratelimit` + `@upstash/redis` (REST) |
-| Segurança | `jose` (verificação JWT no servidor), DOMPurify (presente, não utilizado — ver RISK-020) |
-| Testes/lint | Vitest 4 + Testing Library + jsdom; ESLint 9 (typescript-eslint) + Prettier |
-| Gerenciador | Bun 1.3.3 (`packageManager`; `bun.lock`; `vercel.json` usa `bun install --frozen-lockfile`) |
+| Camada                | Tecnologias                                                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework/linguagem   | TanStack Start 1.168 (React 19, TanStack Router 1.170, file-based routing), TypeScript 5.8 (`strict: true`), Vite 7, Nitro (preset Vercel)                                            |
+| UI                    | Tailwind CSS v4, Radix UI, shadcn/ui (`components.json`), lucide-react, framer-motion, sonner, cmdk, vaul, react-resizable-panels                                                     |
+| Canvas/gráficos       | Pixi.js 8 + pixi-viewport (unifilar/multifilar), Konva + react-konva (SCADA/twin), React Flow (FBD), Three.js + @react-three/fiber/drei (twin 3D), Recharts (gráficos), html-to-image |
+| Estado                | Zustand + Immer (stores), TanStack Query (server state)                                                                                                                               |
+| Formulários/validação | react-hook-form + Zod (`@hookform/resolvers`), validação Zod em rotas, server functions, schema do diagrama e saídas de IA                                                            |
+| Editor de código      | Monaco Editor                                                                                                                                                                         |
+| Exportação            | jsPDF (PDF), dxf próprio, xlsx (importação de catálogo)                                                                                                                               |
+| Backend/BaaS          | Supabase: Postgres (RLS), Auth (e-mail/senha + Google OAuth), Storage, Realtime, Edge Functions (Deno)                                                                                |
+| IA                    | DeepSeek (`deepseek-chat`) — chamado **somente** em server functions e Edge Function, com chave via `DEEPSEEK_API_KEY`                                                                |
+| Pagamentos            | Stripe (API REST via `fetch`, sem SDK) e Mercado Pago                                                                                                                                 |
+| Rate limiting         | `@upstash/ratelimit` + `@upstash/redis` (REST)                                                                                                                                        |
+| Segurança             | `jose` (verificação JWT no servidor), DOMPurify (presente, não utilizado — ver RISK-020)                                                                                              |
+| Testes/lint           | Vitest 4 + Testing Library + jsdom; ESLint 9 (typescript-eslint) + Prettier                                                                                                           |
+| Gerenciador           | Bun 1.3.3 (`packageManager`; `bun.lock`; `vercel.json` usa `bun install --frozen-lockfile`)                                                                                           |
 
 ### Pré-requisitos
 
@@ -93,18 +93,18 @@ O ElétricAi permite a um engenheiro criar e gerir **projetos de automação ind
 
 ### Comandos (extraídos do `package.json`)
 
-| Comando | Script real |
-|---|---|
-| Desenvolvimento | `bun run dev` (`vite dev`) |
-| Build | `bun run build` (`vite build`) · `bun run build:dev` |
-| Preview | `bun run preview` |
-| Dev na Vercel | `bun run start` (`npx vercel dev`) |
-| Lint | `bun run lint` (`eslint .`) |
-| Formatação | `bun run format` (`prettier --write .`) |
-| Testes | `bun run test` (`vitest run`) |
-| Typecheck | ❌ **não há script** — `tsc` não está no `package.json` (o `tsconfig.json` tem `noEmit`, mas o comando não está exposto) |
+| Comando         | Script real                                                                        |
+| --------------- | ---------------------------------------------------------------------------------- |
+| Desenvolvimento | `bun run dev` (`vite dev`)                                                         |
+| Build           | `bun run build` (`vite build`) · `bun run build:dev`                               |
+| Preview         | `bun run preview`                                                                  |
+| Dev na Vercel   | `bun run start` (`npx vercel dev`)                                                 |
+| Lint            | `bun run lint` (`eslint .`)                                                        |
+| Formatação      | `bun run format` (`prettier --write .`)                                            |
+| Testes          | `bun run test` (`vitest run`)                                                      |
+| Typecheck       | `bun run typecheck` (`tsc --noEmit`) — adicionado em 2026-10-12 (fecha o RISK-025) |
 
-> O `README.md` menciona CI em `.github/workflows/ci.yml` executando lint/testes/typecheck e deploys — **esse arquivo não existe neste repositório** (ver RISK-025).
+> O `README.md` menciona CI em `.github/workflows/ci.yml` executando lint/testes/typecheck e deploys — **restaurada em 2026-10-12** (`.github/workflows/ci.yml` versionada no commit `e04c386`).
 
 ### Variáveis de ambiente (somente nomes; nunca coloque valores aqui)
 
@@ -191,11 +191,12 @@ eletricaip/
     │                            types.ts (tipos gerados), env.ts, auth-attacher.ts,
     │                            auth-middleware.ts, tenant-admin-middleware.ts,
     │                            ai-rate-limit-middleware.ts, previewAuthStorage.ts
-    ├── __tests__/             ← 27 arquivos de teste (Vitest)
+    ├── __tests__/             ← 31 arquivos de teste / 260 testes (Vitest)
     ├── router.tsx / routeTree.gen.ts (gerado) / start.ts / server.ts / styles.css
 ```
 
 Observações:
+
 - **Não existem** diretórios `src/services`, `src/pages`, `.github/` nem `.env` versionado.
 - A lógica de servidor vive em `src/lib/*.functions.ts` (server functions do TanStack) e nas rotas `src/routes/api/public/*`.
 - O schema central do banco (tabelas principais) **não** está em migrations locais — ver §6 e RISK-014.
@@ -205,9 +206,11 @@ Observações:
 ## 5. Principais telas e funcionalidades
 
 ### 5.1 Landing page — `/` (`src/routes/index.tsx`) ✅ UI
+
 Apresentação, features, workflow, pricing (planos hardcoded R$0/100/580/1000 → `/settings/billing`), CTA. Links de termos/privacidade apontam para `/termos` e `/privacidade` (RISK-027 mitigado em 2026-10-12). Redireciona usuário autenticado para `/dashboard`.
 
 ### 5.2 Autenticação
+
 - `/login`, `/signup` (e-mail/senha + Google OAuth), `/forgot-password`, `/reset-password`, `/auth/callback` (PKCE `exchangeCodeForSession`) — todos com Supabase Auth.
 - `?redirect=` validado por `isSafeRedirect` (`src/lib/safe-redirect.ts`, com testes).
 - Sessão persistida em **localStorage** via `previewAuthStorage` (RISK-004); refresh automático (`autoRefreshToken`).
@@ -217,12 +220,15 @@ Apresentação, features, workflow, pricing (planos hardcoded R$0/100/580/1000 �
 - Perfil em `/settings/profile` (tabela `profiles`).
 
 ### 5.3 Dashboard — `/dashboard` 🟡
+
 Loader prefetch de projetos + créditos de IA (`getAiCredits`); projetos recentes reais; gráficos de tendência com **dados sintéticos** (RISK-028).
 
 ### 5.4 Gestão de projetos — `/projects` ✅
+
 CRUD, duplicar, arquivar, excluir (server functions com limite por plano via `plan_limits`), busca/filtros. Persistência em `projects`, `diagrams`, `project_versions`. Auto-save com debounce de 2 s no workspace (`use-project-persistence.ts`). Colaboração em tempo real por Realtime (`use-collab.ts`, canal `diagram:v2:<projectId>`).
 
 ### 5.5 Workspace — `/workspace?projectId=` ✅ (modos carregados sob demanda)
+
 `industrial-workspace.tsx` com modos: `unifilar | ladder | fbd | scada | twin | plc | sim | alarms`, cada um em `React.lazy` + `ErrorBoundary`.
 
 - **Unifilar/Multifilar** — `webgl-canvas.tsx` + `lib/diagram/render/stage.ts` (Pixi.js 8 + viewport): símbolos IEC, portas, conexões, marquee, snap, undo/redo (padrão de comandos), paleta (`lib/palette/component-catalog.ts`), geração de multifilar, BOM, export DXF/PDF. Persistência no snapshot `diagrams.canvas_data` (Zod `SnapshotSchema`). ✅
@@ -230,29 +236,38 @@ CRUD, duplicar, arquivar, excluir (server functions com limite por plano via `pl
 - **FBD** — `fbd-canvas.tsx` (React Flow) + `lib/fbd/engine`: compilação com grafo de dependências → AST → IR tipado, EN/ENO IEC, runtime determinístico, simulação de passo fixo, forçamento de saídas, diagnósticos; ponte para SCADA (`scada-bridge.ts`). Caminho legado (`lib/fbd/{types,compiler,runtime}.ts`) ainda usado para FBD→ST no PLC. **Sem blocos customizados/fabricante no motor.** ✅
 - **PLC** — `plc-canvas.tsx` (839 linhas): hardware (catálogo S7-like), rack com validação, variáveis (I/Q/M/DB), blocos (OB/FC/FB/DB) com Monaco, compilação de Ladder/FBD → ST, export PLCopen XML. **Sem download/execução em PLC físico.** ✅ (camada de projeto)
 - **SCADA/HMI** — `scada-canvas.tsx` (Konva): widgets HMI, dialog de bind de tags, banner de alarmes, editor de scripts Monaco executados em **Web Worker sandbox** (`scada-worker.ts`, com testes). Alarmes com estados ISA-18.2 e persistência (`alarm_configs`, `alarm_history`). ✅
-- **Simulação** — `sim-canvas.tsx` + `lib/simulation/scada-engine.ts` (alarmes ISA-18.2 por regras sobre tags) + **planta simulada 8M+2EX** (`lib/simulation/plant-engine.ts` puro/determinístico com rampa, térmica, proteções, histerese e E-STOP + `plant-store.ts` efêmero + `plant-sim-panel.tsx` com selo SIMULAÇÃO; tags derivadas alimentam alarmes e gráficos do Sim; 16 testes). Motores derivam In/Istart de `electrical-calc.ts`; **não resolve circuitos elétricos de potência nem atesta operação (Termos §10)**. 🟡→✅ (planta lógica; elétrica de potência segue fora)
+- **Simulação** — `sim-canvas.tsx` + `lib/simulation/scada-engine.ts` (alarmes ISA-18.2 por regras sobre tags) + **planta simulada 8M+2EX** (`lib/simulation/plant-engine.ts` puro/determinístico com rampa, térmica, proteções, histerese e E-STOP + `plant-store.ts` efêmero + `plant-sim-panel.tsx` com selo SIMULAÇÃO; tags derivadas alimentam alarmes e gráficos do Sim). Motores derivam In/Istart de `electrical-calc.ts`; **não atesta operação (Termos §10)**. O modo reúne quatro painéis: planta, **cenários de teste** (`test-scenarios.functions.ts` — engine headless determinístico, presets por tipo, histórico persistido em `test_scenario_runs`), **ponte Unifilar→Ladder** (`unifilar-ladder-bridge.ts` — análise pura, geração de ST/IL importável, mapeamentos em `unifilar_ladder_mapping`) e **estudos elétricos** (`electrical-sim.functions.ts` — resultados em `electrical_simulation_results`). ✅ (lógica da planta; potência elétrica via estudos dedicados)
 - **Twin (no workspace e rota dedicada `/digital-twin`)** — visual 3D (Three.js/R3F), hotspots persistidos (`twin_hotspots`), upload de modelo GLB/GLTF (bucket privado `twin-models`, signed URLs), telemetria com flush em lote (`tag_samples`), painel What-If com gate de persistência, saúde da telemetria. ✅
 - **Alarmes** — `alarms-canvas.tsx` + server functions de config/histórico. ✅
 
 ### 5.6 Inteligência artificial ✅ (com lacunas)
+
 - **Arquiteto** `/ai` — `ai-architect.functions.ts`: gera projeto elétrico completo a partir de prompt (Zod, ≤ 32 000 chars), RAG sobre `normative_chunks`, tool-call forçada com `AiDiagramPatchSchema`, loop de verificação (máx. 2 correções, inclui verificação de E-STOP), consumo de créditos (`consume_ai_credits`) e rate limits (`requireAiQuota` + `requireBurstLimit`). Aplica resultado nos stores e navega ao workspace.
 - **Chat** `/chat` — `ai-chat.functions.ts`: streaming SSE, conversas/mensagens persistidas (`ai_conversations`, `ai_messages`), histórico até 40 mensagens enviado sem sanitização de prompt injection (RISK-010).
 - **Canvas** — `canvas-ai-chat.tsx` + `diagram/ai.functions.ts` (`generateDiagramPatch`): patch validado por Zod e aplicado via comandos, com preview (`ai-patch-preview.tsx`). Timeout 60 s e retries. **Upload de PDF/CSV na IA é simulação** (mock com progresso falso).
 - **Governança**: créditos por operação (`ai_credit_costs`), quota mensal, burst limit (Upstash ou memória), painel `/settings/ai-status`, métricas `/settings/rate-limits` (admin), eventos `ai_status_events`/`ai_usage_events`.
 - Chave DeepSeek **somente** no servidor. A Edge Function `ai-industrial-architect` **não é chamada pelo frontend** (RISK-009).
 
-### 5.7 Cálculos elétricos 🟡
-`lib/electrical-calc.ts` (puro, testado): corrente nominal e de partida de motor, dimensionamento de condutor (curva IEC simplificada + fator 1,25), seleção de disjuntor, demanda/aparente/trafo padrão, queda de tensão. `lib/norm-validator.ts` aplica regras NBR 5410/14039, NR-10/12, IEC, ISA-18.2. **Ausentes:** curto-circuito, seletividade/coordenação, harmônicas, arc flash, aterramento. Não há tela dedicada de cálculos.
+### 5.7 Cálculos elétricos ✅
+
+`lib/electrical-calc.ts` (puro, testado): corrente nominal e de partida de motor, dimensionamento de condutor (curva IEC simplificada + fator 1,25), seleção de disjuntor, demanda/aparente/trafo padrão, queda de tensão. `lib/norm-validator.ts` aplica regras NBR 5410/14039, NR-10/12, IEC, ISA-18.2.
+
+`lib/electrical-sim.ts` (novo, puro/determinístico, 26 testes): `shortCircuitIEC60909` (I''k3, I''k1, pico ip, fator c, X/R típico, k0 por grupo vetorial), `checkBreakingCapacity` (ruptura IEC 60947), `selectivityIEC60947` (total/parcial/nenhuma), `defaultInstantaneous` (curvas MCB B/C/D/K), `arcFlashIEEE1584` + `ppeFromEnergy` (NFPA 70E), `motorStartThermal` (I²t e ΔT normalizados por τ=120 s), `voltageDropCircuit` (limite NBR 5410). Consumido pelo painel **Estudos elétricos** (`electrical-study-panel.tsx`) que persiste em `electrical_simulation_results`.
+
+**Ausentes:** harmônicas, aterramento. Ainda não há tela de cálculos dedicada fora do modo Simulação.
 
 ### 5.8 Catálogo, documentos e relatórios
+
 - `/catalog` (leitura, dados do banco), `/settings/catalog-import` (CSV/XLSX, limitado a 2000 linhas, `requireTenantAdmin`). 🟡 (pode estar vazio — "aguardando cadastro pelo administrador")
 - **Documentos/manuais:** ❌ sem UI; tabelas `knowledge_documents`/`knowledge_chunks`/`files`/`file_versions` existem no banco mas sem consumidores no frontend (RISK-033 relacionado).
 - **Relatórios:** `/projects/$projectId/export` (PDF com memorial via jsPDF + DXF) e `/projects/$projectId/bom`. Sem Excel de relatórios.
 
 ### 5.9 Realtime/IoT — `/realtime` ✅ (plano Pro)
+
 Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdog/fail-safe), criação de API keys (armazenadas como hash SHA-256 + prefixo), inspeção de endpoint público `/api/public/iot/ingest` (Bearer API key, Zod, rate limit Upstash, RPC `ingest_iot_reading`).
 
 ### 5.10 Gestão, billing e administração
+
 - `/clients` (CRM por tenant), `/settings/team` (membros, convites, roles, matriz de permissões — RPC `accept_invite`), `/settings/notifications` (persistido em `tenant_settings`), `/settings/integrations` (credenciais padrão Modbus/OPC-UA/MQTT em `tenant_settings`), `/settings/protocols` (teste Modbus TCP real com SSRF guard; OPC-UA simulada), `/settings/diagnostics`, `/settings/security-monitor`, `/settings/autosave`, `/settings/appearance` (tema real; densidade/idioma sem consumidores).
 - `/settings/billing` (admin de plataforma): `getBillingOverview`, `createStripeCheckout`, `createMpPreference`, `cancelSubscription`, `changePlanManual` + audit log; **fallback demo** quando backend indisponível.
 - `/analytics`: uso de IA real; métricas industriais são **placeholder** (`Math.random()`).
@@ -264,17 +279,23 @@ Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdo
 ## 6. Banco de dados
 
 ### 6.1 Visão geral
+
 - **66 tabelas** com RLS habilitado e **169 policies** — conforme dump literal do banco vivo consolidado em `supabase/migrations/20260906072900_baseline_rls_consolidation.sql` (contagem verificada em 2026-10-12; `twin_hotspots` ausente no dump — coberta pela migration `20261012090000`).
-- Apenas **9 tabelas** são criadas em migrations locais (`ai_credit_costs`, `project_bom_items`, `notifications`, `runtime_logs`, `clients`, `tenant_settings`, `ai_status_events`, `ai_rate_limit_configs`, `ai_usage_events`). Os 11 arquivos `*_remote_history_placeholder.sql` indicam que **o schema central existe apenas no projeto remoto** — a cadeia local **não recria o banco do zero** (RISK-014).
-- Tipos gerados: `src/integrations/supabase/types.ts` (65 tabelas, 34 funções RPC; nenhuma view).
+- **Push 2026-10-14 (projeto do app `rvaaxvdimggztjxoktvy`): 56/56 migrations aplicadas, 0 pendentes** (`supabase db push --include-all`; link trocado de `hcjkwqyxqxnbqikwltvc`, que recebeu 16 parciais e foi abandonado como alvo). Para o push passar, 20+ migrations foram tornadas replay-safe (guards `IF EXISTS` + `EXCEPTION WHEN undefined_table/column/function`; baseline de 401 statements transformado por script com as 168 policies byte-idênticas verificadas). Verificado no banco: 7 tabelas novas com RLS ligado; trigger hardcoded de admin removido (`pg_trigger` = 0); `platform_admins` vazio.
+- **Ressalva crítica**: o banco do app **não tem as tabelas centrais** (`profiles`, `projects`, `tenants`, `tenant_memberships`, `plan_limits`, `diagrams`, `iot_*`, `catalog_*`...) — o DDL delas nunca esteve no repo. Os guards pularam policies/seeds dependentes. **O app não funciona contra este banco até o DDL central ser restaurado** (pg_dump do banco vivo original ou recriação). RISK-014 segue aberto nessa parte.
+- **6 tabelas novas** criadas pelo push (`unifilar_ladder_mapping`, `test_scenarios`, `test_scenario_runs`, `electrical_simulation_results`, `ai_electrical_config` em `20261012120000`; `deletion_requests` em `20261012110000`, com RLS verificado). O código as acessa via helper `untyped()` — **remover o `untyped()` e regenerar `types.ts`** (`supabase gen types typescript`, agora com as tabelas presentes no banco).
+- **15 tabelas** são criadas em migrations locais (as 9 históricas `ai_credit_costs`, `project_bom_items`, `notifications`, `runtime_logs`, `clients`, `tenant_settings`, `ai_status_events`, `ai_rate_limit_configs`, `ai_usage_events` + as 6 novas acima). Os 11 arquivos `*_remote_history_placeholder.sql` indicam que **o schema central existe apenas no projeto remoto** — a cadeia local **não recria o banco do zero** (RISK-014).
+- Tipos gerados: `src/integrations/supabase/types.ts` (65 tabelas, 34 funções RPC; nenhuma view) — **desatualizados**: não incluem as 6 tabelas novas nem a remoção do trigger de admin.
 
 ### 6.2 Modelo de tenants (organizações)
+
 - `tenants` (organização; `plan`, `subscription_status`, ids Stripe protegidos por revogações de coluna) ← `profiles.tenant_id` (1:1 com `auth.users`) e `tenant_memberships` (papéis `owner|admin|engineer|operator|viewer`).
 - Modelos de papel **duplos**: políticas misturam `get_user_role()` (baseado em `profiles`) e `tenant_memberships.role` — a consistência entre as duas fontes **não é verificável** pelo código do repositório (as funções `get_user_role`/`get_user_tenant_id` não estão no repo).
 - `projects.tenant_id` é o pivô: `diagrams`, `simulations`, `simulation_tags`, `alarm_configs`, `alarm_history`, `function_block_instances`, `trend_configs`, `tag_samples`, `project_versions`, `calculations`, `project_bom_items`, `project_folders` autorizam via projeto + tenant (algumas também aceitam `created_by = auth.uid()`).
 - Camada de plataforma: `platform_admins` + `is_platform_admin()` controla blog, feature flags, catálogo, configs de rate limit, override de planos.
 
 ### 6.3 Persistência dos módulos
+
 - **Editores (unifilar/multifilar/Ladder/FBD/PLC/layout SCADA/tags/snapshot de simulação):** um snapshot JSONB (versão de esquema 2) em `diagrams.canvas_data`, linha do projeto em `projects`, histórico em `project_versions` (restore explícito).
 - **BOM:** `project_bom_items` (+ RPC `generate_bom_from_canvas`).
 - **Alarmes:** `alarm_configs`, `alarm_history` (RPC `batch_insert_alarm_history`).
@@ -287,6 +308,7 @@ Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdo
 - **Somente no banco, sem consumidor no frontend (reservadas):** `function_block_instances`, `user_function_block_templates`, `simulations`, `simulation_tags`, `plant_telemetry`, `electrical_components`, `calculations`, `system_templates`, `knowledge_*`, `blog_*`, `feature_flags`, `trend_configs`, `voltai_*`.
 
 ### 6.4 Functions, triggers e grants
+
 - **SECURITY DEFINER definidas localmente (19 + wrappers `*_for_user` somente service_role):** `is_platform_admin`, `check_ai_quota`, `consume_ai_credits`, `get_ai_credits_remaining`, `accept_invite`, `change_tenant_plan` (apenas platform admin), `tenant_has_feature`, `generate_bom_from_canvas`, `ingest_iot_reading` (autentica por hash de API key), `iot_acknowledge_alert`, `iot_enqueue_command`, `increment_ai_tokens`, `prevent_profile_privilege_escalation` (trigger), entre outras.
 - **Funções executáveis por `authenticated` cujas definições NÃO estão no repo:** `increment_usage`, `bootstrap_personal_tenant_if_missing`, `get_user_role`, `get_user_tenant_id`, `batch_insert_alarm_history`, `batch_insert_tag_samples`, `batch_update_simulation_tags`, `search_normative_chunks`, `search_catalog_components` — autorização interna **não auditável** aqui (RISK-015).
 - **Triggers:** anti-escalation em `profiles` (3 variantes quase duplicadas; uma delas é ignorada quando a role setting é `service_role`), `sync_known_platform_admin_email` em `auth.users` (**e-mail hardcoded — RISK-002**), `updated_at` em várias tabelas.
@@ -294,6 +316,7 @@ Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdo
 - **Proteções de coluna:** `tenants.stripe_customer_id`/`stripe_subscription_id` e `invites.token` com SELECT revogado de clientes.
 
 ### 6.5 Storage e Realtime
+
 - Buckets com policies no repo: `client-logos` (hoje privado, path por tenant, papéis engineer+) e `twin-models` (qualquer papel do tenant — RISK-016). Buckets públicos por design conforme doc interna: `avatars`, `catalog-images`, `catalog-datasheets`.
 - Realtime: publicação de `iot_readings`/`iot_alerts`/`iot_command_log`/`runtime_logs`; policies de `realtime.messages` restritas a tópicos `user:<uid>:%` ou `tenant:<tenant_id>:%`.
 
@@ -302,39 +325,41 @@ Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdo
 ## 7. Padrões de código e layout
 
 ### Padrões existentes
+
 - **Server functions** em `src/lib/*.functions.ts` com middleware encadeado: `requireSupabaseAuth` → (`requireAiQuota` → `requireBurstLimit`) ou `requireTenantAdmin`. O token do usuário é anexado automaticamente a toda server function pelo middleware global `attachSupabaseAuth` (`src/start.ts`).
 - **Dois clientes Supabase:** browser (anon key, escopo RLS do usuário) e servidor (`client.server.ts`, service role, protegido por convenção `.server.ts` com proxy que lança no browser).
 - **Zod em todas as fronteiras:** `validateSearch` das rotas, schemas das server functions, `DiagramDocSchema`/`SnapshotSchema`, validação da saída de IA (`AiDiagramPatchSchema.safeParse`).
 - **Estado:** Zustand + Immer para stores locais (diagrama com padrão de comandos reversíveis e undo/redo); TanStack Query para dados do servidor; zustand `persist` para preferências.
 - **Erros:** códigos de erro padronizados nas Edge/API (ex.: `AUTH_REQUIRED`, `QUOTA_EXCEEDED`), SSR com página 500 marcada (`src/server.ts`), contadores de erro 500/503 em `/settings/diagnostics`.
 - **Design system:** shadcn/ui + Radix + Tailwind v4, tema claro/escuro, tokens em CSS, componentes em `src/components/ui`.
-- **Testes:** Vitest (27 arquivos) cobrindo domínio puro (Ladder/FBD/cálculos/multifilar/SSRF/sandbox/redirect/rate limit IoT/twin).
+- **Testes:** Vitest (31 arquivos / 260 testes) cobrindo domínio puro (Ladder/FBD/cálculos/multifilar/SSRF/sandbox/redirect/rate limit IoT/twin/planta/elétrica de potência/ponte Unifilar→Ladder).
 - **Segurança:** autorização no servidor + RLS; assinatura de webhooks com comparação constant-time; SSRF guard em Modbus (RFC1918 + defesa contra DNS rebinding); sandbox de scripts SCADA em Web Worker; tokens de API armazenados como hash.
 
 ### Padrões a não quebrar (recomendações para mudanças futuras)
+
 - Não introduzir `any` (o projeto é `strict`); validar dados externos com Zod em runtime; manter toda escrita atrás de server functions autenticadas; não mover segredos para o bundle do cliente; preservar o padrão de comandos reversíveis do diagrama; atualizar `docs/sdd` e este arquivo quando houver mudança autorizada.
 
 ---
 
 ## 8. Pontos frágeis e arquivos sensíveis
 
-| Arquivo/região | Por que é sensível | Validação antes de alterar |
-|---|---|---|
-| `supabase/migrations/*` e `baseline_rls_consolidation.sql` | Fonte do modelo de segurança (RLS/grants/triggers); o dump de baseline é a referência do banco vivo | Nunca editar migrations já aplicadas; criar nova migration apenas sob demanda explícita; conferir grants/RLS resultantes |
-| `20260518170000_grant_platform_admin_to_known_email.sql` | Trigger permanente de admin de plataforma (RISK-002) | Substituir por gestão via `platform_admins` sem trigger hardcoded, com plano de rollback |
-| `src/integrations/supabase/client.server.ts`, `auth-middleware.ts`, `auth-attacher.ts`, `tenant-admin-middleware.ts` | Base de toda autorização de servidor; o `auth-attacher` é efeito global — removê-lo derruba todas as server functions | Testar fluxos autenticados e anônimos; conferir fallback legacy de JWT |
-| `src/lib/security/rate-limiter.server.ts` | Rate limiting fail-open (RISK-007); mudanças afetam IA/IoT/auth | Validar comportamento com e sem Upstash |
-| `src/lib/projects.functions.ts` + `use-project-persistence.ts` + `lib/diagram/schema.ts` | Salvamento/versionamento do snapshot unificado — quebra afeta todos os editores | Preservar compatibilidade do `SnapshotSchema` (versionamento) e testes de snapshot |
-| `src/lib/ladder/scan-core.ts`, `src/lib/fbd/engine/*` | Motores de simulação determinísticos usados por testes e verificação de segurança (E-STOP) | Rodar a suíte completa; não quebrar pureza/determinismo |
-| `src/lib/simulation/scada-worker.ts` + `script-sandbox.ts` | Sandbox de execução de scripts de usuário | Não remover guards; revisar testes `scada-sandbox-guards` |
-| `src/lib/modbus-server.functions.ts`, `opcua-server.functions.ts` | Ponte para rede industrial (SSRF guard; escrita em sessão) | Manter `isHostAllowed`/`resolveToAllowedIPv4`; qualquer protocolo real exige projeto de autorização explícito |
-| Rotas `api/public/*.ts` (webhooks, IoT) | Entradas públicas autenticadas por segredo/chave | Manter verificação de assinatura, idempotência e rate limit |
-| `src/lib/billing.functions.ts` + webhooks | Estado de assinatura/planos e receita | Não confiar em metadata do cliente; testar eventos repetidos |
-| `src/lib/ai-*.functions.ts`, `diagram/ai.functions.ts`, Edge Function de IA | Custo, prompt injection e integridade do projeto | Manter sanitização, limites e validação Zod da saída |
-| `src/routes/__root.tsx` (AuthGate) | Gate central de rotas | Manter allowlist restrita; verificar novas rotas públicas |
-| `vercel.json` (CSP/headers) | Defesa de navegador | Testar app após mudanças de CSP (Monaco/Workers/blob) |
-| `src/integrations/supabase/types.ts` | Tipos gerados do banco — divergência causa `untyped()` (ex.: `twin_hotspots`) | Regenerar após migrations; não editar à mão |
-| `src/routeTree.gen.ts` | Gerado pelo plugin — não editar manualmente | Deixar o dev server/regen atualizar |
+| Arquivo/região                                                                                                       | Por que é sensível                                                                                                    | Validação antes de alterar                                                                                               |
+| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `supabase/migrations/*` e `baseline_rls_consolidation.sql`                                                           | Fonte do modelo de segurança (RLS/grants/triggers); o dump de baseline é a referência do banco vivo                   | Nunca editar migrations já aplicadas; criar nova migration apenas sob demanda explícita; conferir grants/RLS resultantes |
+| `20260518170000_grant_platform_admin_to_known_email.sql`                                                             | Trigger permanente de admin de plataforma (RISK-002)                                                                  | Substituir por gestão via `platform_admins` sem trigger hardcoded, com plano de rollback                                 |
+| `src/integrations/supabase/client.server.ts`, `auth-middleware.ts`, `auth-attacher.ts`, `tenant-admin-middleware.ts` | Base de toda autorização de servidor; o `auth-attacher` é efeito global — removê-lo derruba todas as server functions | Testar fluxos autenticados e anônimos; conferir fallback legacy de JWT                                                   |
+| `src/lib/security/rate-limiter.server.ts`                                                                            | Rate limiting fail-open (RISK-007); mudanças afetam IA/IoT/auth                                                       | Validar comportamento com e sem Upstash                                                                                  |
+| `src/lib/projects.functions.ts` + `use-project-persistence.ts` + `lib/diagram/schema.ts`                             | Salvamento/versionamento do snapshot unificado — quebra afeta todos os editores                                       | Preservar compatibilidade do `SnapshotSchema` (versionamento) e testes de snapshot                                       |
+| `src/lib/ladder/scan-core.ts`, `src/lib/fbd/engine/*`                                                                | Motores de simulação determinísticos usados por testes e verificação de segurança (E-STOP)                            | Rodar a suíte completa; não quebrar pureza/determinismo                                                                  |
+| `src/lib/simulation/scada-worker.ts` + `script-sandbox.ts`                                                           | Sandbox de execução de scripts de usuário                                                                             | Não remover guards; revisar testes `scada-sandbox-guards`                                                                |
+| `src/lib/modbus-server.functions.ts`, `opcua-server.functions.ts`                                                    | Ponte para rede industrial (SSRF guard; escrita em sessão)                                                            | Manter `isHostAllowed`/`resolveToAllowedIPv4`; qualquer protocolo real exige projeto de autorização explícito            |
+| Rotas `api/public/*.ts` (webhooks, IoT)                                                                              | Entradas públicas autenticadas por segredo/chave                                                                      | Manter verificação de assinatura, idempotência e rate limit                                                              |
+| `src/lib/billing.functions.ts` + webhooks                                                                            | Estado de assinatura/planos e receita                                                                                 | Não confiar em metadata do cliente; testar eventos repetidos                                                             |
+| `src/lib/ai-*.functions.ts`, `diagram/ai.functions.ts`, Edge Function de IA                                          | Custo, prompt injection e integridade do projeto                                                                      | Manter sanitização, limites e validação Zod da saída                                                                     |
+| `src/routes/__root.tsx` (AuthGate)                                                                                   | Gate central de rotas                                                                                                 | Manter allowlist restrita; verificar novas rotas públicas                                                                |
+| `vercel.json` (CSP/headers)                                                                                          | Defesa de navegador                                                                                                   | Testar app após mudanças de CSP (Monaco/Workers/blob)                                                                    |
+| `src/integrations/supabase/types.ts`                                                                                 | Tipos gerados do banco — divergência causa `untyped()` (ex.: `twin_hotspots`)                                         | Regenerar após migrations; não editar à mão                                                                              |
+| `src/routeTree.gen.ts`                                                                                               | Gerado pelo plugin — não editar manualmente                                                                           | Deixar o dev server/regen atualizar                                                                                      |
 
 ---
 
@@ -370,52 +395,52 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 
 ### 10.1 Matriz consolidada
 
-| ID | Severidade | Status | Categoria | Ativo afetado | Prioridade | Validação necessária |
-|---|---|---|---|---|---|---|
-| RISK-001 | P1 | Mitigado | RLS | Tabela `twin_hotspots` | Imediata | Aplicar migration 20261012090000 e testar acesso cruzado entre tenants |
-| RISK-002 | P1 | Mitigado | Autorização | `platform_admins` / `auth.users` | Imediata | Aplicar migration 20261012090001; auditar `platform_admins` e confirmar que o grant não é recriado |
-| RISK-003 | P1 | Mitigado | RLS | `tenant_memberships` | Imediata | Aplicar migration 20261012090002; teste autorizado: admin não-owner não grava `role='owner'` |
-| RISK-004 | P1 | Confirmado | Autenticação | Sessão de usuários + CSP | Alta | CSP endurecida em `vercel.json` (feito); migração para cookie httpOnly pendente como workstream dedicado |
-| RISK-005 | P2 | Confirmado | RLS | `invoices`, `subscriptions` | Alta | Teste: membro não-admin não lê linhas de billing |
-| RISK-006 | P2 | Confirmado | Autenticação | Login/cadastro/reset | Alta | Aplicar limiter `auth` e testar 429 após exceder janela |
-| RISK-007 | P2 | Mitigado | API | Rate limiting global | Alta | Fail-closed para AI/IoT + fallback local p/ API/Auth + alerting automático (logs estruturados) |
-| RISK-008 | P2 | Confirmado | Segredos | Bundle do cliente (`env.ts`) | Normal | Remover fallbacks; build sem vars continua correto |
-| RISK-009 | P2 | Confirmado | API | Edge Function `ai-industrial-architect` | Normal | Confirmar se está em uso em produção; alinhar limites ou remover |
-| RISK-010 | P2 | Mitigado | IA | `streamChat` (DeepSeek) | Normal | Sanitização aplicada no histórico via `sanitizePromptText` (máx 2000 chars/msg) |
-| RISK-011 | P2 | Suspeito | Frontend | Sandbox de scripts SCADA | Normal | Tentar contornar o pre-scan regex em ambiente de teste isolado |
-| RISK-012 | P2 | Confirmado | Frontend | `/catalog` (`datasheet_url`) | Normal | Validar esquema http(s) ao renderizar/importar; teste com `javascript:` |
-| RISK-013 | P2 | Confirmado | Pagamentos | Webhooks Stripe (duplicados) | Alta | Consolidar em uma implementação; teste de evento repetido |
-| RISK-014 | P2 | Confirmado | Banco de dados | Cadeia de migrations | Normal | Replay limpo em ambiente efêmero; reconciliar drift |
-| RISK-015 | P2 | Não verificado | Banco de dados | RPCs `SECURITY DEFINER` | Alta | Auditar corpos no banco (`pg_proc`) e restringir grants |
-| RISK-016 | P2 | Confirmado | RLS | Bucket `twin-models` | Normal | Teste: papel `viewer` não consegue gravar/apagar |
-| RISK-017 | P2 | Confirmado | Autenticação | MFA/sessões | Normal | Habilitar MFA (Supabase) e testar fluxo |
-| RISK-018 | P2 | Não verificado | Backup | Continuidade (Supabase/Vercel) | Alta | Confirmar plano/retention e executar restore de teste |
-| RISK-019 | P2 | Não verificado | API | Servidor MCP | Normal | Testar chamada MCP sem consentimento/token válido |
-| RISK-020 | P3 | Confirmado | Frontend | `svg-sanitizer.ts`, `chart.tsx` | Baixa | Sanitizar ou remover código morto; teste com HTML hostil |
-| RISK-021 | P3 | Confirmado | Upload | Uploads GLB/CSV | Baixa | Adicionar magic bytes + rate limit; teste de arquivo renomeado |
-| RISK-022 | P3 | Confirmado | Frontend | Proteção de rotas | Baixa | Adicionar `beforeLoad` e testar rota privada sem sessão |
-| RISK-023 | P3 | Confirmado | Frontend | Consent OAuth MCP | Baixa | Aplicar `isSafeRedirect`; teste com URL externa |
-| RISK-024 | P3 | Confirmado | Autenticação | Política de senha | Baixa | Unificar mínimo (8) nos dois fluxos e testar |
-| RISK-025 | P3 | Confirmado | Infraestrutura | CI/CD, scripts, `.env.example` | Normal | Restaurar workflow versionado e script typecheck; conferir nomes de env |
-| RISK-026 | P3 | Não verificado | Autenticação | Supabase Auth (e-mail/OAuth) | Normal | Conferir dashboard: exigência de confirmação e URIs de redirect |
-| RISK-027 | P3 | Mitigado | Outro | Landing (termos/privacidade) | Normal | Publicadas em `/privacidade` e `/termos`; pendente revisão jurídica + aceite versionado |
-| RISK-028 | P3 | Confirmado | Outro | Dashboard/analytics/billing/team | Baixa | Isolar modo demo; sinalizar dados sintéticos na UI |
-| RISK-029 | P3 | Confirmado | Frontend | localStorage | Baixa | Reduzir espelhos operacionais; validar URLs/keys coladas |
-| RISK-030 | P3 | Confirmado | API | CORS dos endpoints públicos | Baixa | Restringir origem quando viável; teste de preflight |
-| RISK-031 | P3 | Confirmado | RLS | `tenant_memberships` (SELECT) | Baixa | Restringir colunas/visibilidade; teste com membro comum |
-| RISK-032 | P3 | Confirmado | Auditoria | Observabilidade | Normal | Integrar error tracking e alertas de custo de IA |
-| RISK-033 | P3 | Confirmado | Upload | Antivírus/quarentena | Baixa | Avaliar scanning na ingestão quando houver upload de documentos |
-| RISK-034 | P3 | Mitigado | Outro | Código morto/legado | Baixa | `bun run lint && bun run test && bun run build` após remoções (lint+test+typecheck executados e verdes) |
-| RISK-035 | P2 | Mitigado | Exclusão/LGPD | `ai_messages` órfãs no delete | Alta | Migration 20261012110000 (policy DELETE) + erro checado; 9 testes em `deletion.test.ts` |
-| RISK-036 | P2 | Mitigado | Exclusão/Integridade | `deleteProject` parcial + órfãs | Alta | Gate owner/admin pré-mutação + 11 tabelas filhas + erro por etapa; testes com Supabase mocado |
-| RISK-037 | P2 | Mitigado | Exclusão/LGPD | Sem fluxo de eliminação de conta | Alta | `requestAccountDeletion` + `eraseUserData` (platform admin) + tabela `deletion_requests`; Storage/tag_samples pendentes |
+| ID       | Severidade | Status         | Categoria            | Ativo afetado                           | Prioridade | Validação necessária                                                                                                    |
+| -------- | ---------- | -------------- | -------------------- | --------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------- |
+| RISK-001 | P1         | Mitigado       | RLS                  | Tabela `twin_hotspots`                  | Imediata   | Aplicar migration 20261012090000 e testar acesso cruzado entre tenants                                                  |
+| RISK-002 | P1         | Mitigado       | Autorização          | `platform_admins` / `auth.users`        | Imediata   | Aplicar migration 20261012090001; auditar `platform_admins` e confirmar que o grant não é recriado                      |
+| RISK-003 | P1         | Mitigado       | RLS                  | `tenant_memberships`                    | Imediata   | Aplicar migration 20261012090002; teste autorizado: admin não-owner não grava `role='owner'`                            |
+| RISK-004 | P1         | Confirmado     | Autenticação         | Sessão de usuários + CSP                | Alta       | CSP endurecida em `vercel.json` (feito); migração para cookie httpOnly pendente como workstream dedicado                |
+| RISK-005 | P2         | Confirmado     | RLS                  | `invoices`, `subscriptions`             | Alta       | Teste: membro não-admin não lê linhas de billing                                                                        |
+| RISK-006 | P2         | Confirmado     | Autenticação         | Login/cadastro/reset                    | Alta       | Aplicar limiter `auth` e testar 429 após exceder janela                                                                 |
+| RISK-007 | P2         | Mitigado       | API                  | Rate limiting global                    | Alta       | Fail-closed para AI/IoT + fallback local p/ API/Auth + alerting automático (logs estruturados)                          |
+| RISK-008 | P2         | Confirmado     | Segredos             | Bundle do cliente (`env.ts`)            | Normal     | Remover fallbacks; build sem vars continua correto                                                                      |
+| RISK-009 | P2         | Confirmado     | API                  | Edge Function `ai-industrial-architect` | Normal     | Confirmar se está em uso em produção; alinhar limites ou remover                                                        |
+| RISK-010 | P2         | Mitigado       | IA                   | `streamChat` (DeepSeek)                 | Normal     | Sanitização aplicada no histórico via `sanitizePromptText` (máx 2000 chars/msg)                                         |
+| RISK-011 | P2         | Suspeito       | Frontend             | Sandbox de scripts SCADA                | Normal     | Tentar contornar o pre-scan regex em ambiente de teste isolado                                                          |
+| RISK-012 | P2         | Confirmado     | Frontend             | `/catalog` (`datasheet_url`)            | Normal     | Validar esquema http(s) ao renderizar/importar; teste com `javascript:`                                                 |
+| RISK-013 | P2         | Confirmado     | Pagamentos           | Webhooks Stripe (duplicados)            | Alta       | Consolidar em uma implementação; teste de evento repetido                                                               |
+| RISK-014 | P2         | Confirmado     | Banco de dados       | Cadeia de migrations                    | Normal     | Replay limpo em ambiente efêmero; reconciliar drift                                                                     |
+| RISK-015 | P2         | Não verificado | Banco de dados       | RPCs `SECURITY DEFINER`                 | Alta       | Auditar corpos no banco (`pg_proc`) e restringir grants                                                                 |
+| RISK-016 | P2         | Confirmado     | RLS                  | Bucket `twin-models`                    | Normal     | Teste: papel `viewer` não consegue gravar/apagar                                                                        |
+| RISK-017 | P2         | Confirmado     | Autenticação         | MFA/sessões                             | Normal     | Habilitar MFA (Supabase) e testar fluxo                                                                                 |
+| RISK-018 | P2         | Não verificado | Backup               | Continuidade (Supabase/Vercel)          | Alta       | Confirmar plano/retention e executar restore de teste                                                                   |
+| RISK-019 | P2         | Não verificado | API                  | Servidor MCP                            | Normal     | Testar chamada MCP sem consentimento/token válido                                                                       |
+| RISK-020 | P3         | Confirmado     | Frontend             | `svg-sanitizer.ts`, `chart.tsx`         | Baixa      | Sanitizar ou remover código morto; teste com HTML hostil                                                                |
+| RISK-021 | P3         | Confirmado     | Upload               | Uploads GLB/CSV                         | Baixa      | Adicionar magic bytes + rate limit; teste de arquivo renomeado                                                          |
+| RISK-022 | P3         | Confirmado     | Frontend             | Proteção de rotas                       | Baixa      | Adicionar `beforeLoad` e testar rota privada sem sessão                                                                 |
+| RISK-023 | P3         | Confirmado     | Frontend             | Consent OAuth MCP                       | Baixa      | Aplicar `isSafeRedirect`; teste com URL externa                                                                         |
+| RISK-024 | P3         | Confirmado     | Autenticação         | Política de senha                       | Baixa      | Unificar mínimo (8) nos dois fluxos e testar                                                                            |
+| RISK-025 | P3         | Confirmado     | Infraestrutura       | CI/CD, scripts, `.env.example`          | Normal     | Restaurar workflow versionado e script typecheck; conferir nomes de env                                                 |
+| RISK-026 | P3         | Não verificado | Autenticação         | Supabase Auth (e-mail/OAuth)            | Normal     | Conferir dashboard: exigência de confirmação e URIs de redirect                                                         |
+| RISK-027 | P3         | Mitigado       | Outro                | Landing (termos/privacidade)            | Normal     | Publicadas em `/privacidade` e `/termos`; pendente revisão jurídica + aceite versionado                                 |
+| RISK-028 | P3         | Confirmado     | Outro                | Dashboard/analytics/billing/team        | Baixa      | Isolar modo demo; sinalizar dados sintéticos na UI                                                                      |
+| RISK-029 | P3         | Confirmado     | Frontend             | localStorage                            | Baixa      | Reduzir espelhos operacionais; validar URLs/keys coladas                                                                |
+| RISK-030 | P3         | Confirmado     | API                  | CORS dos endpoints públicos             | Baixa      | Restringir origem quando viável; teste de preflight                                                                     |
+| RISK-031 | P3         | Confirmado     | RLS                  | `tenant_memberships` (SELECT)           | Baixa      | Restringir colunas/visibilidade; teste com membro comum                                                                 |
+| RISK-032 | P3         | Confirmado     | Auditoria            | Observabilidade                         | Normal     | Integrar error tracking e alertas de custo de IA                                                                        |
+| RISK-033 | P3         | Confirmado     | Upload               | Antivírus/quarentena                    | Baixa      | Avaliar scanning na ingestão quando houver upload de documentos                                                         |
+| RISK-034 | P3         | Mitigado       | Outro                | Código morto/legado                     | Baixa      | `bun run lint && bun run test && bun run build` após remoções (lint+test+typecheck executados e verdes)                 |
+| RISK-035 | P2         | Mitigado       | Exclusão/LGPD        | `ai_messages` órfãs no delete           | Alta       | Migration 20261012110000 (policy DELETE) + erro checado; 9 testes em `deletion.test.ts`                                 |
+| RISK-036 | P2         | Mitigado       | Exclusão/Integridade | `deleteProject` parcial + órfãs         | Alta       | Gate owner/admin pré-mutação + 11 tabelas filhas + erro por etapa; testes com Supabase mocado                           |
+| RISK-037 | P2         | Mitigado       | Exclusão/LGPD        | Sem fluxo de eliminação de conta        | Alta       | `requestAccountDeletion` + `eraseUserData` (platform admin) + tabela `deletion_requests`; Storage/tag_samples pendentes |
 
 ### 10.2 Registros individuais
 
 ## RISK-001 — Tabela `twin_hotspots` sem evidência de RLS no repositório
 
 - **Severidade:** P1
-- **Status:** Mitigado (aguarda apply da migration em produção)
+- **Status:** Mitigado (aplicada em `rvaaxvdimggztjxoktvy` em 2026-10-14; tabela criada com RLS ligado, verificado via `pg_class`. Policies por projeto puladas — `projects`/`tenant_memberships` não existem nesse banco; serão criadas quando o DDL central for restaurado. RLS sem policy = deny por padrão.)
 - **Categoria:** RLS
 - **Ativo afetado:** Dados de hotspots do digital twin por projeto (posições, mapeamentos de tag, limiares)
 - **Localização:** `src/lib/digital-twin.functions.ts:191,252,253,272` (consultas do cliente); mitigação em `supabase/migrations/20261012090000_fix_risk001_twin_hotspots_rls.sql`
@@ -436,7 +461,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-002 — E-mail pessoal hardcoded concede platform admin automaticamente via trigger
 
 - **Severidade:** P1
-- **Status:** Mitigado (aguarda apply da migration em produção)
+- **Status:** Mitigado (aplicada em `rvaaxvdimggztjxoktvy` em 2026-10-14; verificado: trigger ausente em `pg_trigger` e `platform_admins` vazio — 0 linhas. Grant permanente eliminado nesse banco.)
 - **Categoria:** Autorização
 - **Ativo afetado:** `platform_admins` (privilégio máximo da plataforma)
 - **Localização:** `supabase/migrations/20260518170000_grant_platform_admin_to_known_email.sql:10,30` e trigger `sync_known_platform_admin_email_on_auth_users` (:43-46); mitigação em `supabase/migrations/20261012090001_fix_risk002_remove_hardcoded_admin_trigger.sql` (remove trigger + função, preserva admins existentes)
@@ -457,7 +482,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-003 — `tenant_memberships`: admin pode elevar papel para `owner` (escalação via policy)
 
 - **Severidade:** P1
-- **Status:** Mitigado (aguarda apply da migration em produção)
+- **Status:** Mitigado (migration aplicada em `rvaaxvdimggztjxoktvy` em 2026-10-14, mas corpo pulado — tabela não existe nesse banco. Sem tabela não há superfície; policies granulares serão criadas quando o DDL central for restaurado.)
 - **Categoria:** RLS
 - **Ativo afetado:** `tenant_memberships` (papéis e composição de equipes)
 - **Localização:** policy "Admins can manage memberships" (`FOR ALL`) em `supabase/migrations/20260906072900_baseline_rls_consolidation.sql:787-789`; mitigação em `supabase/migrations/20261012090002_fix_risk003_membership_role_escalation.sql` (policies granulares; `role='owner'` só gravável por owner)
@@ -1200,10 +1225,11 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 - **Total de riscos identificados:** 37 (0 P0 confirmados nesta inspeção estática — a ausência de P0 **não** atesta segurança; ver limitações)
 - **Por severidade:** P0: 0 · P1: 4 · P2: 18 · P3: 15
 - **Por status:** Confirmado: 22 · Suspeito: 1 · Não verificado: 4 · Mitigado: 10
-- **Riscos que exigem avaliação imediata (pós-correção 2026-10-12):**
-  1. RISK-001 (`twin_hotspots`) — migration `20261012090000` criada; **aguarda apply em produção + teste de acesso cruzado**
-  2. RISK-002 (trigger de e-mail hardcoded) — migration `20261012090001` criada; **aguarda apply + auditoria manual de `platform_admins`**
-  3. RISK-003 (escalação `owner`) — migration `20261012090002` criada; **aguarda apply + teste com admin não-owner**
+- **Riscos que exigem avaliação imediata (push 2026-10-14 em `rvaaxvdimggztjxoktvy`, 56/56 aplicadas):**
+  1. RISK-001 (`twin_hotspots`) — tabela criada com RLS ligado; policies por projeto puladas (sem `projects`/`tenant_memberships`) — pendente DDL central + teste de acesso cruzado
+  2. RISK-002 (trigger de e-mail hardcoded) — **resolvido e verificado**: trigger ausente, `platform_admins` vazio
+  3. RISK-003 (escalação `owner`) — migration aplicada mas sem efeito (sem tabela); pendente DDL central + teste com admin não-owner
+  4. **Novo achado crítico**: o banco do app **não tem nenhuma tabela central** (`profiles`, `projects`, `tenants`...) — o DDL nunca esteve no repo. O app não opera contra este banco até restauração (pg_dump do banco vivo original).
 - **Principais riscos de vazamento/perda de dados:** RISK-001, RISK-003, RISK-015 (RPCs definer não auditáveis), RISK-018 (backups não verificados), RISK-005 (billing visível a membros)
 - **Principais riscos de acesso indevido entre organizações:** RISK-001, RISK-003, RISK-015, RISK-016
 - **Riscos de comprometimento de credenciais:** RISK-004 (token em localStorage + CSP fraca), RISK-002 (conta admin permanente), RISK-008 (fallbacks hardcoded), RISK-006 (sem rate limit de auth)
@@ -1234,4 +1260,4 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 
 ---
 
-*Documento gerado por auditoria de leitura. Nenhum outro arquivo do repositório foi modificado; nenhuma dependência foi instalada; nenhuma migration foi executada; nenhuma credencial foi revelada.*
+_Documento gerado por auditoria de leitura. Nenhum outro arquivo do repositório foi modificado; nenhuma dependência foi instalada; nenhuma migration foi executada; nenhuma credencial foi revelada._

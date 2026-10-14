@@ -10,25 +10,44 @@
 --   SELECT relname, relrowsecurity FROM pg_class WHERE relname = 'deletion_requests';
 
 -- 1) Dono da conversa pode apagar suas mensagens.
-DROP POLICY IF EXISTS "Users can delete messages in own conversations" ON public.ai_messages;
-CREATE POLICY "Users can delete messages in own conversations" ON public.ai_messages
-  AS PERMISSIVE FOR DELETE TO public
-  USING (EXISTS (SELECT 1
-    FROM public.ai_conversations
-    WHERE ai_conversations.id = ai_messages.conversation_id
-      AND ai_conversations.user_id = auth.uid()));
+-- Idempotente: pula se ai_messages/ai_conversations ainda não existirem.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'ai_messages')
+     AND EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'ai_conversations') THEN
+    DROP POLICY IF EXISTS "Users can delete messages in own conversations" ON public.ai_messages;
+    EXECUTE $pol$
+      CREATE POLICY "Users can delete messages in own conversations" ON public.ai_messages
+        AS PERMISSIVE FOR DELETE TO public
+        USING (EXISTS (SELECT 1
+          FROM public.ai_conversations
+          WHERE ai_conversations.id = ai_messages.conversation_id
+            AND ai_conversations.user_id = auth.uid()));
+    $pol$;
+  END IF;
+END $$;
 
 -- 2) Limpeza de histórico de alarmes em projetos acessíveis (mesmo padrão
 -- das policies de alarm_configs/function_block_instances).
-DROP POLICY IF EXISTS "Users can delete alarm history in accessible projects" ON public.alarm_history;
-CREATE POLICY "Users can delete alarm history in accessible projects" ON public.alarm_history
-  AS PERMISSIVE FOR DELETE TO public
-  USING (EXISTS (SELECT 1
-    FROM public.projects p
-    WHERE p.id = alarm_history.project_id
-      AND ((p.created_by = auth.uid()) OR (EXISTS (SELECT 1
-        FROM public.tenant_memberships tm
-        WHERE tm.tenant_id = p.tenant_id AND tm.user_id = auth.uid())))));
+-- Idempotente: pula se alarm_history/projects/tenant_memberships ainda não existirem.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'alarm_history')
+     AND EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'projects')
+     AND EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'tenant_memberships') THEN
+    DROP POLICY IF EXISTS "Users can delete alarm history in accessible projects" ON public.alarm_history;
+    EXECUTE $pol$
+      CREATE POLICY "Users can delete alarm history in accessible projects" ON public.alarm_history
+        AS PERMISSIVE FOR DELETE TO public
+        USING (EXISTS (SELECT 1
+          FROM public.projects p
+          WHERE p.id = alarm_history.project_id
+            AND ((p.created_by = auth.uid()) OR (EXISTS (SELECT 1
+              FROM public.tenant_memberships tm
+              WHERE tm.tenant_id = p.tenant_id AND tm.user_id = auth.uid())))));
+    $pol$;
+  END IF;
+END $$;
 
 -- 3) Fila de pedidos de eliminação de conta (LGPD Art. 18, §1º).
 CREATE TABLE IF NOT EXISTS public.deletion_requests (

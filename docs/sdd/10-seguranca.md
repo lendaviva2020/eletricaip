@@ -47,12 +47,12 @@ last_review: 2026-05-27
 
 ## 10.7 Status dos achados (scan 2026-05-27)
 
-| # | Achado | Status |
-|---|--------|--------|
-| SEC-01 | Profile UPDATE policy com subquery auto-referencial | ✅ corrigido (trigger + policy simplificada) |
-| SEC-02 | Stripe Edge: comparação não-timing-safe | ✅ corrigido (`timingSafeEqual` + tolerância 300s) |
-| SEC-03 | Admin check em `profiles.role` (deve ser `tenant_memberships`) | ✅ corrigido (`requireTenantAdmin`) |
-| SEC-04 | Fallback hardcoded de URL/anon key em auth-middleware | ✅ removido |
-| SEC-05 | file_versions sem policies de INSERT/UPDATE/DELETE | ✅ adicionadas (escopo por tenant) |
-| SEC-06 | Avatars/catalog buckets públicos | ⚠️ aceito (sem PII; documentado) |
-| SEC-07 | Leaked Password Protection | 🔒 ação manual no dashboard |
+| #      | Achado                                                         | Status                                             |
+| ------ | -------------------------------------------------------------- | -------------------------------------------------- |
+| SEC-01 | Profile UPDATE policy com subquery auto-referencial            | ✅ corrigido (trigger + policy simplificada)       |
+| SEC-02 | Stripe Edge: comparação não-timing-safe                        | ✅ corrigido (`timingSafeEqual` + tolerância 300s) |
+| SEC-03 | Admin check em `profiles.role` (deve ser `tenant_memberships`) | ✅ corrigido (`requireTenantAdmin`)                |
+| SEC-04 | Fallback hardcoded de URL/anon key em auth-middleware          | ✅ removido                                        |
+| SEC-05 | file_versions sem policies de INSERT/UPDATE/DELETE             | ✅ adicionadas (escopo por tenant)                 |
+| SEC-06 | Avatars/catalog buckets públicos                               | ⚠️ aceito (sem PII; documentado)                   |
+| SEC-07 | Leaked Password Protection                                     | 🔒 ação manual no dashboard                        |

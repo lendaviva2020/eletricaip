@@ -1,4 +1,16 @@
 
+-- O enum vivia fora do repo (nunca teve CREATE TYPE local). Recria com
+-- exatamente os labels referenciados pelos casts abaixo.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public' AND t.typname = 'subscription_plan'
+  ) THEN
+    CREATE TYPE public.subscription_plan AS ENUM ('FREE', 'PRO', 'INDUSTRIAL');
+  END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.change_tenant_plan(p_plan text)
 RETURNS jsonb
 LANGUAGE plpgsql

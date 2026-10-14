@@ -5,9 +5,7 @@
   "auth": {
     "type": "oauth",
     "issuer": "https://hcjkwqyxqxnbqikwltvc.supabase.co/auth/v1",
-    "accepted_audiences": [
-      "authenticated"
-    ]
+    "accepted_audiences": ["authenticated"]
   },
   "mcp": {
     "server": {
@@ -65,9 +63,7 @@
               "description": "ID do projeto."
             }
           },
-          "required": [
-            "projectId"
-          ],
+          "required": ["projectId"],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -91,9 +87,7 @@
               "description": "ID do projeto."
             }
           },
-          "required": [
-            "projectId"
-          ],
+          "required": ["projectId"],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -125,17 +119,11 @@
             },
             "state": {
               "type": "string",
-              "enum": [
-                "active",
-                "acknowledged",
-                "cleared"
-              ],
+              "enum": ["active", "acknowledged", "cleared"],
               "description": "Filtra por estado do alarme."
             }
           },
-          "required": [
-            "projectId"
-          ],
+          "required": ["projectId"],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -165,9 +153,7 @@
               "description": "Descrição do projeto."
             }
           },
-          "required": [
-            "name"
-          ],
+          "required": ["name"],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },

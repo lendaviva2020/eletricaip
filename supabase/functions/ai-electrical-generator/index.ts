@@ -11,7 +11,8 @@ const corsHeaders = {
 interface ElectricalGenerationRequest {
   project_id: string;
   tenant_id: string;
-  generation_type: "single_line" | "motor_circuit" | "protection_coordination" | "cable_sizing" | "full_project";
+  generation_type:
+    "single_line" | "motor_circuit" | "protection_coordination" | "cable_sizing" | "full_project";
   input_data: {
     // Dados de entrada para geração
     motors?: Array<{
@@ -243,7 +244,9 @@ async function getProjectDiagram(supabase: any, projectId: string) {
   return { nodes: nodes || [], edges: edges || [] };
 }
 
-async function generateElectricalProject(req: ElectricalGenerationRequest): Promise<ElectricalGenerationResponse> {
+async function generateElectricalProject(
+  req: ElectricalGenerationRequest,
+): Promise<ElectricalGenerationResponse> {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   const project = await getProjectData(supabase, req.project_id);
@@ -314,16 +317,14 @@ NÃO INCLUA MARKDOWN OU TEXTO LIVRE FORA DO JSON.`;
   }
 
   // Salvar resultado no banco
-  const { error: saveError } = await supabase
-    .from("electrical_simulation_results")
-    .insert({
-      project_id: req.project_id,
-      simulation_type: "full_project",
-      standard: "NBR_5410",
-      input_data: req.input_data,
-      results: aiResponse.data,
-      computation_time_ms: 0, // TODO: medir
-    });
+  const { error: saveError } = await supabase.from("electrical_simulation_results").insert({
+    project_id: req.project_id,
+    simulation_type: "full_project",
+    standard: "NBR_5410",
+    input_data: req.input_data,
+    results: aiResponse.data,
+    computation_time_ms: 0, // TODO: medir
+  });
 
   if (saveError) {
     console.error("Failed to save generation result:", saveError);
@@ -345,14 +346,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json() as ElectricalGenerationRequest;
+    const body = (await req.json()) as ElectricalGenerationRequest;
 
     // Validações básicas
     if (!body.project_id || !body.tenant_id) {
-      return new Response(JSON.stringify({
-        success: false,
-        errors: ["project_id e tenant_id são obrigatórios"],
-      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          errors: ["project_id e tenant_id são obrigatórios"],
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const result = await generateElectricalProject(body);
@@ -362,12 +366,15 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("AI Electrical Generator error:", err);
-    return new Response(JSON.stringify({
-      success: false,
-      errors: [err instanceof Error ? err.message : String(err)],
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        errors: [err instanceof Error ? err.message : String(err)],
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

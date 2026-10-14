@@ -45,14 +45,24 @@ REVOKE ALL ON FUNCTION public.change_tenant_plan(text) FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.change_tenant_plan(text) TO authenticated;
 
 -- 2) Tighten api_keys INSERT to caller's tenant
-DROP POLICY IF EXISTS "Users can create their own API keys" ON public.api_keys;
-CREATE POLICY "Users can create their own API keys"
-  ON public.api_keys FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    user_id = auth.uid()
-    AND tenant_id = public.get_user_tenant_id()
-  );
+-- Idempotente: pula se a tabela ou a função auxiliar ainda não existirem.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'api_keys')
+     AND EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                 WHERE n.nspname = 'public' AND p.proname = 'get_user_tenant_id') THEN
+    DROP POLICY IF EXISTS "Users can create their own API keys" ON public.api_keys;
+    EXECUTE $pol$
+      CREATE POLICY "Users can create their own API keys"
+        ON public.api_keys FOR INSERT
+        TO authenticated
+        WITH CHECK (
+          user_id = auth.uid()
+          AND tenant_id = public.get_user_tenant_id()
+        );
+    $pol$;
+  END IF;
+END $$;
 
 -- 3) Fix search_path on touch_project_bom_items
 CREATE OR REPLACE FUNCTION public.touch_project_bom_items()

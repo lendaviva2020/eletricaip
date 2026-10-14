@@ -5,4 +5,13 @@ dist
 pnpm-lock.yaml
 package-lock.json
 bun.lock
+
+# Gerados — espelha as `ignores` do eslint.config.js (não formatar à mão)
 routeTree.gen.ts
+src/integrations/supabase/types.ts
+# Gerenciado pela plataforma (regenerado a cada sync de integração)
+src/integrations/supabase/previewAuthStorage.ts
+
+# Estado local da CLI do Supabase (não é código do projeto)
+supabase/.temp/
+supabase/supabase/.temp/

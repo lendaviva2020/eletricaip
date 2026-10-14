@@ -1,66 +1,117 @@
 
 -- Project BOM (Bill of Materials) items
-CREATE TABLE IF NOT EXISTS public.project_bom_items (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL,
-  component_id uuid REFERENCES public.catalog_components(id) ON DELETE SET NULL,
-  -- Snapshot fields so BOM survives even if catalog item is removed
-  part_number text,
-  description text,
-  manufacturer text,
-  quantity numeric NOT NULL DEFAULT 1 CHECK (quantity > 0),
-  unit text NOT NULL DEFAULT 'un',
-  reference text, -- e.g. "Q1, Q2" or position/tag
-  notes text,
-  unit_price_brl numeric,
-  source text NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'canvas', 'ai')),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  created_by uuid
-);
+-- Idempotente: catalog_components pode ainda não existir (DDL fora do repo).
+-- Cria a tabela com a FK quando o alvo existe, sem a FK caso contrário, e
+-- tenta anexar a FK sempre que ambos existirem.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'catalog_components') THEN
+    CREATE TABLE IF NOT EXISTS public.project_bom_items (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      project_id uuid NOT NULL,
+      component_id uuid REFERENCES public.catalog_components(id) ON DELETE SET NULL,
+      part_number text,
+      description text,
+      manufacturer text,
+      quantity numeric NOT NULL DEFAULT 1 CHECK (quantity > 0),
+      unit text NOT NULL DEFAULT 'un',
+      reference text,
+      notes text,
+      unit_price_brl numeric,
+      source text NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'canvas', 'ai')),
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      created_by uuid
+    );
+  ELSE
+    CREATE TABLE IF NOT EXISTS public.project_bom_items (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      project_id uuid NOT NULL,
+      component_id uuid,
+      part_number text,
+      description text,
+      manufacturer text,
+      quantity numeric NOT NULL DEFAULT 1 CHECK (quantity > 0),
+      unit text NOT NULL DEFAULT 'un',
+      reference text,
+      notes text,
+      unit_price_brl numeric,
+      source text NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'canvas', 'ai')),
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      created_by uuid
+    );
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'catalog_components')
+     AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'project_bom_items_component_id_fkey') THEN
+    ALTER TABLE public.project_bom_items
+      ADD CONSTRAINT project_bom_items_component_id_fkey
+      FOREIGN KEY (component_id) REFERENCES public.catalog_components(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_project_bom_project ON public.project_bom_items(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_bom_component ON public.project_bom_items(component_id);
 
 ALTER TABLE public.project_bom_items ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Tenant members view BOM"
-  ON public.project_bom_items FOR SELECT
-  USING (EXISTS (
-    SELECT 1 FROM public.projects p
-    JOIN public.tenant_memberships tm ON tm.tenant_id = p.tenant_id
-    WHERE p.id = project_bom_items.project_id AND tm.user_id = auth.uid()
-  ));
+-- Policies (idempotente: pula se projects/tenant_memberships ainda não existirem).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'projects')
+     AND EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'tenant_memberships') THEN
+    DROP POLICY IF EXISTS "Tenant members view BOM" ON public.project_bom_items;
+    EXECUTE $pol$
+      CREATE POLICY "Tenant members view BOM"
+        ON public.project_bom_items FOR SELECT
+        USING (EXISTS (
+          SELECT 1 FROM public.projects p
+          JOIN public.tenant_memberships tm ON tm.tenant_id = p.tenant_id
+          WHERE p.id = project_bom_items.project_id AND tm.user_id = auth.uid()
+        ));
+    $pol$;
 
-CREATE POLICY "Engineers+ insert BOM"
-  ON public.project_bom_items FOR INSERT
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM public.projects p
-    JOIN public.tenant_memberships tm ON tm.tenant_id = p.tenant_id
-    WHERE p.id = project_bom_items.project_id
-      AND tm.user_id = auth.uid()
-      AND tm.role = ANY (ARRAY['owner','admin','engineer'])
-  ));
+    DROP POLICY IF EXISTS "Engineers+ insert BOM" ON public.project_bom_items;
+    EXECUTE $pol$
+      CREATE POLICY "Engineers+ insert BOM"
+        ON public.project_bom_items FOR INSERT
+        WITH CHECK (EXISTS (
+          SELECT 1 FROM public.projects p
+          JOIN public.tenant_memberships tm ON tm.tenant_id = p.tenant_id
+          WHERE p.id = project_bom_items.project_id
+            AND tm.user_id = auth.uid()
+            AND tm.role = ANY (ARRAY['owner','admin','engineer'])
+        ));
+    $pol$;
 
-CREATE POLICY "Engineers+ update BOM"
-  ON public.project_bom_items FOR UPDATE
-  USING (EXISTS (
-    SELECT 1 FROM public.projects p
-    JOIN public.tenant_memberships tm ON tm.tenant_id = p.tenant_id
-    WHERE p.id = project_bom_items.project_id
-      AND tm.user_id = auth.uid()
-      AND tm.role = ANY (ARRAY['owner','admin','engineer'])
-  ));
+    DROP POLICY IF EXISTS "Engineers+ update BOM" ON public.project_bom_items;
+    EXECUTE $pol$
+      CREATE POLICY "Engineers+ update BOM"
+        ON public.project_bom_items FOR UPDATE
+        USING (EXISTS (
+          SELECT 1 FROM public.projects p
+          JOIN public.tenant_memberships tm ON tm.tenant_id = p.tenant_id
+          WHERE p.id = project_bom_items.project_id
+            AND tm.user_id = auth.uid()
+            AND tm.role = ANY (ARRAY['owner','admin','engineer'])
+        ));
+    $pol$;
 
-CREATE POLICY "Engineers+ delete BOM"
-  ON public.project_bom_items FOR DELETE
-  USING (EXISTS (
-    SELECT 1 FROM public.projects p
-    JOIN public.tenant_memberships tm ON tm.tenant_id = p.tenant_id
-    WHERE p.id = project_bom_items.project_id
-      AND tm.user_id = auth.uid()
-      AND tm.role = ANY (ARRAY['owner','admin','engineer'])
-  ));
+    DROP POLICY IF EXISTS "Engineers+ delete BOM" ON public.project_bom_items;
+    EXECUTE $pol$
+      CREATE POLICY "Engineers+ delete BOM"
+        ON public.project_bom_items FOR DELETE
+        USING (EXISTS (
+          SELECT 1 FROM public.projects p
+          JOIN public.tenant_memberships tm ON tm.tenant_id = p.tenant_id
+          WHERE p.id = project_bom_items.project_id
+            AND tm.user_id = auth.uid()
+            AND tm.role = ANY (ARRAY['owner','admin','engineer'])
+        ));
+    $pol$;
+  END IF;
+END $$;
 
 -- updated_at trigger
 CREATE OR REPLACE FUNCTION public.touch_project_bom_items()

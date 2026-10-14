@@ -41,6 +41,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 ## 4. Uso aceitável — proibições
 
 4.1. É vedado, sem limitação:
+
 - (a) violar lei aplicável, direitos de terceiros ou normas técnicas de segurança (NR-10/NR-12, NBR 5410) na operação assistida pela Plataforma;
 - (b) tentar acessar dados de outros Tenants, explorar vulnerabilidades, fazer engenharia reversa, scraping em massa ou burlar rate limits, quotas e controles de acesso;
 - (c) enviar malware, contornar o sandbox de scripts SCADA, ou executar código fora dos mecanismos previstos;
@@ -159,6 +160,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 17.1. **Definição.** São **Informações Confidenciais do Cliente**: diagramas unifilares/multifilares, lógicas Ladder/FBD, parametrizações de PLC e instrumentos, telas SCADA, modelos 3D, telemetria e dados operacionais da planta, memoriais de cálculo, listas de materiais, documentos enviados à Plataforma e quaisquer segredos industriais ou de negócio acessíveis por meio do serviço (incluídos os protegidos pelo art. 195, XI, da Lei 9.279/1996). São **Informações Confidenciais da EletricAI**: código-fonte, modelos e prompts proprietários, roadmap não público, credenciais de infraestrutura e termos comerciais não publicados.
 
 17.2. **Deveres da EletricAI.** Tratamos o conteúdo do Tenant como confidencial e:
+
 - (a) **acesso por necessidade:** somente sistemas automatizados e pessoal autorizado sob dever de sigilo acessam o conteúdo, e apenas para prestar, proteger ou dar suporte ao serviço (nunca para finalidade comercial própria);
 - (b) **isolamento técnico:** segregação lógica por Tenant com controle de acesso por papéis (`owner/admin/engineer/operator/viewer`), autorização por projeto e URLs assinadas de curta duração — conforme as medidas descritas na Política de Privacidade (§7);
 - (c) **vedação de divulgação:** não divulgamos o conteúdo do Tenant a terceiros, exceto aos operadores listados na Política (§4), sob cláusulas de proteção de dados, e mediante ordem legal (neste caso, avisaremos o Tenant com antecedência sempre que lícito);
@@ -179,4 +181,4 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 ---
 
-*Ao clicar em "Criar conta", "Entrar" ou "Assinar", você confirma a aceitação destes Termos e da Política de Privacidade.*
+_Ao clicar em "Criar conta", "Entrar" ou "Assinar", você confirma a aceitação destes Termos e da Política de Privacidade._

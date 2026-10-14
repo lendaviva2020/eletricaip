@@ -52,13 +52,13 @@ Para que o deploy funcione, configure os **5 secrets** abaixo em:
 
 ### 📋 Resumo (cole no GitHub)
 
-| Nome do Secret           | Tipo   | Obrigatório |
-| ------------------------ | ------ | ----------- |
-| `SUPABASE_ACCESS_TOKEN`  | Secret | ✅          |
-| `SUPABASE_PROJECT_REF`   | Secret | ✅          |
-| `VERCEL_TOKEN`           | Secret | ✅          |
-| `VERCEL_ORG_ID`          | Secret | ✅          |
-| `VERCEL_PROJECT_ID`      | Secret | ✅          |
+| Nome do Secret          | Tipo   | Obrigatório |
+| ----------------------- | ------ | ----------- |
+| `SUPABASE_ACCESS_TOKEN` | Secret | ✅          |
+| `SUPABASE_PROJECT_REF`  | Secret | ✅          |
+| `VERCEL_TOKEN`          | Secret | ✅          |
+| `VERCEL_ORG_ID`         | Secret | ✅          |
+| `VERCEL_PROJECT_ID`     | Secret | ✅          |
 
 ### 🔍 Validação
 

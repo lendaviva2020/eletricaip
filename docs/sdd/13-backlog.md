@@ -11,6 +11,7 @@ Cada item tem ID estável (referenciado por commits e PRs). Não remova IDs — 
 ## Fase 2 — Workspace (crítico)
 
 ### WebGL Unifilar
+
 - **#WGL-01** ✅ Portas/handles em `symbols.ts` com hit-test — implementado
   em `render/ports.ts` (catálogo de portas por NodeKind) + `render/stage.ts`
   (`rebuildPorts`, hitArea ampliado 8px sobre desenho de 4px)
@@ -32,6 +33,7 @@ Cada item tem ID estável (referenciado por commits e PRs). Não remova IDs — 
 - **#WGL-07** Descomissionamento do `VoltaiStore` — ✅ store, canvas legado (`unifilar-canvas.tsx`) e symbols removidos; `RightPropertyPanel` e colaboração Realtime (`use-collab.ts`) agora consomem `useDiagramStore` (`diagram:v2:${projectId}`). Slot `voltai` do snapshot mantido apenas como passthrough legado em `projects.functions.ts` para leitura de projetos antigos.
 
 ### PLC ↔ Editor
+
 - **#PLC-01** Bloco do PlcStore abre Ladder/FBD com `rungs`/`fbdNodes` carregados; persistir na troca de aba
 - **#PLC-02** Botão "Compilar" → `compileProgram(rungs, 'ST')`
 - **#PLC-03** Export `.plcproj` (PLCopen XML, skeleton)
@@ -39,12 +41,14 @@ Cada item tem ID estável (referenciado por commits e PRs). Não remova IDs — 
 - **#PLC-05** Validação de compatibilidade de slots no rack
 
 ### SCADA
+
 - **#SCADA-01** Snapshot do canvas (posições, sizes, params) → `useProjectStore` único
 - **#SCADA-02** Substituir `new Function(script)` por Web Worker sandboxed
 - **#SCADA-03** Modal "Bind to tag" com autocomplete
 - **#SCADA-04** Alarm banner aciona `pushNotification`
 
 ### Ladder
+
 - **#LAD-01** TOF e TP no `scanRungs`
 - **#LAD-02** Validador de operando com feedback inline
 - **#LAD-03** Autocomplete de tags
@@ -52,6 +56,7 @@ Cada item tem ID estável (referenciado por commits e PRs). Não remova IDs — 
 - **#LAD-05** Colunas configuráveis — ✅ `LadderRung.cols` opcional + `resizeRungCols` (limites 3–12) + controles ± no header de cada rung; runtime/compilador usam largura real por row. Cobertura: `ladder-rung-cols.test.ts`
 
 ### FBD
+
 - **#FBD-01** Parâmetros de bloco (PT, PV) sincronizados com runtime
 - **#FBD-02** Export SVG/PNG do diagrama
 - **#FBD-03** Validação visual de tipo de pin (substituir `alert()`)

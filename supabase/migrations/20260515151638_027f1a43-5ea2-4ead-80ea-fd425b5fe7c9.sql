@@ -1,39 +1,71 @@
+-- Bloco seguro para revogar/conceder permissões apenas em funções existentes
+DO $$
+BEGIN
+  -- 1. is_platform_admin
+  IF to_regprocedure('public.is_platform_admin()') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.is_platform_admin() FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
+  END IF;
 
--- Revoke EXECUTE on SECURITY DEFINER functions from anon role.
--- Authenticated users keep access where the function checks auth.uid() internally.
+  -- 2. bootstrap_personal_tenant_if_missing
+  IF to_regprocedure('public.bootstrap_personal_tenant_if_missing()') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.bootstrap_personal_tenant_if_missing() FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.bootstrap_personal_tenant_if_missing() TO authenticated;
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.is_platform_admin() FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.is_platform_admin() TO authenticated;
+  -- 3. increment_usage
+  IF to_regprocedure('public.increment_usage(uuid, text, integer)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.increment_usage(uuid, text, integer) FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.increment_usage(uuid, text, integer) TO authenticated;
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.bootstrap_personal_tenant_if_missing() FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.bootstrap_personal_tenant_if_missing() TO authenticated;
+  -- 4. search_normative_chunks
+  IF to_regprocedure('public.search_normative_chunks(extensions.vector, double precision, integer, text)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.search_normative_chunks(extensions.vector, double precision, integer, text) FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.search_normative_chunks(extensions.vector, double precision, integer, text) TO authenticated;
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.increment_usage(uuid, text, integer) FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.increment_usage(uuid, text, integer) TO authenticated;
+  -- 5. search_catalog_components
+  IF to_regprocedure('public.search_catalog_components(text, extensions.vector, double precision, integer)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.search_catalog_components(text, extensions.vector, double precision, integer) FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.search_catalog_components(text, extensions.vector, double precision, integer) TO authenticated;
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.search_normative_chunks(extensions.vector, double precision, integer, text) FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.search_normative_chunks(extensions.vector, double precision, integer, text) TO authenticated;
+  -- 6. create_monthly_tag_samples_partition
+  IF to_regprocedure('public.create_monthly_tag_samples_partition(date)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.create_monthly_tag_samples_partition(date) FROM anon, public;
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.search_catalog_components(text, extensions.vector, double precision, integer) FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.search_catalog_components(text, extensions.vector, double precision, integer) TO authenticated;
+  -- 7. batch_update_simulation_tags
+  IF to_regprocedure('public.batch_update_simulation_tags(uuid, jsonb)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.batch_update_simulation_tags(uuid, jsonb) FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.batch_update_simulation_tags(uuid, jsonb) TO authenticated;
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.create_monthly_tag_samples_partition(date) FROM anon, public;
--- only platform admins / cron should call this; not granted to authenticated.
+  -- 8. batch_insert_alarm_history
+  IF to_regprocedure('public.batch_insert_alarm_history(uuid, jsonb)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.batch_insert_alarm_history(uuid, jsonb) FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.batch_insert_alarm_history(uuid, jsonb) TO authenticated;
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.batch_update_simulation_tags(uuid, jsonb) FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.batch_update_simulation_tags(uuid, jsonb) TO authenticated;
+  -- 9. batch_insert_tag_samples
+  IF to_regprocedure('public.batch_insert_tag_samples(uuid, jsonb)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.batch_insert_tag_samples(uuid, jsonb) FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.batch_insert_tag_samples(uuid, jsonb) TO authenticated;
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.batch_insert_alarm_history(uuid, jsonb) FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.batch_insert_alarm_history(uuid, jsonb) TO authenticated;
+  -- 10. get_user_role
+  IF to_regprocedure('public.get_user_role()') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.get_user_role() FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.get_user_role() TO authenticated;
+  END IF;
 
-REVOKE EXECUTE ON FUNCTION public.batch_insert_tag_samples(uuid, jsonb) FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.batch_insert_tag_samples(uuid, jsonb) TO authenticated;
-
-REVOKE EXECUTE ON FUNCTION public.get_user_role() FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.get_user_role() TO authenticated;
-
-REVOKE EXECUTE ON FUNCTION public.get_user_tenant_id() FROM anon, public;
-GRANT EXECUTE ON FUNCTION public.get_user_tenant_id() TO authenticated;
+  -- 11. get_user_tenant_id
+  IF to_regprocedure('public.get_user_tenant_id()') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.get_user_tenant_id() FROM anon, public;
+    GRANT EXECUTE ON FUNCTION public.get_user_tenant_id() TO authenticated;
+  END IF;
+END $$;
 
 -- Server-side AI quota helper: returns remaining tokens for the caller's tenant
 -- in the current YYYY-MM period. Caller MUST be authenticated.
@@ -78,8 +110,7 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.check_ai_quota() FROM anon, public;
 GRANT EXECUTE ON FUNCTION public.check_ai_quota() TO authenticated;
 
--- Server-side AI usage increment helper. Increments without requiring p_project_id
--- (used by the edge function before/after a DeepSeek call).
+-- Server-side AI usage increment helper.
 CREATE OR REPLACE FUNCTION public.increment_ai_tokens(p_tokens integer)
 RETURNS void
 LANGUAGE plpgsql
