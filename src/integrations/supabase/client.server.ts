@@ -4,6 +4,7 @@
 // SECURITY: This file should NEVER be imported in client components.
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
+import { assertSupabaseProject } from "./env";
 
 function createSupabaseAdminClient() {
   const SUPABASE_URL =
@@ -22,6 +23,8 @@ function createSupabaseAdminClient() {
     console.error(message);
     throw new Error(message);
   }
+
+  assertSupabaseProject({ url: SUPABASE_URL, anonKey: SUPABASE_SERVICE_ROLE_KEY });
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: {

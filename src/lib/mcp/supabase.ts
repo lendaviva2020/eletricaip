@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ToolContext } from "@lovable.dev/mcp-js";
 import type { Database } from "@/integrations/supabase/types";
+import { assertSupabaseProject } from "@/integrations/supabase/env";
 
 type RuntimeGlobals = typeof globalThis & {
   Deno?: { env?: { get?: (name: string) => string | undefined } };
@@ -62,7 +63,10 @@ function supabasePublishableKey(): string {
 export function supabaseForUser(ctx: ToolContext) {
   const token = ctx.getToken();
   if (!token) throw new Error("supabaseForUser exige um token OAuth verificado");
-  return createClient<Database>(supabaseProjectUrl(), supabasePublishableKey(), {
+  const url = supabaseProjectUrl();
+  const anonKey = supabasePublishableKey();
+  assertSupabaseProject({ url, anonKey });
+  return createClient<Database>(url, anonKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });

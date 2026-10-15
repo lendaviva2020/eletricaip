@@ -44,3 +44,4 @@ supabase/**/.temp/
 *.sln
 *.sw?
 .aider*
+.agents/
