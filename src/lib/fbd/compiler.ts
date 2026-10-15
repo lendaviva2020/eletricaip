@@ -1,3 +1,8 @@
+/**
+ * @deprecated Compilador FBD legado baseado em FbdBlock cru.
+ * Para emissão de Structured Text e validação moderna com AST/IR, utilize:
+ * `compileFbdNodesToSt` de `@/lib/fbd/editor-bridge` ou `generateStructuredText` de `@/lib/fbd/engine`.
+ */
 import type { FbdBlock, FbdConnection } from "./types";
 import { BLOCK_DEFINITIONS } from "./types";
 

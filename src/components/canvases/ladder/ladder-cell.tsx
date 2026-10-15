@@ -101,8 +101,8 @@ export function LadderCellView({ cell, isOutputCol, energized, onChange }: Props
       const el = LADDER_ELEMENTS_BY_ID[raw];
       if (!el) return;
       const kind = ELEMENT_TO_KIND[el.id];
-      if (!kind) {
-        toast.error(`Elemento "${el.label}" não é suportado no grid ladder atual.`);
+      if (!kind || el.supported === false) {
+        toast.error(`"${el.label}" está planejado para o Q1 e não é suportado no grid ladder atual.`);
         return;
       }
       if (isOutputCol && !isOutputKind(kind)) {

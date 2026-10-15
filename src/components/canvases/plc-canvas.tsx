@@ -36,7 +36,7 @@ import {
 import { canAddModule, validateRack } from "@/lib/plc/rack-validation";
 import { useEditorStore, type EditorTag, type FbdNode, type FbdEdge } from "@/lib/editor/store";
 import { compileProgram } from "@/lib/ladder/compiler";
-import { compileFbdToSt } from "@/lib/fbd/compiler";
+import { compileFbdNodesToSt } from "@/lib/fbd/editor-bridge";
 import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { LucideIcon } from "lucide-react";
@@ -209,9 +209,10 @@ export function PlcCanvas() {
       setStCode(code);
       toast.success(`${activeBlock.name}: ${editorState.rungs.length} rungs compilados → ST`);
     } else if (activeBlock.language === "fbd") {
-      const code = compileFbdToSt(
-        editorState.fbdNodes as unknown as Parameters<typeof compileFbdToSt>[0],
-        editorState.fbdEdges as unknown as Parameters<typeof compileFbdToSt>[1],
+      const code = compileFbdNodesToSt(
+        editorState.fbdNodes,
+        editorState.fbdEdges,
+        activeBlock.name,
       );
       updateBlock(activeBlock.id, {
         code,

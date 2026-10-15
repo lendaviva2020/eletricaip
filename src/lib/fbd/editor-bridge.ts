@@ -8,6 +8,7 @@ import {
   createDefaultRegistry,
   effectiveInputs,
   effectiveOutputs,
+  generateStructuredText,
   type BlockDefinition,
   type BlockRegistry,
   type FbdConnectionModel,
@@ -194,4 +195,21 @@ export function editorToFbdDocument(
     },
     inputs,
   };
+}
+
+/**
+ * Compila os nós e arestas do editor FBD (React Flow) diretamente para Structured Text
+ * canônico IEC 61131-3, utilizando a AST/IR do motor FBD moderno.
+ */
+export function compileFbdNodesToSt(
+  nodes: readonly Node[],
+  edges: readonly Edge[],
+  programName: string = "Program_FBD",
+): string {
+  const bridge = editorToFbdDocument(nodes, edges, {
+    name: programName,
+    cycleTimeMs: 100,
+  });
+  const res = generateStructuredText(bridge.doc);
+  return res.code;
 }

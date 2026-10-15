@@ -5,3 +5,4 @@ export * from "./iec-library";
 export * from "./compiler";
 export * from "./runtime";
 export * from "./simulation";
+export * from "./st-generator";

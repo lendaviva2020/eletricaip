@@ -285,7 +285,7 @@ function SecurityMonitorPage() {
                     </div>
                     {f.id === "auth_leaked_password_protection" && (
                       <a
-                        href="https://supabase.com/dashboard/project/hcjkwqyxqxnbqikwltvc/auth/providers"
+                        href="https://supabase.com/dashboard/project/rvaaxvdimggztjxoktvy/auth/providers"
                         target="_blank"
                         rel="noreferrer"
                         className="text-xs text-primary hover:underline inline-flex items-center gap-1 shrink-0"

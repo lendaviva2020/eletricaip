@@ -14,7 +14,7 @@ last_review: 2026-05-25
 | Roteamento   | TanStack Router                      | File-based em `src/routes/`                   |
 | Estado       | Zustand                              | múltiplos stores, sem Redux                   |
 | Servidor     | TanStack Server Functions            | runtime Cloudflare Workers (nodejs_compat)    |
-| Banco        | Supabase Postgres + RLS + Realtime   | ref `hcjkwqyxqxnbqikwltvc`                    |
+| Banco        | Supabase Postgres + RLS + Realtime   | ref `rvaaxvdimggztjxoktvy`                    |
 | Auth         | Supabase Auth + JWT Bearer           | middleware `requireSupabaseAuth`              |
 | Canvas 2D    | ReactFlow v11                        | Unifilar legado, FBD                          |
 | Canvas WebGL | Pixi.js v8 + pixi-viewport           | `DiagramStage` (Unifilar novo)                |

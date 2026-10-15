@@ -8,7 +8,7 @@ import createProjectTool from "./tools/create-project";
 
 // O issuer OAuth precisa ser o host Supabase direto. O ref do projeto é o único
 // valor que sobrevive ao publish sem reescrita, e o Vite o inlina no build.
-const projectRef = import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "project-ref-unset";
+const projectRef = import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "rvaaxvdimggztjxoktvy";
 
 export default defineMcp({
   name: "eletricai",

@@ -4,9 +4,9 @@
 // final fallback prevents a blank runtime if the managed Vite env injection is
 // temporarily unavailable, without exposing any server-only secret.
 
-const SUPABASE_URL_FALLBACK = "https://hcjkwqyxqxnbqikwltvc.supabase.co";
+const SUPABASE_URL_FALLBACK = "https://rvaaxvdimggztjxoktvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY_FALLBACK =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhjamt3cXl4cXhuYnFpa3dsdHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Mzk5MzksImV4cCI6MjA5MzUxNTkzOX0.0BM9sLDD2fsvj4CGtPFrMZ90Xf-OnDeoLCkYB9K4rZ4";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2YWF4dmRpbWdnenRqeG9rdHZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4NDU2MjgsImV4cCI6MjEwNzQyMTYyOH0.VzLIHrXPm_PRjvhPmtWDxbxbIFmK0tS2RdE9HaI9_jo";
 
 export interface SupabasePublicEnv {
   url: string;

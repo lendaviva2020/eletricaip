@@ -30,7 +30,7 @@ Para que o deploy funcione, configure os **5 secrets** abaixo em:
 - [ ] **`SUPABASE_PROJECT_REF`**
   - **O que é:** ID de referência do projeto Supabase
   - **Onde obter:** Supabase Dashboard → **Project Settings → General → Reference ID**
-  - **Formato:** string de 20 caracteres (ex: `hcjkwqyxqxnbqikwltvc`)
+  - **Formato:** string de 20 caracteres (ex: `rvaaxvdimggztjxoktvy`)
 
 #### 🔺 Vercel (deploy do frontend)
 
