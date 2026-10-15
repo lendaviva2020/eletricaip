@@ -65,9 +65,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ActivityTimeline } from "@/components/premium/activity-timeline";
 import { PermissionMatrix } from "@/components/premium/permission-matrix";
-import { NeuralBg } from "@/components/premium/neural-bg";
 
 export const Route = createFileRoute("/settings/team")({
   head: () => ({ meta: [{ title: "Centro Operacional · EletricAI" }] }),
@@ -84,80 +82,6 @@ const ROLE_CONFIG: Record<Role, { icon: typeof ShieldCheck; label: string; desc:
   viewer: { icon: Eye, label: "Visualizador", desc: "Acesso somente leitura" },
 };
 
-interface DemoMember {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  joinedAt: string;
-  active?: boolean;
-}
-interface DemoInvite {
-  id: string;
-  email: string;
-  role: Role;
-  createdAt: string;
-}
-interface DemoWorkspace {
-  id: string;
-  name: string;
-  plan: string;
-  role: Role;
-  isActive: boolean;
-}
-
-let demoCounter = 0;
-const genId = () => `demo-${++demoCounter}`;
-
-const DEMO_WORKSPACES: DemoWorkspace[] = [
-  { id: "ws-1", name: "EletricAI Industrial", plan: "pro", role: "admin", isActive: true },
-  { id: "ws-2", name: "Planta São Paulo", plan: "basic", role: "engineer", isActive: false },
-  { id: "ws-3", name: "Refinaria Norte", plan: "enterprise", role: "viewer", isActive: false },
-];
-
-const DEMO_ACTIVITIES = [
-  {
-    id: "a1",
-    icon: <User className="h-2.5 w-2.5" />,
-    label: "Ana Silva entrou",
-    desc: "Engenharia · Acesso via SSO",
-    time: "2 min atrás",
-    status: "ok" as const,
-  },
-  {
-    id: "a2",
-    icon: <Bot className="h-2.5 w-2.5" />,
-    label: "IA executou automação",
-    desc: "Diagnóstico PLC-07 concluído",
-    time: "5 min atrás",
-    status: "ok" as const,
-  },
-  {
-    id: "a3",
-    icon: <Activity className="h-2.5 w-2.5" />,
-    label: "Projeto alterado",
-    desc: "Subestação Sul — revisão de normas",
-    time: "12 min atrás",
-    status: "warn" as const,
-  },
-  {
-    id: "a4",
-    icon: <Wifi className="h-2.5 w-2.5" />,
-    label: "PLC conectado",
-    desc: "CLP-03 · Modbus TCP ativo",
-    time: "18 min atrás",
-    status: "ok" as const,
-  },
-  {
-    id: "a5",
-    icon: <AlertCircle className="h-2.5 w-2.5" />,
-    label: "Alerta criado",
-    desc: "Temperatura acima do limite no motor M-02",
-    time: "25 min atrás",
-    status: "err" as const,
-  },
-];
-
 function TeamPage() {
   const navigate = useNavigate();
   const { tenants, active, switchTo, loading: tenantLoading } = useActiveTenant();
@@ -169,7 +93,6 @@ function TeamPage() {
   const setRoleFn = useServerFn(updateMemberRole);
   const qc = useQueryClient();
 
-  const [backendError, setBackendError] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRoleVal] = useState<Role>("engineer");
   const [busy, setBusy] = useState<string | null>(null);
@@ -177,104 +100,35 @@ function TeamPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [permOpen, setPermOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState("engenharia");
-
-  const [demoMembers, setDemoMembers] = useState<DemoMember[]>(() => [
-    {
-      id: genId(),
-      name: "Ana Silva",
-      email: "ana@eletricai.com",
-      role: "admin",
-      joinedAt: new Date(Date.now() - 120 * 86400000).toISOString(),
-      active: true,
-    },
-    {
-      id: genId(),
-      name: "Carlos Oliveira",
-      email: "carlos@eletricai.com",
-      role: "engineer",
-      joinedAt: new Date(Date.now() - 90 * 86400000).toISOString(),
-      active: true,
-    },
-    {
-      id: genId(),
-      name: "Mariana Costa",
-      email: "mariana@eletricai.com",
-      role: "engineer",
-      joinedAt: new Date(Date.now() - 60 * 86400000).toISOString(),
-      active: false,
-    },
-    {
-      id: genId(),
-      name: "João Santos",
-      email: "joao@eletricai.com",
-      role: "operator",
-      joinedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-      active: true,
-    },
-    {
-      id: genId(),
-      name: "Paula Ferreira",
-      email: "paula@eletricai.com",
-      role: "viewer",
-      joinedAt: new Date(Date.now() - 15 * 86400000).toISOString(),
-      active: true,
-    },
-    {
-      id: genId(),
-      name: "Ricardo Lima",
-      email: "ricardo@eletricai.com",
-      role: "engineer",
-      joinedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-      active: false,
-    },
-  ]);
-  const [demoInvites, setDemoInvites] = useState<DemoInvite[]>([]);
   const [inviteName, setInviteName] = useState("");
   const [inviteSector, setInviteSector] = useState("engenharia");
 
-  const isDemo = backendError || (!tenantLoading && tenants.length === 0);
-
-  const { data: memberList = [], isLoading: membersLoading } = useQuery({
+  const {
+    data: memberList = [],
+    isLoading: membersLoading,
+    error: membersError,
+    refetch: refetchMembers,
+  } = useQuery({
     queryKey: ["tenant-members", active?.id],
-    queryFn: async () => {
-      try {
-        return await membersFn({});
-      } catch {
-        setBackendError(true);
-        return [];
-      }
-    },
-    enabled: !!active && !backendError,
+    queryFn: () => membersFn({}),
+    enabled: !!active?.id,
   });
 
-  const { data: inviteList = [], isLoading: invitesLoading } = useQuery({
+  const {
+    data: inviteList = [],
+    isLoading: invitesLoading,
+    error: invitesError,
+    refetch: refetchInvites,
+  } = useQuery({
     queryKey: ["tenant-invites", active?.id],
-    queryFn: async () => {
-      try {
-        return await invitesFn({});
-      } catch {
-        setBackendError(true);
-        return [];
-      }
-    },
-    enabled: !!active && !backendError,
+    queryFn: () => invitesFn({}),
+    enabled: !!active?.id,
   });
 
   const handleInvite = useCallback(async () => {
     if (!email.trim()) return;
     setBusy("invite");
     try {
-      if (isDemo) {
-        await new Promise((r) => setTimeout(r, 600));
-        setDemoInvites((prev) => [
-          { id: genId(), email: email.trim(), role, createdAt: new Date().toISOString() },
-          ...prev,
-        ]);
-        toast.success(`Convite enviado para ${email.trim()}`);
-        setEmail("");
-        setInviteOpen(false);
-        return;
-      }
       const inv = await inviteFn({
         data: {
           email: email.trim(),
@@ -293,18 +147,12 @@ function TeamPage() {
     } finally {
       setBusy(null);
     }
-  }, [email, role, isDemo, inviteFn, inviteName, inviteSector, active?.id, qc]);
+  }, [email, role, inviteFn, inviteName, inviteSector, active?.id, qc]);
 
   const handleRevoke = useCallback(
     async (id: string) => {
       setBusy(`revoke:${id}`);
       try {
-        if (isDemo) {
-          await new Promise((r) => setTimeout(r, 400));
-          setDemoInvites((prev) => prev.filter((i) => i.id !== id));
-          toast.success("Convite revogado.");
-          return;
-        }
         await revokeFn({ data: { inviteId: id } });
         await qc.invalidateQueries({ queryKey: ["tenant-invites", active?.id] });
         toast.success("Convite revogado.");
@@ -314,20 +162,14 @@ function TeamPage() {
         setBusy(null);
       }
     },
-    [isDemo, revokeFn, active?.id, qc],
+    [revokeFn, active?.id, qc],
   );
 
   const handleRemoveMember = useCallback(
     async (userId: string) => {
+      if (!confirm("Remover este membro do workspace?")) return;
       setBusy(`kick:${userId}`);
       try {
-        if (isDemo) {
-          await new Promise((r) => setTimeout(r, 400));
-          setDemoMembers((prev) => prev.filter((m) => m.id !== userId));
-          toast.success("Membro removido.");
-          return;
-        }
-        if (!confirm("Remover este membro?")) return;
         await kickFn({ data: { userId } });
         await qc.invalidateQueries({ queryKey: ["tenant-members", active?.id] });
         toast.success("Membro removido.");
@@ -337,21 +179,13 @@ function TeamPage() {
         setBusy(null);
       }
     },
-    [isDemo, kickFn, active?.id, qc],
+    [kickFn, active?.id, qc],
   );
 
   const handleUpdateRole = useCallback(
     async (userId: string, newRole: Role) => {
       setBusy(`role:${userId}`);
       try {
-        if (isDemo) {
-          await new Promise((r) => setTimeout(r, 300));
-          setDemoMembers((prev) =>
-            prev.map((m) => (m.id === userId ? { ...m, role: newRole } : m)),
-          );
-          toast.success("Papel atualizado.");
-          return;
-        }
         await setRoleFn({ data: { userId, role: newRole } });
         await qc.invalidateQueries({ queryKey: ["tenant-members", active?.id] });
         toast.success("Papel atualizado.");
@@ -361,17 +195,11 @@ function TeamPage() {
         setBusy(null);
       }
     },
-    [isDemo, setRoleFn, active?.id, qc],
+    [setRoleFn, active?.id, qc],
   );
 
   const handleWorkspaceSwitch = useCallback(
     async (id: string) => {
-      if (isDemo) {
-        setDemoMembers([]);
-        setDemoInvites([]);
-        toast.success("Workspace alterado (simulação).");
-        return;
-      }
       try {
         await switchTo(id);
         toast.success("Workspace alterado.");
@@ -379,20 +207,20 @@ function TeamPage() {
         toast.error((e as Error).message);
       }
     },
-    [isDemo, switchTo],
+    [switchTo],
   );
 
-  const workspaces = isDemo ? DEMO_WORKSPACES : tenants;
-  const displayMembers = isDemo ? demoMembers : memberList;
-  const displayInvites = isDemo ? demoInvites : inviteList;
-  const loadingMembers = isDemo ? false : membersLoading;
+  const workspaces = tenants;
+  const displayMembers = memberList;
+  const displayInvites = inviteList;
+  const loadingMembers = membersLoading;
 
-  const onlineCount = displayMembers.filter((m: any) => m.active !== false).length;
+  const onlineCount = displayMembers.length;
   const filteredMembers = displayMembers.filter(
-    (m: any) =>
+    (m) =>
       !memberSearch.trim() ||
-      (m.name || m.full_name || "").toLowerCase().includes(memberSearch.toLowerCase()) ||
-      (m.email || "").toLowerCase().includes(memberSearch.toLowerCase()),
+      (m.full_name || "").toLowerCase().includes(memberSearch.toLowerCase()) ||
+      (m.user_id || "").toLowerCase().includes(memberSearch.toLowerCase()),
   );
 
   const orgTree = [
@@ -455,16 +283,9 @@ function TeamPage() {
             <span
               className={`h-2 w-2 rounded-full ${onlineCount > 0 ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/30"}`}
             />
-            <span className="text-xs text-muted-foreground/80">{onlineCount} online</span>
+            <span className="text-xs text-muted-foreground/80">{onlineCount} membros</span>
           </div>
-          {isDemo && (
-            <>
-              <div className="w-px h-6 bg-border/40" />
-              <span className="text-xs text-muted-foreground/60">Último acesso: hoje 14:23</span>
-              <div className="w-px h-6 bg-border/40" />
-            </>
-          )}
-          {!isDemo && <div className="w-px h-6 bg-border/40" />}
+          <div className="w-px h-6 bg-border/40" />
           <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setInviteOpen(true)}>
             <UserPlus className="h-3.5 w-3.5" /> Convidar
           </Button>
@@ -481,6 +302,39 @@ function TeamPage() {
 
       <div className="flex-1 overflow-auto scrollbar-thin">
         <div className="max-w-6xl mx-auto p-6">
+          {(membersError || invitesError) && (
+            <div className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs flex items-center justify-between text-destructive">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>
+                  Falha ao sincronizar dados da equipe:{" "}
+                  {(membersError as Error)?.message || (invitesError as Error)?.message}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-destructive/30 hover:bg-destructive/20"
+                onClick={() => {
+                  refetchMembers();
+                  refetchInvites();
+                }}
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+
+          {!active && (
+            <div className="mb-6 rounded-xl border border-border/40 bg-muted/10 p-4 text-xs text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>
+                Nenhum workspace ativo selecionado. Selecione um workspace na lista ao lado para
+                gerenciar membros e convites.
+              </span>
+            </div>
+          )}
+
           {/* ─── Top Stats ─── */}
           <div className="grid grid-cols-4 gap-3 mb-6">
             <div className="rounded-xl border border-border/40 p-3.5 bg-gradient-to-b from-background/80 to-muted/10">
@@ -494,11 +348,11 @@ function TeamPage() {
             </div>
             <div className="rounded-xl border border-border/40 p-3.5 bg-gradient-to-b from-background/80 to-muted/10">
               <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
-                Atividade
+                Ativos
               </span>
               <p className="text-xl font-semibold mt-1">
                 {onlineCount}{" "}
-                <span className="text-xs text-muted-foreground/60 font-normal">online</span>
+                <span className="text-xs text-muted-foreground/60 font-normal">registrados</span>
               </p>
             </div>
             <div className="rounded-xl border border-border/40 p-3.5 bg-gradient-to-b from-background/80 to-muted/10">
@@ -629,18 +483,25 @@ function TeamPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-xs">Carregando membros…</span>
                 </div>
+              ) : filteredMembers.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/40 p-8 text-center text-muted-foreground">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-xs font-medium">Nenhum membro encontrado</p>
+                  <p className="text-[11px] text-muted-foreground/60 mt-1">
+                    Envie convites para adicionar engenheiros e operadores a este workspace.
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {filteredMembers.map((m: any) => {
                     const memberRole = (m.role || "viewer") as Role;
-                    const RoleIcon = ROLE_CONFIG[memberRole]?.icon || User;
-                    const isCurrentUser = m.user_id === "current" || m.id === "current";
-                    const initials = (m.full_name || m.name || "??").slice(0, 2).toUpperCase();
-                    const isOnline = m.active !== false;
+                    const isCurrentUser = m.user_id === "current";
+                    const initials = (m.full_name || m.user_id || "??").slice(0, 2).toUpperCase();
+                    const isOnline = true;
 
                     return (
                       <div
-                        key={m.user_id || m.id}
+                        key={m.user_id}
                         className="group relative rounded-xl border border-border/40 bg-gradient-to-r from-background/80 to-muted/5 p-3.5 hover:border-primary/20 transition-all duration-200"
                       >
                         <div className="flex items-center gap-3.5">
@@ -656,7 +517,7 @@ function TeamPage() {
                             <div className="sm:col-span-2">
                               <div className="flex items-center gap-2">
                                 <p className="font-medium truncate">
-                                  {m.full_name || m.name || m.user_id?.slice(0, 8)}
+                                  {m.full_name || m.user_id?.slice(0, 8)}
                                 </p>
                                 {isCurrentUser && (
                                   <Badge variant="secondary" className="text-[8px] h-3.5">
@@ -665,7 +526,7 @@ function TeamPage() {
                                 )}
                               </div>
                               <p className="text-[10px] text-muted-foreground/50 truncate mt-0.5">
-                                {m.email}
+                                {m.email || `Membro desde ${m.created_at ? new Date(m.created_at).toLocaleDateString("pt-BR") : "recentemente"}`}
                               </p>
                             </div>
                             <div>
@@ -689,8 +550,7 @@ function TeamPage() {
                             <Select
                               value={memberRole}
                               onValueChange={(v) => {
-                                if (isDemo) handleUpdateRole(m.id, v as Role);
-                                else handleUpdateRole(m.user_id, v as Role);
+                                handleUpdateRole(m.user_id, v as Role);
                               }}
                             >
                               <SelectTrigger className="h-7 w-28 text-[10px] rounded-md">
@@ -716,12 +576,11 @@ function TeamPage() {
                                 variant="ghost"
                                 className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-destructive"
                                 onClick={() => {
-                                  if (isDemo) handleRemoveMember(m.id);
-                                  else handleRemoveMember(m.user_id);
+                                  handleRemoveMember(m.user_id);
                                 }}
-                                disabled={busy === `kick:${m.user_id || m.id}`}
+                                disabled={busy === `kick:${m.user_id}`}
                               >
-                                {busy === `kick:${m.user_id || m.id}` ? (
+                                {busy === `kick:${m.user_id}` ? (
                                   <Loader2 className="h-3 w-3 animate-spin" />
                                 ) : (
                                   <Trash2 className="h-3 w-3" />
@@ -806,50 +665,53 @@ function TeamPage() {
             {/* ─── Coluna Direita: Atividade ─── */}
             <div>
               <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium block mb-3 flex items-center gap-1.5">
-                <Activity className="h-3 w-3" /> Atividade
+                <Activity className="h-3 w-3" /> Atividade recente
               </span>
               <Card>
                 <CardContent className="p-3">
-                  {isDemo ? (
-                    <ActivityTimeline entries={DEMO_ACTIVITIES} />
-                  ) : (
-                    <p className="text-xs text-muted-foreground/60 px-2 py-6 text-center">
-                      Sem atividade registrada ainda.
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground/60 px-2 py-6 text-center">
+                    Sem atividade de auditoria registrada recentemente neste workspace.
+                  </p>
                 </CardContent>
               </Card>
 
-              {/* IA Usage */}
+              {/* Membros do time */}
               <div className="mt-4 rounded-xl border border-border/40 p-3.5 bg-gradient-to-br from-primary/[0.02] to-transparent">
                 <div className="flex items-center gap-2 mb-2">
                   <Bot className="h-3.5 w-3.5 text-primary" />
                   <span className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/50 font-medium">
-                    Uso de IA por membro
+                    Membros da equipe
                   </span>
                 </div>
-                {demoMembers.slice(0, 4).map((m, idx) => {
-                  // Deterministic demo values seeded by index (no Math.random)
-                  const pct = 18 + idx * 12;
-                  const bar = 30 + idx * 15;
-                  return (
-                    <div key={m.id} className="flex items-center gap-2 py-1.5">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted/40 text-[7px] font-semibold text-muted-foreground/60">
-                        {m.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span className="text-[10px] flex-1 truncate text-muted-foreground/70">
-                        {m.name.split(" ")[0]}
-                      </span>
-                      <span className="text-[10px] font-mono text-primary/80">{pct}%</span>
-                      <div className="w-12 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                {memberList.length > 0 ? (
+                  <div className="space-y-2 mt-2">
+                    {memberList.slice(0, 5).map((m: any) => {
+                      const initials = (m.full_name || m.user_id || "??").slice(0, 2).toUpperCase();
+                      return (
                         <div
-                          className="h-full rounded-full bg-primary/60"
-                          style={{ width: `${bar}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+                          key={m.user_id}
+                          className="flex items-center justify-between text-[11px] py-1"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted/40 text-[8px] font-semibold text-muted-foreground/70 shrink-0">
+                              {initials}
+                            </div>
+                            <span className="truncate text-muted-foreground/80 font-medium">
+                              {m.full_name || m.user_id?.slice(0, 8)}
+                            </span>
+                          </div>
+                          <Badge variant="outline" className="text-[9px] capitalize shrink-0 ml-1">
+                            {m.role}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground/60 py-2">
+                    Nenhum colaborador registrado além do criador.
+                  </p>
+                )}
               </div>
             </div>
           </div>

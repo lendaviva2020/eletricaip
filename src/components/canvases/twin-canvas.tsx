@@ -65,13 +65,10 @@ export function TwinCanvas() {
     return result;
   };
 
-  const speedVal = getActiveTag("SPEED") || (isLive ? 1420 + Math.sin(Date.now() / 600) * 30 : 0);
-  const currentVal =
-    getActiveTag("CURRENT") || (speedVal > 0 ? 14.5 + Math.abs(Math.sin(Date.now() / 900)) * 2 : 0);
-  const levelVal =
-    getActiveTag("NIVEL") ||
-    getActiveTag("LEVEL") ||
-    (isLive ? 62 + Math.sin(Date.now() / 3000) * 10 : 50);
+  // Leituras ativas dos sensores (apenas valores reais ou 0 quando ausente)
+  const speedVal = getActiveTag("SPEED") || 0;
+  const currentVal = getActiveTag("CURRENT") || 0;
+  const levelVal = getActiveTag("NIVEL") || getActiveTag("LEVEL") || 0;
   // ===== "What-If" physical model =====
   // Simplified induction-motor + thermal model: keeping torque ∝ load, the
   // pump-curve gives speed drop ≈ slip_nom * (load/100), and current rises

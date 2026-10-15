@@ -89,8 +89,16 @@ function SignupPage() {
           />
           <span>Confirmo que tenho 18 anos ou mais e uso profissional (B2B).</span>
         </label>
-        {error && <p className="text-xs text-destructive">{error}</p>}
-        {success && <p className="text-xs text-success">{success}</p>}
+        {typeof error === "string" && error.trim() !== "" && (
+          <p role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        )}
+        {typeof success === "string" && success.trim() !== "" && (
+          <p role="status" className="text-xs text-success">
+            {success}
+          </p>
+        )}
         <button
           disabled={loading}
           type="submit"

@@ -7,6 +7,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { Json } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   arcFlashIEEE1584,
@@ -38,9 +39,7 @@ export interface ElectricalStudyResults {
   circuits?: VoltageDropResult[];
 }
 
-function untyped(supabase: unknown): any {
-  return supabase;
-}
+
 
 const Earthing = z.enum(["TN-S", "TN-C", "TN-C-S", "TT", "IT"]);
 
@@ -254,16 +253,16 @@ export const runElectricalStudy = createServerFn({ method: "POST" })
 
     let resultId: string | null = null;
     if (data.persist) {
-      const db = untyped(context.supabase);
-      const { row, error } = await db
+      const db = context.supabase;
+      const { data: row, error } = await db
         .from("electrical_simulation_results")
         .insert({
           project_id: data.projectId,
           simulation_type: computed.simulationType,
           standard: computed.standard,
-          input_data: data.study,
-          results: computed.results,
-          warnings: computed.warnings,
+          input_data: data.study as unknown as Json,
+          results: computed.results as unknown as Json,
+          warnings: computed.warnings as unknown as Json,
           errors: [],
           computation_time_ms: computationTimeMs,
           created_by: context.userId,
@@ -293,25 +292,25 @@ export const listElectricalStudies = createServerFn({ method: "GET" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const db = untyped(context.supabase);
+    const db = context.supabase;
     let query = db
       .from("electrical_simulation_results")
       .select("id, simulation_type, standard, results, warnings, computation_time_ms, created_at");
     if (data.simulationType) query = query.eq("simulation_type", data.simulationType);
 
-    const { rows, error } = await query
+    const { data: rows, error } = await query
       .eq("project_id", data.projectId)
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);
-    return rows;
+    return rows ?? [];
   });
 
 export const deleteElectricalStudy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const db = untyped(context.supabase);
+    const db = context.supabase;
     const { error } = await db.from("electrical_simulation_results").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true as const };

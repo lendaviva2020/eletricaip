@@ -49,6 +49,47 @@ export type Database = {
           },
         ]
       }
+      ai_electrical_config: {
+        Row: {
+          config_key: string
+          config_value: Json
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          config_key: string
+          config_value: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          config_key?: string
+          config_value?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_electrical_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_credit_costs: {
         Row: {
           created_at: string
@@ -885,6 +926,39 @@ export type Database = {
           },
         ]
       }
+      deletion_requests: {
+        Row: {
+          admin_notes: string | null
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          reason: string | null
+          requested_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string | null
+          requested_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string | null
+          requested_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       diagrams: {
         Row: {
           canvas_data: Json
@@ -955,6 +1029,59 @@ export type Database = {
           symbol_svg?: string | null
         }
         Relationships: []
+      }
+      electrical_simulation_results: {
+        Row: {
+          computation_time_ms: number | null
+          created_at: string
+          created_by: string | null
+          errors: Json | null
+          id: string
+          input_data: Json
+          project_id: string
+          results: Json
+          simulation_type: string
+          software_version: string | null
+          standard: string
+          warnings: Json | null
+        }
+        Insert: {
+          computation_time_ms?: number | null
+          created_at?: string
+          created_by?: string | null
+          errors?: Json | null
+          id?: string
+          input_data: Json
+          project_id: string
+          results: Json
+          simulation_type: string
+          software_version?: string | null
+          standard: string
+          warnings?: Json | null
+        }
+        Update: {
+          computation_time_ms?: number | null
+          created_at?: string
+          created_by?: string | null
+          errors?: Json | null
+          id?: string
+          input_data?: Json
+          project_id?: string
+          results?: Json
+          simulation_type?: string
+          software_version?: string | null
+          standard?: string
+          warnings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "electrical_simulation_results_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feature_flags: {
         Row: {
@@ -1865,6 +1992,7 @@ export type Database = {
           name: string
           status: string
           tenant_id: string
+          twin_model_path: string | null
           updated_at: string
         }
         Insert: {
@@ -1878,6 +2006,7 @@ export type Database = {
           name: string
           status?: string
           tenant_id: string
+          twin_model_path?: string | null
           updated_at?: string
         }
         Update: {
@@ -1891,6 +2020,7 @@ export type Database = {
           name?: string
           status?: string
           tenant_id?: string
+          twin_model_path?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2419,6 +2549,145 @@ export type Database = {
         }
         Relationships: []
       }
+      test_scenario_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          duration_ms: number | null
+          error_details: Json | null
+          events: Json | null
+          failure_reason: string | null
+          id: string
+          ladder_final_state: Json | null
+          ladder_initial_state: Json | null
+          metrics: Json | null
+          passed: boolean | null
+          plant_final_state: Json | null
+          plant_initial_state: Json | null
+          run_number: number
+          scenario_id: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error_details?: Json | null
+          events?: Json | null
+          failure_reason?: string | null
+          id?: string
+          ladder_final_state?: Json | null
+          ladder_initial_state?: Json | null
+          metrics?: Json | null
+          passed?: boolean | null
+          plant_final_state?: Json | null
+          plant_initial_state?: Json | null
+          run_number?: number
+          scenario_id: string
+          started_at?: string
+          status: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error_details?: Json | null
+          events?: Json | null
+          failure_reason?: string | null
+          id?: string
+          ladder_final_state?: Json | null
+          ladder_initial_state?: Json | null
+          metrics?: Json | null
+          passed?: boolean | null
+          plant_final_state?: Json | null
+          plant_initial_state?: Json | null
+          run_number?: number
+          scenario_id?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_scenario_runs_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "test_scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_scenarios: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expected_results: Json | null
+          id: string
+          is_public: boolean | null
+          is_template: boolean | null
+          ladder_program: Json | null
+          last_run_at: string | null
+          last_run_result: Json | null
+          name: string
+          plant_config: Json
+          project_id: string
+          scenario_type: string
+          tags: string[] | null
+          unifilar_snapshot: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_results?: Json | null
+          id?: string
+          is_public?: boolean | null
+          is_template?: boolean | null
+          ladder_program?: Json | null
+          last_run_at?: string | null
+          last_run_result?: Json | null
+          name: string
+          plant_config?: Json
+          project_id: string
+          scenario_type: string
+          tags?: string[] | null
+          unifilar_snapshot?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_results?: Json | null
+          id?: string
+          is_public?: boolean | null
+          is_template?: boolean | null
+          ladder_program?: Json | null
+          last_run_at?: string | null
+          last_run_result?: Json | null
+          name?: string
+          plant_config?: Json
+          project_id?: string
+          scenario_type?: string
+          tags?: string[] | null
+          unifilar_snapshot?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_scenarios_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trend_configs: {
         Row: {
           chart_type: string
@@ -2469,6 +2738,74 @@ export type Database = {
           },
         ]
       }
+      twin_hotspots: {
+        Row: {
+          alert_threshold: number | null
+          color: string
+          created_at: string
+          created_by: string | null
+          critical_threshold: number | null
+          equipment_id: string
+          equipment_label: string
+          id: string
+          label: string
+          position_x: number
+          position_y: number
+          position_z: number
+          project_id: string
+          tag: string
+          type: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          alert_threshold?: number | null
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          critical_threshold?: number | null
+          equipment_id: string
+          equipment_label: string
+          id?: string
+          label: string
+          position_x: number
+          position_y: number
+          position_z: number
+          project_id: string
+          tag: string
+          type: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alert_threshold?: number | null
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          critical_threshold?: number | null
+          equipment_id?: string
+          equipment_label?: string
+          id?: string
+          label?: string
+          position_x?: number
+          position_y?: number
+          position_z?: number
+          project_id?: string
+          tag?: string
+          type?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "twin_hotspots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usage_records: {
         Row: {
           ai_tokens_used: number
@@ -2506,6 +2843,56 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unifilar_ladder_mapping: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          equipment_id: string
+          equipment_type: string
+          id: string
+          is_primary: boolean | null
+          ladder_tag_name: string
+          mapping_type: string
+          project_id: string
+          unifilar_node_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          equipment_id: string
+          equipment_type: string
+          id?: string
+          is_primary?: boolean | null
+          ladder_tag_name: string
+          mapping_type: string
+          project_id: string
+          unifilar_node_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          equipment_id?: string
+          equipment_type?: string
+          id?: string
+          is_primary?: boolean | null
+          ladder_tag_name?: string
+          mapping_type?: string
+          project_id?: string
+          unifilar_node_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unifilar_ladder_mapping_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

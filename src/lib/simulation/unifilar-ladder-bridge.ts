@@ -350,21 +350,12 @@ export function applyProgramToEditor(stCode: string): number {
   return result.rungs.length;
 }
 
-/**
- * `unifilar_ladder_mapping` é nova demais para o types.ts gerado.
- * Mesmo padrão de `src/lib/digital-twin.functions.ts`.
- */
-function untyped(): any {
-  return supabase;
-}
-
 /** Persiste um conjunto de mapeamentos, substituindo os anteriores do projeto. */
 export async function saveMappings(
   projectId: string,
   mappings: UnifilarLadderMapping[],
 ): Promise<void> {
-  const db = untyped();
-  const { error: delError } = await db
+  const { error: delError } = await supabase
     .from("unifilar_ladder_mapping")
     .delete()
     .eq("project_id", projectId);
@@ -382,13 +373,12 @@ export async function saveMappings(
     is_primary: m.isPrimary,
   }));
 
-  const { error } = await db.from("unifilar_ladder_mapping").insert(rows);
+  const { error } = await supabase.from("unifilar_ladder_mapping").insert(rows);
   if (error) throw new Error(error.message);
 }
 
 export async function loadMappings(projectId: string): Promise<UnifilarLadderMapping[]> {
-  const db = untyped();
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from("unifilar_ladder_mapping")
     .select(
       "unifilar_node_id, ladder_tag_name, equipment_type, equipment_id, mapping_type, is_primary",

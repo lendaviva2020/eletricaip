@@ -16,17 +16,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { AuthContext } from "@/integrations/supabase/auth-middleware";
 
-/**
- * `deletion_requests` é nova demais para estar no types.ts gerado
- * (supabase gen types). Isolado aqui, num único ponto, para ser fácil de
- * remover assim que os tipos forem regenerados — mesmo padrão de
- * src/lib/digital-twin.functions.ts.
- */
-function untyped(supabase: unknown): {
-  from: (table: string) => any;
-} {
-  return supabase as { from: (table: string) => any };
-}
+
+
 
 export interface EraseStep {
   step: string;
@@ -41,7 +32,7 @@ export const requestAccountDeletion = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as unknown as AuthContext;
-    const db = untyped(supabase);
+    const db = supabase;
 
     const { data: existing, error: existErr } = await db
       .from("deletion_requests")
@@ -73,7 +64,7 @@ export const listMyDeletionRequests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ requests: DeletionRequestSummary[] }> => {
     const { supabase, userId } = context as unknown as AuthContext;
-    const { data, error } = await untyped(supabase)
+    const { data, error } = await supabase
       .from("deletion_requests")
       .select("id, status, requested_at, processed_at")
       .eq("user_id", userId)
@@ -100,7 +91,7 @@ export const eraseUserData = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const admin = untyped(supabaseAdmin);
+    const admin = supabaseAdmin;
     const target = data.targetUserId;
 
     const run = async (step: string, fn: () => Promise<string>) => {

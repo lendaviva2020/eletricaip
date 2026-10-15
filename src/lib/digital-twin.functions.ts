@@ -142,20 +142,11 @@ export const getTwinModelSignedUrl = createServerFn({ method: "POST" })
     return { signedUrl: signed.signedUrl, path: data.path };
   });
 
-/**
- * `twin_hotspots` e a coluna `projects.twin_model_path` são novas demais
- * para estarem no types.ts gerado (supabase gen types). Isolado aqui, num
- * único ponto, para ser fácil de remover assim que os tipos forem
- * regenerados — ver comentário completo na origem deste padrão em
- * src/lib/mcp/supabase.ts.
- */
-
-function untyped(supabase: unknown): any {
-  return supabase;
-}
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 async function requireProjectMembership(
-  supabase: ReturnType<typeof untyped>,
+  supabase: SupabaseClient<Database>,
   userId: string,
   projectId: string,
 ): Promise<string> {
@@ -175,7 +166,7 @@ async function requireProjectMembership(
   if (!profile || profile.tenant_id !== project.tenant_id) {
     throw new Error("forbidden");
   }
-  return project.tenant_id as string;
+  return project.tenant_id;
 }
 
 const ListHotspotsInput = z.object({ projectId: z.string().uuid() });
@@ -185,9 +176,9 @@ export const listTwinHotspots = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => ListHotspotsInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await requireProjectMembership(untyped(supabase), userId, data.projectId);
+    await requireProjectMembership(supabase, userId, data.projectId);
 
-    const { data: rows, error } = await untyped(supabase)
+    const { data: rows, error } = await supabase
       .from("twin_hotspots")
       .select("*")
       .eq("project_id", data.projectId)
@@ -230,7 +221,7 @@ export const upsertTwinHotspot = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => UpsertHotspotInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await requireProjectMembership(untyped(supabase), userId, data.projectId);
+    await requireProjectMembership(supabase, userId, data.projectId);
 
     const row = {
       project_id: data.projectId,
@@ -249,8 +240,8 @@ export const upsertTwinHotspot = createServerFn({ method: "POST" })
     };
 
     const query = data.id
-      ? untyped(supabase).from("twin_hotspots").update(row).eq("id", data.id).select().single()
-      : untyped(supabase).from("twin_hotspots").insert(row).select().single();
+      ? supabase.from("twin_hotspots").update(row).eq("id", data.id).select().single()
+      : supabase.from("twin_hotspots").insert(row).select().single();
 
     const { data: saved, error } = await query;
     if (error) throw new Error(error.message);
@@ -269,7 +260,7 @@ export const deleteTwinHotspot = createServerFn({ method: "POST" })
     // "Engineers+ * twin hotspots" (migration 20261012090000) já exigem
     // papel owner/admin/engineer no tenant do projeto no próprio DELETE —
     // uma segunda checagem aqui seria redundante e RLS é a fonte de verdade.
-    const { error } = await untyped(supabase).from("twin_hotspots").delete().eq("id", data.id);
+    const { error } = await supabase.from("twin_hotspots").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -284,10 +275,10 @@ export const confirmTwinModelUpload = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => ConfirmUploadInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const tenantId = await requireProjectMembership(untyped(supabase), userId, data.projectId);
+    const tenantId = await requireProjectMembership(supabase, userId, data.projectId);
     if (!data.path.startsWith(`${tenantId}/${data.projectId}/`)) throw new Error("forbidden");
 
-    const { error } = await untyped(supabase)
+    const { error } = await supabase
       .from("projects")
       .update({ twin_model_path: data.path })
       .eq("id", data.projectId);
@@ -303,14 +294,14 @@ export const getProjectTwinModel = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => GetProjectModelInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await requireProjectMembership(untyped(supabase), userId, data.projectId);
+    await requireProjectMembership(supabase, userId, data.projectId);
 
-    const { data: project, error } = await untyped(supabase)
+    const { data: project, error } = await supabase
       .from("projects")
       .select("twin_model_path")
       .eq("id", data.projectId)
       .maybeSingle();
     if (error) throw new Error(error.message);
 
-    return { path: (project?.twin_model_path as string | null) ?? null };
+    return { path: project?.twin_model_path ?? null };
   });

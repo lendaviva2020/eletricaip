@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ExternalLink,
   AlertTriangle,
+  AlertCircle,
   CreditCard,
   Sparkles,
   Shield,
@@ -96,20 +97,12 @@ function BillingPage() {
   const manualFn = useServerFn(changePlanManual);
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
-  const [backendError, setBackendError] = useState(false);
   const [invoiceSearch, setInvoiceSearch] = useState("");
 
   const adminFn = useServerFn(getIsPlatformAdmin);
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["billing-overview"],
-    queryFn: async () => {
-      try {
-        return await overviewFn({});
-      } catch {
-        setBackendError(true);
-        return getFallbackBilling();
-      }
-    },
+    queryFn: () => overviewFn({}),
   });
   const { data: adminInfo } = useQuery({
     queryKey: ["is-platform-admin"],
@@ -130,36 +123,26 @@ function BillingPage() {
     }
   }, [adminInfo, navigate]);
 
-  const isDemo = backendError;
   const currentPlan = data?.plan ?? "free";
   const plan = getPlan(currentPlan);
 
   const usageChart = useMemo(() => {
     const now = new Date();
     const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-    // Deterministic demo data based on day-of-week, zeros in real mode until
-    // a real time-series source is wired (see backlog #BIL-01).
-    const demoSeries = [320, 580, 740, 690, 820, 910, 450];
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(now.getTime() - (6 - i) * 86400000);
-      const base = isDemo ? demoSeries[i] : 0;
       return {
         label: days[d.getDay()],
-        calls: base,
-        tokens: base * 60,
-        automations: Math.floor(base / 20),
+        calls: 0,
+        tokens: 0,
+        automations: 0,
       };
     });
-  }, [isDemo]);
+  }, []);
 
   async function handleCheckout(provider: "stripe" | "mp", plan: PaidPlan) {
     setBusy(`${provider}:${plan}`);
     try {
-      if (isDemo) {
-        await new Promise((r) => setTimeout(r, 1200));
-        toast.success(`Checkout simulado: ${provider.toUpperCase()} — plano ${plan}`);
-        return;
-      }
       const res =
         provider === "stripe" ? await stripeFn({ data: { plan } }) : await mpFn({ data: { plan } });
       window.open(res.url, "_blank");
@@ -174,12 +157,6 @@ function BillingPage() {
   async function handleCancel() {
     setBusy("cancel");
     try {
-      if (isDemo) {
-        await new Promise((r) => setTimeout(r, 800));
-        toast.success("Assinatura cancelada (simulação).");
-        await qc.invalidateQueries({ queryKey: ["billing-overview"] });
-        return;
-      }
       if (!confirm("Cancelar assinatura ao final do período?")) return;
       await cancelFn({});
       toast.success("Assinatura será cancelada no fim do período.");
@@ -194,12 +171,6 @@ function BillingPage() {
   async function handleManual(pl: "free" | PaidPlan) {
     setBusy(`manual:${pl}`);
     try {
-      if (isDemo) {
-        await new Promise((r) => setTimeout(r, 800));
-        toast.success(`Plano alterado para ${pl} (simulação).`);
-        await qc.invalidateQueries({ queryKey: ["billing-overview"] });
-        return;
-      }
       if (!confirm(`Forçar mudança para o plano ${pl} (admin override, sem cobrança)?`)) return;
       await manualFn({ data: { plan: pl } });
       toast.success("Plano atualizado.");
@@ -212,7 +183,7 @@ function BillingPage() {
   }
 
   async function handleRefresh() {
-    await qc.invalidateQueries({ queryKey: ["billing-overview"] });
+    await refetch();
     toast.success("Dados atualizados.");
   }
 
@@ -278,7 +249,9 @@ function BillingPage() {
             <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
               Próxima cobrança
             </p>
-            <p className="text-xs font-semibold">{isDemo ? "01 Jun 2026" : "—"}</p>
+            <p className="text-xs font-semibold">
+              {data?.subscriptionStatus === "active" ? "Renovação automática" : "—"}
+            </p>
           </div>
           <div className="w-px h-8 bg-border/40" />
           <Badge
@@ -313,7 +286,21 @@ function BillingPage() {
         </div>
       </header>
 
-      {isLoading ? (
+      {error ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <h2 className="text-lg font-semibold">Falha ao carregar dados financeiros</h2>
+          <p className="text-xs text-muted-foreground max-w-md">
+            Não foi possível carregar as informações financeiras e de faturamento do tenant.
+            {error instanceof Error ? ` Detalhes: ${error.message}` : ""}
+          </p>
+          <Button onClick={handleRefresh} variant="outline" className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Tentar novamente
+          </Button>
+        </div>
+      ) : isLoading ? (
         <div className="flex-1 overflow-auto scrollbar-thin">
           <div className="max-w-6xl mx-auto p-6 space-y-8">
             <Skeleton className="h-[280px] w-full rounded-2xl" />
@@ -347,11 +334,6 @@ function BillingPage() {
                         <h2 className="text-lg font-semibold mt-1">Central Financeira</h2>
                       </div>
                       <div className="flex items-center gap-2">
-                        {isDemo && (
-                          <Badge variant="secondary" className="text-[9px] h-5 gap-1">
-                            <Zap className="h-2.5 w-2.5" /> Demo
-                          </Badge>
-                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -368,27 +350,25 @@ function BillingPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
-                          <Users className="h-3 w-3" /> Usuários
+                          <HardDrive className="h-3 w-3" /> Armazenamento
                         </span>
                         <p className="text-lg font-semibold mt-1">
-                          {isDemo ? "8" : "—"}{" "}
-                          <span className="text-xs text-muted-foreground/60 font-normal">
-                            / {isDemo ? "15" : "—"}
-                          </span>
+                          {data?.usage?.storage_used_mb ?? 0}{" "}
+                          <span className="text-xs text-muted-foreground/60 font-normal">MB</span>
                         </p>
                       </div>
                       <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
                           <Bot className="h-3 w-3" /> Uso de IA
                         </span>
-                        <p className="text-lg font-semibold mt-1">{isDemo ? "42%" : "—"}</p>
+                        <p className="text-lg font-semibold mt-1">{usagePct}%</p>
                       </div>
                       <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
                           <Cpu className="h-3 w-3" /> Automações
                         </span>
                         <p className="text-lg font-semibold mt-1">
-                          {isDemo ? "156" : "—"}{" "}
+                          {data?.usage?.simulations_run ?? 0}{" "}
                           <span className="text-xs text-muted-foreground/60 font-normal">
                             / mês
                           </span>
@@ -399,8 +379,8 @@ function BillingPage() {
                           <HardDrive className="h-3 w-3" /> Armazenamento
                         </span>
                         <p className="text-lg font-semibold mt-1">
-                          {isDemo ? "2.4" : "—"}{" "}
-                          <span className="text-xs text-muted-foreground/60 font-normal">GB</span>
+                          {data?.usage?.storage_used_mb ?? 0}{" "}
+                          <span className="text-xs text-muted-foreground/60 font-normal">MB</span>
                         </p>
                       </div>
                     </div>
@@ -482,28 +462,30 @@ function BillingPage() {
               <MetricCard
                 icon={<Wallet className="h-4 w-4" />}
                 label="Gasto total"
-                value={isDemo ? "R$ 580,00" : "—"}
-                sub="Este mês"
-                trend={isDemo ? { value: 12, positive: true } : undefined}
+                value={`R$ ${(
+                  (data?.invoices ?? [])
+                    .filter((inv) => inv.status === "paid")
+                    .reduce((acc, inv) => acc + (inv.amount ?? 0), 0) / 100
+                ).toFixed(2).replace(".", ",")}`}
+                sub="Total faturado"
               />
               <MetricCard
                 icon={<TrendingUp className="h-4 w-4" />}
-                label="IA economizou"
-                value={isDemo ? "R$ 3.240" : "—"}
-                sub="em horas homem"
-                trend={isDemo ? { value: 34, positive: true } : undefined}
+                label="Plano atual"
+                value={plan.name}
+                sub={plan.features[0] ?? "Assinatura ativa"}
               />
               <MetricCard
                 icon={<PiggyBank className="h-4 w-4" />}
-                label="Custo por automação"
-                value={isDemo ? "R$ 0,47" : "—"}
-                sub="média do período"
+                label="Automações executadas"
+                value={String(data?.usage?.simulations_run ?? 0)}
+                sub="Neste ciclo mensal"
               />
               <MetricCard
                 icon={<CircleDollarSign className="h-4 w-4" />}
-                label="Créditos IA restantes"
-                value={isDemo ? "4.580" : "—"}
-                sub={isDemo ? "de 10.000" : ""}
+                label="Tokens IA utilizados"
+                value={String(data?.usage?.ai_tokens_used ?? 0)}
+                sub={aiCredits ? `Cota: ${aiCredits.toLocaleString()}` : "Sem cota"}
               />
             </div>
 
@@ -907,7 +889,7 @@ function BillingPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="text-center">
                     <CircularProgress
-                      value={isDemo ? 42 : 0}
+                      value={Math.min(100, Math.round(((data?.usage?.ai_tokens_used ?? 0) / (plan.aiCreditsPerMonth || 100)) * 100))}
                       max={100}
                       size={64}
                       label="Tokens utilizados"
@@ -915,8 +897,8 @@ function BillingPage() {
                   </div>
                   <div className="text-center">
                     <CircularProgress
-                      value={isDemo ? 78 : 0}
-                      max={100}
+                      value={data?.usage?.simulations_run ?? 0}
+                      max={Math.max(10, data?.usage?.simulations_run ?? 0)}
                       size={64}
                       color="#22c55e"
                       label="Processamentos IA"
@@ -924,39 +906,21 @@ function BillingPage() {
                   </div>
                   <div className="text-center">
                     <CircularProgress
-                      value={isDemo ? 34 : 0}
-                      max={50}
+                      value={data?.usage?.storage_used_mb ?? 0}
+                      max={Math.max(100, data?.usage?.storage_used_mb ?? 0)}
                       size={64}
                       color="#f59e0b"
-                      label="Agentes executados"
+                      label="Storage (MB)"
                     />
                   </div>
                   <div className="text-center">
                     <CircularProgress
-                      value={isDemo ? 89 : 0}
-                      max={100}
+                      value={data?.usage?.simulations_run ?? 0}
+                      max={Math.max(10, data?.usage?.simulations_run ?? 0)}
                       size={64}
                       color="#8b5cf6"
-                      label="Automações realizadas"
+                      label="Simulações"
                     />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="rounded-lg border border-border/30 bg-background/40 p-4 text-center">
-                    <p className="text-2xl font-semibold text-emerald-500">R$ 3.240</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">
-                      Economia operacional estimada
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/30 bg-background/40 p-4 text-center">
-                    <p className="text-2xl font-semibold text-primary">34h</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">Tempo economizado</p>
-                  </div>
-                  <div className="rounded-lg border border-border/30 bg-background/40 p-4 text-center">
-                    <p className="text-2xl font-semibold text-amber-500">14%</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">
-                      Aumento em automações
-                    </p>
                   </div>
                 </div>
               </div>
@@ -966,59 +930,4 @@ function BillingPage() {
       )}
     </div>
   );
-}
-
-function getFallbackBilling() {
-  const now = new Date();
-  return {
-    tenantId: "demo-tenant",
-    plan: "pro" as const,
-    stripeCustomerId: null,
-    subscriptionStatus: "active",
-    subscriptions: [],
-    invoices: [
-      {
-        id: "inv_demo_1",
-        amount: 58000,
-        currency: "BRL",
-        status: "paid",
-        created_at: new Date(now.getTime() - 30 * 86400000).toISOString(),
-        pdf_url: null,
-      },
-      {
-        id: "inv_demo_2",
-        amount: 58000,
-        currency: "BRL",
-        status: "paid",
-        created_at: new Date(now.getTime() - 60 * 86400000).toISOString(),
-        pdf_url: null,
-      },
-      {
-        id: "inv_demo_3",
-        amount: 58000,
-        currency: "BRL",
-        status: "paid",
-        created_at: new Date(now.getTime() - 90 * 86400000).toISOString(),
-        pdf_url: null,
-      },
-      {
-        id: "inv_demo_4",
-        amount: 58000,
-        currency: "BRL",
-        status: "paid",
-        created_at: new Date(now.getTime() - 120 * 86400000).toISOString(),
-        pdf_url: null,
-      },
-    ],
-    usage: {
-      period: "2026-05",
-      ai_tokens_used: 42,
-      simulations_run: 0,
-      storage_used_mb: 0,
-      tenant_id: "demo-tenant",
-      id: "00000000-0000-0000-0000-000000000000",
-      created_at: now.toISOString(),
-      updated_at: now.toISOString(),
-    },
-  };
 }

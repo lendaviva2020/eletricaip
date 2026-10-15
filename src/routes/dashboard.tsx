@@ -127,14 +127,18 @@ function Dashboard() {
       })
     : null;
 
-  const plantHealth = projectsQuery.isError
-    ? { label: "Verifique a conexão", tone: "warning" as const }
-    : activeProjects.length === 0
-      ? { label: "Aguardando primeiro projeto", tone: "primary" as const }
-      : { label: "Tudo operando bem", tone: "success" as const };
-
   // Processar telemetria real para os gráficos
   const telemetrySeries = telemetryQuery.data?.ok ? telemetryQuery.data.series : {};
+  const hasTelemetry = Object.keys(telemetrySeries).length > 0;
+
+  const plantHealth = projectsQuery.isError
+    ? { label: "Falha de conexão", tone: "warning" as const }
+    : activeProjects.length === 0
+      ? { label: "Sem projetos ativos", tone: "primary" as const }
+      : hasTelemetry
+        ? { label: "Telemetria ativa", tone: "success" as const }
+        : { label: "Aguardando telemetria", tone: "primary" as const };
+
   const energyData = telemetrySeries.energy ?? telemetrySeries.power ?? telemetrySeries.consumption ?? [];
   const productionData = telemetrySeries.production ?? telemetrySeries.count ?? telemetrySeries.output ?? [];
   const temperatureData = telemetrySeries.temperature ?? telemetrySeries.temp ?? [];
@@ -426,47 +430,52 @@ function ChartCard({
   live?: boolean;
 }) {
   const hasData = data && data.length > 0;
-  const chartData = hasData
-    ? data.map((d) => ({ timestamp: d.timestamp, value: d.value }))
-    : Array.from({ length: 24 }, (_, index) => ({
-        timestamp: new Date(Date.now() - (23 - index) * 60 * 60 * 1000).toISOString(),
-        value: 0,
-      }));
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
         <div>
           <div className="text-xs font-semibold">{title}</div>
           <div className="text-[10px] text-muted-foreground">{subtitle}</div>
         </div>
-        <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color }}>
+        <span
+          className={`font-mono text-[10px] uppercase tracking-wider ${
+            hasData ? "" : "text-muted-foreground/60"
+          }`}
+          style={hasData ? { color } : undefined}
+        >
           {live && hasData ? "● ao vivo" : hasData ? "● dados reais" : "● sem dados"}
         </span>
       </div>
-      <div className="h-32">
-        <ResponsiveContainer>
-          <AreaChart data={chartData}>
-            <defs>
-              <linearGradient id={`chart-${id}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={hasData ? 0.5 : 0.1} />
-                <stop offset="100%" stopColor={color} stopOpacity={hasData ? 0 : 0} />
-              </linearGradient>
-            </defs>
-            <Area
-              type="monotone"
-              dataKey={dataKey}
-              stroke={color}
-              strokeWidth={2}
-              fill={`url(#chart-${id})`}
-              opacity={hasData ? 1 : 0.3}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-      {!hasData && (
-        <div className="mt-2 text-center text-[10px] text-muted-foreground">
-          Nenhum dado de telemetria disponível. Conecte dispositivos IoT ou inicie a simulação.
+      {hasData ? (
+        <div className="h-32">
+          <ResponsiveContainer>
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient id={`chart-${id}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.5} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area
+                type="monotone"
+                dataKey={dataKey}
+                stroke={color}
+                strokeWidth={2}
+                fill={`url(#chart-${id})`}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="h-32 flex flex-col items-center justify-center text-center p-3 rounded-lg border border-dashed border-border/40 bg-muted/5">
+          <Activity className="h-5 w-5 text-muted-foreground/30 mb-1" />
+          <span className="text-[11px] text-muted-foreground/70">
+            Aguardando telemetria ({title.toLowerCase()})
+          </span>
+          <span className="text-[9px] text-muted-foreground/50 mt-0.5">
+            Envie leituras via ingestão de tags ou vincule controladores
+          </span>
         </div>
       )}
     </div>

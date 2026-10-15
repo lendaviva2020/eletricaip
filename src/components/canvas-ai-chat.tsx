@@ -205,96 +205,58 @@ export function CanvasAiChat() {
     }
   };
 
-  // Simulates advanced OCR/Normative parsing on PDF / CSV uploads
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Processa arquivos reais de texto/CSV ou informa limitação técnica para PDFs binários
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setFileLoading(true);
-    setFileStep("Extraindo texto e escaneando folha de dados...");
+    // Reseta o input para permitir selecionar o mesmo arquivo novamente
+    e.target.value = "";
 
-    setTimeout(() => {
-      setFileStep("Validando conformidade com as normas ABNT NBR 5410 / NBR 14039...");
-      setTimeout(() => {
-        setFileStep("Dimensionando proteção e mapeando componentes industriais...");
-        setTimeout(() => {
-          setFileLoading(false);
-          setFileStep("");
+    const isText =
+      file.name.endsWith(".txt") ||
+      file.name.endsWith(".csv") ||
+      file.name.endsWith(".json") ||
+      file.name.endsWith(".md") ||
+      file.type.startsWith("text/");
 
-          // Inject nodes from file representation
-          const mockFileResult = {
-            title: `Sistema Extraído: ${file.name.replace(/\.[^/.]+$/, "")}`,
-            rationale:
-              "O PDF continha especificações para um painel secundário de bombagem. Mapeamos um disjuntor principal de 125A e duas partidas sob inversor VFD de 15kW.",
-            transformer: { kVA: 220, primary_kV: 13.8, secondary_V: 380 },
-            ccm: { columns: 2, cells: 4 },
-            motors: [
-              { id: "BOMB_01", power_kW: 15, startMethod: "VFD" as const },
-              { id: "BOMB_02", power_kW: 15, startMethod: "VFD" as const },
-            ],
-            nodes: [
-              {
-                id: "TR-02",
-                kind: "transformer",
-                category: "power",
-                label: "Trafo 220kVA",
-                position: { x: 100, y: 100 },
-              },
-              {
-                id: "QGBT-02",
-                kind: "busbar",
-                category: "power",
-                label: "QGBT Principal",
-                position: { x: 100, y: 220 },
-              },
-              {
-                id: "DJ-MAIN",
-                kind: "breaker",
-                category: "power",
-                label: "DJ 125A",
-                position: { x: 300, y: 220 },
-                params: { In: 125 },
-              },
-              {
-                id: "VFD-01",
-                kind: "vfd",
-                category: "power",
-                label: "VFD Bomba 1",
-                position: { x: 480, y: 150 },
-              },
-              {
-                id: "M-B1",
-                kind: "motor",
-                category: "mech",
-                label: "Motor Bomba 1",
-                position: { x: 660, y: 150 },
-                params: { P: 15 },
-              },
-            ],
-            edges: [
-              { source: "TR-02", target: "QGBT-02", kind: "power" as const },
-              { source: "QGBT-02", target: "DJ-MAIN", kind: "power" as const },
-              { source: "DJ-MAIN", target: "VFD-01", kind: "power" as const },
-              { source: "VFD-01", target: "M-B1", kind: "power" as const },
-            ],
-          };
+    if (isText) {
+      try {
+        setFileLoading(true);
+        setFileStep("Lendo conteúdo do arquivo...");
+        const text = await file.text();
+        const snippet = text.slice(0, 4000);
+        setFileLoading(false);
+        setFileStep("");
 
-          setMsgs((m) => [
-            ...m,
-            {
-              role: "user",
-              text: `[Arquivo Enviado: ${file.name}]`,
-            },
-            {
-              role: "ai",
-              text: `### 📄 Briefing de Engenharia Analisado com Sucesso!\n\n**${mockFileResult.title}**\n\n${mockFileResult.rationale}\n\n* Dimensionamento elétrico calculado conforme NBR 5410.\n* Recomendações normativas injetadas com sucesso no canvas.`,
-              hasPatch: true,
-              patchData: mockFileResult,
-            },
-          ]);
-        }, 1200);
-      }, 1200);
-    }, 1200);
+        const promptWithFile = `[Arquivo anexado: ${file.name}]\nConteúdo:\n${snippet}\n\nPor favor, analise a lista de cargas/especificações acima e proponha a arquitetura elétrica correspondente.`;
+        await send(promptWithFile);
+      } catch (err) {
+        setFileLoading(false);
+        setFileStep("");
+        setMsgs((m) => [
+          ...m,
+          { role: "user", text: `[Arquivo: ${file.name}]` },
+          {
+            role: "ai",
+            text: `Erro ao ler o arquivo: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ]);
+      }
+    } else {
+      // PDF ou arquivos binários
+      setMsgs((m) => [
+        ...m,
+        {
+          role: "user",
+          text: `[Arquivo enviado: ${file.name}]`,
+        },
+        {
+          role: "ai",
+          text: `📄 O arquivo **${file.name}** foi recebido. A extração direta por OCR para arquivos PDF/DWG escaneados está em desenvolvimento na esteira industrial.\n\nPara que o copiloto projete o circuito a partir das suas especificações, por favor importe uma lista de cargas em formato **.csv**, **.txt** ou **.json**, ou cole os requisitos no chat.`,
+        },
+      ]);
+    }
   };
 
   const handleApplyPatch = (msgIndex: number, data: any) => {

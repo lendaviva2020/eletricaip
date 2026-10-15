@@ -9,6 +9,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { Database, Json } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   createPlant,
@@ -21,10 +22,7 @@ import {
   type PlantState,
 } from "@/lib/simulation/plant-engine";
 
-/** Mesmo `untyped()` de `digital-twin.functions.ts` — tabelas fora do types.ts. */
-function untyped(supabase: unknown): any {
-  return supabase;
-}
+
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -406,7 +404,7 @@ export const listTestScenarios = createServerFn({ method: "GET" })
     z.object({ projectId: z.string().uuid().optional() }).parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
-    const db = untyped(context.supabase);
+    const db = context.supabase;
     let query = db
       .from("test_scenarios")
       .select(
@@ -414,25 +412,25 @@ export const listTestScenarios = createServerFn({ method: "GET" })
       );
     if (data.projectId) query = query.eq("project_id", data.projectId);
 
-    const { rows, error } = await query.order("created_at", { ascending: false }).limit(200);
+    const { data: rows, error } = await query.order("created_at", { ascending: false }).limit(200);
     if (error) throw new Error(error.message);
-    return (rows as Array<Record<string, unknown>>).map(normalizeScenarioRow);
+    return ((rows ?? []) as Array<Record<string, unknown>>).map(normalizeScenarioRow);
   });
 
 export const createTestScenario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => ScenarioInput.parse(input))
   .handler(async ({ data, context }) => {
-    const db = untyped(context.supabase);
-    const { row, error } = await db
+    const db = context.supabase;
+    const { data: row, error } = await db
       .from("test_scenarios")
       .insert({
         project_id: data.projectId,
         name: data.name,
         description: data.description ?? null,
         scenario_type: data.scenarioType,
-        plant_config: data.config,
-        expected_results: data.expected ?? null,
+        plant_config: data.config as unknown as Json,
+        expected_results: (data.expected ?? null) as unknown as Json,
         tags: data.tags,
         is_template: data.isTemplate,
         created_by: context.userId,
@@ -447,13 +445,13 @@ export const updateTestScenario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => UpdateInput.parse(input))
   .handler(async ({ data, context }) => {
-    const db = untyped(context.supabase);
-    const patch: Record<string, unknown> = {};
+    const db = context.supabase;
+    const patch: Database["public"]["Tables"]["test_scenarios"]["Update"] = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.description !== undefined) patch.description = data.description;
     if (data.scenarioType !== undefined) patch.scenario_type = data.scenarioType;
-    if (data.config !== undefined) patch.plant_config = data.config;
-    if (data.expected !== undefined) patch.expected_results = data.expected;
+    if (data.config !== undefined) patch.plant_config = data.config as unknown as Json;
+    if (data.expected !== undefined) patch.expected_results = data.expected as unknown as Json;
     if (data.tags !== undefined) patch.tags = data.tags;
     if (data.isTemplate !== undefined) patch.is_template = data.isTemplate;
 
@@ -466,7 +464,7 @@ export const deleteTestScenario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const db = untyped(context.supabase);
+    const db = context.supabase;
     const { error } = await db.from("test_scenarios").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true as const };
@@ -520,8 +518,8 @@ export const listScenarioRuns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ scenarioId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const db = untyped(context.supabase);
-    const { rows, error } = await db
+    const db = context.supabase;
+    const { data: rows, error } = await db
       .from("test_scenario_runs")
       .select(
         "id, run_number, status, started_at, completed_at, duration_ms, metrics, passed, failure_reason",
@@ -530,7 +528,7 @@ export const listScenarioRuns = createServerFn({ method: "GET" })
       .order("started_at", { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);
-    return (rows as Array<Record<string, unknown>>).map(normalizeRunRow);
+    return ((rows ?? []) as Array<Record<string, unknown>>).map(normalizeRunRow);
   });
 
 /** Executa o cenário de forma headless e persiste a execução. */
@@ -538,7 +536,7 @@ export const runTestScenario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ scenarioId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const db = untyped(context.supabase);
+    const db = context.supabase;
 
     const { data: scenario, error: loadErr } = await db
       .from("test_scenarios")
@@ -563,9 +561,9 @@ export const runTestScenario = createServerFn({ method: "POST" })
         scenario_id: scenario.id,
         status: "completed",
         duration_ms: durationMs,
-        plant_initial_state: outcome.initial,
-        plant_final_state: outcome.final,
-        metrics: outcome.metrics,
+        plant_initial_state: outcome.initial as unknown as Json,
+        plant_final_state: outcome.final as unknown as Json,
+        metrics: outcome.metrics as unknown as Json,
         passed: outcome.evaluation.passed,
         failure_reason: outcome.evaluation.failures.join(" ") || null,
         created_by: context.userId,
@@ -578,7 +576,7 @@ export const runTestScenario = createServerFn({ method: "POST" })
       .from("test_scenarios")
       .update({
         last_run_at: new Date(startedAtMs).toISOString(),
-        last_run_result: { passed: outcome.evaluation.passed, metrics: outcome.metrics },
+        last_run_result: { passed: outcome.evaluation.passed, metrics: outcome.metrics } as unknown as Json,
       })
       .eq("id", scenario.id);
     if (updErr) throw new Error(updErr.message);

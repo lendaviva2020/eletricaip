@@ -236,10 +236,10 @@ function Scene({
   viewMode: string;
   showFlowLines: boolean;
 }) {
-  // Live values from stores
-  const speedVal = getTag("SPEED") || Date.now() / 600;
-  const levelVal = getTag("NIVEL") || getTag("LEVEL") || 62 + Math.sin(Date.now() / 3000) * 10;
-  const motorOn = speedVal > 50;
+  // Valores reais das tags (sem fallbacks sintéticos de telemetria)
+  const speedVal = getTag("SPEED") ?? 0;
+  const levelVal = getTag("NIVEL") || getTag("LEVEL") || 0;
+  const motorOn = speedVal > 0;
   const pumpOn = getTag("PUMP") > 0.5;
   const mappings = useDigitalTwinStore.getState().mappings;
   const telemetryBuffers = useDigitalTwinStore.getState().telemetryBuffers;

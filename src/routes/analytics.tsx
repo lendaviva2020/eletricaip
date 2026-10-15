@@ -14,6 +14,7 @@ import {
   Area,
 } from "recharts";
 import { getAiUsageSummary } from "@/lib/ai-usage.functions";
+import { getDashboardTelemetry } from "@/lib/iot.functions";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -25,12 +26,6 @@ export const Route = createFileRoute("/analytics")({
   component: AnalyticsPage,
 });
 
-const energy = Array.from({ length: 24 }, (_, i) => ({
-  h: `${i}h`,
-  kwh: 200 + Math.sin(i / 3) * 80 + Math.random() * 30,
-}));
-const oee = Array.from({ length: 14 }, (_, i) => ({ d: `D${i + 1}`, v: 70 + Math.random() * 25 }));
-
 function AnalyticsPage() {
   const fetchUsage = useServerFn(getAiUsageSummary);
   const { data: usage } = useQuery({
@@ -38,6 +33,66 @@ function AnalyticsPage() {
     queryFn: () => fetchUsage({}),
     staleTime: 60_000,
   });
+
+  const fetchTelemetry = useServerFn(getDashboardTelemetry);
+  const { data: telemetryRes, isLoading: telemetryLoading } = useQuery({
+    queryKey: ["dashboard-telemetry", 24],
+    queryFn: () =>
+      fetchTelemetry({
+        data: {
+          hours: 24,
+          tagPatterns: [
+            "energy",
+            "power",
+            "consumption",
+            "production",
+            "count",
+            "output",
+            "temperature",
+            "temp",
+          ],
+        },
+      }),
+    staleTime: 60_000,
+  });
+
+  const series = telemetryRes?.ok ? telemetryRes.series : {};
+
+  const energyTag = Object.keys(series).find((k) =>
+    /energy|power|consumo|consumption|kwh/i.test(k),
+  );
+  const energySeries = (energyTag ? series[energyTag] : undefined) ?? [];
+  const energyData = energySeries.map((s) => ({
+    h: new Date(s.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    kwh: Math.round(s.value * 10) / 10,
+  }));
+
+  const oeeTag = Object.keys(series).find((k) => /oee|prod|count|output/i.test(k));
+  const oeeSeries = (oeeTag ? series[oeeTag] : undefined) ?? [];
+  const oeeData = oeeSeries.map((s) => ({
+    d: new Date(s.timestamp).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+    v: Math.round(s.value * 10) / 10,
+  }));
+
+  const plcTags = Object.keys(series)
+    .filter((k) => k !== energyTag && k !== oeeTag)
+    .slice(0, 3);
+  const plcData = (() => {
+    if (plcTags.length === 0) return [];
+    const timeMap = new Map<string, Record<string, any>>();
+    for (const tag of plcTags) {
+      for (const pt of series[tag] || []) {
+        const timeKey = new Date(pt.timestamp).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const entry = timeMap.get(timeKey) ?? { t: timeKey };
+        entry[tag] = Math.round(pt.value * 100) / 100;
+        timeMap.set(timeKey, entry);
+      }
+    }
+    return Array.from(timeMap.values());
+  })();
 
   const usedPct =
     usage && !usage.unlimited && usage.maxCredits > 0
@@ -222,103 +277,130 @@ function AnalyticsPage() {
           </Card>
         </div>
 
-        {/* Industrial — placeholders enquanto agregamos telemetria real */}
+        {/* Telemetria industrial — dados reais da tabela tag_samples */}
         <div className="grid lg:grid-cols-2 gap-4">
           <Card title="Consumo de energia (24h)">
-            <ResponsiveContainer>
-              <AreaChart data={energy}>
-                <defs>
-                  <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.78 0.17 200)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="oklch(0.78 0.17 200)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="h"
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "oklch(0.20 0.015 250)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 6,
-                    fontSize: 11,
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="kwh"
-                  stroke="oklch(0.78 0.17 200)"
-                  strokeWidth={2}
-                  fill="url(#g1)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {telemetryLoading ? (
+              <EmptyState label="Carregando telemetria de energia..." />
+            ) : energyData.length > 0 ? (
+              <ResponsiveContainer>
+                <AreaChart data={energyData}>
+                  <defs>
+                    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="oklch(0.78 0.17 200)" stopOpacity={0.5} />
+                      <stop offset="100%" stopColor="oklch(0.78 0.17 200)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="h"
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "oklch(0.20 0.015 250)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 6,
+                      fontSize: 11,
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="kwh"
+                    stroke="oklch(0.78 0.17 200)"
+                    strokeWidth={2}
+                    fill="url(#g1)"
+                    name="kWh"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Nenhum dado de energia registrado nas últimas 24h. Conecte dispositivos IoT ou envie telemetria via ingestão de tags." />
+            )}
           </Card>
-          <Card title="OEE (14d)">
-            <ResponsiveContainer>
-              <BarChart data={oee}>
-                <XAxis
-                  dataKey="d"
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "oklch(0.20 0.015 250)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 6,
-                    fontSize: 11,
-                  }}
-                />
-                <Bar dataKey="v" fill="oklch(0.78 0.18 150)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <Card title="OEE / Produção (14d)">
+            {telemetryLoading ? (
+              <EmptyState label="Carregando dados de produção..." />
+            ) : oeeData.length > 0 ? (
+              <ResponsiveContainer>
+                <BarChart data={oeeData}>
+                  <XAxis
+                    dataKey="d"
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "oklch(0.20 0.015 250)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 6,
+                      fontSize: 11,
+                    }}
+                  />
+                  <Bar
+                    dataKey="v"
+                    fill="oklch(0.78 0.18 150)"
+                    radius={[4, 4, 0, 0]}
+                    name="Valor"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState label="Sem dados de OEE ou produção registrados para o tenant no período." />
+            )}
           </Card>
         </div>
 
-        <Card title="Saúde dos PLCs">
-          <ResponsiveContainer>
-            <LineChart
-              data={Array.from({ length: 50 }, (_, i) => ({
-                t: i,
-                plc1: 8 + Math.sin(i / 3),
-                plc2: 9 + Math.cos(i / 4),
-                plc3: 7 + Math.sin(i / 5),
-              }))}
-            >
-              <XAxis dataKey="t" hide />
-              <YAxis
-                tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "oklch(0.20 0.015 250)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: 6,
-                  fontSize: 11,
-                }}
-              />
-              <Line type="monotone" dataKey="plc1" stroke="oklch(0.78 0.17 200)" dot={false} />
-              <Line type="monotone" dataKey="plc2" stroke="oklch(0.86 0.20 90)" dot={false} />
-              <Line type="monotone" dataKey="plc3" stroke="oklch(0.78 0.18 150)" dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+        <Card title="Saúde dos PLCs & Controladores">
+          {telemetryLoading ? (
+            <EmptyState label="Verificando telemetria dos controladores..." />
+          ) : plcData.length > 0 ? (
+            <ResponsiveContainer>
+              <LineChart data={plcData}>
+                <XAxis
+                  dataKey="t"
+                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "oklch(0.20 0.015 250)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: 6,
+                    fontSize: 11,
+                  }}
+                />
+                {plcTags.map((tag, idx) => (
+                  <Line
+                    key={tag}
+                    type="monotone"
+                    dataKey={tag}
+                    stroke={`oklch(0.78 0.18 ${(idx * 110 + 60) % 360})`}
+                    dot={false}
+                    name={tag}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState label="Nenhum CLP ou controlador enviando telemetria em tempo real no período." />
+          )}
         </Card>
       </div>
     </div>
