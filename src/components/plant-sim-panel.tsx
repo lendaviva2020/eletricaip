@@ -3,6 +3,7 @@
 // a velocidade das partículas e as barras vêm de `energized` + `current_A`.
 // Selo SIMULAÇÃO fixo: valores simulados, nunca medição (RISK-028).
 import { useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { Play, Square, OctagonX, RotateCcw, Flame, TriangleAlert } from "lucide-react";
 import { usePlantStore, PLANT_TICK_MS } from "@/lib/simulation/plant-store";
 import { cn } from "@/lib/utils";
@@ -24,9 +25,10 @@ function FlowWire({
       <div
         className="h-[3px] flex-1 rounded-full"
         style={{
-          background: energized
+          backgroundImage: energized
             ? "repeating-linear-gradient(90deg, var(--color-primary) 0 6px, transparent 6px 12px)"
-            : "var(--color-border)",
+            : "none",
+          backgroundColor: energized ? "transparent" : "var(--color-border)",
           backgroundSize: "12px 3px",
           animation: energized ? `flowdash ${1 / speed}s linear infinite` : "none",
           opacity: energized ? 1 : 0.5,
@@ -41,19 +43,21 @@ export function PlantSimPanel() {
   const plant = usePlantStore((s) => s.plant);
   const inputs = usePlantStore((s) => s.inputs);
   const ticking = usePlantStore((s) => s.ticking);
-  const actions = usePlantStore((s) => ({
-    setMotorCmd: s.setMotorCmd,
-    setFaultInject: s.setFaultInject,
-    setPlantTemp: s.setPlantTemp,
-    setSmoke: s.setSmoke,
-    pulseStart: s.pulseStart,
-    pulseStop: s.pulseStop,
-    pulseEstop: s.pulseEstop,
-    pulseReset: s.pulseReset,
-    setTicking: s.setTicking,
-    tick: s.tick,
-    resetAll: s.resetAll,
-  }));
+  const actions = usePlantStore(
+    useShallow((s) => ({
+      setMotorCmd: s.setMotorCmd,
+      setFaultInject: s.setFaultInject,
+      setPlantTemp: s.setPlantTemp,
+      setSmoke: s.setSmoke,
+      pulseStart: s.pulseStart,
+      pulseStop: s.pulseStop,
+      pulseEstop: s.pulseEstop,
+      pulseReset: s.pulseReset,
+      setTicking: s.setTicking,
+      tick: s.tick,
+      resetAll: s.resetAll,
+    })),
+  );
 
   useEffect(() => {
     if (!ticking) return;
