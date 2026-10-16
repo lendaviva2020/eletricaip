@@ -1,4 +1,4 @@
-// Zod → JSON Schema (flat, no $ref) for DeepSeek tool-calling.
+// Zod → JSON Schema (flat, no $ref) for structured schema calling (Gemini).
 // Eliminates DRY violation where PATCH_JSON_SCHEMA was manually maintained.
 // The AiDiagramPatchSchema Zod definition is the SINGLE source of truth.
 import { z } from "zod";

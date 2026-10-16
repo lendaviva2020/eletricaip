@@ -57,7 +57,15 @@ const DEFAULT_VALUES: Record<StudyKind, Record<string, string>> = {
   },
   arc_flash: { ik_kA: "12.5", clearing: "0.1", working: "455", gap: "32" },
   thermal: { In: "11.6", Istart: "81", duration: "6" },
-  voltage_drop: { current: "11.6", length: "45", cable: "4", voltage: "380" },
+  voltage_drop: {
+    current: "11.6",
+    length: "45",
+    cable: "4",
+    voltage: "380",
+    method: "C",
+    temp: "30",
+    grouped: "1",
+  },
 };
 
 function Field({
@@ -146,6 +154,9 @@ function buildStudy(kind: StudyKind, v: Record<string, string>): Record<string, 
             length_m: num("length"),
             cable_mm2: num("cable"),
             voltage_V: num("voltage"),
+            installationMethod: v.method || "C",
+            ambientTemp_C: num("temp") || 30,
+            groupedCircuits: Math.max(1, Math.round(num("grouped") || 1)),
           },
         ],
       };
@@ -188,8 +199,12 @@ function renderResults(results: ElectricalStudyResults): Array<[string, string]>
   }
   for (const c of results.circuits ?? []) {
     entries.push([
-      `Circuito ${c.circuitId}`,
-      `${c.voltage_drop_pct} % (limite ${c.limit_pct} %) — ${c.within_limit ? "OK" : "EXCEDE"}`,
+      `Circuito ${c.circuitId} (ΔV)`,
+      `${c.voltage_drop_pct} % (${c.voltage_drop_V} V, limite ${c.limit_pct} %) — ${c.within_limit ? "OK" : "EXCEDE"}`,
+    ]);
+    entries.push([
+      `Circuito ${c.circuitId} (NBR 5410)`,
+      `I'z = ${c.Iz_corrected_A} A · Seção mín. ${c.recommended_cable_mm2} mm² — ${c.thermal_adequate ? "OK" : "SUBDIMENSIONADO"}`,
     ]);
   }
   return entries;
@@ -425,6 +440,38 @@ export function ElectricalStudyPanel() {
                     unit="V"
                     value={values.voltage}
                     onChange={(v) => setField("voltage", v)}
+                  />
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Método (NBR 5410)
+                    </Label>
+                    <Select
+                      value={values.method ?? "C"}
+                      onValueChange={(v) => setField("method", v)}
+                    >
+                      <SelectTrigger className="h-8 font-mono text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(["A1", "A2", "B1", "B2", "C", "D", "E", "F"] as const).map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Field
+                    label="Temp. amb."
+                    unit="°C"
+                    value={values.temp ?? "30"}
+                    onChange={(v) => setField("temp", v)}
+                  />
+                  <Field
+                    label="Agrupamento"
+                    unit="circ."
+                    value={values.grouped ?? "1"}
+                    onChange={(v) => setField("grouped", v)}
                   />
                 </>
               )}

@@ -6,13 +6,35 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { assertSupabaseProject } from "./env";
 
-function createSupabaseAdminClient() {
-  const SUPABASE_URL =
+function resolveServerUrl(): string {
+  if (typeof process === "undefined" || !process.env) return "";
+  return (
     process.env.SUPABASE_URL ||
     process.env.VITE_SUPABASE_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    "";
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    ""
+  ).trim();
+}
+
+function resolveServiceRoleKey(): string {
+  if (typeof process === "undefined" || !process.env) return "";
+  return (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+}
+
+export function isSupabaseAdminConfigured(): boolean {
+  if (typeof window !== "undefined") return false;
+  return Boolean(resolveServerUrl() && resolveServiceRoleKey());
+}
+
+function createSupabaseAdminClient() {
+  if (typeof window !== "undefined") {
+    throw new Error(
+      "[Supabase] Operação bloqueada: supabaseAdmin é restrito exclusivamente ao ambiente de servidor.",
+    );
+  }
+
+  const SUPABASE_URL = resolveServerUrl();
+  const SUPABASE_SERVICE_ROLE_KEY = resolveServiceRoleKey();
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [
@@ -36,6 +58,10 @@ function createSupabaseAdminClient() {
 }
 
 let _supabaseAdmin: ReturnType<typeof createSupabaseAdminClient> | undefined;
+
+export function resetSupabaseAdminCacheForTesting(): void {
+  _supabaseAdmin = undefined;
+}
 
 // Server-side Supabase client with service role — bypasses RLS
 // SECURITY: Only use this for trusted server-side operations, never expose to client code

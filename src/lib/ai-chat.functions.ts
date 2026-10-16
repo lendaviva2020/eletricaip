@@ -1,4 +1,4 @@
-// AI Chat with streaming via Lovable AI Gateway. Persists to ai_conversations + ai_messages.
+// AI Chat with streaming via Google Gemini. Persists to ai_conversations + ai_messages.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -8,6 +8,13 @@ import {
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { sanitizePromptText } from "@/lib/ai/context-sanitizer";
+import {
+  getGeminiClient,
+  getGeminiModel,
+  getGeminiApiKey,
+  validateGeminiKey,
+  mapGeminiError,
+} from "@/lib/ai/gemini-client.server";
 
 export type ChatConversation = {
   id: string;
@@ -93,24 +100,6 @@ const SYSTEM_PROMPT = `Você é o EletricAI Copilot — um engenheiro elétrico 
 Responda em PT-BR de forma técnica, objetiva e citando NBR 5410, NBR 14039, NR-10, NR-12 e IEC 61131-3 quando relevante.
 Use markdown (listas, tabelas, **negrito**) para clareza.`;
 
-function parseSSEDelta(chunk: string): string[] {
-  const out: string[] = [];
-  for (const raw of chunk.split("\n")) {
-    const line = raw.trim();
-    if (!line.startsWith("data:")) continue;
-    const payload = line.slice(5).trim();
-    if (!payload || payload === "[DONE]") continue;
-    try {
-      const json = JSON.parse(payload);
-      const delta = json?.choices?.[0]?.delta?.content;
-      if (typeof delta === "string" && delta.length > 0) out.push(delta);
-    } catch {
-      /* ignore partial frames */
-    }
-  }
-  return out;
-}
-
 export const streamChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth, requireAiQuota, requireBurstLimit])
   .inputValidator((input) =>
@@ -123,9 +112,15 @@ export const streamChat = createServerFn({ method: "POST" })
   )
   .handler(async function* ({ data, context }) {
     const { supabase, userId } = context;
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
-      yield { type: "error" as const, message: "DEEPSEEK_API_KEY ausente no servidor." };
+    const apiKey = getGeminiApiKey();
+    const keyValidation = validateGeminiKey(apiKey);
+    if (!keyValidation.ok) {
+      yield {
+        type: "error" as const,
+        message: !apiKey
+          ? "GEMINI_API_KEY ausente nos secrets do servidor."
+          : "GEMINI_API_KEY com formato inesperado.",
+      };
       return;
     }
 
@@ -165,83 +160,69 @@ export const streamChat = createServerFn({ method: "POST" })
       .eq("conversation_id", data.conversationId)
       .order("created_at", { ascending: true })
       .limit(40);
-    const messages = [
-      { role: "system" as const, content: SYSTEM_PROMPT },
+
+    const rawMessages = [
       ...((history ?? []) as Array<{ role: string; content: string }>).map((m) => ({
-        role: m.role as "user" | "assistant" | "system",
-        // Sanitize each message content to prevent stored prompt injection
-        content: sanitizePromptText(m.content, 2000),
+        role: m.role === "assistant" ? ("model" as const) : ("user" as const),
+        text: sanitizePromptText(m.content, 2000),
       })),
     ];
-
-    const upstream = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages,
-        stream: true,
-      }),
-    });
-
-    if (upstream.status === 429) {
-      yield {
-        type: "error" as const,
-        message: "Limite de requisições atingido. Aguarde alguns segundos.",
-      };
-      return;
-    }
-    if (upstream.status === 402) {
-      yield {
-        type: "error" as const,
-        message: "Créditos do gateway de IA esgotados. Adicione créditos no workspace.",
-      };
-      return;
-    }
-    if (!upstream.ok || !upstream.body) {
-      const txt = await upstream.text().catch(() => "");
-      console.error("AI gateway error:", upstream.status, txt.slice(0, 300));
-      yield { type: "error" as const, message: `Falha do gateway (${upstream.status}).` };
-      return;
+    if (rawMessages.length === 0 || rawMessages[rawMessages.length - 1].role !== "user") {
+      rawMessages.push({
+        role: "user" as const,
+        text: sanitizePromptText(data.prompt, 2000),
+      });
     }
 
-    let buffer = "";
-    let accumulated = "";
-    const decoder = new TextDecoder();
-    const reader = upstream.body.getReader();
+    // Consolidate adjacent turns of the same role for strict Gemini adherence
+    const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+    for (const msg of rawMessages) {
+      if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
+        contents[contents.length - 1].parts.push({ text: msg.text });
+      } else {
+        contents.push({ role: msg.role, parts: [{ text: msg.text }] });
+      }
+    }
+
+    let streamResponse;
     try {
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lastBreak = buffer.lastIndexOf("\n");
-        if (lastBreak === -1) continue;
-        const chunk = buffer.slice(0, lastBreak);
-        buffer = buffer.slice(lastBreak + 1);
-        for (const delta of parseSSEDelta(chunk)) {
-          accumulated += delta;
-          yield { type: "delta" as const, text: delta };
-        }
-      }
-      if (buffer.trim().length > 0) {
-        for (const delta of parseSSEDelta(buffer)) {
-          accumulated += delta;
-          yield { type: "delta" as const, text: delta };
-        }
-      }
-    } finally {
-      try {
-        reader.releaseLock();
-      } catch {
-        /* noop */
-      }
+      const ai = getGeminiClient();
+      const model = getGeminiModel();
+      streamResponse = await ai.models.generateContentStream({
+        model,
+        contents,
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          temperature: 0.4,
+        },
+      });
+    } catch (e) {
+      const mapped = mapGeminiError(e);
+      yield { type: "error" as const, message: mapped.message };
+      return;
     }
 
-    // Persist assistant message + estimate tokens (~4 chars/token).
-    const tokens = Math.ceil(accumulated.length / 4);
+    let accumulated = "";
+    let totalTokens = 0;
+    try {
+      for await (const chunk of streamResponse) {
+        const delta = chunk.text || "";
+        if (delta) {
+          accumulated += delta;
+          yield { type: "delta" as const, text: delta };
+        }
+        if (chunk.usageMetadata?.totalTokenCount) {
+          totalTokens = chunk.usageMetadata.totalTokenCount;
+        }
+      }
+    } catch (err) {
+      const mapped = mapGeminiError(err);
+      yield { type: "error" as const, message: mapped.message };
+      return;
+    }
+
+    // Persist assistant message + real or estimated tokens
+    const tokens = totalTokens > 0 ? totalTokens : Math.ceil(accumulated.length / 4);
     await supabase.from("ai_messages").insert({
       conversation_id: data.conversationId,
       role: "assistant",

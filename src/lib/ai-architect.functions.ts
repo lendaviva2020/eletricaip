@@ -1,5 +1,5 @@
 // AI Architect server functions — runs in TanStack server runtime.
-// RAG: augments the prompt with top normative_chunks before calling DeepSeek.
+// RAG: augments the prompt with top normative_chunks before calling Google Gemini.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -14,6 +14,14 @@ import {
   type VerificationFinding,
   type VerificationReport,
 } from "@/lib/ai/verification-types";
+import {
+  getGeminiClient,
+  getGeminiModel,
+  getGeminiApiKey,
+  validateGeminiKey,
+  mapGeminiError,
+  pingGemini,
+} from "@/lib/ai/gemini-client.server";
 
 const SYSTEM = `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
 
@@ -185,7 +193,8 @@ type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]:
 type ArchitectOk = {
   ok: true;
   system: JsonValue;
-  provider: "deepseek";
+  provider: "gemini";
+  model?: string;
   tokensUsed: number;
   ragHits: number;
   credits?: {
@@ -198,87 +207,71 @@ type ArchitectOk = {
   verification: VerificationReport;
 };
 
-// ── Chamada única ao DeepSeek, parametrizada pelas mensagens ──
+// ── Chamada ao Google Gemini parametrizada pelas mensagens e schema ──
 async function callArchitectModel(
-  apiKey: string,
   messages: Array<{ role: string; content: string }>,
 ): Promise<
   | { ok: true; parsed: JsonValue; tokensUsed: number }
   | { ok: false; error: ArchitectError["error"] }
 > {
-  let resp: Response;
+  const model = getGeminiModel();
+  let ai: ReturnType<typeof getGeminiClient>;
   try {
-    resp = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages,
-        tools: [TOOL],
-        tool_choice: { type: "function", function: { name: "design_industrial_system" } },
-        temperature: 0.3,
-      }),
-    });
+    ai = getGeminiClient();
   } catch (e) {
-    console.error("DeepSeek network error:", e);
-    return {
-      ok: false,
-      error: { code: "NETWORK", message: "Falha de rede ao contatar a IA." },
-    };
+    const mapped = mapGeminiError(e);
+    return { ok: false, error: { code: mapped.code, message: mapped.message } };
   }
 
-  if (resp.status === 401)
-    return { ok: false, error: { code: "AUTH_401", message: "Chave de IA inválida ou revogada." } };
-  if (resp.status === 429)
-    return {
-      ok: false,
-      error: {
-        code: "RATE_LIMIT_429",
-        message: "Muitas requisições à IA. Aguarde alguns segundos.",
+  const contents = messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents,
+      config: {
+        systemInstruction: SYSTEM,
+        temperature: 0.2,
+        responseMimeType: "application/json",
+        responseSchema: SCHEMA,
       },
-    };
-  if (resp.status === 402)
-    return {
-      ok: false,
-      error: { code: "NO_CREDITS_402", message: "Créditos da conta DeepSeek esgotados." },
-    };
-  if (resp.status >= 500) {
-    const t = await resp.text().catch(() => "");
-    console.error("DeepSeek 5xx:", resp.status, t);
-    return {
-      ok: false,
-      error: { code: "UPSTREAM_5XX", message: "Serviço DeepSeek temporariamente indisponível." },
-    };
-  }
-  if (!resp.ok) {
-    const t = await resp.text().catch(() => "");
-    console.error("DeepSeek erro:", resp.status, t);
-    return {
-      ok: false,
-      error: { code: "BAD_RESPONSE", message: `Resposta inesperada (${resp.status}).` },
-    };
-  }
+    });
 
-  const json = await resp.json();
-  const call = json?.choices?.[0]?.message?.tool_calls?.[0];
-  if (!call?.function?.arguments) {
-    console.error("DeepSeek bad response:", JSON.stringify(json).slice(0, 500));
-    return {
-      ok: false,
-      error: { code: "BAD_RESPONSE", message: "A IA não devolveu estrutura válida." },
-    };
-  }
-  let parsed: JsonValue;
-  try {
-    parsed = JSON.parse(call.function.arguments);
+    const text = response.text?.trim();
+    if (!text) {
+      console.error("Gemini empty response text:", response);
+      return {
+        ok: false,
+        error: { code: "BAD_RESPONSE", message: "A IA não devolveu estrutura válida." },
+      };
+    }
+
+    let parsed: JsonValue;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      console.error("JSON parse error from Gemini output:", e);
+      return {
+        ok: false,
+        error: { code: "BAD_RESPONSE", message: "JSON inválido devolvido pela IA." },
+      };
+    }
+
+    const tokensUsed = Number(response.usageMetadata?.totalTokenCount) || 0;
+    return { ok: true, parsed, tokensUsed };
   } catch (e) {
-    console.error("JSON parse:", e);
+    console.error("Gemini call error:", e);
+    const mapped = mapGeminiError(e);
     return {
       ok: false,
-      error: { code: "BAD_RESPONSE", message: "JSON inválido devolvido pela IA." },
+      error: { code: mapped.code, message: mapped.message },
     };
   }
-  return { ok: true, parsed, tokensUsed: Number(json?.usage?.total_tokens) || 0 };
 }
 
 function nodesOf(parsed: JsonValue): any[] {
@@ -360,20 +353,15 @@ export const generateArchitecture = createServerFn({ method: "POST" })
   .inputValidator((input) => InputSchema.parse(input))
   .handler(async ({ data, context }): Promise<ArchitectOk | ArchitectError> => {
     const { supabase } = context;
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
+    const apiKey = getGeminiApiKey();
+    const keyValidation = validateGeminiKey(apiKey);
+    if (!keyValidation.ok) {
       return {
         ok: false,
         error: {
-          code: "MISSING_KEY",
-          message: "DEEPSEEK_API_KEY ausente nos secrets do servidor.",
+          code: !apiKey ? "MISSING_KEY" : "INVALID_KEY_FORMAT",
+          message: keyValidation.reason || "GEMINI_API_KEY ausente ou inválida.",
         },
-      };
-    }
-    if (!/^sk-[A-Za-z0-9_-]+$/.test(apiKey) || apiKey.length < 20) {
-      return {
-        ok: false,
-        error: { code: "INVALID_KEY_FORMAT", message: "DEEPSEEK_API_KEY com formato inesperado." },
       };
     }
 
@@ -432,7 +420,7 @@ export const generateArchitecture = createServerFn({ method: "POST" })
       { role: "user", content: userMsg },
     ];
 
-    const first = await callArchitectModel(apiKey, messages);
+    const first = await callArchitectModel(messages);
     if (!first.ok) return { ok: false, error: first.error };
 
     let parsed = first.parsed;
@@ -459,7 +447,7 @@ ${errors
 Contexto atual do projeto (JSON):
 ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed), plcLogic: (parsed as any)?.plcLogic }).slice(0, 20000)}`;
 
-      const fix = await callArchitectModel(apiKey, [
+      const fix = await callArchitectModel([
         ...messages,
         { role: "user", content: fixMsg },
       ]);
@@ -476,7 +464,8 @@ ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed), plcLogic: (pa
     return {
       ok: true,
       system: parsed,
-      provider: "deepseek",
+      provider: "gemini",
+      model: getGeminiModel(),
       tokensUsed,
       ragHits: rag.hits,
       credits: gateInfo,
@@ -511,39 +500,5 @@ export const getAiCredits = createServerFn({ method: "GET" })
 export const pingArchitect = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
-    const key = process.env.DEEPSEEK_API_KEY;
-    const keyConfigured = !!key;
-    const keyFormatValid = !!key && /^sk-[A-Za-z0-9_-]+$/.test(key) && key.length >= 20;
-    let pingOk = false;
-    let pingStatus: number | undefined;
-    let pingError: string | undefined;
-    if (keyFormatValid) {
-      try {
-        const r = await fetch("https://api.deepseek.com/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [{ role: "user", content: "ping" }],
-            max_tokens: 1,
-          }),
-        });
-        pingStatus = r.status;
-        pingOk = r.ok;
-        if (!r.ok) pingError = (await r.text()).slice(0, 200);
-      } catch (e) {
-        pingError = (e as Error).message;
-      }
-    }
-    return {
-      ok: keyFormatValid && pingOk,
-      keyConfigured,
-      keyFormatValid,
-      pingOk,
-      pingStatus,
-      pingError,
-      provider: "deepseek" as const,
-      model: "deepseek-chat",
-      checkedAt: new Date().toISOString(),
-    };
+    return await pingGemini();
   });

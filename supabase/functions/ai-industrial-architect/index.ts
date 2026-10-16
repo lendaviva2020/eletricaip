@@ -1,4 +1,4 @@
-// AI Industrial Architect — DeepSeek-powered with key validation, friendly errors and web fallback hint.
+// AI Industrial Architect — Google Gemini 3.1 Pro powered with key validation and friendly errors.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -40,19 +40,18 @@ function createAdminClient() {
 
 // --- Startup key validation -------------------------------------------------
 function validateKeyFormat(k: string | undefined): { ok: boolean; reason?: string } {
-  if (!k) return { ok: false, reason: "DEEPSEEK_API_KEY ausente nos secrets" };
-  if (k.length < 20) return { ok: false, reason: "DEEPSEEK_API_KEY parece truncada (<20 chars)" };
-  if (!/^sk-[A-Za-z0-9_-]+$/.test(k)) {
-    return { ok: false, reason: "DEEPSEEK_API_KEY com formato inesperado (esperado: sk-…)" };
+  if (!k) return { ok: false, reason: "GEMINI_API_KEY ausente nos secrets" };
+  if (k.length < 15 || /\s/.test(k)) {
+    return { ok: false, reason: "GEMINI_API_KEY com formato inesperado" };
   }
   return { ok: true };
 }
-const STARTUP_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+const STARTUP_KEY = Deno.env.get("GEMINI_API_KEY");
 const STARTUP_VALIDATION = validateKeyFormat(STARTUP_KEY);
 if (!STARTUP_VALIDATION.ok) {
   console.error(`[ai-industrial-architect] STARTUP WARN: ${STARTUP_VALIDATION.reason}`);
 } else {
-  console.log(`[ai-industrial-architect] DEEPSEEK_API_KEY OK (len=${STARTUP_KEY!.length})`);
+  console.log(`[ai-industrial-architect] GEMINI_API_KEY OK (len=${STARTUP_KEY!.length})`);
 }
 
 // --- Prompt-injection sanitization (mirrors src/lib/ai/context-sanitizer.ts) -------
@@ -204,20 +203,21 @@ function err(code: ErrCode, message: string, status = 200, extra: Record<string,
 // --- Health check -----------------------------------------------------------
 // GET ?health=1 returns a status object the AI Status page consumes.
 async function healthCheck(): Promise<Response> {
-  const key = Deno.env.get("DEEPSEEK_API_KEY");
+  const key = Deno.env.get("GEMINI_API_KEY");
+  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.1-pro-preview";
   const v = validateKeyFormat(key);
   let pingOk = false;
   let pingStatus: number | undefined;
   let pingError: string | undefined;
-  if (v.ok) {
+  if (v.ok && key) {
     try {
-      const r = await fetch("https://api.deepseek.com/chat/completions", {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+      const r = await fetch(endpoint, {
         method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [{ role: "user", content: "ping" }],
-          max_tokens: 1,
+          contents: [{ role: "user", parts: [{ text: "ping" }] }],
+          generationConfig: { maxOutputTokens: 1, temperature: 0 },
         }),
       });
       pingStatus = r.status;
@@ -230,14 +230,14 @@ async function healthCheck(): Promise<Response> {
   return new Response(
     JSON.stringify({
       ok: v.ok && pingOk,
-      keyConfigured: !!key,
+      keyConfigured: Boolean(key),
       keyFormatValid: v.ok,
       keyFormatReason: v.reason,
       pingOk,
       pingStatus,
       pingError,
-      provider: "deepseek",
-      model: "deepseek-chat",
+      provider: "gemini",
+      model,
       checkedAt: new Date().toISOString(),
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   // Require authenticated Supabase user for all calls (health + generation).
-  // Prevents anonymous abuse of DeepSeek credits.
+  // Prevents anonymous abuse of Gemini credits.
   const auth = await requireUser(req);
   if (!auth) {
     return new Response(
@@ -281,7 +281,8 @@ Deno.serve(async (req) => {
     }
     const safePrompt = sanitizePromptText(prompt, 4000);
 
-    const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.1-pro-preview";
     const v = validateKeyFormat(apiKey);
     if (!v.ok) return err(apiKey ? "INVALID_KEY_FORMAT" : "MISSING_KEY", v.reason!);
 
@@ -314,67 +315,63 @@ Deno.serve(async (req) => {
       ? `Briefing:\n${safePrompt}\n\nContexto atual do projeto (JSON):\n${contextStr}`
       : safePrompt;
 
-    const resp = await fetch("https://api.deepseek.com/chat/completions", {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const resp = await fetch(endpoint, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: userMsg },
-        ],
-        tools: [TOOL],
-        tool_choice: { type: "function", function: { name: "design_industrial_system" } },
-        temperature: 0.3,
+        system_instruction: { parts: [{ text: SYSTEM }] },
+        contents: [{ role: "user", parts: [{ text: userMsg }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: "application/json",
+          responseSchema: SCHEMA,
+        },
       }),
     });
 
-    if (resp.status === 401) {
+    if (resp.status === 400 || resp.status === 401 || resp.status === 403) {
+      const txt = await resp.text();
       return err(
         "AUTH_401",
-        "Chave de IA inválida ou revogada. Atualize DEEPSEEK_API_KEY no painel de secrets do Supabase e gere uma nova em platform.deepseek.com/api_keys.",
+        "Chave de IA inválida ou revogada. Atualize GEMINI_API_KEY no painel de secrets do Supabase e obtenha uma chave em aistudio.google.com/app/apikey.",
         200,
-        { provider: "deepseek" },
+        { provider: "gemini", detail: txt.slice(0, 200) },
       );
     }
     if (resp.status === 429)
       return err(
         "RATE_LIMIT_429",
-        "Muitas requisições à IA. Aguarde alguns segundos e tente novamente.",
-      );
-    if (resp.status === 402)
-      return err(
-        "NO_CREDITS_402",
-        "Créditos da conta DeepSeek esgotados. Adicione créditos em platform.deepseek.com.",
+        "Muitas requisições à IA (quota/rate limit excedido). Aguarde alguns segundos e tente novamente.",
       );
     if (resp.status >= 500) {
       const t = await resp.text();
-      console.error("DeepSeek 5xx:", resp.status, t);
-      return err("UPSTREAM_5XX", "Serviço DeepSeek temporariamente indisponível. Tente novamente.");
+      console.error("Gemini 5xx:", resp.status, t);
+      return err("UPSTREAM_5XX", "Serviço Google Gemini temporariamente indisponível. Tente novamente.");
     }
     if (!resp.ok) {
       const t = await resp.text();
-      console.error("DeepSeek erro:", resp.status, t);
+      console.error("Gemini erro:", resp.status, t);
       return err("BAD_RESPONSE", `Resposta inesperada (${resp.status}).`);
     }
 
     const data = await resp.json();
-    const call = data?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!call?.function?.arguments) {
-      console.error("DeepSeek bad response (no tool_call):", JSON.stringify(data).slice(0, 500));
+    const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!content) {
+      console.error("Gemini bad response (no content):", JSON.stringify(data).slice(0, 500));
       return err("BAD_RESPONSE", "A IA não devolveu estrutura válida. Tente novamente.");
     }
 
     let parsed: any;
     try {
-      parsed = JSON.parse(call.function.arguments);
+      parsed = JSON.parse(content);
     } catch (e) {
-      console.error("DeepSeek JSON parse error:", e);
+      console.error("Gemini JSON parse error:", e);
       return err("BAD_RESPONSE", "JSON inválido devolvido pela IA. Tente novamente.");
     }
 
     // Server-side usage tracking (best effort).
-    const tokensUsed = Number(data?.usage?.total_tokens) || 0;
+    const tokensUsed = Number(data?.usageMetadata?.totalTokenCount) || 0;
     if (tokensUsed > 0) {
       const { error: incErr } = await admin.rpc("increment_ai_tokens_for_user", {
         p_user_id: auth.userId,
@@ -384,7 +381,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, system: parsed, provider: "deepseek", tokensUsed }),
+      JSON.stringify({ ok: true, system: parsed, provider: "gemini", tokensUsed }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },

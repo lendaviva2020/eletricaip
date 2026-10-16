@@ -72,7 +72,7 @@ Seus dados podem ser compartilhados com os seguintes operadores, que atuam sob n
 | **Stripe Inc.**    | Pagamentos (cartão, boleto, PIX via Stripe)                    | Dados de cobrança, e-mail, metadados de assinatura              | EUA / UE                   | PCI DSS Level 1, DPA, SCCs                                      |
 | **Mercado Pago**   | Pagamentos locais (PIX, boleto, cartão BR)                     | Dados de cobrança, CPF/CNPJ, e-mail                             | Brasil                     | LGPD compliance, PCI DSS                                        |
 | **Upstash**        | Rate limiting distribuído (AI, IoT, Auth, API)                 | ID do usuário (hash), contadores de requisição, timestamps      | EUA / UE                   | DPA, SOC2, Criptografia em trânsito e repouso                   |
-| **DeepSeek (API)** | Modelos de linguagem (LLM) para IA                             | Prompts sanitizados, contexto de projeto (sem PII direta)       | China / Singapura          | Contrato de processamento, retenção zero (não treina com dados) |
+| **Google (Gemini API)** | Modelos de linguagem (LLM) para IA                             | Prompts sanitizados, contexto de projeto (sem PII direta)       | EUA / Global               | DPA, SOC2, ISO 27001, política de privacidade corporativa       |
 | **Vercel Inc.**    | Hospedagem (Edge/Serverless), logs de acesso                   | IP, user-agent, metadados de requisição                         | Global (Edge)              | DPA, SOC2, ISO 27001                                            |
 | **Google**         | Login social (OAuth)                                           | E-mail, nome, foto de perfil                                    | Global                     | DPA, GDPR compliance                                            |
 
@@ -86,7 +86,7 @@ Como utilizamos provedores globais, seus dados podem ser processados fora do Bra
 
 - Cláusulas Contratuais Padrão (SCCs) com todos os operadores fora do EEE.
 - Decisão de adequação onde aplicável.
-- Criptografia ponta a ponta e pseudonimização para transferências a países sem adequação direta (como a API do DeepSeek, em que os prompts são sanitizados e não contêm dados pessoais identificáveis).
+- Criptografia ponta a ponta e pseudonimização para transferências a operadores internacionais (como a API do Google Gemini, em que os prompts são sanitizados e não contêm dados pessoais identificáveis).
 
 ---
 
@@ -116,7 +116,7 @@ Adotamos medidas técnicas e organizacionais proporcionais ao risco (LGPD Art. 4
 - **Criptografia em repouso:** fornecida pela infraestrutura (Supabase para PostgreSQL/Storage, Vercel e Upstash), conforme a documentação de cada provedor.
 - **Autenticação forte:** Supabase Auth com verificação local de JWT (JWKS, com fallback HS256 legado e validação remota). A autenticação de dois fatores (MFA) está planejada e ainda não disponível; enquanto isso, aplicamos rate limiting nos fluxos de login e encerramento global de sessão.
 - **Duração das sessões:** seguimos os tempos de expiração padrão do Supabase Auth (configuráveis no painel do projeto), com atualização automática de tokens no cliente.
-- **Armazenamento de segredos:** Chaves de API (DeepSeek, Stripe, Mercado Pago, Upstash, service role do Supabase) existem exclusivamente em variáveis de ambiente no servidor e nunca são embarcadas no código do navegador.
+- **Armazenamento de segredos:** Chaves de API (Gemini, Stripe, Mercado Pago, Upstash, service role do Supabase) existem exclusivamente em variáveis de ambiente no servidor e nunca são embarcadas no código do navegador.
 - **Tokens IoT:** armazenados como hash SHA-256 não reversível com prefixo de identificação e escopo limitado (`iot:ingest`).
 - **Proteções operacionais:** rate limiting distribuído (Redis) com negação segura (fail-closed) para IA e IoT quando o limitador está indisponível; guarda anti-SSRF nas conexões Modbus TCP; ambiente isolado (Web Worker, sem DOM/rede/armazenamento) para scripts de usuário no SCADA; isolamento por tenant no banco de dados através de Row Level Security (RLS) nas tabelas de dados de cliente.
 - **Backups:** recuperação pontual (PITR) e backups automáticos fornecidos pelo Supabase, conforme o plano contratado do projeto.

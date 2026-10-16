@@ -9,6 +9,13 @@ import {
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { AiDiagramPatchSchema, type AiDiagramPatch } from "@/lib/diagram/schema";
 import { buildPatchJsonSchema } from "@/lib/diagram/zod-to-json-schema";
+import {
+  getGeminiClient,
+  getGeminiModel,
+  getGeminiApiKey,
+  validateGeminiKey,
+  mapGeminiError,
+} from "@/lib/ai/gemini-client.server";
 
 const InputSchema = z.object({
   prompt: z.string().min(1).max(8000),
@@ -18,7 +25,7 @@ const InputSchema = z.object({
 type PatchOk = { ok: true; patch: AiDiagramPatch; tokensUsed: number };
 type PatchErr = { ok: false; error: { code: string; message: string } };
 
-const SYSTEM = `Você é o EletricAI Architect. Devolva SEMPRE um patch JSON via tool-call "emit_patch".
+const SYSTEM = `Você é o EletricAI Architect. Devolva SEMPRE um patch JSON estruturado conforme o schema.
 
 REGRAS:
 - IDs estáveis: prefixo "n_" para nós e "e_" para edges. NÃO repita IDs já existentes no doc.
@@ -53,41 +60,23 @@ EXEMPLO de patch mínimo válido:
 // Se adicionar campos ao Zod, o schema plano será atualizado via buildPatchJsonSchema().
 const PATCH_JSON_SCHEMA = buildPatchJsonSchema();
 
-async function callDeepseek(apiKey: string, userMsg: string, fixHint?: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60_000);
-  try {
-    const resp = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          {
-            role: "system",
-            content: SYSTEM + (fixHint ? `\n\nCORREÇÃO NECESSÁRIA: ${fixHint}` : ""),
-          },
-          { role: "user", content: userMsg },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "emit_patch",
-              description: "Devolve o patch para mutar o DiagramDoc.",
-              parameters: PATCH_JSON_SCHEMA,
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "emit_patch" } },
-        temperature: 0.2,
-      }),
-    });
-    return resp;
-  } finally {
-    clearTimeout(timeout);
-  }
+async function callGeminiDiagramPatch(userMsg: string, fixHint?: string) {
+  const ai = getGeminiClient();
+  const model = getGeminiModel();
+  const systemInstruction = SYSTEM + (fixHint ? `\n\nCORREÇÃO NECESSÁRIA:\n${fixHint}` : "");
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: userMsg,
+    config: {
+      systemInstruction,
+      temperature: 0.2,
+      responseMimeType: "application/json",
+      responseSchema: PATCH_JSON_SCHEMA,
+    },
+  });
+
+  return response;
 }
 
 // Projeta o doc para um resumo enxuto (evita estourar payload).
@@ -113,15 +102,17 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
   .inputValidator((input) => InputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PatchOk | PatchErr> => {
     const { supabase } = context;
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey)
+    const apiKey = getGeminiApiKey();
+    const keyValidation = validateGeminiKey(apiKey);
+    if (!keyValidation.ok) {
       return {
         ok: false,
         error: {
-          code: "MISSING_KEY",
-          message: "DEEPSEEK_API_KEY ausente nos secrets do servidor.",
+          code: !apiKey ? "MISSING_KEY" : "INVALID_KEY_FORMAT",
+          message: keyValidation.reason || "GEMINI_API_KEY ausente ou inválida nos secrets do servidor.",
         },
       };
+    }
 
     const { error: gateErr } = await supabase.rpc("consume_ai_credits", {
       p_operation: "generate_panel",
@@ -148,38 +139,16 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
     let lastErr = "";
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const resp = await callDeepseek(apiKey, userMsg, attempt > 0 ? lastErr : undefined);
-        if (resp.status === 401)
-          return {
-            ok: false,
-            error: { code: "AUTH_401", message: "Chave DeepSeek inválida ou revogada." },
-          };
-        if (resp.status === 429) {
-          lastErr = "rate_limit";
-          continue;
-        }
-        if (resp.status === 402)
-          return {
-            ok: false,
-            error: { code: "NO_CREDITS_402", message: "Créditos DeepSeek esgotados." },
-          };
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error(`[generateDiagramPatch] HTTP ${resp.status}:`, txt.slice(0, 300));
-          lastErr = `HTTP ${resp.status}`;
-          continue;
-        }
-        const json = await resp.json();
-        const call = json?.choices?.[0]?.message?.tool_calls?.[0];
-        const tokensUsed = Number(json?.usage?.total_tokens) || 0;
-        if (!call?.function?.arguments) {
-          lastErr = "tool_call ausente";
-          console.warn("[generateDiagramPatch] no tool_call:", JSON.stringify(json).slice(0, 300));
+        const response = await callGeminiDiagramPatch(userMsg, attempt > 0 ? lastErr : undefined);
+        const text = response.text?.trim();
+        const tokensUsed = Number(response.usageMetadata?.totalTokenCount) || 0;
+        if (!text) {
+          lastErr = "resposta vazia da IA";
           continue;
         }
         let raw: unknown;
         try {
-          raw = JSON.parse(call.function.arguments);
+          raw = JSON.parse(text);
         } catch {
           lastErr = "JSON malformado";
           continue;
@@ -192,10 +161,15 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
           .join("; ");
         console.warn(`[generateDiagramPatch] attempt ${attempt + 1} validation failed:`, lastErr);
       } catch (e) {
-        const isAbort = (e as Error)?.name === "AbortError";
-        lastErr = isAbort ? "timeout 60s" : (e as Error).message;
+        const mapped = mapGeminiError(e);
+        if (mapped.code === "AUTH_401" || mapped.code === "MISSING_KEY") {
+          return { ok: false, error: { code: mapped.code, message: mapped.message } };
+        }
+        lastErr = mapped.message;
         console.error(`[generateDiagramPatch] attempt ${attempt + 1} threw:`, lastErr);
-        if (isAbort) continue;
+        if (mapped.code === "RATE_LIMIT_429") {
+          await new Promise((r) => setTimeout(r, 1000));
+        }
       }
     }
 

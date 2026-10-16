@@ -60,9 +60,9 @@ function mapError(code: string, message: string): AIServiceError {
         message,
         "A IA não está autenticada. Verifique a chave de IA nas configurações do projeto.",
         [
-          "Acesse platform.deepseek.com/api_keys e gere uma nova chave (a conta precisa ter créditos).",
-          "No Supabase, abra Settings → Edge Functions → Secrets e atualize DEEPSEEK_API_KEY.",
-          "Volte aqui e clique em 'Revalidar' na tela de Status da IA.",
+          "Acesse aistudio.google.com/app/apikey e gere uma nova chave de API do Google Gemini.",
+          "Nos secrets do servidor (Vercel ou Supabase), configure GEMINI_API_KEY.",
+          "Volte aqui e clique em 'Revalidar agora' na tela de Status da IA.",
         ],
       );
     case "INSUFFICIENT_CREDITS":
@@ -76,15 +76,15 @@ function mapError(code: string, message: string): AIServiceError {
     case "RATE_LIMIT_429":
       return new AIServiceError(code, message, "Muitas requisições à IA. Aguarde alguns segundos.");
     case "NO_CREDITS_402":
-      return new AIServiceError(code, message, "Créditos da conta DeepSeek esgotados.", [
-        "Adicione créditos in platform.deepseek.com/usage.",
+      return new AIServiceError(code, message, "Cota da conta Google Gemini esgotada.", [
+        "Verifique o plano e faturamento em aistudio.google.com ou Google Cloud Console.",
         "Recarregue a página e tente novamente.",
       ]);
     case "UPSTREAM_5XX":
       return new AIServiceError(
         code,
         message,
-        "Serviço DeepSeek temporariamente indisponível. Tente em alguns segundos.",
+        "Serviço Google Gemini temporariamente indisponível. Tente em alguns segundos.",
       );
     default:
       return new AIServiceError(code || "UNKNOWN", message, message);

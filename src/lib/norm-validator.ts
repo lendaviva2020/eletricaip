@@ -3,7 +3,15 @@
 // NBR 5410, NBR 14039, NR-10, NR-12, IEC 61131-3, IEC 60617, ISA-18.2.
 
 import type { IndustrialNode, IndustrialEdge } from "./project-store";
-import { calcMotor, pickCable_mm2, pickBreaker_A } from "./electrical-calc";
+import {
+  calcMotor,
+  correctedAmpacityIz,
+  pickBreaker_A,
+  verifyOverloadCoordination,
+  voltageDrop_pct,
+  type InstallationMethod,
+  type InsulationType,
+} from "./electrical-calc";
 
 export type NormSeverity = "info" | "warn" | "error";
 export interface NormFinding {
@@ -25,6 +33,9 @@ function num(v: any, def = 0): number {
   return def;
 }
 
+const VALID_METHODS = new Set<InstallationMethod>(["A1", "A2", "B1", "B2", "C", "D", "E", "F"]);
+const VALID_INSULATIONS = new Set<InsulationType>(["PVC", "EPR", "XLPE"]);
+
 export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]): NormFinding[] {
   const f: NormFinding[] = [];
   const motors = nodes.filter((n) => n.kind === "motor");
@@ -33,16 +44,34 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
   const lightCurtains = nodes.filter((n) => n.kind === "lightcurtain");
   const transformer = nodes.find((n) => n.kind === "transformer");
 
-  // ── NBR 5410 — Dimensionamento de cabo e disjuntor por motor ──
+  // ── NBR 5410 — Dimensionamento de cabo, coordenação de sobrecarga e queda de tensão por motor ──
   for (const m of motors) {
     const P = num(m.params.P ?? m.params.power_kW, 0);
     const U = num(m.params.U ?? m.params.voltage_V, 380);
     if (P <= 0) continue;
+
+    const rawMethod = String(
+      m.params.installationMethod ?? m.params.installation ?? "C",
+    ).toUpperCase() as InstallationMethod;
+    const method: InstallationMethod = VALID_METHODS.has(rawMethod) ? rawMethod : "C";
+
+    const rawIns = String(m.params.insulation ?? "PVC").toUpperCase() as InsulationType;
+    const insulation: InsulationType = VALID_INSULATIONS.has(rawIns) ? rawIns : "PVC";
+
+    const ambientTemp_C = num(m.params.ambientTemp_C ?? m.params.temp_C, method === "D" ? 20 : 30);
+    const groupedCircuits = Math.max(1, num(m.params.groupedCircuits ?? m.params.agrupamento, 1));
+    const cableLength_m = num(m.params.length_m ?? m.params.comprimento_m, 0);
+
     const calc = calcMotor({
       id: m.id,
       power_kW: P,
       voltage_V: U,
       startMethod: (m.params.startMethod as any) || "DOL",
+      installationMethod: method,
+      insulation,
+      ambientTemp_C,
+      groupedCircuits,
+      cableLength_m: cableLength_m > 0 ? cableLength_m : undefined,
     });
     const cable = num(m.params.cable_mm2 ?? m.params.cabo_mm2, 0);
     const brk = num(m.params.breaker_A ?? m.params.disjuntor_A, 0);
@@ -54,10 +83,46 @@ export function validateProject(nodes: IndustrialNode[], edges: IndustrialEdge[]
         severity: "error",
         nodeId: m.id,
         title: `Cabo subdimensionado em ${m.id}`,
-        detail: `Bitola declarada ${cable} mm² é menor que a mínima ${calc.cable_mm2} mm² para In=${calc.In_A} A.`,
-        fixHint: `Use cabo de ${calc.cable_mm2} mm² (PVC, 3 condutores carregados, 30 °C — IEC 60364).`,
+        detail: `Bitola declarada ${cable} mm² é menor que a mínima ${calc.cable_mm2} mm² para In=${calc.In_A} A (método ${method}, ${insulation}, ${ambientTemp_C} °C, ${groupedCircuits} circ.).`,
+        fixHint: `Use cabo de ${calc.cable_mm2} mm² (${insulation}, método ${method}, ${ambientTemp_C} °C — NBR 5410 Tabelas 36–38).`,
       });
+    } else if (cable > 0 && brk > 0) {
+      const IzDeclared = correctedAmpacityIz(cable, {
+        method,
+        insulation,
+        loadedConductors: 3,
+        ambientTemp_C,
+        groupedCircuits,
+      });
+      const coord = verifyOverloadCoordination(calc.In_A, brk, IzDeclared);
+      if (!coord.coordinated) {
+        f.push({
+          id: `coord-${m.id}`,
+          norm: "NBR 5410",
+          severity: "error",
+          nodeId: m.id,
+          title: `Falha na coordenação de sobrecarga em ${m.id}`,
+          detail: `NBR 5410 §5.3.4.1 exige Ib (${calc.In_A} A) ≤ In (${brk} A) ≤ I'z (${IzDeclared} A).`,
+          fixHint: `Ajuste o disjuntor para ≤ ${Math.floor(IzDeclared)} A ou eleve a seção do condutor.`,
+        });
+      }
     }
+
+    if (cable > 0 && cableLength_m > 0) {
+      const dropPct = voltageDrop_pct(calc.In_A, cableLength_m, cable, U);
+      if (dropPct > 5) {
+        f.push({
+          id: `vdrop-${m.id}`,
+          norm: "NBR 5410",
+          severity: "error",
+          nodeId: m.id,
+          title: `Queda de tensão excessiva em ${m.id}`,
+          detail: `Queda de tensão calculada de ${dropPct}% em ${cableLength_m} m excede o limite de 5% da NBR 5410 §6.2.7.`,
+          fixHint: `Aumente a seção do condutor para ≥ ${calc.cable_mm2} mm².`,
+        });
+      }
+    }
+
     if (brk > 0 && brk < pickBreaker_A(calc.In_A) * 0.9) {
       f.push({
         id: `brk-${m.id}`,

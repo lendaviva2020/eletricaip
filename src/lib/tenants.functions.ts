@@ -2,7 +2,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export type TenantSummary = {
   id: string;
@@ -264,6 +263,8 @@ export const acceptInviteByToken = createServerFn({ method: "POST" })
     const { supabase, userId, claims } = context;
     const email = String(claims.email ?? "").toLowerCase();
     if (!email) throw new Error("user_not_found");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("invites")

@@ -149,7 +149,8 @@ interface ElectricalGenerationResponse {
   errors: string[];
 }
 
-const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY") ?? "";
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.1-pro-preview";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
@@ -170,33 +171,40 @@ REGRAS OBRIGATÓRIAS:
 FORMATO DE RESPOSTA: JSON estruturado conforme schema definido.
 NUNCA retorne markdown, texto livre ou explicações fora do JSON.`;
 
-async function callDeepSeek(prompt: string, systemPrompt: string): Promise<any> {
-  const response = await fetch("https://api.deepseek.com/chat/completions", {
+async function callGemini(prompt: string, systemPrompt: string): Promise<any> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY ausente nos secrets do Supabase");
+  }
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const response = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "deepseek-chat",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
+      system_instruction: {
+        parts: [{ text: systemPrompt }],
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
       ],
-      temperature: 0.3,
-      max_tokens: 8000,
-      response_format: { type: "json_object" },
+      generationConfig: {
+        temperature: 0.3,
+        responseMimeType: "application/json",
+      },
     }),
   });
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`DeepSeek API error: ${response.status} - ${error}`);
+    throw new Error(`Gemini API error: ${response.status} - ${error}`);
   }
 
   const data = await response.json();
-  const content = data.choices[0]?.message?.content;
-  if (!content) throw new Error("Empty response from DeepSeek");
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!content) throw new Error("Empty response from Gemini");
   return JSON.parse(content);
 }
 
@@ -305,7 +313,7 @@ CÁLCULOS OBRIGATÓRIOS:
 GERAR JSON ESTRUTURADO CONFORME SCHEMA.
 NÃO INCLUA MARKDOWN OU TEXTO LIVRE FORA DO JSON.`;
 
-  const aiResponse = await callDeepSeek(prompt, SYSTEM_PROMPT);
+  const aiResponse = await callGemini(prompt, SYSTEM_PROMPT);
 
   // Validar resposta básica
   if (!aiResponse.success) {

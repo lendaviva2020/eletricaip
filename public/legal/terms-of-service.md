@@ -95,7 +95,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 9.3. **Upload/OCR de PDF na IA:** quando indicado como simulação/mock na interface, o recurso não executa extração real — não confie nele para decisões normativas.
 
-9.4. Prompts e contexto de projeto enviados à IA passam por sanitização anti-injeção e limites de tamanho; o histórico de chat (até 40 mensagens) é sanitizado antes do envio ao provedor do modelo (DeepSeek).
+9.4. Prompts e contexto de projeto enviados à IA passam por sanitização anti-injeção e limites de tamanho; o histórico de chat (até 40 mensagens) é sanitizado antes do envio ao provedor do modelo (Google Gemini).
 
 9.5. Não utilizamos o conteúdo do Cliente para treinar modelos de terceiros; o provedor do modelo opera sob contrato com retenção zero para treinamento.
 
@@ -115,7 +115,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 11.2. Suporte por e-mail (contato@eletricai.com) em horário comercial, com priorização por severidade. Status e diagnósticos em `/settings/diagnostics` e `/settings/ai-status`.
 
-11.3. Telemetria, Realtime e upload de modelos 3D dependem de conectividade e limites do plano; indisponibilidades de provedores (Supabase, Vercel, Upstash, DeepSeek, Stripe/MP) serão comunicadas e mitigadas por fallback/fail-closed documentado, sem constituir descumprimento quando fora do nosso controle razoável.
+11.3. Telemetria, Realtime e upload de modelos 3D dependem de conectividade e limites do plano; indisponibilidades de provedores (Supabase, Vercel, Upstash, Google Gemini, Stripe/MP) serão comunicadas e mitigadas por fallback/fail-closed documentado, sem constituir descumprimento quando fora do nosso controle razoável.
 
 ## 12. Suspensão e encerramento por violação
 
@@ -137,7 +137,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 14.1. O tratamento de dados pessoais rege-se pela [Política de Privacidade](/privacidade), parte integrante destes Termos, em conformidade com a **LGPD (Lei 13.709/2018)** e o **GDPR**.
 
-14.2. Infraestrutura: Supabase (Auth/DB/Storage/Realtime), Vercel (hospedagem), Upstash (rate limiting), DeepSeek (LLM), Stripe e Mercado Pago (cobrança), Google (OAuth opcional) — conforme detalhado na Política.
+14.2. Infraestrutura: Supabase (Auth/DB/Storage/Realtime), Vercel (hospedagem), Upstash (rate limiting), Google Gemini (LLM), Stripe e Mercado Pago (cobrança), Google (OAuth opcional) — conforme detalhado na Política.
 
 ## 15. Alterações dos Termos
 

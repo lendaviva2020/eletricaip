@@ -2,7 +2,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { AuthContext } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -131,67 +130,161 @@ const EMPTY_SNAPSHOT: ProjectSnapshot = {
 
 // ── Helpers ────────────────────────────────────────────────────
 
-function slugifyTenantLabel(value: string): string {
-  const base = value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return base || "workspace";
-}
-
-async function ensureTenant(
+export async function ensureTenant(
   supabase: SupabaseClient<Database>,
   userId: string,
-  claims?: Record<string, unknown>,
+  _claims?: Record<string, unknown>,
 ): Promise<string> {
-  const { data: profile } = await supabase
+  if (!userId || typeof userId !== "string" || !userId.trim()) {
+    throw new Error("Unauthorized: Authentication required");
+  }
+
+  // 1. Verificar se o usuário já possui tenant_id vinculado no perfil
+  const { data: profile, error: profileReadError } = await supabase
     .from("profiles")
     .select("tenant_id")
     .eq("id", userId)
     .maybeSingle();
 
-  if (profile?.tenant_id) return profile.tenant_id;
+  if (profileReadError) {
+    throw new Error(`Falha ao consultar perfil do usuário: ${profileReadError.message}`);
+  }
 
-  const label =
-    String(claims?.full_name ?? claims?.name ?? claims?.email ?? "").trim() ||
-    `Usuario ${userId.slice(0, 8)}`;
-  const tenantName = `Workspace de ${label}`;
-  const tenantSlug = `${slugifyTenantLabel(label)}-${userId.slice(0, 8)}`;
+  if (profile?.tenant_id) {
+    return profile.tenant_id;
+  }
 
-  const { data: tenant, error: tenantError } = await supabaseAdmin
-    .from("tenants")
-    .insert({
-      name: tenantName,
-      slug: tenantSlug,
-      plan: "free",
-      status: "active",
-    })
-    .select("id")
-    .single();
-  if (tenantError) throw new Error(tenantError.message);
+  // 2. Verificar se já existe associação válida em tenant_memberships para este usuário
+  const { data: existingMembership, error: membershipReadError } = await supabase
+    .from("tenant_memberships")
+    .select("tenant_id, role")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
-  const tenantId = tenant.id;
+  if (membershipReadError) {
+    throw new Error(`Falha ao consultar membros do workspace: ${membershipReadError.message}`);
+  }
 
-  const { error: membershipError } = await supabaseAdmin.from("tenant_memberships").upsert(
-    {
-      tenant_id: tenantId,
-      user_id: userId,
-      role: "owner",
-      accepted_at: new Date().toISOString(),
-    },
-    { onConflict: "tenant_id,user_id" },
+  if (existingMembership?.tenant_id) {
+    await supabase
+      .from("profiles")
+      .update({
+        tenant_id: existingMembership.tenant_id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+    return existingMembership.tenant_id;
+  }
+
+  // 3. Provisionar workspace pessoal via RPC autenticada idempotente (RLS / SECURITY DEFINER)
+  const { data: rpcTenantId, error: rpcError } = await supabase.rpc(
+    "bootstrap_personal_tenant_if_missing",
   );
-  if (membershipError) throw new Error(membershipError.message);
 
-  const { error: profileError } = await supabaseAdmin
+  if (rpcError) {
+    throw new Error(`Não foi possível provisionar o workspace pessoal: ${rpcError.message}`);
+  }
+
+  if (typeof rpcTenantId === "string" && rpcTenantId.trim().length > 0) {
+    return rpcTenantId.trim();
+  }
+
+  const { data: refreshedProfile, error: refreshError } = await supabase
     .from("profiles")
-    .update({ tenant_id: tenantId, updated_at: new Date().toISOString() })
-    .eq("id", userId);
-  if (profileError) throw new Error(profileError.message);
+    .select("tenant_id")
+    .eq("id", userId)
+    .maybeSingle();
 
-  return tenantId;
+  if (refreshError) {
+    throw new Error(`Falha ao confirmar workspace provisionado: ${refreshError.message}`);
+  }
+
+  if (refreshedProfile?.tenant_id) {
+    return refreshedProfile.tenant_id;
+  }
+
+  throw new Error("Não foi possível provisionar o workspace pessoal do usuário.");
+}
+
+export interface CreateProjectInput {
+  name: string;
+  description?: string;
+  client?: string;
+}
+
+export async function createProjectRecord(
+  authCtx: Pick<AuthContext, "supabase" | "userId" | "claims">,
+  data: CreateProjectInput,
+): Promise<{ id: string; name: string; client: string | null }> {
+  const { supabase, userId, claims } = authCtx;
+  if (!userId) {
+    throw new Error("Unauthorized: Authentication required");
+  }
+
+  const tenant_id = await ensureTenant(supabase, userId, claims);
+
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("plan")
+    .eq("id", tenant_id)
+    .maybeSingle();
+  const planName = tenant?.plan ?? "free";
+  const { data: limits } = await supabase
+    .from("plan_limits")
+    .select("max_projects")
+    .eq("plan", planName)
+    .maybeSingle();
+  const maxProjects = limits?.max_projects ?? 3;
+  if (maxProjects >= 0) {
+    const { count } = await supabase
+      .from("projects")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenant_id);
+    if ((count ?? 0) >= maxProjects) {
+      if (planName === "free") {
+        throw new Error("Limite de 3 projetos atingido. Faça upgrade para continuar.");
+      }
+      throw new Error(
+        `Limite de ${maxProjects} projetos atingido no plano ${planName}. Faça upgrade em /settings/billing.`,
+      );
+    }
+  }
+
+  const { data: row, error } = await supabase
+    .from("projects")
+    .insert({
+      name: data.name,
+      description: data.description ?? null,
+      status: "active",
+      created_by: userId,
+      tenant_id,
+      metadata: data.client ? { client: data.client } : {},
+    })
+    .select("id, name, metadata")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const { error: diagramError } = await supabase.from("diagrams").insert({
+    project_id: row.id,
+    name: "main",
+    version: 1,
+    canvas_data: EMPTY_SNAPSHOT as unknown as Json,
+  });
+
+  if (diagramError) {
+    // Evitar registro órfão/inconsistente caso a criação do diagrama inicial falhe
+    await supabase.from("projects").delete().eq("id", row.id);
+    throw new Error(`Falha ao criar diagrama do projeto: ${diagramError.message}`);
+  }
+
+  const metadata = row.metadata as Record<string, unknown> | null;
+  return {
+    id: row.id,
+    name: row.name,
+    client: (metadata?.client as string | null) ?? null,
+  };
 }
 
 // ── Server Functions ───────────────────────────────────────────
@@ -230,61 +323,7 @@ export const createProject = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
-    const { supabase, userId, claims } = authCtx;
-    const tenant_id = await ensureTenant(supabase, userId, claims);
-
-    const { data: tenant } = await supabase
-      .from("tenants")
-      .select("plan")
-      .eq("id", tenant_id)
-      .maybeSingle();
-    const planName = tenant?.plan ?? "free";
-    const { data: limits } = await supabase
-      .from("plan_limits")
-      .select("max_projects")
-      .eq("plan", planName)
-      .maybeSingle();
-    const maxProjects = limits?.max_projects ?? 3;
-    if (maxProjects >= 0) {
-      const { count } = await supabase
-        .from("projects")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenant_id);
-      if ((count ?? 0) >= maxProjects) {
-        if (planName === "free") {
-          throw new Error("Limite de 3 projetos atingido. Faça upgrade para continuar.");
-        }
-        throw new Error(
-          `Limite de ${maxProjects} projetos atingido no plano ${planName}. Faça upgrade em /settings/billing.`,
-        );
-      }
-    }
-
-    const { data: row, error } = await supabase
-      .from("projects")
-      .insert({
-        name: data.name,
-        description: data.description ?? null,
-        created_by: userId,
-        tenant_id,
-        metadata: data.client ? { client: data.client } : {},
-      })
-      .select("id, name, metadata")
-      .single();
-    if (error) throw new Error(error.message);
-
-    await supabase.from("diagrams").insert({
-      project_id: row.id,
-      name: "main",
-      canvas_data: EMPTY_SNAPSHOT as unknown as Json,
-    });
-
-    const metadata = row.metadata as Record<string, unknown> | null;
-    return {
-      id: row.id,
-      name: row.name,
-      client: (metadata?.client as string | null) ?? null,
-    };
+    return createProjectRecord(authCtx, data);
   });
 
 export const loadProject = createServerFn({ method: "POST" })
@@ -364,6 +403,7 @@ export const saveProject = createServerFn({ method: "POST" })
         .insert({
           project_id: data.projectId,
           name: "main",
+          version: 1,
           canvas_data: data.snapshot as unknown as Json,
         })
         .select("id, version")
@@ -460,6 +500,7 @@ export const duplicateProject = createServerFn({ method: "POST" })
       .insert({
         name: newName,
         description: original.description,
+        status: "active",
         created_by: userId,
         tenant_id,
         metadata: original.metadata,
@@ -469,11 +510,16 @@ export const duplicateProject = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // Copy diagram snapshot
-    await supabase.from("diagrams").insert({
+    const { error: diagramError } = await supabase.from("diagrams").insert({
       project_id: row.id,
       name: "main",
+      version: 1,
       canvas_data: (diagram?.canvas_data ?? EMPTY_SNAPSHOT) as unknown as Json,
     });
+    if (diagramError) {
+      await supabase.from("projects").delete().eq("id", row.id);
+      throw new Error(`Falha ao duplicar diagrama do projeto: ${diagramError.message}`);
+    }
 
     return { id: row.id, name: row.name };
   });

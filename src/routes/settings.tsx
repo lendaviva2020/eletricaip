@@ -131,9 +131,9 @@ function SettingsPage() {
             <SettingsLinkCard
               icon={Sparkles}
               title="Status da IA"
-              desc="Diagnóstico da chave DeepSeek, ping e histórico de chamadas"
+              desc="Diagnóstico da chave Google Gemini, ping e histórico de chamadas"
               to="/settings/ai-status"
-              badge="DeepSeek"
+              badge="Gemini 3.1 Pro"
             />
             <SettingsLinkCard
               icon={Shield}

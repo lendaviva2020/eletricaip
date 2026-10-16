@@ -10,9 +10,54 @@
 // - IEC 60909-0: curto-circuito em redes de corrente alternada (c, ip, Ztr).
 // - IEC 60947-1 / 60947-4-5: coordenação e seletividade de aparelhagem.
 // - IEEE 1584.1 / 1584-2002: energia incidente de arco elétrico.
-// - NBR 5410: queda de tensão admissível (reutilizada de electrical-calc).
+// - NBR 5410: dimensionamento de condutores (Tabelas 36, 37, 38, 40, 41, 42)
+//   e queda de tensão com impedância complexa (motor unificado em electrical-calc).
 
-import { voltageDrop_pct } from "@/lib/electrical-calc";
+import {
+  ampacityIz,
+  calcVoltageDrop,
+  correctedAmpacityIz,
+  groupingFactorKg,
+  pickBreaker_A,
+  pickCable_mm2,
+  sizeConductorNBR5410,
+  temperatureFactorKt,
+  verifyOverloadCoordination,
+  voltageDrop_pct,
+  type AmpacityOptions,
+  type CableSection_mm2,
+  type CableSizingOptions,
+  type CableSizingResult,
+  type InstallationMethod,
+  type InsulationType,
+  type LoadedConductors,
+  type OverloadCoordinationResult,
+  type VoltageDropCalcResult,
+  type VoltageDropOptions,
+} from "@/lib/electrical-calc";
+
+export {
+  ampacityIz,
+  calcVoltageDrop,
+  correctedAmpacityIz,
+  groupingFactorKg,
+  pickBreaker_A,
+  pickCable_mm2,
+  sizeConductorNBR5410,
+  temperatureFactorKt,
+  verifyOverloadCoordination,
+  voltageDrop_pct,
+  type AmpacityOptions,
+  type CableSection_mm2,
+  type CableSizingOptions,
+  type CableSizingResult,
+  type InstallationMethod,
+  type InsulationType,
+  type LoadedConductors,
+  type OverloadCoordinationResult,
+  type VoltageDropCalcResult,
+  type VoltageDropOptions,
+};
 
 const SQRT3 = Math.sqrt(3);
 
@@ -437,17 +482,38 @@ export function motorStartThermal(
   };
 }
 
-// ---------------- Queda de tensão ----------------
+// ---------------- Queda de tensão e dimensionamento NBR 5410 ----------------
+
+export interface VoltageDropCircuitOptions extends VoltageDropOptions {
+  voltage_V?: number;
+  cosphi?: number;
+  limit_pct?: number;
+  installationMethod?: InstallationMethod;
+  insulation?: InsulationType;
+  loadedConductors?: LoadedConductors;
+  ambientTemp_C?: number;
+  groupedCircuits?: number;
+  breaker_A?: number;
+}
 
 export interface VoltageDropResult {
   circuitId: string;
   length_m: number;
   current_A: number;
   cable_mm2: number;
+  voltage_drop_V: number;
   voltage_drop_pct: number;
+  resistance_ohm: number;
+  reactance_ohm: number;
   /** NBR 5410: ≤3% em iluminação, ≤5% em força. */
   limit_pct: number;
   within_limit: boolean;
+  /** Capacidade de condução corrigida I'_z (A) segundo NBR 5410. */
+  Iz_corrected_A: number;
+  /** Atende I_b <= I'_z (e I_b <= I_n <= I'_z quando disjuntor informado). */
+  thermal_adequate: boolean;
+  /** Seção mínima recomendada (mm²) combinando critério térmico + queda de tensão. */
+  recommended_cable_mm2: number;
 }
 
 export function voltageDropCircuit(
@@ -455,24 +521,54 @@ export function voltageDropCircuit(
   current_A: number,
   length_m: number,
   cable_mm2: number,
-  opts: { voltage_V?: number; cosphi?: number; limit_pct?: number } = {},
+  opts: VoltageDropCircuitOptions = {},
 ): VoltageDropResult {
   const limit = opts.limit_pct ?? 5;
-  const drop = voltageDrop_pct(
-    current_A,
+  const voltage_V = opts.voltage_V ?? 380;
+  const cosphi = opts.cosphi ?? 0.86;
+  const vd = calcVoltageDrop(current_A, length_m, cable_mm2, voltage_V, cosphi, {
+    phases: opts.phases,
+    reactance_mOhm_per_m: opts.reactance_mOhm_per_m,
+    includeReactance: opts.includeReactance,
+    rho_ohm_mm2_per_m: opts.rho_ohm_mm2_per_m,
+  });
+
+  const ampOpts: AmpacityOptions = {
+    method: opts.installationMethod ?? "C",
+    insulation: opts.insulation ?? "PVC",
+    loadedConductors: opts.loadedConductors ?? (opts.phases && opts.phases < 3 ? 2 : 3),
+    ambientTemp_C: opts.ambientTemp_C,
+    groupedCircuits: opts.groupedCircuits ?? 1,
+  };
+  const IzCorrected = correctedAmpacityIz(cable_mm2, ampOpts);
+  const thermalAdequate =
+    opts.breaker_A !== undefined
+      ? verifyOverloadCoordination(current_A, opts.breaker_A, IzCorrected).coordinated
+      : current_A <= IzCorrected + 1e-6;
+
+  const recommended = sizeConductorNBR5410(current_A, {
+    ...ampOpts,
+    breaker_A: opts.breaker_A,
     length_m,
-    cable_mm2,
-    opts.voltage_V ?? 380,
-    opts.cosphi ?? 0.86,
-  );
+    maxVoltageDrop_pct: limit,
+    voltage_V,
+    cosphi,
+  }).section_mm2;
+
   return {
     circuitId,
     length_m,
     current_A: round1(current_A),
     cable_mm2,
-    voltage_drop_pct: drop,
+    voltage_drop_V: vd.deltaV_V,
+    voltage_drop_pct: vd.deltaV_pct,
+    resistance_ohm: vd.resistance_ohm,
+    reactance_ohm: vd.reactance_ohm,
     limit_pct: limit,
-    within_limit: drop <= limit,
+    within_limit: vd.deltaV_pct <= limit,
+    Iz_corrected_A: IzCorrected,
+    thermal_adequate: thermalAdequate,
+    recommended_cable_mm2: recommended,
   };
 }
 

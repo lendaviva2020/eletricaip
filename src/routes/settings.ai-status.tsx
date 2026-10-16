@@ -21,7 +21,7 @@ export const Route = createFileRoute("/settings/ai-status")({
       { title: "Status da IA · EletricAI Industrial OS" },
       {
         name: "description",
-        content: "Diagnóstico da integração com o motor de IA (DeepSeek): chave, ping e histórico.",
+        content: "Diagnóstico da integração com o motor de IA (Google Gemini 3.1 Pro): chave, ping e histórico.",
       },
     ],
   }),
@@ -64,8 +64,8 @@ function AiStatusPage() {
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Status da IA Industrial</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Provedor: <span className="font-mono text-foreground">DeepSeek</span> · modelo{" "}
-              <span className="font-mono text-foreground">deepseek-chat</span>
+              Provedor: <span className="font-mono text-foreground">Google Gemini</span> · modelo{" "}
+              <span className="font-mono text-foreground">{health?.model ?? "gemini-3.1-pro-preview"}</span>
             </p>
           </div>
           <button
@@ -93,7 +93,7 @@ function AiStatusPage() {
           />
           <Card
             icon={CheckCircle2}
-            label="Último ping ao DeepSeek"
+            label="Último ping ao Google Gemini"
             tone={health?.pingOk ? "ok" : health == null ? "warn" : "err"}
             value={
               health?.pingOk ? `200 OK` : health?.pingStatus ? `HTTP ${health.pingStatus}` : "—"
@@ -121,28 +121,19 @@ function AiStatusPage() {
                   <li>
                     Gere uma nova chave em{" "}
                     <a
-                      href="https://platform.deepseek.com/api_keys"
+                      href="https://aistudio.google.com/app/apikey"
                       target="_blank"
                       rel="noreferrer"
                       className="underline inline-flex items-center gap-1 text-primary"
                     >
-                      platform.deepseek.com/api_keys <ExternalLink className="h-3 w-3" />
+                      aistudio.google.com/app/apikey <ExternalLink className="h-3 w-3" />
                     </a>{" "}
-                    e confirme que sua conta tem créditos.
+                    e confirme que sua API do Google Gemini está ativa.
                   </li>
                   <li>
-                    No Supabase, abra{" "}
-                    <a
-                      href={`https://supabase.com/dashboard/project/${import.meta.env.VITE_SUPABASE_PROJECT_ID}/settings/functions`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline inline-flex items-center gap-1 text-primary"
-                    >
-                      Settings → Edge Functions → Secrets <ExternalLink className="h-3 w-3" />
-                    </a>{" "}
-                    e atualize{" "}
+                    No painel da Vercel ou do Supabase Secrets, configure a variável de ambiente{" "}
                     <code className="px-1 py-0.5 rounded bg-muted text-[12px]">
-                      DEEPSEEK_API_KEY
+                      GEMINI_API_KEY
                     </code>
                     .
                   </li>

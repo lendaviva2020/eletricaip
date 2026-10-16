@@ -69,6 +69,13 @@ const CircuitInput = z.object({
   voltage_V: z.number().positive().max(30000).optional(),
   cosphi: z.number().gt(0).max(1).optional(),
   limit_pct: z.number().gt(0).max(20).optional(),
+  installationMethod: z.enum(["A1", "A2", "B1", "B2", "C", "D", "E", "F"]).optional(),
+  insulation: z.enum(["PVC", "EPR", "XLPE"]).optional(),
+  ambientTemp_C: z.number().min(10).max(60).optional(),
+  groupedCircuits: z.number().int().min(1).max(50).optional(),
+  breaker_A: z.number().positive().max(6300).optional(),
+  phases: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  reactance_mOhm_per_m: z.number().min(0).max(5).optional(),
 });
 
 const MotorStartInput = z.object({
@@ -219,12 +226,24 @@ function compute(study: StudyInput): ComputedStudy {
           voltage_V: c.voltage_V,
           cosphi: c.cosphi,
           limit_pct: c.limit_pct,
+          installationMethod: c.installationMethod,
+          insulation: c.insulation,
+          ambientTemp_C: c.ambientTemp_C,
+          groupedCircuits: c.groupedCircuits,
+          breaker_A: c.breaker_A,
+          phases: c.phases,
+          reactance_mOhm_per_m: c.reactance_mOhm_per_m,
         }),
       );
       for (const c of circuits) {
         if (!c.within_limit) {
           warnings.push(
-            `Circuito ${c.circuitId}: queda de tensão ${c.voltage_drop_pct}% acima do limite ${c.limit_pct}% (NBR 5410).`,
+            `Circuito ${c.circuitId}: queda de tensão ${c.voltage_drop_pct}% acima do limite ${c.limit_pct}% (NBR 5410 — seção recomendada ≥ ${c.recommended_cable_mm2} mm²).`,
+          );
+        }
+        if (!c.thermal_adequate) {
+          warnings.push(
+            `Circuito ${c.circuitId}: capacidade térmica corrigida I'z = ${c.Iz_corrected_A} A insuficiente para I_b = ${c.current_A} A (NBR 5410 — seção recomendada ≥ ${c.recommended_cable_mm2} mm²).`,
           );
         }
       }

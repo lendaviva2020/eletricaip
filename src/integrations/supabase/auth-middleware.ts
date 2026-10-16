@@ -96,7 +96,10 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
 
     const applyPayload = (payload: Record<string, unknown>) => {
       userId = typeof payload.sub === "string" ? payload.sub : undefined;
-      claims = (payload["app_metadata"] as Record<string, unknown> | undefined) ?? {};
+      claims = {
+        ...((payload["app_metadata"] as Record<string, unknown> | undefined) ?? {}),
+        email: payload["email"],
+      };
     };
 
     const issuer = `${SUPABASE_URL.replace(/\/$/, "")}/auth/v1`;
@@ -123,7 +126,10 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
           throw new Response("Unauthorized: Invalid token", { status: 401 });
         }
         userId = data.user.id;
-        claims = (data.user.app_metadata as Record<string, unknown> | undefined) ?? {};
+        claims = {
+          ...((data.user.app_metadata as Record<string, unknown> | undefined) ?? {}),
+          email: data.user.email,
+        };
       }
     }
 

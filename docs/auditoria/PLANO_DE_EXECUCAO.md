@@ -142,26 +142,26 @@
 
 ---
 
-## Fase 5: Conformidade dos Cálculos e Estudos Elétricos (NBR 5410)
+## Fase 5: Conformidade dos Cálculos e Estudos Elétricos (NBR 5410) ✅ (Concluída)
 **Objetivo:** Elevar os cálculos de dimensionamento ao padrão exigido pelas normas técnicas brasileiras.
 
-### Tarefa 5.1 — Dimensionamento de Condutores Conforme NBR 5410
-- **Arquivo afetado:** `src/lib/electrical-calc.ts:34-57`
+### Tarefa 5.1 — Dimensionamento de Condutores Conforme NBR 5410 ✅
+- **Arquivo afetado:** `src/lib/electrical-calc.ts`, `src/lib/electrical-sim.ts`, `src/lib/norm-validator.ts`
 - **Ação:** Implementar as tabelas canônicas de capacidade de condução de corrente da NBR 5410 (Tabelas 36, 37 e 38):
-  - Seleção por método de instalação (A1, A2, B1, B2, C, D, E, F).
-  - Fator de correção de temperatura ambiente ($k_t$).
-  - Fator de agrupamento de circuitos ($k_g$).
-  - Verificação da coordenação de sobrecarga: $I_b \le I_n \le I'_z$.
+  - Seleção por método de instalação (A1, A2, B1, B2, C, D, E, F) e isolação (PVC 70 °C, EPR/XLPE 90 °C, 2 e 3 condutores carregados).
+  - Fator de correção de temperatura ambiente ($k_t$ — Tabelas 40 e 41).
+  - Fator de agrupamento de circuitos ($k_g$ — Tabela 42).
+  - Verificação da coordenação de sobrecarga: $I_b \le I_n \le I'_z$ e $I_2 \le 1,45 \cdot I'_z$ (§5.3.4.1).
 - **Critério de Aceitação:** O cálculo de seção do condutor varia conforme o método de instalação e o agrupamento informados.
-- **Teste de Verificação:** Testes unitários com casos de referência do livro de Instalações Elétricas (Mamede / Credder).
+- **Teste de Verificação:** Testes unitários em `src/__tests__/nbr5410-ampacity.test.ts` com casos de referência do livro de Instalações Elétricas (Mamede / Creder).
 - **Esforço:** 2 dias.
 
-### Tarefa 5.2 — Queda de Tensão com Reatância Indutiva
-- **Arquivo afetado:** `src/lib/electrical-calc.ts:115-126`, `electrical-sim.ts:453`
-- **Ação:** Expandir a fórmula de queda de tensão para incluir a reatância dos cabos:
+### Tarefa 5.2 — Queda de Tensão com Reatância Indutiva ✅
+- **Arquivo afetado:** `src/lib/electrical-calc.ts`, `src/lib/electrical-sim.ts`, `src/lib/electrical-sim.functions.ts`
+- **Ação:** Expandir e unificar a fórmula de queda de tensão para incluir a reatância dos cabos:
   $$\Delta V = \sqrt{3} \cdot I \cdot (R \cdot \cos\varphi + X_L \cdot \sin\varphi)$$
-  adotando $X_L = 0,08\text{ m}\Omega/\text{m}$ para condutores acima de $35\text{ mm}^2$.
-- **Critério de Aceitação:** Comparação de queda de tensão em circuitos de alta potência com erro inferior a 1% em relação ao cálculo de engenharia.
+  adotando $X_L = 0,08\text{ m}\Omega/\text{m}$ para condutores de seção $\ge 35\text{ mm}^2$.
+- **Critério de Aceitação:** Comparação de queda de tensão em circuitos de alta potência com erro inferior a 1% em relação ao cálculo de engenharia (`src/__tests__/voltage-drop-reactance.test.ts`).
 - **Esforço:** 1 dia.
 
 ---

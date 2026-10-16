@@ -30,8 +30,8 @@
 | **Unitário** | `src/__tests__/electrical-calc.test.ts` | Corrente nominal ($I_n$), partida ($I_{start}$), corrente de demanda e transformador. | Vitest | ✅ Aprovado (7 testes) |
 | **Unitário** | `src/__tests__/electrical-sim.test.ts` | Curto-circuito IEC 60909 ($I''_k, i_p$), seletividade IEC 60947, arco IEEE 1584, esforço térmico de motor ($I^2t$). | Vitest | ✅ Aprovado (26 testes) |
 | **Unitário** | `src/__tests__/multifilar.test.ts` | Dedução de condutores de fase/neutro/terra a partir do grafo unifilar e memorial descritivo. | Vitest | ✅ Aprovado (6 testes) |
-| **Unitário (Novo)** | `src/__tests__/nbr5410-ampacity.test.ts` | Capacidade de condução de corrente por método de instalação (A1..F), fatores $k_t$ e $k_g$ segundo NBR 5410. | Vitest | ⏳ A implementar (Fase 5) |
-| **Unitário (Novo)** | `src/__tests__/voltage-drop-reactance.test.ts` | Queda de tensão em cabos de $35\text{ mm}^2$ a $300\text{ mm}^2$ comparando modelo puramente resistivo vs com reatância indutiva. | Vitest | ⏳ A implementar (Fase 5) |
+| **Unitário (Novo)** | `src/__tests__/nbr5410-ampacity.test.ts` | Capacidade de condução de corrente por método de instalação (A1..F), fatores $k_t$ e $k_g$ segundo NBR 5410. | Vitest | ✅ Aprovado (12 testes) |
+| **Unitário (Novo)** | `src/__tests__/voltage-drop-reactance.test.ts` | Queda de tensão em cabos de $35\text{ mm}^2$ a $300\text{ mm}^2$ comparando modelo puramente resistivo vs com reatância indutiva. | Vitest | ✅ Aprovado (6 testes) |
 
 ### 2.2 Automação, CLPs e Lógica Industrial
 | Tipo | Suíte de Teste | Escopo / Cenários | Ferramenta | Status Atual |
