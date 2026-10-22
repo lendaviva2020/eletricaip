@@ -30,14 +30,21 @@ function ForgotPage() {
   return (
     <AuthShell title="Recuperar senha" subtitle="Enviaremos um link para redefinir sua senha.">
       {sent ? (
-        <div className="rounded-md border border-success/40 bg-success/10 p-4 text-sm">
+        <div
+          role="status"
+          className="rounded-md border border-success/40 bg-success/10 p-4 text-sm"
+        >
           Enviamos um email para <span className="font-mono">{email}</span>. Verifique sua caixa de
           entrada.
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-3">
           <Input label="Email" type="email" value={email} onChange={setEmail} required />
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-destructive">
+              {error}
+            </p>
+          )}
           <button
             disabled={loading}
             type="submit"

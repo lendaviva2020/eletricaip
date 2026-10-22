@@ -88,31 +88,8 @@ function IntegrationsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-5 space-y-3">
-            <h2 className="text-sm font-semibold">MQTT</h2>
-            <div className="grid grid-cols-3 gap-3">
-              <FieldT label="Broker">
-                <Input
-                  value={value.mqtt.broker}
-                  onChange={(e) => update({ mqtt: { ...value.mqtt, broker: e.target.value } })}
-                />
-              </FieldT>
-              <FieldT label="Client ID">
-                <Input
-                  value={value.mqtt.clientId}
-                  onChange={(e) => update({ mqtt: { ...value.mqtt, clientId: e.target.value } })}
-                />
-              </FieldT>
-              <FieldT label="Usuário">
-                <Input
-                  value={value.mqtt.username}
-                  onChange={(e) => update({ mqtt: { ...value.mqtt, username: e.target.value } })}
-                />
-              </FieldT>
-            </div>
-          </CardContent>
-        </Card>
+        {/* MQTT oculto (Fase 7.1): cliente MQTT over WebSockets ainda não implementado.
+            Reexibir o card quando a integração real existir. */}
 
         <Button onClick={save} disabled={isSaving}>
           {isSaving ? "Salvando..." : "Salvar configurações"}

@@ -13,7 +13,8 @@ import {
   Compass,
 } from "lucide-react";
 import { callArchitect, applyArchitectToStore, AIServiceError } from "@/lib/ai-architect-client";
-import { getAiCredits } from "@/lib/ai-architect.functions";
+import { extractBriefingServerFn, getAiCredits } from "@/lib/ai-architect.functions";
+import type { BriefingDocumentInput } from "@/lib/ai/briefing-parser";
 import { useProjectStore } from "@/lib/project-store";
 import { validateProject } from "@/lib/norm-validator";
 import { useServerFn } from "@tanstack/react-start";
@@ -41,6 +42,7 @@ export function CanvasAiChat() {
   const [fileStep, setFileStep] = useState("");
   const [patchMode, setPatchMode] = useState(true);
   const fetchCredits = useServerFn(getAiCredits);
+  const extractBriefing = useServerFn(extractBriefingServerFn);
   const creditsQuery = useQuery({
     queryKey: ["ai-credits"],
     queryFn: () => fetchCredits(),
@@ -60,7 +62,7 @@ export function CanvasAiChat() {
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
-      text: "Olá, sou o **NexusMind**, sua IA especialista em automação e normas elétricas (ABNT/IEC).\n\nComo posso ajudar você no projeto hoje? Você pode digitar comandos ou arrastar um arquivo PDF de briefing!",
+      text: "Olá, sou o **NexusMind**, sua IA especialista em automação e normas elétricas (ABNT/IEC).\n\nComo posso ajudar você no projeto hoje? Você pode digitar comandos ou enviar um arquivo CSV/TXT/PDF de briefing!",
     },
   ]);
 
@@ -94,7 +96,7 @@ export function CanvasAiChat() {
     return () => window.removeEventListener("ai-usage-event", handler);
   }, [creditsQuery]);
 
-  const send = async (textToSend?: string) => {
+  const send = async (textToSend?: string, briefingDocument?: BriefingDocumentInput) => {
     const p = (textToSend ?? val).trim();
     if (!p || busy) return;
     if (!textToSend) setVal("");
@@ -122,7 +124,13 @@ export function CanvasAiChat() {
         : p;
 
       if (patchMode) {
-        const res: any = await genPatch({ data: { prompt: contextualPrompt, doc: diagramDoc } });
+        const res: any = await genPatch({
+          data: {
+            prompt: contextualPrompt,
+            doc: diagramDoc,
+            ...(briefingDocument ? { briefingDocument } : {}),
+          },
+        });
         if (!res || res.ok !== true) {
           const code = res?.error?.code ?? "UNKNOWN";
           const message =
@@ -155,7 +163,7 @@ export function CanvasAiChat() {
           });
         }
       } else {
-        const r = await callArchitect(contextualPrompt, true);
+        const r = await callArchitect(contextualPrompt, true, briefingDocument);
         setMsgs((m) => {
           const c = [...m];
           c[c.length - 1] = {
@@ -205,7 +213,7 @@ export function CanvasAiChat() {
     }
   };
 
-  // Processa arquivos reais de texto/CSV ou informa limitação técnica para PDFs binários
+  // Pipeline real de extração de documentos de briefing (CSV / TXT / JSON / PDF) no servidor (Fase 6.1)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -213,47 +221,89 @@ export function CanvasAiChat() {
     // Reseta o input para permitir selecionar o mesmo arquivo novamente
     e.target.value = "";
 
-    const isText =
-      file.name.endsWith(".txt") ||
-      file.name.endsWith(".csv") ||
-      file.name.endsWith(".json") ||
-      file.name.endsWith(".md") ||
+    const lowerName = file.name.toLowerCase();
+    const isPdf = lowerName.endsWith(".pdf") || file.type === "application/pdf";
+    const isSupportedText =
+      lowerName.endsWith(".txt") ||
+      lowerName.endsWith(".csv") ||
+      lowerName.endsWith(".json") ||
+      lowerName.endsWith(".md") ||
       file.type.startsWith("text/");
 
-    if (isText) {
-      try {
-        setFileLoading(true);
-        setFileStep("Lendo conteúdo do arquivo...");
-        const text = await file.text();
-        const snippet = text.slice(0, 4000);
-        setFileLoading(false);
-        setFileStep("");
-
-        const promptWithFile = `[Arquivo anexado: ${file.name}]\nConteúdo:\n${snippet}\n\nPor favor, analise a lista de cargas/especificações acima e proponha a arquitetura elétrica correspondente.`;
-        await send(promptWithFile);
-      } catch (err) {
-        setFileLoading(false);
-        setFileStep("");
-        setMsgs((m) => [
-          ...m,
-          { role: "user", text: `[Arquivo: ${file.name}]` },
-          {
-            role: "ai",
-            text: `Erro ao ler o arquivo: ${err instanceof Error ? err.message : String(err)}`,
-          },
-        ]);
-      }
-    } else {
-      // PDF ou arquivos binários
+    if (!isPdf && !isSupportedText) {
       setMsgs((m) => [
         ...m,
-        {
-          role: "user",
-          text: `[Arquivo enviado: ${file.name}]`,
-        },
+        { role: "user", text: `[Arquivo enviado: ${file.name}]` },
         {
           role: "ai",
-          text: `📄 O arquivo **${file.name}** foi recebido. A extração direta por OCR para arquivos PDF/DWG escaneados está em desenvolvimento na esteira industrial.\n\nPara que o copiloto projete o circuito a partir das suas especificações, por favor importe uma lista de cargas em formato **.csv**, **.txt** ou **.json**, ou cole os requisitos no chat.`,
+          text: `Formato não suportado (${file.name}). Envie um arquivo de briefing em **.csv**, **.txt**, **.json** ou **.pdf**.`,
+        },
+      ]);
+      return;
+    }
+
+    try {
+      setFileLoading(true);
+      setFileStep("Extraindo e validando especificações de engenharia...");
+
+      let docInput: BriefingDocumentInput;
+      if (isPdf) {
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        docInput = {
+          fileName: file.name,
+          mimeType: file.type || "application/pdf",
+          content: btoa(binary),
+          encoding: "base64",
+        };
+      } else {
+        const text = await file.text();
+        docInput = {
+          fileName: file.name,
+          mimeType: file.type || "text/plain",
+          content: text.slice(0, 200_000),
+          encoding: "utf8",
+        };
+      }
+
+      const extractedRes = await extractBriefing({ data: docInput });
+      const briefing = extractedRes.briefing;
+
+      setFileLoading(false);
+      setFileStep("");
+
+      if (isPdf && !briefing.extractedText.trim() && briefing.motors.length === 0) {
+        setMsgs((m) => [
+          ...m,
+          { role: "user", text: `[Arquivo enviado: ${file.name}]` },
+          {
+            role: "ai",
+            text: `📄 O PDF **${file.name}** não possui camada de texto selecionável (provável imagem escaneada).\n\nEnvie uma lista de cargas em **.csv**, **.txt** ou um **.pdf** com texto selecionável.`,
+          },
+        ]);
+        return;
+      }
+
+      const motorCountMsg =
+        briefing.motors.length > 0
+          ? `(${briefing.motors.length} motores identificados: ${briefing.motors.map((m) => `${m.id} ${m.power_kW}kW`).join(", ")})`
+          : "";
+
+      const promptWithFile = `[Briefing anexado: ${file.name}] ${motorCountMsg}\n\n${briefing.formattedPromptBlock}\n\nProjete a arquitetura elétrica completa correspondente ao briefing acima em conformidade com a NBR 5410 e NR-12.`;
+      await send(promptWithFile, docInput);
+    } catch (err) {
+      setFileLoading(false);
+      setFileStep("");
+      setMsgs((m) => [
+        ...m,
+        { role: "user", text: `[Arquivo: ${file.name}]` },
+        {
+          role: "ai",
+          text: `Erro ao processar o briefing: ${err instanceof Error ? err.message : String(err)}`,
         },
       ]);
     }

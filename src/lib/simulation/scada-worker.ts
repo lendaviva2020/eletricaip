@@ -12,8 +12,10 @@
 //       `sessionStorage` all blocked.
 //   (D) `tags` is a defensive Proxy — prevents prototype pollution and
 //       access to internal objects.
-//   (E) Host enforces a 250ms timeout via ScriptSandbox → terminates
-//       infinite loops automatically.
+//   (E) Host enforces a 100ms timeout via ScriptSandbox → worker.terminate()
+//       encerra loops infinitos e o worker é recriado automaticamente.
+//       Intrínsecos (Object/Array/Function + protótipos) são congelados
+//       via freezeIntrinsics() antes de qualquer script rodar.
 //   (F) Single-flight guarantee — no concurrent script executions.
 //   (G) Script pre-scan rejects patterns that attempt prototype or
 //       constructor chaining.
@@ -22,6 +24,7 @@
 // sandbox) is tracked in backlog item #SCADA-02.
 
 import { neutralizeMessageChannelGlobals } from "./worker-guards";
+import { freezeIntrinsics } from "./sandbox-hardening";
 
 type Req = {
   reqId: number;
@@ -150,6 +153,11 @@ self.addEventListener("message", (ev: MessageEvent<Req>) => {
 // que um script malicioso usaria para sequestrar o canal de mensagens ou
 // persistir entre requisições (inclui notação de colchetes e aliases).
 neutralizeMessageChannelGlobals(self as unknown as Record<string, unknown>);
+
+// Fase 7.2: congela intrínsecos (Object/Array/Function... e protótipos) antes de
+// qualquer script de usuário rodar, impedindo poluição de protótipo.
+freezeIntrinsics(self as unknown as Record<string, unknown>);
+
 
 const BLOCKED_PROPERTIES = new Set([
   "__proto__",

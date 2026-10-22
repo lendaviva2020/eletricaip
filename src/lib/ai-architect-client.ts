@@ -154,13 +154,32 @@ export function getStatusEvents(): StatusEvent[] {
 export async function callArchitect(
   prompt: string,
   includeContext = true,
+  briefingDocument?: {
+    fileName: string;
+    mimeType?: string;
+    content: string;
+    encoding?: "utf8" | "base64";
+  },
 ): Promise<ArchitectResult> {
   const context = includeContext
     ? { nodes: useProjectStore.getState().nodes, edges: useProjectStore.getState().edges }
     : undefined;
   const t0 = Date.now();
   try {
-    const res = await generateArchitecture({ data: { prompt, context } });
+    const res = await generateArchitecture({
+      data: {
+        prompt,
+        context,
+        ...(briefingDocument
+          ? {
+              briefingDocument: {
+                ...briefingDocument,
+                encoding: briefingDocument.encoding ?? "utf8",
+              },
+            }
+          : {}),
+      },
+    });
     if (!res.ok) {
       pushStatus({ ts: Date.now(), ok: false, code: res.error.code, ms: Date.now() - t0 });
       throw mapError(res.error.code, res.error.message);

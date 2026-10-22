@@ -86,6 +86,7 @@ interface EditorState {
 
   // === UI Layout Actions ===
   toggleLeftPanel: () => void;
+  setPanelsCollapsed: (left: boolean, right: boolean) => void;
   toggleRightPanel: () => void;
   setConsoleTab: (tab: ConsoleTab) => void;
   setConsoleOpen: (open: boolean) => void;
@@ -172,6 +173,12 @@ export const useEditorStore = create<EditorState>()(
 
     toggleLeftPanel: () => set((s) => ({ leftCollapsed: !s.leftCollapsed })),
     toggleRightPanel: () => set((s) => ({ rightCollapsed: !s.rightCollapsed })),
+    setPanelsCollapsed: (left, right) =>
+      set((s) =>
+        s.leftCollapsed === left && s.rightCollapsed === right
+          ? s
+          : { leftCollapsed: left, rightCollapsed: right },
+      ),
     setConsoleTab: (tab) => set({ consoleTab: tab }),
     setConsoleOpen: (open) => set({ consoleOpen: open }),
 

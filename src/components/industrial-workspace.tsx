@@ -17,6 +17,7 @@ import { useProjectPersistence } from "@/lib/use-project-persistence";
 import { isBreakerComponent, type VoltaiComponentType } from "@/lib/palette/component-catalog";
 import { LeftSidebarHost } from "@/components/editor/left-sidebar-host";
 import { useEditorStore } from "@/lib/editor/store";
+import { shouldAutoCollapsePanels } from "@/lib/editor/tablet-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { EditorAiConfigBanner } from "@/components/editor-ai-config-banner";
 import { OnboardingTour } from "@/components/onboarding-tour";
@@ -75,6 +76,15 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
     return () => setValidateComponent(null);
   }, [validateDraggedBreaker, setValidateComponent]);
 
+  // Fase 8.1: em tablets (< 1280px, ex.: 1024x768) inicia com painéis recolhidos
+  // para maximizar a área de desenho. Roda só na montagem; o usuário reabre pelas alças.
+  const setPanelsCollapsed = useEditorStore((s) => s.setPanelsCollapsed);
+  useEffect(() => {
+    if (typeof window !== "undefined" && shouldAutoCollapsePanels(window.innerWidth)) {
+      setPanelsCollapsed(true, true);
+    }
+  }, [setPanelsCollapsed]);
+
   const { loading, saveState } = useProjectPersistence(projectId);
 
   if (!projectId) {
@@ -89,13 +99,14 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
     <div className="flex-1 flex min-h-0 relative">
       {/* Painel Esquerdo */}
       {!leftCollapsed ? (
-        <div className="hidden lg:flex relative shrink-0 z-10">
+        <div className="hidden md:flex relative shrink-0 z-10">
           <LeftSidebarHost mode={mode} />
           {/* Botão para recolher o painel esquerdo */}
           <button
             onClick={toggleLeftPanel}
-            className="flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
+            className="flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 [@media(pointer:coarse)]:-right-7 bg-panel border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all touch-manipulation"
             title="Recolher painel esquerdo"
+            aria-label="Recolher painel esquerdo"
           >
             <ChevronLeft className="h-3 w-3" />
           </button>
@@ -104,8 +115,9 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         /* Alça elegante para expandir o painel esquerdo */
         <button
           onClick={toggleLeftPanel}
-          className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
+          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 bg-panel/85 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all touch-manipulation"
           title="Expandir painel esquerdo"
+          aria-label="Expandir painel esquerdo"
         >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
@@ -150,12 +162,13 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
 
       {/* Painel Direito */}
       {!rightCollapsed ? (
-        <div className="hidden lg:flex relative shrink-0 z-10">
+        <div className="hidden md:flex relative shrink-0 z-10">
           {/* Botão para recolher o painel direito */}
           <button
             onClick={toggleRightPanel}
-            className="flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all"
+            className="flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 [@media(pointer:coarse)]:-left-7 bg-panel border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all touch-manipulation"
             title="Recolher painel direito"
+            aria-label="Recolher painel direito"
           >
             <ChevronRight className="h-3 w-3" />
           </button>
@@ -165,8 +178,9 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         /* Alça elegante para expandir o painel direito */
         <button
           onClick={toggleRightPanel}
-          className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all"
+          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 bg-panel/85 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all touch-manipulation"
           title="Expandir painel direito"
+          aria-label="Expandir painel direito"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>

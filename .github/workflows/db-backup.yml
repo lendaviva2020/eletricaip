@@ -1,0 +1,62 @@
+name: Database Logical Backup & Restore Verification
+
+on:
+  schedule:
+    # Executa diariamente às 03:00 UTC (00:00 BRT)
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      verify_restore:
+        description: "Executar validação de pg_restore em banco secundário de teste"
+        required: false
+        default: "true"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  pg-backup-and-verify:
+    name: Daily pg_dump (30d Retention) & Restore Drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL 16 client tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Execute logical backup and S3/R2 upload (30-day retention)
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          BACKUP_S3_ENDPOINT_URL: ${{ secrets.BACKUP_S3_ENDPOINT_URL }}
+          BACKUP_RETENTION_DAYS: "30"
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_AWS_REGION || 'auto' }}
+        run: |
+          chmod +x scripts/backup-db.sh
+          ./scripts/backup-db.sh
+
+      - name: Verify restore in ephemeral PostgreSQL test instance
+        if: ${{ github.event_name == 'schedule' || inputs.verify_restore == 'true' }}
+        env:
+          BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          BACKUP_S3_ENDPOINT_URL: ${{ secrets.BACKUP_S3_ENDPOINT_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_AWS_REGION || 'auto' }}
+          TARGET_RESTORE_DATABASE_URL: ${{ secrets.TEST_RESTORE_DATABASE_URL }}
+        run: |
+          chmod +x scripts/restore-db.sh
+          DATE_PREFIX="$(date -u +"%Y-%m-%d")"
+          ENDPOINT_ARGS=()
+          if [[ -n "${BACKUP_S3_ENDPOINT_URL:-}" ]]; then
+            ENDPOINT_ARGS=(--endpoint-url "${BACKUP_S3_ENDPOINT_URL}")
+          fi
+          LATEST_FILE="$(aws s3 ls "${BACKUP_S3_BUCKET%/}/daily/${DATE_PREFIX}/" "${ENDPOINT_ARGS[@]}" | grep '\.dump$' | tail -n 1 | awk '{print $4}')"
+          ./scripts/restore-db.sh "${BACKUP_S3_BUCKET%/}/daily/${DATE_PREFIX}/${LATEST_FILE}"

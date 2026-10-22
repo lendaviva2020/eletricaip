@@ -83,7 +83,11 @@ function LoginPage() {
       <form onSubmit={handleEmail} className="space-y-3">
         <Input label="Email" type="email" value={email} onChange={setEmail} required />
         <Input label="Senha" type="password" value={password} onChange={setPassword} required />
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        {error && (
+          <p role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        )}
         <button
           disabled={loading}
           type="submit"

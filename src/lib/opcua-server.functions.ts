@@ -337,14 +337,22 @@ export const testOpcuaConnection = createServerFn({ method: "POST" })
     if (!data.endpoint.startsWith("opc.tcp://")) {
       throw new Error("Endpoint deve iniciar com opc.tcp://");
     }
-    // Simulated test: return success with some sample tags
+    // Fase 7.1: a nuvem pública não alcança CLPs de fábrica. Apenas endpoints de
+    // simulação retornam sucesso (sempre marcado como simulado); conexão física
+    // exige um Edge Gateway local (node-opcua) e não é testada a partir daqui.
+    if (!data.endpoint.toLowerCase().includes("simulation")) {
+      throw new Error(
+        "Conexão OPC-UA física indisponível na nuvem. Use o host 'simulation' ou configure um Edge Gateway local.",
+      );
+    }
     return {
       ok: true as const,
-      tagCount: 12,
+      simulated: true as const,
+      tagCount: 10,
       sampleTags: [
-        { nodeId: "ns=1;s=Temperature", displayName: "Temperatura", dataType: "Double" },
-        { nodeId: "ns=1;s=Pressure", displayName: "Pressão", dataType: "Double" },
-        { nodeId: "ns=1;s=Motor_Status", displayName: "Motor Status", dataType: "Boolean" },
+        { nodeId: "ns=2;s=Motor_01.Speed", displayName: "Motor_01.Speed", dataType: "Double" },
+        { nodeId: "ns=2;s=Tank_01.Level", displayName: "Tank_01.Level", dataType: "Double" },
+        { nodeId: "ns=2;s=System.Ready", displayName: "System.Ready", dataType: "Boolean" },
       ],
     };
   });

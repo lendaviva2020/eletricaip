@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { captureException, maskSensitiveString } from "@/lib/error-capture";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -21,7 +22,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[ErrorBoundary]", error.message, info.componentStack);
+    const captured = captureException(error, {
+      source: "ErrorBoundary",
+      componentStack: info.componentStack,
+    });
+    console.error("[ErrorBoundary]", captured.message, info.componentStack);
     this.props.onError?.(error, info);
   }
 
@@ -34,8 +39,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <div className="text-center max-w-md px-6">
             <div className="text-5xl font-mono text-destructive mb-4">!</div>
             <h2 className="text-lg font-semibold">Erro no componente</h2>
-            <p className="mt-2 text-sm text-muted-foreground break-all">
-              {this.state.error.message}
+            <p className="mt-2 text-sm text-muted-foreground break-all" role="alert">
+              {maskSensitiveString(this.state.error.message)}
             </p>
             <button
               onClick={() => this.setState({ error: null })}

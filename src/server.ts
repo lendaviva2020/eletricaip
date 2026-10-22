@@ -1,6 +1,10 @@
 import "./lib/error-capture";
 
-import { consumeLastCapturedError } from "./lib/error-capture";
+import {
+  captureException,
+  consumeLastCapturedError,
+  maskSensitiveString,
+} from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
 type ServerEntry = {
@@ -65,9 +69,16 @@ async function normalizeCatastrophicSsrResponse(
     return response;
   }
 
-  const captured = consumeLastCapturedError();
-  console.error(`[ssr:500] ${requestUrl}`);
-  console.error(captured ?? new Error(`h3 swallowed SSR error at ${requestUrl}: ${body}`));
+  const safeUrl = maskSensitiveString(requestUrl);
+  const captured =
+    consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error at ${safeUrl}: ${body}`);
+  const event = captureException(
+    captured,
+    { source: "ssr:500", url: safeUrl, status: response.status },
+    "fatal",
+  );
+  console.error(`[ssr:500] ${safeUrl} (eventId=${event.eventId})`);
+  console.error(event.stack ?? event.message);
   return brandedErrorResponse();
 }
 
@@ -78,8 +89,10 @@ export default {
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response, request.url);
     } catch (error) {
-      console.error(`[ssr:throw] ${request.url}`);
-      console.error(error);
+      const safeUrl = maskSensitiveString(request.url);
+      const event = captureException(error, { source: "ssr:throw", url: safeUrl }, "fatal");
+      console.error(`[ssr:throw] ${safeUrl} (eventId=${event.eventId})`);
+      console.error(event.stack ?? event.message);
       return brandedErrorResponse();
     }
   },

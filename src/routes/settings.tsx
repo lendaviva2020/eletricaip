@@ -38,7 +38,6 @@ export const Route = createFileRoute("/settings")({
 const PROTOCOLS: { name: string; desc: string }[] = [
   { name: "Modbus TCP/RTU", desc: "Comunicação serial e TCP para CLPs e IEDs" },
   { name: "OPC-UA", desc: "Servidor OPC-UA unificado para integração MES/SCADA" },
-  { name: "MQTT", desc: "Pub/sub leve para telemetria e borda industrial" },
   { name: "Profinet", desc: "Padrão Siemens para automação em tempo real" },
   { name: "EtherNet/IP", desc: "Protocolo CIP sobre Ethernet industrial" },
   { name: "BACnet", desc: "Automação predial e HVAC" },

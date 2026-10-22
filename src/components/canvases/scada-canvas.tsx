@@ -243,7 +243,7 @@ export function ScadaCanvas() {
   // além do warning de "setState on unmounted component".
   const isMountedRef = useRef(true);
 
-  if (!sandboxRef.current) sandboxRef.current = new ScriptSandbox(250);
+  if (!sandboxRef.current) sandboxRef.current = new ScriptSandbox();
   // Dispose sandbox + Monaco resources on unmount to prevent memory leaks.
   useEffect(() => {
     isMountedRef.current = true;

@@ -4,6 +4,7 @@
 // - Single-flight: nunca enfileira mais de uma chamada, para manter a cadência do tick.
 
 import { WorkerManager } from "@/lib/workers/worker-manager";
+import { SCADA_SCRIPT_TIMEOUT_MS } from "./sandbox-hardening";
 
 export interface SandboxResult {
   ok: boolean;
@@ -32,7 +33,7 @@ let seq = 0;
 export class ScriptSandbox {
   private manager: WorkerManager<SandboxRequest, SandboxResponse>;
 
-  constructor(private timeoutMs = 250) {
+  constructor(private timeoutMs: number = SCADA_SCRIPT_TIMEOUT_MS) {
     // Nome único por instância: o dedupe global do WorkerManager não deve
     // matar o sandbox de outro canvas montado ao mesmo tempo.
     this.manager = new WorkerManager<SandboxRequest, SandboxResponse>({

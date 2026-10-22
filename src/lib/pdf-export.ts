@@ -225,8 +225,21 @@ export function buildProjectPdf(opts: {
     align: "right",
   });
 
+  // Legal Disclaimer (Isenção de Responsabilidade Técnica — CREA / CFT)
+  y += 8;
+  if (y > pageH - 35) {
+    doc.addPage();
+    y = margin;
+  }
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(90);
+  const disclaimerLines = doc.splitTextToSize(ENGINEERING_LEGAL_DISCLAIMER, pageW - 2 * margin);
+  doc.text(disclaimerLines, margin, y);
+  doc.setTextColor(0);
+
   // Footer
-  const footer = `EletricAI · Documento gerado automaticamente · página `;
+  const footer = `EletricAI · Apoio de engenharia (exige validação e ART/TRT CREA/CFT) · página `;
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
@@ -237,3 +250,7 @@ export function buildProjectPdf(opts: {
 
   return doc;
 }
+
+export const ENGINEERING_LEGAL_DISCLAIMER =
+  "AVISO DE RESPONSABILIDADE TÉCNICA: Este memorial e os cálculos elétricos gerados pelo EletricAI servem exclusivamente como ferramenta de apoio à engenharia. A execução ou homologação de qualquer instalação exige conferência, validação presencial e emissão de ART/TRT por profissional legalmente habilitado (CREA/CFT), em conformidade com a ABNT NBR 5410, NBR 14039, NR-10 e NR-12.";
+

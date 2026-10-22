@@ -18,6 +18,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { ShareModal } from "@/components/share-modal";
 import { installDiagnosticsInterceptor } from "@/lib/diagnostics-counter";
+import { captureException, maskSensitiveString } from "@/lib/error-capture";
 
 if (typeof window !== "undefined") installDiagnosticsInterceptor();
 
@@ -56,13 +57,23 @@ function NotFound() {
 
 function ErrorComp({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
-  console.error(error);
-  const message = error instanceof Error ? error.message : String(error);
+  useEffect(() => {
+    const captured = captureException(error, {
+      source: "RootErrorComponent",
+      path: router.state?.location?.pathname,
+    });
+    console.error("[RootErrorComponent]", captured.message, captured.stack ?? "");
+  }, [error, router.state?.location?.pathname]);
+
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  const safeMessage = maskSensitiveString(rawMessage);
   return (
     <div className="min-h-screen grid place-items-center bg-background">
       <div className="text-center max-w-md">
         <h1 className="text-xl font-semibold">Falha no runtime</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{message}</p>
+        <p className="mt-2 text-sm text-muted-foreground" role="alert">
+          {safeMessage}
+        </p>
         <button
           onClick={() => {
             router.invalidate();

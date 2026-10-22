@@ -33,12 +33,27 @@ function ProtocolsPage() {
 
 function PageHeader() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold tracking-tight">Protocolos Industriais</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Configure conexões OPC-UA e Modbus TCP para integração com CLPs, sensores e sistemas de
-        supervisão.
-      </p>
+    <div className="space-y-3">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Protocolos Industriais</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Configure conexões OPC-UA e Modbus TCP para integração com CLPs, sensores e sistemas de
+          supervisão.
+        </p>
+      </div>
+      <div
+        role="note"
+        className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs text-amber-700 dark:text-amber-400 space-y-1"
+      >
+        <p className="font-semibold">Ambiente de Simulação / Mock de Nuvem</p>
+        <p>
+          Esta plataforma roda na nuvem pública e <strong>não se comunica diretamente com CLPs de
+          fábrica</strong>. As conexões abaixo operam em modo de simulação (host{" "}
+          <code>simulation</code>). Para comunicar com equipamentos reais é necessário um{" "}
+          <strong>Edge Gateway</strong> local (ex.: node-opcua / gateway Modbus na rede OT) que
+          encaminhe os dados de forma segura para a plataforma.
+        </p>
+      </div>
     </div>
   );
 }
@@ -83,8 +98,8 @@ function OpcUaSection() {
   return (
     <ProtocolSection
       icon={<Cable className="h-5 w-5" />}
-      title="OPC-UA"
-      description="Conecte-se a servidores OPC-UA para ler/escrever tags de CLPs e dispositivos de campo."
+      title="OPC-UA (Simulação)"
+      description="Servidor OPC-UA simulado na nuvem. Conexão física com CLPs requer Edge Gateway local."
     >
       <div className="space-y-4">
         <FormField label="Endpoint do servidor">
@@ -92,7 +107,7 @@ function OpcUaSection() {
             type="text"
             value={endpoint}
             onChange={(e) => setEndpoint(e.target.value)}
-            placeholder="opc.tcp://192.168.0.10:4840"
+            placeholder="opc.tcp://simulation:4840"
             className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm font-mono"
           />
         </FormField>
@@ -153,7 +168,7 @@ function OpcUaSection() {
               {testResult.ok ? (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  Conectado — {testResult.tags} tags encontradas
+                  Conectado (simulação) — {testResult.tags} tags encontradas
                 </>
               ) : (
                 <>
@@ -202,8 +217,8 @@ function ModbusSection() {
   return (
     <ProtocolSection
       icon={<Plug className="h-5 w-5" />}
-      title="Modbus TCP"
-      description="Conecte-se a dispositivos Modbus TCP (CLPs, inversores, medidores) via rede Ethernet industrial."
+      title="Modbus TCP (Simulação em Nuvem / Laboratório Virtual)"
+      description="Gateway Modbus simulado na nuvem. Comunicação com dispositivos físicos exige Edge Gateway na rede OT."
     >
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-4">

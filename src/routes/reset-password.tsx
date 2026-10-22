@@ -54,7 +54,11 @@ function ResetPage() {
           onChange={setConfirm}
           required
         />
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        {error && (
+          <p role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        )}
         <button
           disabled={loading || !ready}
           type="submit"

@@ -196,6 +196,14 @@ function NormsPanel() {
           <p className="text-[11px] text-muted-foreground mt-1">{i.note}</p>
         </div>
       ))}
+      <div
+        role="note"
+        className="rounded-md border border-warning/40 bg-warning/10 p-3 text-[10px] text-muted-foreground leading-relaxed"
+      >
+        <strong className="text-foreground">Aviso Técnico-Legal (CREA/CFT):</strong> Os estudos e
+        dimensionamentos servem como apoio de engenharia e exigem validação e emissão de ART/TRT por
+        profissional legalmente habilitado.
+      </div>
     </div>
   );
 }
