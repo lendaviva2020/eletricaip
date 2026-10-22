@@ -23,7 +23,7 @@ flowchart LR
 | Fase | Escopo Principal | Dependências | Risco | Esforço Estimado |
 | :--- | :--- | :--- | :--- | :--- |
 | **Fase A** | Auditoria arquitetural, inventário i18n e especificação de contratos | Nenhuma | Baixo | Concluída |
-| **Fase B** | `UnifiedProjectDoc` (v3), separação `useRuntimeStore` e fachada sobre stores existentes | Fase A | Médio | 2 a 3 sessões |
+| **Fase B** | `UnifiedProjectDoc` (v3), separação `useRuntimeStore` e fachada sobre stores existentes | Fase A | Médio | Concluída |
 | **Fase C** | Integração real entre Unifilar, Multifilar, Ladder, FBD, PLC, SCADA, Simulação, Twin e Estudos | Fase B | Alto | 4 a 5 sessões |
 | **Fase D** | Persistência atômica v3 no Supabase, controle de concorrência, versionamento e DXF/PDF | Fase B, Fase C | Médio | 2 sessões |
 | **Fase E** | Motor i18n tipado (`pt-BR` default / `en`), persistência de idioma (`profiles.locale` + `localStorage`) e detector de chaves faltantes | Fase A | Baixo | 1 a 2 sessões |
@@ -45,7 +45,7 @@ flowchart LR
 
 ---
 
-## Fase B — Contrato do Modelo Técnico Unificado e Separação de Runtime
+## Fase B — Contrato do Modelo Técnico Unificado e Separação de Runtime (Concluída)
 
 ### Arquivos e Módulos Existentes Afetados
 - [`src/lib/diagram/schema.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/diagram/schema.ts)

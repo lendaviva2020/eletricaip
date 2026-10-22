@@ -75,6 +75,8 @@ interface EditorState {
   releaseTag: (id: string) => void;
 
   setRungs: (rungs: LadderRung[] | ((prev: LadderRung[]) => LadderRung[])) => void;
+  /** Updates rung runtime visual fields (e.g. poweredOut) without marking design state dirty. */
+  setRungsRuntime: (rungs: LadderRung[] | ((prev: LadderRung[]) => LadderRung[])) => void;
   setFbdAll: (
     nodes: FbdNode[] | ((prev: FbdNode[]) => FbdNode[]),
     edges: FbdEdge[] | ((prev: FbdEdge[]) => FbdEdge[]),
@@ -152,6 +154,8 @@ export const useEditorStore = create<EditorState>()(
 
     setRungs: (rungs) =>
       set((s) => ({ rungs: typeof rungs === "function" ? rungs(s.rungs) : rungs, dirty: true })),
+    setRungsRuntime: (rungs) =>
+      set((s) => ({ rungs: typeof rungs === "function" ? rungs(s.rungs) : rungs })),
     setFbdAll: (nodes, edges) =>
       set((s) => ({
         fbdNodes: typeof nodes === "function" ? nodes(s.fbdNodes) : nodes,
