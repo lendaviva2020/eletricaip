@@ -240,6 +240,8 @@ export const EngineeringStudyRecordSchema = z.object({
   id: z.string().min(1),
   studyType: z.enum([
     "short_circuit",
+    "selectivity",
+    "thermal",
     "load_flow",
     "voltage_drop",
     "cable_sizing",

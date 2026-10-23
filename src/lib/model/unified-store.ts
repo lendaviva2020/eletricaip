@@ -18,6 +18,7 @@ import {
   defaultCategoryForKind,
   defaultPhasesForKind,
   defaultTerminalsForEquipment,
+  inferAreaFromAddress,
   type CanonicalCircuit,
   type CanonicalEquipment,
   type CanonicalTag,
@@ -110,6 +111,8 @@ export interface UnifiedProjectStoreState {
   // Sync Bridges
   syncLegacyStores: () => void;
   ingestDiagramDocChange: (diagramDoc: DiagramDoc) => void;
+  /** Vincula o editor Ladder/FBD ao bloco de programa indicado (por linguagem). */
+  setActiveProgramBlock: (blockId: string) => void;
 }
 
 // Reentrancy guard so syncingUnified -> Legacy does not trigger Legacy -> Unified
@@ -151,6 +154,8 @@ export function syncLegacyStoresFromUnifiedDoc(doc: UnifiedProjectDoc): void {
         forced: t.forced,
       })),
     );
+    lastEditorSignature = designSignature(useEditorStore.getState());
+    lastPlcSignature = JSON.stringify(usePlcStore.getState().project);
   } finally {
     isSyncingStores = false;
   }
@@ -747,12 +752,30 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
       syncLegacyStoresFromUnifiedDoc(get().doc);
     },
 
+    setActiveProgramBlock: (blockId) => {
+      const block = get().doc.plc.project.programBlocks.find((b) => b.id === blockId);
+      if (!block) return;
+      if (block.language !== "ladder" && block.language !== "fbd") return;
+      const nextDoc = produce(get().doc, (d) => {
+        if (block.language === "ladder") d.plc.activeLadderBlockId = blockId;
+        else d.plc.activeFbdBlockId = blockId;
+      });
+      set({ doc: nextDoc });
+    },
+
     ingestDiagramDocChange: (diagramDoc) => {
       if (isSyncingStores) return;
       const nextDoc = produce(get().doc, (d) => {
         d.views.diagramDocId = diagramDoc.id;
         d.views.sheets = [...diagramDoc.sheets];
 
+        const prevDiagramEquipmentIds = new Set<string>([
+          ...Object.values(d.views.unifilar.nodes).map((n) => n.equipmentId),
+          ...Object.values(d.views.multifilar.nodes).map((n) => n.equipmentId),
+        ]);
+        const prevUnifilarConnectionIds = new Set<string>(
+          Object.values(d.views.unifilar.edges).map((e) => e.connectionId),
+        );
         const seenEquipmentIds = new Set<string>();
         const nextUniNodes: typeof d.views.unifilar.nodes = {};
         const nextMultiNodes: typeof d.views.multifilar.nodes = {};
@@ -853,6 +876,18 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
           }
         }
 
+        // Poda: o que veio do diagrama e sumiu dele deixa de existir no modelo.
+        for (const eqId of prevDiagramEquipmentIds) {
+          if (seenEquipmentIds.has(eqId)) continue;
+          delete d.engineering.equipments[eqId];
+          for (const [bid, b] of Object.entries(d.engineering.controlBindings)) {
+            if (b.equipmentId === eqId) delete d.engineering.controlBindings[bid];
+          }
+        }
+        for (const connId of prevUnifilarConnectionIds) {
+          if (!nextUniEdges[connId]) delete d.engineering.connections[connId];
+        }
+
         d.views.unifilar.edges = nextUniEdges;
         d.views.multifilar.edges = nextMultiEdges;
         d.metadata.revision += 1;
@@ -860,21 +895,175 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
       });
 
       set({ doc: nextDoc, dirty: true });
-      // Also keep ProjectStore nodes/edges updated when WebglCanvas mutates DiagramStore
-      if (!isSyncingStores) {
-        isSyncingStores = true;
-        try {
-          const projected = projectLegacyViewsFromV3(nextDoc);
-          useProjectStore
-            .getState()
-            .hydrateSnapshot(projected.projectNodes, projected.projectEdges, projected.projectTags);
-        } finally {
-          isSyncingStores = false;
-        }
-      }
+      // Mantém o ProjectStore (usado pela Ponte/SCADA) atualizado quando o
+      // WebglCanvas edita o diagrama — sem apagar widgets SCADA nem tags.
+      mergeEquipmentsIntoProjectStore(nextDoc);
     },
   })),
 );
+
+// ── Ponte não destrutiva Diagrama → ProjectStore ────────────────────────────
+
+let knownEquipmentNodeIds = new Set<string>();
+let knownConnectionIds = new Set<string>();
+
+/**
+ * Atualiza no ProjectStore apenas o que deriva de equipamentos/conexões
+ * canônicos. Widgets SCADA, tags e demais nós já presentes são preservados.
+ */
+function mergeEquipmentsIntoProjectStore(doc: UnifiedProjectDoc): void {
+  if (isSyncingStores) return;
+  try {
+    const projected = projectLegacyViewsFromV3(doc);
+    const ps = useProjectStore.getState();
+
+    const eqNodes = projected.projectNodes.filter((n) => doc.engineering.equipments[n.id]);
+    const eqEdges = projected.projectEdges.filter((e) => doc.engineering.connections[e.id]);
+    const keptNodes = ps.nodes.filter(
+      (n) => !doc.engineering.equipments[n.id] && !knownEquipmentNodeIds.has(n.id),
+    );
+    const keptEdges = ps.edges.filter(
+      (e) => !doc.engineering.connections[e.id] && !knownConnectionIds.has(e.id),
+    );
+    knownEquipmentNodeIds = new Set(eqNodes.map((n) => n.id));
+    knownConnectionIds = new Set(eqEdges.map((e) => e.id));
+
+    useProjectStore.setState({
+      nodes: [...keptNodes, ...eqNodes],
+      edges: [...keptEdges, ...eqEdges],
+    });
+  } catch (err) {
+    console.warn("[unified-store] falha ao projetar equipamentos no ProjectStore:", err);
+  }
+}
+
+const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
+/** Assinatura estrutural: ignora campos puramente de runtime. */
+function designSignature(es: ReturnType<typeof useEditorStore.getState>): string {
+  const rungs = es.rungs.map((r) => ({
+    ...r,
+    poweredOut: undefined,
+    cells: r.cells.map((row) => row.map((c) => ({ ...c, energized: undefined }))),
+  }));
+  const tags = Object.values(es.editorTags).map((t) => [t.id, t.name, t.type]);
+  return JSON.stringify([rungs, es.fbdNodes, es.fbdEdges, tags]);
+}
+
+let lastEditorSignature = "";
+
+/** Editor (Ladder/FBD/tags) → bloco PLC ativo do modelo canônico. */
+export function ingestEditorChange(): void {
+  if (isSyncingStores) return;
+  const es = useEditorStore.getState();
+  const sig = designSignature(es);
+  if (sig === lastEditorSignature) return;
+  lastEditorSignature = sig;
+
+  const rungs = clone(es.rungs);
+  const fbdNodes = clone(es.fbdNodes);
+  const fbdEdges = clone(es.fbdEdges);
+
+  const nextDoc = produce(useUnifiedProjectStore.getState().doc, (d) => {
+    const lb = d.plc.project.programBlocks.find(
+      (b) => b.id === d.plc.activeLadderBlockId && b.language === "ladder",
+    );
+    if (lb) lb.ladder = { rungs };
+    const fb = d.plc.project.programBlocks.find(
+      (b) => b.id === d.plc.activeFbdBlockId && b.language === "fbd",
+    );
+    if (fb && (fbdNodes.length > 0 || fbdEdges.length > 0 || fb.fbd)) {
+      fb.fbd = { nodes: fbdNodes, edges: fbdEdges };
+    }
+
+    for (const t of Object.values(es.editorTags)) {
+      const byId = d.engineering.tags[t.id];
+      const byName = Object.values(d.engineering.tags).find((x) => x.name === t.name);
+      if (byId) {
+        byId.name = t.name;
+        byId.forced = t.forced;
+      } else if (!byName) {
+        d.engineering.tags[t.id] = {
+          id: t.id,
+          name: t.name,
+          dataType: t.type === "STRING" ? "STRING" : t.type,
+          area: inferAreaFromAddress(undefined, t.name),
+          initialValue: t.value,
+          forced: t.forced,
+          retentive: false,
+          description: "",
+        };
+      }
+    }
+    d.metadata.revision += 1;
+    d.metadata.updatedAt = new Date().toISOString();
+  });
+
+  useUnifiedProjectStore.setState({ doc: nextDoc, dirty: true });
+
+  // Espelha no PlcStore (sem reentrada) para que o PlcCanvas nunca veja um
+  // bloco defasado em relação ao editor.
+  isSyncingStores = true;
+  try {
+    const plc = usePlcStore.getState();
+    const activeLadder = nextDoc.plc.activeLadderBlockId;
+    const activeFbd = nextDoc.plc.activeFbdBlockId;
+    const lb = plc.project.programBlocks.find((b) => b.id === activeLadder);
+    if (lb?.language === "ladder") plc.updateBlock(lb.id, { ladder: { rungs } });
+    const fb = plc.project.programBlocks.find((b) => b.id === activeFbd);
+    if (fb?.language === "fbd" && (fbdNodes.length > 0 || fbdEdges.length > 0 || fb.fbd)) {
+      plc.updateBlock(fb.id, { fbd: { nodes: fbdNodes, edges: fbdEdges } });
+    }
+  } finally {
+    isSyncingStores = false;
+  }
+}
+
+let lastPlcSignature = "";
+
+/** PlcStore (variáveis, rack, blocos) → modelo canônico. */
+export function ingestPlcProjectChange(): void {
+  if (isSyncingStores) return;
+  const project = usePlcStore.getState().project;
+  const sig = JSON.stringify(project);
+  if (sig === lastPlcSignature) return;
+  lastPlcSignature = sig;
+
+  const nextProject = clone(project);
+  const nextDoc = produce(useUnifiedProjectStore.getState().doc, (d) => {
+    const prevVarIds = new Set(d.plc.project.variables.map((v) => v.id));
+    const nextVarIds = new Set(nextProject.variables.map((v) => v.id));
+
+    d.plc.project = nextProject;
+
+    for (const v of nextProject.variables) {
+      const prev = d.engineering.tags[v.id];
+      d.engineering.tags[v.id] = {
+        id: v.id,
+        name: v.name,
+        dataType: v.type,
+        area: inferAreaFromAddress(v.address, v.name),
+        address: v.address,
+        unit: prev?.unit,
+        scaleMin: prev?.scaleMin,
+        scaleMax: prev?.scaleMax,
+        initialValue: v.initialValue ?? prev?.initialValue ?? (v.type === "BOOL" ? false : 0),
+        forced: prev?.forced ?? false,
+        retentive: v.retentive,
+        description: v.comment,
+        linkedEquipmentId: prev?.linkedEquipmentId,
+        linkedTerminalId: prev?.linkedTerminalId,
+        plcChannelId: prev?.plcChannelId,
+      };
+    }
+    for (const id of prevVarIds) {
+      if (!nextVarIds.has(id)) delete d.engineering.tags[id];
+    }
+    d.metadata.revision += 1;
+    d.metadata.updatedAt = new Date().toISOString();
+  });
+  useUnifiedProjectStore.setState({ doc: nextDoc, dirty: true });
+}
 
 // Automatically subscribe to DiagramStore dispatches so WebglCanvas edits
 // immediately populate UnifiedProjectStore and ProjectStore!
@@ -885,3 +1074,24 @@ useDiagramStore.subscribe(
     useUnifiedProjectStore.getState().ingestDiagramDocChange(doc);
   },
 );
+
+lastEditorSignature = designSignature(useEditorStore.getState());
+lastPlcSignature = JSON.stringify(usePlcStore.getState().project);
+
+useEditorStore.subscribe((s, prev) => {
+  if (isSyncingStores) return;
+  if (
+    s.rungs === prev.rungs &&
+    s.fbdNodes === prev.fbdNodes &&
+    s.fbdEdges === prev.fbdEdges &&
+    s.editorTags === prev.editorTags
+  ) {
+    return;
+  }
+  ingestEditorChange();
+});
+
+usePlcStore.subscribe((s, prev) => {
+  if (isSyncingStores || s.project === prev.project) return;
+  ingestPlcProjectChange();
+});

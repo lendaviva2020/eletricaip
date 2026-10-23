@@ -78,8 +78,19 @@ export function clearMultifilarCommands(doc: DiagramDoc): Command[] {
   return commands;
 }
 
+/** Identidade canônica do equipamento de um nó (ui.equipmentId ou o próprio id). */
+export function equipmentIdOf(node: DiagramNode): string {
+  const ui = node.ui?.equipmentId;
+  return typeof ui === "string" && ui.length > 0 ? ui : node.id;
+}
+
+/** Id determinístico do espelho multifilar de um equipamento. */
+export const multifilarNodeIdFor = (equipmentId: string): string => `mf_${equipmentId}`;
+export const multifilarEdgeIdFor = (unifilarEdgeId: string): string => `mf_${unifilarEdgeId}`;
+
 /** Gera os comandos AddNode/AddEdge que criam a sheet "multifilar" a
- * partir do estado atual da sheet "unifilar". */
+ *  partir do estado atual da sheet "unifilar". Cada nó multifilar mantém o
+ *  vínculo (`ui.equipmentId`) com o equipamento unifilar de origem. */
 export function buildMultifilarCommands(doc: DiagramDoc): Command[] {
   const unifilarNodes = Object.values(doc.nodes).filter((n) => n.sheet === "unifilar");
   const unifilarEdges = Object.values(doc.edges).filter((e) => e.sheet === "unifilar");
@@ -87,13 +98,18 @@ export function buildMultifilarCommands(doc: DiagramDoc): Command[] {
   const idMap = new Map<string, string>();
 
   for (const n of unifilarNodes) {
-    const clone = makeNode({
-      sheet: "multifilar",
-      params: n.params,
-      position: n.position,
-      label: n.label,
-      rotation: n.rotation,
-    });
+    const equipmentId = equipmentIdOf(n);
+    const clone: DiagramNode = {
+      ...makeNode({
+        id: multifilarNodeIdFor(equipmentId),
+        sheet: "multifilar",
+        params: n.params,
+        position: n.position,
+        label: n.label,
+        rotation: n.rotation,
+      }),
+      ui: { ...(n.ui ?? {}), equipmentId },
+    };
     idMap.set(n.id, clone.id);
     commands.push({ type: "AddNode", node: clone });
   }
@@ -104,6 +120,7 @@ export function buildMultifilarCommands(doc: DiagramDoc): Command[] {
     if (!newSource || !newTarget) continue;
     const config = inferCircuitConfig(e, doc.nodes[e.source], doc.nodes[e.target]);
     const clone = makeEdge({
+      id: multifilarEdgeIdFor(e.id),
       sheet: "multifilar",
       source: newSource,
       target: newTarget,
@@ -117,6 +134,163 @@ export function buildMultifilarCommands(doc: DiagramDoc): Command[] {
   }
 
   return commands;
+}
+
+/**
+ * Sincronização incremental Unifilar → Multifilar. Diferente de limpar e
+ * regenerar, preserva os nós já existentes (e portanto a posição ajustada
+ * manualmente): atualiza apenas parâmetros e rótulo, adiciona o que falta e
+ * remove espelhos cujo equipamento deixou de existir no unifilar.
+ */
+export function syncMultifilarCommands(doc: DiagramDoc): Command[] {
+  const unifilarNodes = Object.values(doc.nodes).filter((n) => n.sheet === "unifilar");
+  const unifilarEdges = Object.values(doc.edges).filter((e) => e.sheet === "unifilar");
+  const mfNodes = Object.values(doc.nodes).filter((n) => n.sheet === "multifilar");
+  const mfEdges = Object.values(doc.edges).filter((e) => e.sheet === "multifilar");
+  const commands: Command[] = [];
+
+  const mfByEquipment = new Map<string, DiagramNode>();
+  for (const m of mfNodes) mfByEquipment.set(equipmentIdOf(m), m);
+
+  const liveEquipmentIds = new Set<string>();
+  const uniToMf = new Map<string, string>();
+
+  for (const n of unifilarNodes) {
+    const equipmentId = equipmentIdOf(n);
+    liveEquipmentIds.add(equipmentId);
+    const existing = mfByEquipment.get(equipmentId);
+    if (existing) {
+      uniToMf.set(n.id, existing.id);
+      if (JSON.stringify(existing.params) !== JSON.stringify(n.params)) {
+        commands.push({
+          type: "UpdateNodeParams",
+          nodeId: existing.id,
+          from: existing.params,
+          to: n.params,
+        });
+      }
+      if (existing.label !== n.label) {
+        commands.push({
+          type: "UpdateNodeLabel",
+          nodeId: existing.id,
+          from: existing.label,
+          to: n.label,
+        });
+      }
+    } else {
+      const clone: DiagramNode = {
+        ...makeNode({
+          id: multifilarNodeIdFor(equipmentId),
+          sheet: "multifilar",
+          params: n.params,
+          position: n.position,
+          label: n.label,
+          rotation: n.rotation,
+        }),
+        ui: { ...(n.ui ?? {}), equipmentId },
+      };
+      uniToMf.set(n.id, clone.id);
+      commands.push({ type: "AddNode", node: clone });
+    }
+  }
+
+  const liveMfEdgeIds = new Set<string>();
+  for (const e of unifilarEdges) {
+    const source = uniToMf.get(e.source);
+    const target = uniToMf.get(e.target);
+    if (!source || !target) continue;
+    const id = multifilarEdgeIdFor(e.id);
+    liveMfEdgeIds.add(id);
+    const config = inferCircuitConfig(e, doc.nodes[e.source], doc.nodes[e.target]);
+    const existing = doc.edges[id];
+    if (existing && existing.source === source && existing.target === target) {
+      if (existing.circuitConfig !== config) {
+        commands.push({ type: "RemoveEdge", edgeId: id });
+        commands.push({ type: "AddEdge", edge: { ...existing, circuitConfig: config } });
+      }
+      continue;
+    }
+    if (existing) commands.push({ type: "RemoveEdge", edgeId: id });
+    commands.push({
+      type: "AddEdge",
+      edge: makeEdge({
+        id,
+        sheet: "multifilar",
+        source,
+        target,
+        sourcePort: e.sourcePort,
+        targetPort: e.targetPort,
+        kind: e.kind,
+        cable: e.cable,
+        circuitConfig: config,
+      }),
+    });
+  }
+
+  for (const me of mfEdges) {
+    if (me.id.startsWith("mf_") && !liveMfEdgeIds.has(me.id)) {
+      commands.push({ type: "RemoveEdge", edgeId: me.id });
+    }
+  }
+  for (const m of mfNodes) {
+    if (!liveEquipmentIds.has(equipmentIdOf(m)) && m.id.startsWith("mf_")) {
+      commands.push({ type: "RemoveNode", nodeId: m.id });
+    }
+  }
+
+  return commands;
+}
+
+export interface MultifilarPhaseMismatch {
+  code: "MULTIFILAR_PHASE_MISMATCH";
+  edgeId: string;
+  /** equipmentIds envolvidos */
+  entityIds: string[];
+  /** Pólos disponíveis no dispositivo de proteção/manobra. */
+  availablePoles: number;
+  /** Pólos exigidos pela carga/equipamento trifásico. */
+  requiredPoles: number;
+}
+
+const THREE_PHASE_KINDS: ReadonlySet<NodeKind> = new Set([
+  "motor",
+  "transformer",
+  "vfd",
+  "softstarter",
+  "ccm",
+]);
+
+/**
+ * Detecta ramos em que um dispositivo de proteção com menos pólos alimenta
+ * um equipamento trifásico. A expansão automática desse ramo NÃO deve ser
+ * considerada válida: o usuário precisa decidir (nunca inventamos pólos).
+ */
+export function detectMultifilarPhaseMismatches(doc: DiagramDoc): MultifilarPhaseMismatch[] {
+  const out: MultifilarPhaseMismatch[] = [];
+  for (const e of Object.values(doc.edges)) {
+    if (e.sheet !== "unifilar" || e.kind !== "power") continue;
+    const src = doc.nodes[e.source];
+    const tgt = doc.nodes[e.target];
+    if (!src || !tgt) continue;
+    for (const [device, load] of [
+      [src, tgt],
+      [tgt, src],
+    ] as const) {
+      const p = device.params;
+      if ((p.kind === "breaker" || p.kind === "rcd") && THREE_PHASE_KINDS.has(load.params.kind)) {
+        if (p.poles < 3) {
+          out.push({
+            code: "MULTIFILAR_PHASE_MISMATCH",
+            edgeId: e.id,
+            entityIds: [equipmentIdOf(device), equipmentIdOf(load)],
+            availablePoles: p.poles,
+            requiredPoles: 3,
+          });
+        }
+      }
+    }
+  }
+  return out;
 }
 
 // ── Memorial descritivo ────────────────────────────────────────

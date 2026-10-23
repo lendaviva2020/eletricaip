@@ -20,6 +20,7 @@ import {
 import { validateRungs } from "@/lib/ladder/validator";
 import { groupIssuesByRung } from "@/lib/ladder/validator-ui";
 import { useEditorStore } from "@/lib/editor/store";
+import { useRuntimeStore } from "@/lib/model/runtime-store";
 import { LadderCellView } from "./ladder-cell";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -57,6 +58,7 @@ const MAX_HISTORY = 200;
 export function RungGrid() {
   const rungs = useEditorStore((s) => s.rungs);
   const setRungs = useEditorStore((s) => s.setRungs);
+  const setRungsRuntime = useEditorStore((s) => s.setRungsRuntime);
 
   useEffect(() => {
     if (rungs.length === 0) {
@@ -97,11 +99,24 @@ export function RungGrid() {
       }
       scanCountRef.current += 1;
       setScanState(Object.fromEntries(results.map((r) => [r.rungId, r])));
-      setRungs((rs) =>
+      setRungsRuntime((rs) =>
         rs.map((r) => {
           const found = results.find((x) => x.rungId === r.id);
           return found ? { ...r, poweredOut: found.poweredOut } : r;
         }),
+      );
+      useRuntimeStore.getState().setLadderScanState(
+        Object.fromEntries(
+          results.map((r) => {
+            const cellEnergized: Record<string, boolean> = {};
+            r.perCell.forEach((row, ri) =>
+              row.forEach((on, ci) => {
+                cellEnergized[`${ri}:${ci}`] = on;
+              }),
+            );
+            return [r.rungId, { rungId: r.rungId, poweredOut: r.poweredOut, cellEnergized }];
+          }),
+        ),
       );
 
       // Capture tag deltas

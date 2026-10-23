@@ -19,6 +19,7 @@ import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { LazyTwin3DViewer as Twin3DViewer } from "./lazy";
 import { useDigitalTwinStore } from "@/lib/digital-twin-store";
+import { useRuntimeStore, useUnifiedProjectStore } from "@/lib/model";
 
 interface TelemetryHistory {
   t: number;
@@ -35,6 +36,12 @@ export function TwinCanvas() {
   // o cliente configura os hotspots lá; aqui só consome o que já existe.
   // Não semeamos mais demo automaticamente (ver seed-digital-twin.ts).
   const twinMappings = useDigitalTwinStore((s) => s.mappings);
+  const canonicalTwinMappings = useUnifiedProjectStore((s) => s.doc.views.twin.mappings);
+  const canonicalTags = useUnifiedProjectStore((s) => s.doc.engineering.tags);
+  const canonicalBindings = useUnifiedProjectStore((s) => s.doc.engineering.controlBindings);
+  const canonicalEquipments = useUnifiedProjectStore((s) => s.doc.engineering.equipments);
+  const canonicalNameplates = useUnifiedProjectStore((s) => s.doc.views.twin.nameplates);
+  const runtimeTagValues = useRuntimeStore((s) => s.tagValuesById);
 
   // ===== "What-If" Simulation Mode =====
   const [view3d, setView3d] = useState(false);
@@ -51,16 +58,69 @@ export function TwinCanvas() {
   const editorTags = useEditorStore((s) => s.editorTags);
   const isLive = useProjectStore((s) => s.runtime.connected);
 
-  // Poll values for drawing and buffering
+  // Poll values for drawing and buffering — resolves canonical TwinMapping + ControlBinding + RuntimeStore first
   const getActiveTag = (name: string): number => {
+    const upper = name.toUpperCase();
+
+    // 1. Canonical TwinMapping hotspots (Contract 6)
+    for (const m of [...canonicalTwinMappings, ...twinMappings]) {
+      for (const h of m.hotspots) {
+        if (h.tag.toUpperCase().includes(upper) || h.label.toUpperCase().includes(upper)) {
+          const byId = runtimeTagValues[h.tag];
+          if (byId !== undefined) return Number(byId);
+          const matchedTag = Object.values(canonicalTags).find(
+            (t) => t.name.toUpperCase() === h.tag.toUpperCase(),
+          );
+          if (matchedTag && runtimeTagValues[matchedTag.id] !== undefined) {
+            return Number(runtimeTagValues[matchedTag.id]);
+          }
+        }
+      }
+    }
+
+    // 2. Canonical ControlBindings (Contract 6: equipment + role -> tagId)
+    for (const b of Object.values(canonicalBindings)) {
+      const rawVal = runtimeTagValues[b.tagId];
+      if (rawVal === undefined) continue;
+      const eq = canonicalEquipments[b.equipmentId];
+      if (
+        upper === "SPEED" &&
+        (b.role === "vfd_speed_ref" || b.role === "vfd_run_feedback")
+      ) {
+        return Number(rawVal);
+      }
+      if (
+        (upper === "LEVEL" || upper === "NIVEL") &&
+        b.role === "sensor_process_value" &&
+        eq?.catalogType === "level"
+      ) {
+        return Number(rawVal);
+      }
+      if (b.role === "main_contactor_coil" && Boolean(rawVal)) {
+        const motorEq = Object.values(canonicalEquipments).find((e) => e.catalogType === "motor");
+        const np = motorEq ? canonicalNameplates[motorEq.id] : undefined;
+        if (upper === "SPEED") return np?.rpm ?? 1750;
+        if (upper === "CURRENT")
+          return np?.correnteNominalA ?? motorEq?.specs.nominalCurrentA ?? 14.5;
+      }
+    }
+
+    // 3. Canonical Tags in RuntimeStore by tag.id or tag.name
+    for (const tag of Object.values(canonicalTags)) {
+      if (tag.id === name || tag.name.toUpperCase().includes(upper)) {
+        if (runtimeTagValues[tag.id] !== undefined) {
+          return Number(runtimeTagValues[tag.id]);
+        }
+      }
+    }
+
+    // 4. Legacy fallback: projectStore & editorStore
     let result = 0;
-    // Extract from project store
     Object.entries(projectTags).forEach(([key, val]) => {
-      if (key.toUpperCase().includes(name.toUpperCase())) result = Number(val);
+      if (key.toUpperCase().includes(upper)) result = Number(val);
     });
-    // Extract from editor store
     Object.values(editorTags).forEach((tag) => {
-      if (tag.name.toUpperCase() === name.toUpperCase()) result = Number(tag.value);
+      if (tag.name.toUpperCase() === upper) result = Number(tag.value);
     });
     return result;
   };
@@ -75,13 +135,16 @@ export function TwinCanvas() {
   // ≈ load% above no-load current. Voltage sag depresses torque ∝ V².
   // Temperature ≈ I² * R rise above ambient.
   const whatIf = useMemo(() => {
+    const primaryMotorNp = Object.values(canonicalNameplates)[0];
+    const nominalRpm = primaryMotorNp ? primaryMotorNp.rpm / (1 - 0.03) : 1500;
+    const nominalIn = primaryMotorNp?.correnteNominalA ?? 14.5;
     const loadFactor = 1 + loadDelta / 100;
     const vFactor = 1 + voltageDelta / 100;
-    // Speed: nominal 1450 rpm, slip ~3% at full load, scales with load and 1/V²
+    // Speed: nominal rpm, slip ~3% at full load, scales with load and 1/V²
     const slipNom = 0.03;
-    const predictedSpeed = 1500 * (1 - (slipNom * loadFactor) / (vFactor * vFactor));
+    const predictedSpeed = nominalRpm * (1 - (slipNom * loadFactor) / (vFactor * vFactor));
     // Current rises ~linear with load, inverse with voltage
-    const predictedCurrent = Math.max(0, (currentVal || 14.5) * loadFactor) / vFactor;
+    const predictedCurrent = Math.max(0, (currentVal || nominalIn) * loadFactor) / vFactor;
     // Winding temp = 25°C ambient + ambientDelta + I²·k over horizon
     const predictedTemp =
       25 + ambientDelta + Math.pow(predictedCurrent, 2) * 0.18 + Math.min(15, horizonH * 0.6);

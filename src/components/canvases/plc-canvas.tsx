@@ -35,6 +35,7 @@ import {
 } from "@/lib/plc/types";
 import { canAddModule, validateRack } from "@/lib/plc/rack-validation";
 import { useEditorStore, type EditorTag, type FbdNode, type FbdEdge } from "@/lib/editor/store";
+import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { compileProgram } from "@/lib/ladder/compiler";
 import { compileFbdNodesToSt } from "@/lib/fbd/editor-bridge";
 import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
@@ -171,29 +172,50 @@ export function PlcCanvas() {
       }
     }
 
-    // Hydrate incoming block state
+    // Hydrate incoming block state — sem apagar o estado das outras linguagens
+    // (hydrateSnapshot zera o que não for informado) nem o trabalho ainda não
+    // salvo do bloco ao qual o editor Ladder/FBD está vinculado.
     if (activeBlock) {
+      const unified = useUnifiedProjectStore.getState();
+      const boundLadderId = unified.doc.plc.activeLadderBlockId;
+      const boundFbdId = unified.doc.plc.activeFbdBlockId;
+      unified.setActiveProgramBlock(activeBlock.id);
+
       const blockTags = buildBlockEditorTags(activeBlock);
       if (activeBlock.language === "ladder") {
+        const stored = (activeBlock.ladder?.rungs ?? []) as LadderRung[];
+        const keepEditor =
+          stored.length === 0 && editorState.rungs.length > 0 && boundLadderId === activeBlock.id;
         hydrateEditor({
-          rungs: (activeBlock.ladder?.rungs ?? []) as LadderRung[],
+          rungs: keepEditor ? editorState.rungs : stored,
+          fbdNodes: editorState.fbdNodes,
+          fbdEdges: editorState.fbdEdges,
+          fbdSim: editorState.fbdSim,
           editorTags: blockTags,
         });
       } else if (activeBlock.language === "fbd") {
+        const storedNodes = (activeBlock.fbd?.nodes as FbdNode[]) ?? [];
+        const storedEdges = (activeBlock.fbd?.edges as FbdEdge[]) ?? [];
+        const keepEditor =
+          storedNodes.length === 0 &&
+          editorState.fbdNodes.length > 0 &&
+          boundFbdId === activeBlock.id;
         hydrateEditor({
-          fbdNodes: (activeBlock.fbd?.nodes as FbdNode[]) ?? [],
-          fbdEdges: (activeBlock.fbd?.edges as FbdEdge[]) ?? [],
+          rungs: editorState.rungs,
+          fbdNodes: keepEditor ? editorState.fbdNodes : storedNodes,
+          fbdEdges: keepEditor ? editorState.fbdEdges : storedEdges,
+          fbdSim: editorState.fbdSim,
           editorTags: blockTags,
         });
       }
     }
 
     prevBlockIdRef.current = activeBlockId;
-    prevBlockIdRef.current = activeBlockId;
-    // activeBlock omitted intentionally — it's derived from programBlocks which
-    // we mutate inside this effect. Including it would cause re-hydration loops.
+    // Só reidrata quando o bloco ativo muda. `project.programBlocks` é mutado
+    // por este mesmo efeito (e pela ponte editor → modelo); incluí-lo causaria
+    // re-hidratações em cascata.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBlockId, project.programBlocks, updateBlock, hydrateEditor, buildBlockEditorTags]);
+  }, [activeBlockId]);
 
   // #PLC-02 — Compile current block (Ladder/FBD → ST), persist into block.code
   const handleCompile = () => {

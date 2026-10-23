@@ -3,7 +3,7 @@
 // partida e queda de tensão (NBR 5410).
 //
 // Resultados são apoio de engenharia, não projeto executivo — Termos §10.
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import {
   type ElectricalStudyResults,
 } from "@/lib/electrical-sim.functions";
 import { useProjectStore } from "@/lib/project-store";
+import { useUnifiedProjectStore, type UnifiedProjectDoc } from "@/lib/model";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,9 +35,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calculator, Loader2, Play, Trash2, Zap } from "lucide-react";
+import { AlertTriangle, Calculator, Loader2, Play, RefreshCw, Trash2, Zap } from "lucide-react";
 
-type StudyKind = "short_circuit" | "selectivity" | "arc_flash" | "thermal" | "voltage_drop";
+export type StudyKind = "short_circuit" | "selectivity" | "arc_flash" | "thermal" | "voltage_drop";
 
 const KIND_LABEL: Record<StudyKind, string> = {
   short_circuit: "Curto-circuito (IEC 60909)",
@@ -67,6 +68,135 @@ const DEFAULT_VALUES: Record<StudyKind, Record<string, string>> = {
     grouped: "1",
   },
 };
+
+/**
+ * Contrato 7 — Extrai parâmetros padrão e IDs de equipamentos dependentes a
+ * partir do modelo canônico (`UnifiedProjectDoc`).
+ */
+export function deriveStudyDefaultsFromModel(
+  doc: UnifiedProjectDoc,
+  kind: StudyKind,
+): {
+  values: Record<string, string>;
+  inputEquipmentIds: string[];
+} {
+  const base = { ...DEFAULT_VALUES[kind] };
+  const equipments = Object.values(doc.engineering.equipments);
+  const connections = Object.values(doc.engineering.connections);
+
+  if (kind === "short_circuit") {
+    const trafo = equipments.find((e) => e.catalogType === "transformer");
+    if (!trafo) return { values: base, inputEquipmentIds: [] };
+    const secV = trafo.specs.secondaryV ?? trafo.specs.voltageV ?? 380;
+    return {
+      values: {
+        power_kVA: String(trafo.specs.apparentPowerKva ?? 750),
+        secondary_V: String(secV),
+        impedance_pct: String(trafo.specs.impedancePct ?? 4.5),
+        voltage_V: String(secV),
+      },
+      inputEquipmentIds: [trafo.id],
+    };
+  }
+
+  if (kind === "selectivity") {
+    const protections = equipments
+      .filter((e) => e.catalogType === "breaker" || e.catalogType === "fuse")
+      .sort((a, b) => (b.specs.nominalCurrentA ?? 0) - (a.specs.nominalCurrentA ?? 0));
+    if (protections.length >= 2) {
+      const up = protections[0];
+      const down = protections[1];
+      const downIn = down.specs.nominalCurrentA ?? 40;
+      return {
+        values: {
+          ...base,
+          upRating: String(up.specs.nominalCurrentA ?? 250),
+          downRating: String(downIn),
+          downType: down.catalogType === "fuse" ? "fuse" : downIn >= 100 ? "MCCB" : "MCB",
+        },
+        inputEquipmentIds: [up.id, down.id],
+      };
+    }
+    if (protections.length === 1) {
+      const p = protections[0];
+      return {
+        values: {
+          ...base,
+          downRating: String(p.specs.nominalCurrentA ?? 40),
+        },
+        inputEquipmentIds: [p.id],
+      };
+    }
+    return { values: base, inputEquipmentIds: [] };
+  }
+
+  if (kind === "arc_flash") {
+    const trafoAndBreakers = equipments
+      .filter((e) => e.catalogType === "transformer" || e.catalogType === "breaker")
+      .map((e) => e.id);
+    const scStudy = doc.studies["study_short_circuit"];
+    const scIk = (scStudy?.results as { shortCircuit?: { Ik3ph_kA?: number } } | undefined)
+      ?.shortCircuit?.Ik3ph_kA;
+    if (typeof scIk === "number" && scIk > 0) {
+      base.ik_kA = String(scIk);
+    }
+    return { values: base, inputEquipmentIds: trafoAndBreakers };
+  }
+
+  if (kind === "thermal") {
+    const motor = equipments.find((e) => e.catalogType === "motor");
+    if (!motor) return { values: base, inputEquipmentIds: [] };
+    const v = motor.specs.voltageV ?? 380;
+    const pf = motor.specs.powerFactor ?? 0.85;
+    const eff = motor.specs.efficiency ?? 0.9;
+    const derivedIn =
+      motor.specs.nominalCurrentA ??
+      (motor.specs.powerKw
+        ? Number(((motor.specs.powerKw * 1000) / (Math.sqrt(3) * v * pf * eff)).toFixed(1))
+        : 11.6);
+    return {
+      values: {
+        In: String(derivedIn),
+        Istart: String(Number((derivedIn * 7).toFixed(1))),
+        duration: base.duration,
+      },
+      inputEquipmentIds: [motor.id],
+    };
+  }
+
+  if (kind === "voltage_drop") {
+    const load =
+      equipments.find((e) => e.catalogType === "motor") ??
+      equipments.find((e) => e.category === "load");
+    if (!load) return { values: base, inputEquipmentIds: [] };
+    const v = load.specs.voltageV ?? 380;
+    const pf = load.specs.powerFactor ?? 0.85;
+    const eff = load.specs.efficiency ?? 0.9;
+    const derivedIn =
+      load.specs.nominalCurrentA ??
+      (load.specs.powerKw
+        ? Number(((load.specs.powerKw * 1000) / (Math.sqrt(3) * v * pf * eff)).toFixed(1))
+        : 11.6);
+    const conn = connections.find(
+      (c) =>
+        c.kind === "power" && (c.toEquipmentId === load.id || c.fromEquipmentId === load.id),
+    );
+    return {
+      values: {
+        current: String(derivedIn),
+        length: String(conn?.conductor?.lengthM ?? 45),
+        cable: String(conn?.conductor?.crossSectionMm2 ?? 4),
+        voltage: String(v),
+        method: conn?.conductor?.installationMethod || "C",
+        temp: "30",
+        grouped: "1",
+      },
+      inputEquipmentIds: [load.id],
+    };
+  }
+
+  return { values: base, inputEquipmentIds: [] };
+}
 
 function Field({
   label,
@@ -212,14 +342,22 @@ function renderResults(results: ElectricalStudyResults): Array<[string, string]>
 
 export function ElectricalStudyPanel() {
   const projectId = useProjectStore((s) => s.projectId);
+  const unifiedDoc = useUnifiedProjectStore((s) => s.doc);
   const [kind, setKind] = useState<StudyKind>("short_circuit");
-  const [values, setValues] = useState<Record<string, string>>(DEFAULT_VALUES.short_circuit);
+  const derived = useMemo(() => deriveStudyDefaultsFromModel(unifiedDoc, kind), [unifiedDoc, kind]);
+  const [values, setValues] = useState<Record<string, string>>(() => derived.values);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
     results: ElectricalStudyResults;
     warnings: string[];
     standard: string;
   } | null>(null);
+
+  const canonicalStudy = unifiedDoc.studies[`study_${kind}`];
+
+  useEffect(() => {
+    setValues(deriveStudyDefaultsFromModel(useUnifiedProjectStore.getState().doc, kind).values);
+  }, [kind]);
 
   const runStudy = useServerFn(runElectricalStudy);
   const listStudies = useServerFn(listElectricalStudies);
@@ -233,8 +371,14 @@ export function ElectricalStudyPanel() {
 
   const pickKind = (k: StudyKind) => {
     setKind(k);
-    setValues(DEFAULT_VALUES[k]);
+    setValues(deriveStudyDefaultsFromModel(useUnifiedProjectStore.getState().doc, k).values);
     setResult(null);
+  };
+
+  const syncFromDiagram = () => {
+    const fresh = deriveStudyDefaultsFromModel(useUnifiedProjectStore.getState().doc, kind);
+    setValues(fresh.values);
+    toast.success("Parâmetros carregados dos equipamentos do diagrama.");
   };
 
   const setField = (key: string, value: string) => setValues((prev) => ({ ...prev, [key]: value }));
@@ -243,10 +387,20 @@ export function ElectricalStudyPanel() {
     setBusy(true);
     setResult(null);
     try {
+      const studyPayload = buildStudy(kind, values);
       const res = (await runStudy({
-        data: { projectId, study: buildStudy(kind, values), persist: true },
+        data: { projectId, study: studyPayload, persist: true },
       })) as { results: ElectricalStudyResults; warnings: string[]; standard: string };
       setResult(res);
+      useUnifiedProjectStore.getState().upsertStudy({
+        id: `study_${kind}`,
+        studyType: kind,
+        title: KIND_LABEL[kind],
+        inputEquipmentIds: derived.inputEquipmentIds,
+        status: "valid",
+        parameters: studyPayload,
+        results: res.results as unknown as Record<string, unknown>,
+      });
       refetch();
     } catch (err) {
       toast.error(`Falha no cálculo: ${(err as Error).message}`);
@@ -268,9 +422,19 @@ export function ElectricalStudyPanel() {
   return (
     <Card className="border-border/50">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Calculator className="h-4 w-4" />
-          <CardTitle>Estudos Elétricos de Potência</CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            <CardTitle>Estudos Elétricos de Potência</CardTitle>
+          </div>
+          {canonicalStudy && (
+            <Badge
+              variant={canonicalStudy.status === "stale" ? "destructive" : "default"}
+              className="text-[10px]"
+            >
+              {canonicalStudy.status === "stale" ? "Desatualizado (Stale)" : "Válido"}
+            </Badge>
+          )}
         </div>
         <CardDescription>
           Cálculos normativos de apoio. Não substituem projeto executivo nem laudo por profissional
@@ -283,20 +447,48 @@ export function ElectricalStudyPanel() {
           <p className="py-4 text-sm text-muted-foreground">Nenhum projeto carregado.</p>
         ) : (
           <>
-            <div className="space-y-2">
-              <Label>Estudo</Label>
-              <Select value={kind} onValueChange={(v) => pickKind(v as StudyKind)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(KIND_LABEL).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {canonicalStudy?.status === "stale" && (
+              <div className="rounded border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-400 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>
+                    Parâmetros dos equipamentos vinculados foram alterados no diagrama. Sincronize e
+                    recalcule o estudo para atualizar os resultados.
+                  </span>
+                </div>
+                <Button size="sm" variant="outline" onClick={syncFromDiagram}>
+                  <RefreshCw className="mr-1 h-3 w-3" />
+                  Sincronizar
+                </Button>
+              </div>
+            )}
+
+            <div className="flex items-end gap-2">
+              <div className="space-y-2 flex-1">
+                <Label>Estudo</Label>
+                <Select value={kind} onValueChange={(v) => pickKind(v as StudyKind)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(KIND_LABEL).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={syncFromDiagram}
+                title="Carregar parâmetros dos equipamentos do diagrama"
+              >
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                Do Diagrama
+              </Button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

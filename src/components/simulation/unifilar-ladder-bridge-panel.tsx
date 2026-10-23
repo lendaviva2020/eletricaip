@@ -11,6 +11,11 @@ import {
   saveMappings,
   type BridgeResult,
 } from "@/lib/simulation/unifilar-ladder-bridge";
+import {
+  analyzeControlBridge,
+  applyControlBridgeToModel,
+  useUnifiedProjectStore,
+} from "@/lib/model";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -232,11 +237,31 @@ export function UnifilarLadderBridgePanel() {
     setIsAnalyzing(true);
     setError(null);
     try {
-      const res = analyzeUnifilarForLadder(
-        useProjectStore.getState().nodes,
-        useProjectStore.getState().edges,
-      );
-      setResult(res);
+      const unifiedDoc = useUnifiedProjectStore.getState().doc;
+      const hasCanonicalEquipments =
+        Object.keys(unifiedDoc.engineering.equipments).length > 0;
+
+      if (hasCanonicalEquipments) {
+        const analysis = analyzeControlBridge(unifiedDoc);
+        applyControlBridgeToModel(analysis);
+        const diagWarnings = analysis.diagnostics
+          .filter((d) => d.severity !== "error")
+          .map((d) => `[${d.code}] ${d.message}`);
+        const diagErrors = analysis.diagnostics
+          .filter((d) => d.severity === "error")
+          .map((d) => `[${d.code}] ${d.message}`);
+        setResult({
+          ...analysis.result,
+          warnings: [...analysis.result.warnings, ...diagWarnings],
+          errors: [...analysis.result.errors, ...diagErrors],
+        });
+      } else {
+        const res = analyzeUnifilarForLadder(
+          useProjectStore.getState().nodes,
+          useProjectStore.getState().edges,
+        );
+        setResult(res);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {

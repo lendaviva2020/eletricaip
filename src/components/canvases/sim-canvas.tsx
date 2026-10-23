@@ -12,6 +12,7 @@ import { TestScenariosPanel } from "@/components/simulation/test-scenarios-panel
 import { ElectricalStudyPanel } from "@/components/simulation/electrical-study-panel";
 import { usePlantStore } from "@/lib/simulation/plant-store";
 import { plantTags } from "@/lib/simulation/plant-engine";
+import { useRuntimeStore, useUnifiedProjectStore } from "@/lib/model";
 import { cn } from "@/lib/utils";
 import { pushNotification } from "@/lib/notification-service";
 
@@ -108,6 +109,17 @@ export function SimCanvas() {
     if (paused) return;
 
     const interval = setInterval(() => {
+      const unifiedDoc = useUnifiedProjectStore.getState().doc;
+      const runtimeTagValues = useRuntimeStore.getState().tagValuesById;
+
+      const flatCanonical: Record<string, { value: number | boolean | string }> = {};
+      for (const tag of Object.values(unifiedDoc.engineering.tags)) {
+        const liveVal = runtimeTagValues[tag.id];
+        flatCanonical[tag.name] = {
+          value: liveVal !== undefined ? liveVal : tag.initialValue,
+        };
+      }
+
       const flatEditor: Record<string, { value: number | boolean | string }> = {};
       Object.values(useEditorStore.getState().editorTags).forEach((t) => {
         flatEditor[t.name] = { value: t.value };
@@ -122,18 +134,40 @@ export function SimCanvas() {
       // não senoides de fallback).
       const plantSnap = usePlantStore.getState();
       const plantActive = plantSnap.ticking;
-      const merged = { ...flatEditor, ...flatProject };
+      const merged = { ...flatCanonical, ...flatEditor, ...flatProject };
       if (plantActive) {
         const pt = plantTags(plantSnap.plant);
         for (const [k, v] of Object.entries(pt)) merged[k] = { value: v };
       }
       engineRef.current?.evaluate(merged);
 
-      // 1. Gather live values from both stores
+      // 1. Gather live values from canonical bindings first, then legacy stores
       let speed = 0;
       let current = 0;
       let level = 50;
       let valve = 0;
+
+      // Canonical ControlBindings (Contract 4 & 5: resolve by tagId + role)
+      for (const binding of Object.values(unifiedDoc.engineering.controlBindings)) {
+        const tag = unifiedDoc.engineering.tags[binding.tagId];
+        const eq = unifiedDoc.engineering.equipments[binding.equipmentId];
+        const rawVal =
+          runtimeTagValues[binding.tagId] ??
+          (tag ? merged[tag.name]?.value : undefined);
+        if (rawVal === undefined) continue;
+
+        if (binding.role === "vfd_speed_ref" || binding.role === "vfd_run_feedback") {
+          speed = Number(rawVal);
+        } else if (binding.role === "sensor_process_value" && eq?.catalogType === "level") {
+          level = Number(rawVal);
+        } else if (binding.role === "main_contactor_coil" && Boolean(rawVal)) {
+          const motorEq = Object.values(unifiedDoc.engineering.equipments).find(
+            (e) => e.catalogType === "motor",
+          );
+          if (speed === 0) speed = 1750;
+          if (current === 0) current = motorEq?.specs.nominalCurrentA ?? 11.6;
+        }
+      }
 
       // Extract from useProjectStore (SCADA/Physical twin)
       Object.entries(projectTags).forEach(([key, val]) => {

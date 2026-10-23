@@ -16,7 +16,7 @@ import type {
   NodeKind as LegacyNodeKind,
 } from "@/lib/project-store";
 import type { EditorTag, FbdEdge, FbdNode } from "@/lib/editor/store";
-import type { LadderRung } from "@/lib/ladder/types";
+import { newRung, type LadderRung } from "@/lib/ladder/types";
 import {
   createDefaultPlcProject,
   type PlcProgramBlock,
@@ -49,6 +49,9 @@ export function createEmptyUnifiedDoc(
   const now = new Date().toISOString();
   const defaultPlc = createDefaultPlcProject();
   const ob1 = defaultPlc.programBlocks.find((b) => b.type === "OB") ?? defaultPlc.programBlocks[0];
+  if (ob1 && !ob1.ladder) {
+    ob1.ladder = { rungs: [newRung(0)] };
+  }
   const fc1 =
     defaultPlc.programBlocks.find((b) => b.type === "FC") ??
     defaultPlc.programBlocks[1] ??

@@ -13,9 +13,11 @@ import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
 import {
   buildMultifilarCommands,
-  clearMultifilarCommands,
+  detectMultifilarPhaseMismatches,
   summarizeConductors,
+  syncMultifilarCommands,
 } from "@/lib/diagram/multifilar";
+import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 // jsPDF entra por import dinâmico no handler (browser-only, ~400KB).
 import type { SheetKind, NodeKind } from "@/lib/diagram/schema";
 import {
@@ -295,14 +297,50 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   }, [doc, effectiveSheet]);
 
   const handleGenerateMultifilar = useCallback(() => {
-    const commands = [...clearMultifilarCommands(doc), ...buildMultifilarCommands(doc)];
-    if (commands.length === 0) {
+    const hasUnifilarNodes = Object.values(doc.nodes).some((n) => n.sheet === "unifilar");
+    if (!hasUnifilarNodes) {
       toast.error("Nada para converter — adicione componentes no unifilar primeiro.");
       return;
     }
-    dispatch({ type: "Batch", commands });
+
+    const unified = useUnifiedProjectStore.getState();
+    unified.clearDiagnostics({ code: "MULTIFILAR_PHASE_MISMATCH" });
+    const mismatches = detectMultifilarPhaseMismatches(doc);
+    for (const m of mismatches) {
+      unified.recordDiagnostic({
+        severity: "warning",
+        code: m.code,
+        message: `Dispositivo de proteção com ${m.availablePoles} pólo(s) alimenta carga de ${m.requiredPoles} pólos (${m.entityIds.join(" → ")}).`,
+        messageParams: {
+          availablePoles: m.availablePoles,
+          requiredPoles: m.requiredPoles,
+        },
+        entityIds: m.entityIds,
+        sourceRepresentation: "unifilar",
+        targetRepresentation: "multifilar",
+        requiresUserIntervention: true,
+      });
+    }
+
+    const hasExistingMultifilar = Object.values(doc.nodes).some((n) => n.sheet === "multifilar");
+    const commands = hasExistingMultifilar
+      ? syncMultifilarCommands(doc)
+      : buildMultifilarCommands(doc);
+    if (commands.length > 0) {
+      dispatch({ type: "Batch", commands });
+    }
     setActiveSheet("multifilar");
-    toast.success("Diagrama multifilar gerado a partir do unifilar.");
+    if (mismatches.length > 0) {
+      toast.warning(
+        `${mismatches.length} divergência(s) de pólos/fases registrada(s) nos diagnósticos.`,
+      );
+    } else {
+      toast.success(
+        hasExistingMultifilar
+          ? "Diagrama multifilar sincronizado preservando posições."
+          : "Diagrama multifilar gerado a partir do unifilar.",
+      );
+    }
   }, [doc, dispatch, setActiveSheet]);
 
   const handleExportPdf = useCallback(async () => {

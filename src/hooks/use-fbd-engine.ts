@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore, type FbdSimSnapshot } from "@/lib/editor/store";
+import { useRuntimeStore } from "@/lib/model/runtime-store";
 import { editorToFbdDocument, getFbdRegistry, type SimInputBinding } from "@/lib/fbd/editor-bridge";
 import { publishFbdToScada } from "@/lib/fbd/scada-bridge";
 import {
@@ -50,6 +51,7 @@ function readLive(rt: FbdRuntime, faults: readonly RuntimeFault[]): FbdLiveState
 function readLiveAndPublish(rt: FbdRuntime, faults: readonly RuntimeFault[]): FbdLiveState {
   const live = readLive(rt, faults);
   publishFbdToScada({ outputs: live.outputs, inputs: live.inputs });
+  useRuntimeStore.getState().setFbdRuntimeSim({ ...rt.exportSnapshot(), inputs: live.inputs });
   return live;
 }
 

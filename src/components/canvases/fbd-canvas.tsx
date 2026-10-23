@@ -23,7 +23,7 @@ import { Cpu, Download, FileCode, Image, Trash2, Settings, Sparkles } from "luci
 import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useEditorStore } from "@/lib/editor/store";
 import { toast } from "sonner";
-import { editorSpecFor, getFbdRegistry } from "@/lib/fbd/editor-bridge";
+import { compileFbdNodesToSt, editorSpecFor, getFbdRegistry } from "@/lib/fbd/editor-bridge";
 import { useFbdEngine } from "@/hooks/use-fbd-engine";
 import { FbdEnginePanel } from "@/components/fbd/fbd-engine-panel";
 import type { FbdValue } from "@/lib/fbd/engine";
@@ -200,34 +200,13 @@ export function FbdCanvas() {
 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Auto compile to Structured Text (ST)
+  // Preview em Structured Text — mesmo compilador (AST/IR) usado pelo PlcCanvas.
   useEffect(() => {
-    let code = "VAR\n";
-    nodes.forEach((n) => {
-      code += `  ${n.id} : ${n.data?.type || "AND"};\n`;
-    });
-    code += "END_VAR\n\n";
-
-    nodes.forEach((n) => {
-      const inputsCall: string[] = [];
-      const inputs = n.data?.inputs || [];
-      inputs.forEach((pin: Pin) => {
-        // Find if this input is connected to another block's output
-        const incomingEdge = edges.find((e) => e.target === n.id && e.targetHandle === pin.id);
-        if (incomingEdge) {
-          inputsCall.push(
-            `${pin.label} := ${incomingEdge.source}.${incomingEdge.sourceHandle?.toUpperCase()}`,
-          );
-        } else if (n.data?.params?.[pin.label.toUpperCase()]) {
-          inputsCall.push(`${pin.label} := ${n.data.params[pin.label.toUpperCase()]}`);
-        } else {
-          inputsCall.push(`${pin.label} := FALSE`);
-        }
-      });
-      code += `${n.id}(${inputsCall.join(", ")});\n`;
-    });
-
-    setStCode(code);
+    try {
+      setStCode(compileFbdNodesToSt(nodes, edges, "FBD_Preview"));
+    } catch (err) {
+      setStCode(`(* Diagrama incompleto: ${err instanceof Error ? err.message : "erro de compilação"} *)`);
+    }
   }, [nodes, edges]);
 
   const onNodesChange = useCallback(
