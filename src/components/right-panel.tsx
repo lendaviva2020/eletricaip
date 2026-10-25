@@ -107,61 +107,60 @@ function LegacyProjectNodeProps() {
 }
 
 function AiPanel() {
+  const { t } = useI18n();
   const [msg, setMsg] = useState("");
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto p-4 space-y-3">
         <div className="rounded-md p-3 glass border border-primary/30">
           <div className="flex items-center gap-2 text-[11px] font-medium text-primary mb-1">
-            <Sparkles className="h-3.5 w-3.5" /> EletricAI Copilot
+            <Sparkles className="h-3.5 w-3.5" /> {t("rightPanel.copilotTitle")}
           </div>
           <p className="text-[12px] text-foreground/90 leading-relaxed">
-            Olá! Posso gerar <strong>unifilar, ladder, FBD, SCADA, alarmes e Digital Twin</strong> a
-            partir de uma descrição em linguagem natural. Ex.:
+            {t("rightPanel.copilotGreeting")}
           </p>
           <div className="mt-2 text-[11px] font-mono text-muted-foreground italic">
-            "Criar esteira com motor 7.5kW, E-STOP, sensor e inversor com proteção NR-12."
+            {t("rightPanel.copilotExample")}
           </div>
         </div>
 
         <div className="rounded-md p-3 bg-card border border-border">
-          <div className="text-[11px] text-muted-foreground mb-1">Sugestão contextual</div>
-          <p className="text-[12px]">
-            Detectei que <strong>M-03</strong> está com sobrecorrente. Recomendo aumentar o tempo de
-            rampa do VFD para 4s e revisar o cabo (2.5 mm² → 4 mm² conforme <em>NBR 5410</em>).
-          </p>
+          <div className="text-[11px] text-muted-foreground mb-1">
+            {t("rightPanel.contextualSuggestionTitle")}
+          </div>
+          <p className="text-[12px]">{t("rightPanel.contextualSuggestionDesc")}</p>
           <div className="mt-2 flex gap-1.5">
             <button className="text-[10px] font-semibold px-2 py-1 rounded bg-primary text-primary-foreground">
-              Aplicar
+              {t("rightPanel.applyBtn")}
             </button>
             <button className="text-[10px] font-semibold px-2 py-1 rounded bg-muted text-foreground">
-              Detalhes
+              {t("rightPanel.detailsBtn")}
             </button>
           </div>
         </div>
 
         <div className="rounded-md p-3 bg-card border border-border">
-          <div className="text-[11px] text-muted-foreground mb-1">Geração automática</div>
-          <p className="text-[12px]">
-            ✓ Unifilar criado · ✓ Ladder gerada (4 rungs) · ✓ Tags 142 · ✓ HMI montado
-          </p>
+          <div className="text-[11px] text-muted-foreground mb-1">
+            {t("rightPanel.autoGenTitle")}
+          </div>
+          <p className="text-[12px]">{t("rightPanel.autoGenSummary")}</p>
         </div>
       </div>
 
       <div className="p-2 border-t border-border">
         <div className="relative">
           <input
-            aria-label="Pergunta ao EletricAI"
-            title="Pergunta ao EletricAI"
+            aria-label={t("rightPanel.inputPlaceholder")}
+            title={t("rightPanel.inputPlaceholder")}
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
-            placeholder="Pergunte ao EletricAI…"
+            placeholder={t("rightPanel.inputPlaceholder")}
             className="w-full h-9 pl-3 pr-9 rounded-md bg-input border border-border text-[12px] outline-none focus:ring-2 focus:ring-ring"
           />
           <button
             className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded text-primary hover:bg-accent"
-            title="Enviar pergunta"
-            aria-label="Enviar pergunta"
+            title={t("rightPanel.sendAria")}
+            aria-label={t("rightPanel.sendAria")}
           >
             <Send className="h-3.5 w-3.5" />
           </button>

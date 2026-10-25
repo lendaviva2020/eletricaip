@@ -3,12 +3,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, FileText, FileBox, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, FileBox, ShieldCheck, Sparkles, Download } from "lucide-react";
 import { getProjectExportData } from "@/lib/export.functions";
 import { buildDxf, downloadDxf, type DxfNode, type DxfEdge } from "@/lib/dxf-export";
 import { Button } from "@/components/ui/button";
 import { useI18n, getLocale } from "@/lib/i18n";
 import { EngineeringDossierModal } from "@/components/dossier/engineering-dossier-modal";
+import { UniversalImportModal } from "@/components/importer/universal-import-modal";
 
 export const Route = createFileRoute("/projects/$projectId/export")({
   head: () => ({ meta: [{ title: "Exportar projeto · EletricAI" }] }),
@@ -20,6 +21,7 @@ function ExportPage() {
   const dataFn = useServerFn(getProjectExportData);
   const [busy, setBusy] = useState<string | null>(null);
   const [dossierOpen, setDossierOpen] = useState(false);
+  const [importerOpen, setImporterOpen] = useState(false);
   const { t, formatCurrency } = useI18n();
 
   const { data, isLoading } = useQuery({
@@ -154,6 +156,14 @@ function ExportPage() {
                 <Sparkles className="w-3.5 h-3.5" />
                 Abrir Dossiê Técnico de Engenharia
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => setImporterOpen(true)}
+                className="gap-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 text-xs h-9"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Intercâmbio / Importar IA Externa (0 Créditos)
+              </Button>
             </div>
           </div>
 
@@ -186,6 +196,12 @@ function ExportPage() {
             projectId={projectId}
             open={dossierOpen}
             onOpenChange={setDossierOpen}
+          />
+
+          <UniversalImportModal
+            open={importerOpen}
+            onOpenChange={setImporterOpen}
+            projectId={projectId}
           />
         </>
       )}

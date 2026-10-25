@@ -16,6 +16,7 @@ import {
 import { getAiCredits } from "@/lib/ai-architect.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/chat")({
   head: () => ({
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 function ChatPage() {
+  const { locale } = useI18n();
   const list = useServerFn(listConversations);
   const create = useServerFn(createConversation);
   const fetchMessages = useServerFn(getConversationMessages);
@@ -100,7 +102,7 @@ function ChatPage() {
     setStreamingText("");
     try {
       // Optimistically refetch so user message appears immediately after server insert.
-      const generator = await stream({ data: { conversationId: convId, prompt } });
+      const generator = await stream({ data: { conversationId: convId, prompt, locale } });
       let acc = "";
       for await (const chunk of generator) {
         if (chunk.type === "delta") {

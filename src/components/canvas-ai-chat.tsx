@@ -11,6 +11,8 @@ import {
   Upload,
   ShieldCheck,
   Compass,
+  Download,
+  Bot,
 } from "lucide-react";
 import { callArchitect, applyArchitectToStore, AIServiceError } from "@/lib/ai-architect-client";
 import { extractBriefingServerFn, getAiCredits } from "@/lib/ai-architect.functions";
@@ -22,6 +24,8 @@ import { useQuery } from "@tanstack/react-query";
 import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { AiPatchPreview } from "@/components/ai-patch-preview";
+import { detectFormat } from "@/lib/importer/universal-importer";
+import { useI18n } from "@/lib/i18n";
 
 interface Msg {
   role: "user" | "ai";
@@ -35,6 +39,8 @@ interface Msg {
 }
 
 export function CanvasAiChat() {
+  const { locale, t } = useI18n();
+  const isEn = locale === "en";
   const [open, setOpen] = useState(false);
   const [val, setVal] = useState("");
   const [busy, setBusy] = useState(false);
@@ -51,10 +57,13 @@ export function CanvasAiChat() {
   });
   const creditInfo = useMemo(() => {
     const d = creditsQuery.data;
-    if (!d || !d.ok) return { plan: "free", remainingLabel: "-- créditos" };
-    if (d.unlimited) return { plan: d.plan, remainingLabel: "∞ créditos" };
-    return { plan: d.plan, remainingLabel: `${d.remaining}/${d.max_credits} créditos` };
-  }, [creditsQuery.data]);
+    if (!d || !d.ok) return { plan: "free", remainingLabel: t("aiChat.creditsPlaceholder") };
+    if (d.unlimited) return { plan: d.plan, remainingLabel: t("aiChat.creditsUnlimited") };
+    return {
+      plan: d.plan,
+      remainingLabel: t("aiChat.creditsRemaining", { remaining: d.remaining, max: d.max_credits }),
+    };
+  }, [creditsQuery.data, t]);
   const genPatch = useServerFn(generateDiagramPatch);
   const applyAiPatch = useDiagramStore((s) => s.applyAiPatch);
   const diagramDoc = useDiagramStore((s) => s.doc);
@@ -62,9 +71,19 @@ export function CanvasAiChat() {
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
-      text: "Olá, sou o **NexusMind**, sua IA especialista em automação e normas elétricas (ABNT/IEC).\n\nComo posso ajudar você no projeto hoje? Você pode digitar comandos ou enviar um arquivo CSV/TXT/PDF de briefing!",
+      text: t("aiChat.initialGreeting"),
     },
   ]);
+
+  // Keep first greeting in sync if user changes language before sending prompts
+  useEffect(() => {
+    setMsgs((m) => {
+      if (m.length === 1 && m[0].role === "ai") {
+        return [{ role: "ai", text: t("aiChat.initialGreeting") }];
+      }
+      return m;
+    });
+  }, [locale, t]);
 
   const loadDemo = useProjectStore((s) => s.loadDemoFaulty);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,15 +98,22 @@ export function CanvasAiChat() {
   // Map findings to readable warning cards
   const normWarnings = useMemo(() => {
     if (findings.length === 0) {
-      return [
-        "✅ Todos os canvas em conformidade com as normas ABNT NBR 5410, NR-10, NR-12 e ISA-18.2!",
-      ];
+      return [t("aiChat.allCompliant")];
     }
     return findings.map((f) => {
       const emoji = f.severity === "error" ? "🚨" : f.severity === "warn" ? "⚠️" : "ℹ️";
       return `${emoji} [${f.norm}]: ${f.title} — ${f.detail}`;
     });
-  }, [findings]);
+  }, [findings, t]);
+
+  const quickChips = useMemo(
+    () => [
+      { label: t("aiChat.quickDirectOnline"), prompt: t("aiChat.quickDirectOnlinePrompt") },
+      { label: t("aiChat.quickSocketRcd"), prompt: t("aiChat.quickSocketRcdPrompt") },
+      { label: t("aiChat.quickSoftStarter"), prompt: t("aiChat.quickSoftStarterPrompt") },
+    ],
+    [t],
+  );
 
   // Refetch server-side credits when any IA call dispatches the event
   useEffect(() => {
@@ -101,12 +127,53 @@ export function CanvasAiChat() {
     if (!p || busy) return;
     if (!textToSend) setVal("");
 
+    // Interceptação determinística de pacotes de projeto externos (0 créditos de IA)
+    const isRecognizedBundle =
+      p.includes("eletricai.canvas-bundle") ||
+      (p.includes('"nodes"') && p.includes('"edges"') && (p.includes('"format"') || p.includes('"project"'))) ||
+      (p.startsWith("<?xml") && p.includes("tc6_xml"));
+
+    if (isRecognizedBundle) {
+      const summaryText = p.length > 120 ? `${p.slice(0, 100)}... [pacote com ${p.length} caracteres]` : p;
+      setMsgs((m) => [
+        ...m,
+        { role: "user", text: summaryText },
+        {
+          role: "ai",
+          text: "📦 **Pacote ElétricAi Canvas Bundle detectado!**\n\nOperação interceptada com sucesso **antes** do envio ao provedor de IA interna.\n\n🛡️ **0 créditos consumidos.** O conteúdo foi direcionado ao **Importador Universal Seguro** para inspeção e renderização direta no Canvas.",
+        },
+      ]);
+      window.dispatchEvent(new CustomEvent("eletricai-open-importer", { detail: { payload: p } }));
+      return;
+    }
+
+    // Alerta caso o usuário tente colar estrutura de circuito com formato desconhecido/quebrado
+    const isAttemptedExternalData =
+      (p.includes('"nodes"') || p.includes('"components"') || p.includes('"circuit"')) &&
+      (p.startsWith("{") || p.startsWith("```") || p.startsWith("["));
+
+    if (isAttemptedExternalData) {
+      const fmt = detectFormat(p);
+      if (fmt === "unknown") {
+        const summaryText = p.length > 120 ? `${p.slice(0, 100)}...` : p;
+        setMsgs((m) => [
+          ...m,
+          { role: "user", text: summaryText },
+          {
+            role: "ai",
+            text: "⚠️ **Formato de pacote externo não suportado.**\n\nO conteúdo colado parece uma tentativa de intercâmbio de circuito, mas não corresponde ao contrato universal **ElétricAi Canvas Bundle (v1.0.0)** nem aos formatos seguros suportados (YAML, CSV, PLCopen XML).\n\n💡 **Como corrigir:** Solicite à sua IA externa que formate a resposta especificamente no padrão `eletricai.canvas-bundle`. Você pode copiar o prompt pronto na aba **\"4. Exportar & Prompts para IA Externa\"** do Importador Universal (0 créditos).",
+          },
+        ]);
+        return;
+      }
+    }
+
     setMsgs((m) => [
       ...m,
       { role: "user", text: p },
       {
         role: "ai",
-        text: patchMode ? "Gerando patch validado (Zod + NBR 5410)..." : "Processando prompt...",
+        text: patchMode ? t("aiChat.generatingPatch") : t("aiChat.processingPrompt"),
       },
     ]);
     setBusy(true);
@@ -115,12 +182,14 @@ export function CanvasAiChat() {
       const activeViolationsText = findings
         .map(
           (f) =>
-            `- [Norma ${f.norm} - Gravidade ${f.severity.toUpperCase()}]: ${f.title}. Detalhe: ${f.detail}. Dica de Correção: ${f.fixHint || "N/A"}`,
+            `- [${isEn ? "Standard" : "Norma"} ${f.norm} - ${isEn ? "Severity" : "Gravidade"} ${f.severity.toUpperCase()}]: ${f.title}. ${isEn ? "Detail" : "Detalhe"}: ${f.detail}. ${isEn ? "Suggested Fix" : "Dica de Correção"}: ${f.fixHint || "N/A"}`,
         )
         .join("\n");
 
       const contextualPrompt = activeViolationsText
-        ? `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:\n${activeViolationsText}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${p}\n\nPor favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`
+        ? isEn
+          ? `[ACTIVE ERRORS/VIOLATIONS CONTEXT ON CANVAS]:\n${activeViolationsText}\n\n[USER REQUEST]:\n${p}\n\nPlease respond suggesting electrical design improvements complying with IEC 60364, NFPA 70E, and ISA-18.2, generating a new corrected diagram if requested.`
+          : `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:\n${activeViolationsText}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${p}\n\nPor favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`
         : p;
 
       if (patchMode) {
@@ -128,13 +197,14 @@ export function CanvasAiChat() {
           data: {
             prompt: contextualPrompt,
             doc: diagramDoc,
+            locale,
             ...(briefingDocument ? { briefingDocument } : {}),
           },
         });
         if (!res || res.ok !== true) {
           const code = res?.error?.code ?? "UNKNOWN";
           const message =
-            res?.error?.message ?? "A IA não retornou um patch válido. Tente reformular o pedido.";
+            res?.error?.message ?? (isEn ? "The AI did not return a valid patch. Please rephrase." : "A IA não retornou um patch válido. Tente reformular o pedido.");
           const needsConfig = ["MISSING_KEY", "AUTH_401", "INSUFFICIENT_CREDITS"].includes(code);
           setMsgs((m) => {
             const c = [...m];
@@ -154,16 +224,17 @@ export function CanvasAiChat() {
           } = res.patch ?? {};
           setMsgs((m) => {
             const c = [...m];
+            const title = t("aiChat.patchAppliedTitle");
             c[c.length - 1] = {
               role: "ai",
-              text: `**Patch aplicado ao canvas WebGL.**\n\n${rationale ?? ""}\n\n• +${addNodes.length} nós · +${addEdges.length} edges\n• ~${updateNodes.length} updates · −${removeNodeIds.length} nós / −${removeEdgeIds.length} edges`,
+              text: `**${title}**\n\n${rationale ?? ""}\n\n• +${addNodes.length} ${isEn ? "nodes" : "nós"} · +${addEdges.length} edges\n• ~${updateNodes.length} updates · −${removeNodeIds.length} ${isEn ? "nodes" : "nós"} / −${removeEdgeIds.length} edges`,
               patchApplied: true,
             };
             return c;
           });
         }
       } else {
-        const r = await callArchitect(contextualPrompt, true, briefingDocument);
+        const r = await callArchitect(contextualPrompt, true, briefingDocument, locale);
         setMsgs((m) => {
           const c = [...m];
           c[c.length - 1] = {
@@ -338,7 +409,7 @@ export function CanvasAiChat() {
         <Sparkles className="h-4 w-4 text-primary animate-spin" />
         <div className="flex flex-col">
           <span className="text-[11px] font-display font-bold tracking-wider text-foreground">
-            NEXUSMIND AI CO-PILOT
+            {t("aiChat.title")}
           </span>
           <span className="text-[9px] text-primary/80 font-mono tracking-tight font-medium uppercase">
             {creditInfo.remainingLabel}
@@ -351,14 +422,14 @@ export function CanvasAiChat() {
             title="Alterna entre patch validado (WebGL) e arquiteto legado"
             className={`h-6 px-2 rounded text-[9px] font-medium border inline-flex items-center gap-1 cursor-pointer ${patchMode ? "border-primary/60 text-primary bg-primary/10" : "border-border text-muted-foreground hover:bg-accent/40"}`}
           >
-            <Sparkles className="h-3 w-3" /> {patchMode ? "Patch IA" : "Legado"}
+            <Sparkles className="h-3 w-3" /> {patchMode ? t("aiChat.modePatch") : t("aiChat.modeLegacy")}
           </button>
           <button
             onClick={loadDemo}
             title="Carregar exemplo com falhas para testar validador"
             className="h-6 px-2 rounded text-[9px] font-medium border border-warning/40 text-warning hover:bg-warning/10 inline-flex items-center gap-1 cursor-pointer"
           >
-            <AlertTriangle className="h-3 w-3" /> Demo c/ falhas
+            <AlertTriangle className="h-3 w-3" /> {t("aiChat.demoFaulty")}
           </button>
           <button
             onClick={() => setOpen(false)}
@@ -374,8 +445,8 @@ export function CanvasAiChat() {
         <div className="shrink-0 p-3 border-b border-border bg-primary/10 flex items-center gap-3 animate-pulse">
           <Loader2 className="h-4 w-4 text-primary animate-spin" />
           <div className="flex-1 flex flex-col">
-            <span className="text-[10px] font-bold text-primary uppercase">Módulo OCR Ativo</span>
-            <span className="text-[10px] text-muted-foreground">{fileStep}</span>
+            <span className="text-[10px] font-bold text-primary uppercase">{t("aiChat.ocrActive")}</span>
+            <span className="text-[10px] text-muted-foreground">{fileStep || t("aiChat.ocrExtracting")}</span>
           </div>
         </div>
       )}
@@ -386,7 +457,7 @@ export function CanvasAiChat() {
         <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5 space-y-2">
           <div className="text-[9px] font-display font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
             <Compass className="h-3.5 w-3.5" />
-            <span>Alertas Normativos NexusMind</span>
+            <span>{t("aiChat.normAlertsTitle")}</span>
           </div>
           <div className="space-y-1.5">
             {normWarnings.map((warn, index) => (
@@ -411,7 +482,7 @@ export function CanvasAiChat() {
             }`}
           >
             <div className="text-[8px] uppercase tracking-wider mb-0.5 font-bold text-muted-foreground">
-              {m.role === "ai" ? "🤖 NexusMind" : "👤 Você"}
+              {m.role === "ai" ? t("aiChat.aiRole") : t("aiChat.userRole")}
             </div>
             <div className="whitespace-pre-wrap font-mono text-[11px] text-foreground/90">
               {m.text}
@@ -430,7 +501,7 @@ export function CanvasAiChat() {
                 to="/settings/ai-status"
                 className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-primary hover:underline font-mono"
               >
-                <Settings2 className="h-3 w-3" /> Configurar Chave IA
+                <Settings2 className="h-3 w-3" /> {t("aiChat.configAiKey")}
               </Link>
             )}
 
@@ -449,7 +520,7 @@ export function CanvasAiChat() {
             )}
             {m.hasPatch && m.patchApplied && (
               <div className="mt-3 pt-2 border-t border-border/60">
-                <span className="text-[9px] text-success font-mono">✓ Patch Aplicado</span>
+                <span className="text-[9px] text-success font-mono">{t("aiChat.patchAppliedSuccess")}</span>
               </div>
             )}
           </div>
@@ -474,8 +545,48 @@ export function CanvasAiChat() {
             className="h-8 px-2.5 rounded border border-border bg-card hover:bg-accent/40 text-[10px] inline-flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
           >
             <Upload className="h-3.5 w-3.5" />
-            <span>Upload Briefing</span>
+            <span>{t("aiChat.uploadBriefing")}</span>
           </button>
+
+          <button
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("eletricai-open-importer", { detail: { initialTab: "export" } }),
+              )
+            }
+            title="Copiar prompt padronizado para ChatGPT, Claude ou DeepSeek (0 créditos)"
+            className="h-8 px-2 rounded border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-[10px] inline-flex items-center gap-1 cursor-pointer text-blue-600 dark:text-blue-400 font-semibold"
+          >
+            <Bot className="h-3 w-3" />
+            <span>Prompt IA Externa</span>
+          </button>
+
+          <button
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("eletricai-open-importer", { detail: { initialTab: "input" } }),
+              )
+            }
+            title="Importar projeto externo em JSON seguro (0 créditos)"
+            className="h-8 px-2 rounded border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-[10px] inline-flex items-center gap-1 cursor-pointer text-emerald-600 dark:text-emerald-400 font-semibold"
+          >
+            <Download className="h-3 w-3" />
+            <span>Importar JSON</span>
+          </button>
+        </div>
+
+        {/* Quick prompt suggestion pills */}
+        <div className="flex flex-wrap gap-1 mb-1.5">
+          {quickChips.map((chip, idx) => (
+            <button
+              key={idx}
+              onClick={() => send(chip.prompt)}
+              disabled={busy}
+              className="px-2 py-0.5 rounded text-[9px] font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all cursor-pointer disabled:opacity-50"
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
 
         <div className="relative">
@@ -491,7 +602,7 @@ export function CanvasAiChat() {
               }
             }}
             rows={2}
-            placeholder="Projete um disjuntor de 125A NBR-5410..."
+            placeholder={t("aiChat.promptPlaceholder")}
             className="w-full resize-none rounded-md bg-input border border-border p-2 pr-9 text-[11px] outline-none focus:ring-1 focus:ring-primary font-mono"
           />
           <button
@@ -508,7 +619,7 @@ export function CanvasAiChat() {
           </button>
         </div>
         <div className="mt-1 text-[8px] text-muted-foreground flex items-center gap-1 font-mono">
-          <MessageSquare className="h-2.5 w-2.5" /> Enter envia · Shift+Enter quebra linha
+          <MessageSquare className="h-2.5 w-2.5" /> {t("aiChat.enterHint")}
         </div>
       </div>
     </div>

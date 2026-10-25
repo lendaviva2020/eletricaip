@@ -11,6 +11,8 @@ import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.function
 import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.functions";
 
 import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
+import { useUnifiedProjectStore } from "@/lib/model/unified-store";
+import { buildProjectSnapshot } from "@/lib/use-project-persistence";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { VerificationReport } from "@/lib/ai/verification-types";
 
@@ -160,6 +162,7 @@ export async function callArchitect(
     content: string;
     encoding?: "utf8" | "base64";
   },
+  locale: "pt-BR" | "en" = "pt-BR",
 ): Promise<ArchitectResult> {
   const context = includeContext
     ? { nodes: useProjectStore.getState().nodes, edges: useProjectStore.getState().edges }
@@ -170,6 +173,7 @@ export async function callArchitect(
       data: {
         prompt,
         context,
+        locale,
         ...(briefingDocument
           ? {
               briefingDocument: {
@@ -425,6 +429,19 @@ export function applyArchitectToStore(
   });
 
   useEditorStore.getState().setFbdAll(fbdNodes, fbdEdges);
+
+  // 5. Synchronize canonical UnifiedProjectDoc
+  try {
+    const snap = buildProjectSnapshot();
+    const currentMeta = useUnifiedProjectStore.getState().doc.metadata;
+    useUnifiedProjectStore.getState().hydrateFromV2Snapshot(
+      snap,
+      currentMeta,
+      { syncLegacy: false },
+    );
+  } catch (err) {
+    console.warn("[applyArchitectToStore] unified store sync:", err);
+  }
 
   void autoSaveVersion(result, nodes, edges);
   return { nodes: nodes.length, edges: edges.length };

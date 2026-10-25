@@ -23,6 +23,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { EditorAiConfigBanner } from "@/components/editor-ai-config-banner";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { EngineeringDossierModal } from "@/components/dossier/engineering-dossier-modal";
+import { UniversalImportModal } from "@/components/importer/universal-import-modal";
+import { Download, Bot } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -97,6 +99,22 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
 
   const { loading, saveState, conflict, resolveConflict } = useProjectPersistence(projectId);
   const [dossierOpen, setDossierOpen] = useState(false);
+  const [importerOpen, setImporterOpen] = useState(false);
+  const [importerPayload, setImporterPayload] = useState<string>("");
+  const [importerTab, setImporterTab] = useState<"input" | "preview" | "render" | "export">("input");
+
+  // Interceptador e ouvinte global para pacotes colados no chat ou acionados na interface
+  useEffect(() => {
+    const handler = (e: any) => {
+      const payload = e?.detail?.payload || "";
+      const tab = e?.detail?.initialTab || (payload ? "input" : "export");
+      setImporterPayload(payload);
+      setImporterTab(tab);
+      setImporterOpen(true);
+    };
+    window.addEventListener("eletricai-open-importer", handler);
+    return () => window.removeEventListener("eletricai-open-importer", handler);
+  }, []);
 
   if (!projectId) {
     return <WorkspaceEmptyState />;
@@ -145,6 +163,16 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           loading={loading}
           state={saveState}
           onOpenDossier={() => setDossierOpen(true)}
+          onOpenPrompt={() => {
+            setImporterPayload("");
+            setImporterTab("export");
+            setImporterOpen(true);
+          }}
+          onOpenImporter={() => {
+            setImporterPayload("");
+            setImporterTab("input");
+            setImporterOpen(true);
+          }}
         />
         <div className="flex-1 min-h-0 relative bg-background">
           {/* ErrorBoundary keyed por `mode`: isola crashes (ex.: React #185)
@@ -252,6 +280,15 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         open={dossierOpen}
         onOpenChange={setDossierOpen}
       />
+
+      {/* Modal do Importador Universal Seguro (0 Créditos de IA) */}
+      <UniversalImportModal
+        open={importerOpen}
+        onOpenChange={setImporterOpen}
+        initialPayload={importerPayload}
+        initialTab={importerTab}
+        projectId={projectId}
+      />
     </div>
   );
 }
@@ -316,11 +353,15 @@ function SaveBadge({
   loading,
   state,
   onOpenDossier,
+  onOpenImporter,
+  onOpenPrompt,
 }: {
   projectId: string | null;
   loading: boolean;
   state: "idle" | "saving" | "saved" | "error";
   onOpenDossier: () => void;
+  onOpenImporter?: () => void;
+  onOpenPrompt?: () => void;
 }) {
   if (!projectId) return null;
   return (
@@ -347,14 +388,34 @@ function SaveBadge({
         )}
       </div>
 
-      <button
-        onClick={onOpenDossier}
-        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all cursor-pointer shadow-xs"
-        title="Gerar Dossiê Técnico de Engenharia a partir do Canvas"
-      >
-        <FileText className="h-3.5 w-3.5" />
-        Gerar Dossiê Técnico
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onOpenPrompt}
+          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-all cursor-pointer shadow-xs"
+          title="Copiar prompt padronizado para ChatGPT, Claude ou DeepSeek (0 créditos)"
+        >
+          <Bot className="h-3.5 w-3.5" />
+          Prompt IA Externa
+        </button>
+
+        <button
+          onClick={onOpenImporter}
+          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all cursor-pointer shadow-xs"
+          title="Importar projetos criados por IAs externas sem consumir créditos"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Importar IA Externa
+        </button>
+
+        <button
+          onClick={onOpenDossier}
+          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all cursor-pointer shadow-xs"
+          title="Gerar Dossiê Técnico de Engenharia a partir do Canvas"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Gerar Dossiê Técnico
+        </button>
+      </div>
     </div>
   );
 }

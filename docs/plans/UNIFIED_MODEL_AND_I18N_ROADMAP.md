@@ -28,7 +28,7 @@ flowchart LR
 | **Fase D** | Persistência atômica v3 no Supabase, controle de concorrência, versionamento e DXF/PDF | Fase B, Fase C | Médio | 2 sessões |
 | **Fase E** | Motor i18n tipado (`pt-BR` default / `en`), persistência de idioma (`profiles.locale` + `localStorage`) e detector de chaves faltantes | Fase A | Baixo | 1 a 2 sessões |
 | **Fase F** | Tradução integral de Rotas, Canvases, Catálogos, Erros de Servidor e Relatórios PDF/DXF | Fase E | Médio | 3 a 4 sessões |
-| **Fase G** | Prompts e respostas bilíngues da IA Gemini com preservação de IDs/enums/tags | Fase B, Fase E | Baixo | 1 sessão |
+| **Fase G** | Prompts e respostas bilíngues da IA Gemini com preservação de IDs/enums/tags | Fase B, Fase E | Baixo | Concluída |
 | **Fase H** | Suíte completa de testes de integração cross-canvas, concorrência, i18n e homologação E2E | Fases C, D, F, G | Baixo | 2 sessões |
 
 ---
@@ -167,19 +167,35 @@ flowchart LR
 
 ---
 
-## Fase G — Integração de Idioma com a IA Gemini
+## Fase G — Integração de Idioma com a IA Gemini (Concluída ✅)
 
 ### Arquivos Afetados
 - [`src/lib/diagram/ai.functions.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/diagram/ai.functions.ts)
 - [`src/lib/ai-architect.functions.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/ai-architect.functions.ts)
+- [`src/lib/ai-chat.functions.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/ai-chat.functions.ts)
+- [`src/lib/ai-architect-client.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/ai-architect-client.ts)
 - [`src/components/canvas-ai-chat.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvas-ai-chat.tsx)
+- [`src/components/right-panel.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/right-panel.tsx)
+- [`src/routes/chat.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/routes/chat.tsx)
+- [`src/lib/i18n/catalogs/pt-BR.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/i18n/catalogs/pt-BR.ts)
+- [`src/lib/i18n/catalogs/en.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/i18n/catalogs/en.ts)
+- [`src/__tests__/gemini-i18n.test.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/__tests__/gemini-i18n.test.ts)
 
-### Alterações Propostas
-1. Incluir `locale: "pt-BR" | "en"` no payload das server functions de IA.
-2. Instruir o System Prompt do Gemini a:
-   - Responder explicações, justificativas normativas, resumos (`summary`) e alertas no idioma `locale` (ou no idioma explicitamente pedido pelo usuário no prompt).
-   - **Manter estritamente invariantes** todos os `type` de catálogo (`disjuntor_3p`, `motor_3p`, etc.), enums de schema (`sheet`, `kind`), endereços IEC (`%I0.0`, `%Q0.0`) e chaves JSON do patch validado por Zod.
-3. Unificar a aplicação de patches de IA para que o [`CanvasAiChat`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvas-ai-chat.tsx) grave no `UnifiedProjectDoc` (atualizando simultaneamente o diagrama e os equipamentos/tags canônicos).
+### Implementações Realizadas
+1. **Payload Localizado em Todas as Funções de IA:**
+   - Inclusão do parâmetro `locale: z.enum(["pt-BR", "en"]).default("pt-BR")` nos schemas de entrada Zod de `generateDiagramPatch`, `generateArchitecture` e `streamChat`.
+2. **System Prompts Dinâmicos por Idioma e Normas Técnicas:**
+   - Para `pt-BR`: Engenheiro sênior industrial brasileiro citando normas ABNT NBR 5410, NBR 14039, NR-10 e NR-12, com justificativas técnicas (`rationale`) em português.
+   - Para `en`: Engenheiro sênior internacional citando normas IEC 60364, IEC 61936, NFPA 70E e ISO 13849, com justificativas técnicas (`rationale`) em inglês.
+   - Diretiva de Invariância de Símbolos Técnicos estritamente imposta nos dois prompts: nomes de sheets (`unifilar`, `multifilar`, `ladder`), kinds (`breaker`, `motor`, `transformer`, etc.), tags de projeto (`QF1`, `KM1`, `M1`), endereços PLC (`%I0.0`, `%Q0.0`) e mnemônicos IEC 61131-3 (`OTE`, `XIC`, `XIO`, `TON`, `TOF`, `PID`).
+3. **Loop de Autovalidação e Correção Iterativa Bilíngue:**
+   - As mensagens de correção automática (`MODO 2 — CORREÇÃO NORMATIVA` / `MODE 2 — STANDARDS COMPLIANCE CORRECTION`) são agora formatadas no idioma da sessão.
+4. **Interface do Usuário Localizada (`CanvasAiChat` e `AiPanel`):**
+   - Integração com `useI18n()` em `CanvasAiChat` e `AiPanel`.
+   - Adicionadas pílulas/botões de sugestão rápida de prompt localizadas (`+ Partida Direta` / `+ DOL Motor Start`, `+ Tomada c/ DR` / `+ Socket w/ RCD`, `+ Soft-Starter`).
+   - Sincronização do modelo canônico: ao aplicar arquitetura ou patch, o `UnifiedProjectDoc` canônico é atualizado preservando equipamentos e tags.
+5. **Bateria de Testes:**
+   - Criado `src/__tests__/gemini-i18n.test.ts` com 12 testes validando prompts, invariância de símbolos, validação de schema e simetria de catálogos i18n (total de 425 testes passando em 57 arquivos).
 
 ---
 

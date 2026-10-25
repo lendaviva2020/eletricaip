@@ -96,9 +96,20 @@ export const deleteConversation = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-const SYSTEM_PROMPT = `Você é o EletricAI Copilot — um engenheiro elétrico industrial sênior brasileiro.
+export function getChatSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
+  if (locale === "en") {
+    return `You are the EletricAI Copilot — a senior industrial electrical engineer.
+Respond in English in a technical, objective manner, citing IEC 60364, IEC 60909, NFPA 70E, ISO 13849, and IEC 61131-3 when relevant.
+Use markdown (lists, tables, **bold**) for clarity.
+Keep technical identifiers (e.g., QF1, KM1, M1, %I0.0, %Q0.0, TON, TOF) strictly invariant.`;
+  }
+  return `Você é o EletricAI Copilot — um engenheiro elétrico industrial sênior brasileiro.
 Responda em PT-BR de forma técnica, objetiva e citando NBR 5410, NBR 14039, NR-10, NR-12 e IEC 61131-3 quando relevante.
-Use markdown (listas, tabelas, **negrito**) para clareza.`;
+Use markdown (listas, tabelas, **negrito**) para clareza.
+Mantenha identificadores técnicos (ex.: QF1, KM1, M1, %I0.0, %Q0.0, TON, TOF) estritamente invariantes.`;
+}
+
+export const SYSTEM_PROMPT = getChatSystemPrompt("pt-BR");
 
 export const streamChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth, requireAiQuota, requireBurstLimit])
@@ -107,6 +118,7 @@ export const streamChat = createServerFn({ method: "POST" })
       .object({
         conversationId: z.string().uuid(),
         prompt: z.string().min(1).max(32000),
+        locale: z.enum(["pt-BR", "en"]).default("pt-BR"),
       })
       .parse(input),
   )
@@ -192,7 +204,7 @@ export const streamChat = createServerFn({ method: "POST" })
         model,
         contents,
         config: {
-          systemInstruction: SYSTEM_PROMPT,
+          systemInstruction: getChatSystemPrompt(data.locale ?? "pt-BR"),
           temperature: 0.4,
         },
       });
