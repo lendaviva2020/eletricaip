@@ -11,6 +11,7 @@ import {
   type BundleNode,
   type EletricAiCanvasBundle,
   type ImportIssue,
+  type ImporterLimits,
 } from "../types";
 
 export interface NetlistAdapterResult {
@@ -19,19 +20,13 @@ export interface NetlistAdapterResult {
   issues: ImportIssue[];
 }
 
-/**
- * Parses electrical netlist lines (e.g., SPICE / circuit diagrams) into a valid Canvas Bundle.
- * Syntax examples:
- *   V_IN N1 0 380V
- *   DJ_01 N1 N2 63A
- *   KM_01 N2 N3 25A
- *   MTR_01 N3 0 7.5kW
- *   R_LOAD N2 0 500W
- */
-export function parseNetlistProject(rawText: string): NetlistAdapterResult {
+export function parseNetlistProject(
+  rawText: string,
+  customLimits?: Partial<ImporterLimits>,
+): NetlistAdapterResult {
   const issues: ImportIssue[] = [];
 
-  const sizeCheck = validatePayloadSize(rawText);
+  const sizeCheck = validatePayloadSize(rawText, customLimits);
   if (!sizeCheck.isSafe) {
     return {
       success: false,

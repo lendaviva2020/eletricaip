@@ -1,10 +1,12 @@
+import { DEFAULT_IMPORTER_LIMITS, type ImporterLimits } from "./types";
+
 // Zero Trust Security Engine for External Project Importation
 // Defends against Prototype Pollution, XSS, DoS/ReDoS, Code Injection, and XXE.
 // Strict bounds, no eval, no Function, no remote resource resolution.
 
-export const MAX_PAYLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
-export const MAX_OBJECT_DEPTH = 10;
-export const MAX_TOTAL_KEYS = 10000;
+export const MAX_PAYLOAD_BYTES = DEFAULT_IMPORTER_LIMITS.maxPayloadBytes; // 25 MB
+export const MAX_OBJECT_DEPTH = DEFAULT_IMPORTER_LIMITS.maxObjectDepth;   // 15
+export const MAX_TOTAL_KEYS = DEFAULT_IMPORTER_LIMITS.maxTotalKeys;       // 150000
 
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -30,10 +32,17 @@ export interface SecurityCheckResult {
   issues: { id: string; message: string }[];
 }
 
-export function validatePayloadSize(raw: string | ArrayBuffer): SecurityCheckResult {
+export function validatePayloadSize(
+  raw: string | ArrayBuffer,
+  customLimits?: Partial<ImporterLimits>,
+): SecurityCheckResult {
+  const limits: ImporterLimits = { ...DEFAULT_IMPORTER_LIMITS, ...customLimits };
   const size = typeof raw === "string" ? new Blob([raw]).size : raw.byteLength;
-  if (size > MAX_PAYLOAD_BYTES) {
-    const msg = `Tamanho da carga útil (${(size / 1024 / 1024).toFixed(2)} MB) excede o limite máximo permitido de 5 MB.`;
+  
+  if (size > limits.maxPayloadBytes) {
+    const limitMb = (limits.maxPayloadBytes / (1024 * 1024)).toFixed(1);
+    const actualMb = (size / (1024 * 1024)).toFixed(2);
+    const msg = `Tamanho da carga útil (${actualMb} MB) excede o limite máximo permitido de ${limitMb} MB.`;
     return {
       isSafe: false,
       safe: false,
@@ -41,6 +50,20 @@ export function validatePayloadSize(raw: string | ArrayBuffer): SecurityCheckRes
       issues: [{ id: "payload-too-large", message: msg }],
     };
   }
+
+  if (typeof raw === "string") {
+    const lineCount = raw.split(/\r?\n/).length;
+    if (lineCount > limits.maxLines) {
+      const msg = `Quantidade de linhas (${lineCount.toLocaleString()}) excede o limite configurado de ${limits.maxLines.toLocaleString()} linhas.`;
+      return {
+        isSafe: false,
+        safe: false,
+        violations: [msg],
+        issues: [{ id: "line-count-exceeded", message: msg }],
+      };
+    }
+  }
+
   return { isSafe: true, safe: true, violations: [], issues: [] };
 }
 
@@ -48,12 +71,14 @@ export function scanObjectForSecurityViolations(
   obj: unknown,
   currentDepth = 0,
   keyCountRef = { count: 0 },
+  customLimits?: Partial<ImporterLimits>,
 ): SecurityCheckResult {
+  const limits: ImporterLimits = { ...DEFAULT_IMPORTER_LIMITS, ...customLimits };
   const violations: string[] = [];
   const issues: { id: string; message: string }[] = [];
 
-  if (currentDepth > MAX_OBJECT_DEPTH) {
-    const msg = `Profundidade excessiva da estrutura (${currentDepth} níveis). Limite: ${MAX_OBJECT_DEPTH}.`;
+  if (currentDepth > limits.maxObjectDepth) {
+    const msg = `Profundidade excessiva da estrutura (${currentDepth} níveis). Limite: ${limits.maxObjectDepth}.`;
     return {
       isSafe: false,
       safe: false,
@@ -67,6 +92,11 @@ export function scanObjectForSecurityViolations(
   }
 
   if (typeof obj === "string") {
+    if (obj.length > limits.maxPropertyLength) {
+      const msg = `Propriedade de texto com tamanho excessivo (${obj.length.toLocaleString()} caracteres). Limite: ${limits.maxPropertyLength.toLocaleString()}.`;
+      violations.push(msg);
+      issues.push({ id: "property-length-exceeded", message: msg });
+    }
     for (const pat of DANGEROUS_STRING_PATTERNS) {
       if (pat.test(obj)) {
         const msg = `Tentativa de injeção de script ou código executável detectada: "${obj.slice(0, 60)}..."`;
@@ -99,8 +129,8 @@ export function scanObjectForSecurityViolations(
   if (Array.isArray(obj)) {
     for (let i = 0; i < obj.length; i++) {
       keyCountRef.count++;
-      if (keyCountRef.count > MAX_TOTAL_KEYS) {
-        const msg = "Quantidade excessiva de elementos na estrutura.";
+      if (keyCountRef.count > limits.maxTotalKeys) {
+        const msg = `Quantidade excessiva de elementos na estrutura (${keyCountRef.count.toLocaleString()}). Limite: ${limits.maxTotalKeys.toLocaleString()}.`;
         return {
           isSafe: false,
           safe: false,
@@ -108,7 +138,7 @@ export function scanObjectForSecurityViolations(
           issues: [{ id: "too-many-keys", message: msg }],
         };
       }
-      const childRes = scanObjectForSecurityViolations(obj[i], currentDepth + 1, keyCountRef);
+      const childRes = scanObjectForSecurityViolations(obj[i], currentDepth + 1, keyCountRef, customLimits);
       if (!childRes.isSafe) {
         violations.push(...childRes.violations);
         issues.push(...childRes.issues);
@@ -122,8 +152,8 @@ export function scanObjectForSecurityViolations(
     const keys = Object.keys(obj as Record<string, unknown>);
     for (const k of keys) {
       keyCountRef.count++;
-      if (keyCountRef.count > MAX_TOTAL_KEYS) {
-        const msg = "Quantidade excessiva de propriedades no objeto.";
+      if (keyCountRef.count > limits.maxTotalKeys) {
+        const msg = `Quantidade excessiva de propriedades no objeto (${keyCountRef.count.toLocaleString()}). Limite: ${limits.maxTotalKeys.toLocaleString()}.`;
         return {
           isSafe: false,
           safe: false,
@@ -151,7 +181,7 @@ export function scanObjectForSecurityViolations(
       }
 
       const val = (obj as Record<string, unknown>)[k];
-      const childRes = scanObjectForSecurityViolations(val, currentDepth + 1, keyCountRef);
+      const childRes = scanObjectForSecurityViolations(val, currentDepth + 1, keyCountRef, customLimits);
       if (!childRes.isSafe) {
         violations.push(...childRes.violations);
         issues.push(...childRes.issues);
@@ -200,8 +230,11 @@ export function validateXmlSecurity(xmlString: string): SecurityCheckResult {
   return { isSafe, safe: isSafe, violations, issues };
 }
 
-export function scanPayloadSecurity(raw: string): SecurityCheckResult {
-  const sizeCheck = validatePayloadSize(raw);
+export function scanPayloadSecurity(
+  raw: string,
+  customLimits?: Partial<ImporterLimits>,
+): SecurityCheckResult {
+  const sizeCheck = validatePayloadSize(raw, customLimits);
   if (!sizeCheck.isSafe) return sizeCheck;
 
   // XML XXE/DTD check
@@ -239,7 +272,7 @@ export function scanPayloadSecurity(raw: string): SecurityCheckResult {
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
     try {
       const parsed = JSON.parse(raw);
-      return scanObjectForSecurityViolations(parsed);
+      return scanObjectForSecurityViolations(parsed, 0, { count: 0 }, customLimits);
     } catch {
       // Syntax error handled in parser adapter
     }

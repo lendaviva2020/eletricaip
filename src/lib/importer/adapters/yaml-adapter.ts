@@ -4,7 +4,7 @@
 
 import { parseJsonBundle, type JsonAdapterResult } from "./json-adapter";
 import { validatePayloadSize } from "../security-validator";
-import type { ImportIssue } from "../types";
+import type { ImportIssue, ImporterLimits } from "../types";
 
 /**
  * Parser determinístico e seguro para subconjunto de YAML (chave: valor, listas '-', indentação).
@@ -105,8 +105,11 @@ function parseYamlScalar(val: string): any {
   return v;
 }
 
-export function parseYamlBundle(rawYaml: string): JsonAdapterResult {
-  const sizeCheck = validatePayloadSize(rawYaml);
+export function parseYamlBundle(
+  rawYaml: string,
+  customLimits?: Partial<ImporterLimits>,
+): JsonAdapterResult {
+  const sizeCheck = validatePayloadSize(rawYaml, customLimits);
   if (!sizeCheck.isSafe) {
     return {
       success: false,
@@ -127,7 +130,7 @@ export function parseYamlBundle(rawYaml: string): JsonAdapterResult {
       .replace(/\r?\n?```\s*$/, "")
       .trim();
     const parsedObj = safeParseYaml(cleaned);
-    return parseJsonBundle(JSON.stringify(parsedObj));
+    return parseJsonBundle(JSON.stringify(parsedObj), customLimits);
   } catch (err: any) {
     return {
       success: false,

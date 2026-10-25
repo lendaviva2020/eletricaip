@@ -201,7 +201,7 @@ export function mergeSpecsIntoDiagramParams(
         kind: "breaker",
         tag,
         notes: baseParams?.notes,
-        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "breaker" ? baseParams.in_A : 32),
+        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "breaker" && baseParams.in_A ? baseParams.in_A : 32),
         curve:
           specs.tripCurve === "B" || specs.tripCurve === "C" || specs.tripCurve === "D"
             ? specs.tripCurve
@@ -218,7 +218,7 @@ export function mergeSpecsIntoDiagramParams(
         kind: "rcd",
         tag,
         notes: baseParams?.notes,
-        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "rcd" ? baseParams.in_A : 40),
+        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "rcd" && baseParams.in_A ? baseParams.in_A : 40),
         sensitivity_mA:
           specs.rcdSensitivityMa ?? (baseParams?.kind === "rcd" ? baseParams.sensitivity_mA : 30),
         poles: specs.poles ?? (baseParams?.kind === "rcd" ? baseParams.poles : 4),
@@ -228,8 +228,8 @@ export function mergeSpecsIntoDiagramParams(
         kind: "contactor",
         tag,
         notes: baseParams?.notes,
-        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "contactor" ? baseParams.in_A : 32),
-        coil_V: specs.coilVoltageV ?? (baseParams?.kind === "contactor" ? baseParams.coil_V : 24),
+        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "contactor" && baseParams.in_A ? baseParams.in_A : 32),
+        coil_V: specs.coilVoltageV ?? (baseParams?.kind === "contactor" && baseParams.coil_V ? baseParams.coil_V : 24),
       };
     case "relay":
       return {
@@ -244,7 +244,7 @@ export function mergeSpecsIntoDiagramParams(
         kind: "fuse",
         tag,
         notes: baseParams?.notes,
-        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "fuse" ? baseParams.in_A : 16),
+        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "fuse" && baseParams.in_A ? baseParams.in_A : 16),
       };
     case "disconnector":
       return {
@@ -252,7 +252,7 @@ export function mergeSpecsIntoDiagramParams(
         tag,
         notes: baseParams?.notes,
         in_A:
-          specs.nominalCurrentA ?? (baseParams?.kind === "disconnector" ? baseParams.in_A : 63),
+          specs.nominalCurrentA ?? (baseParams?.kind === "disconnector" && baseParams.in_A ? baseParams.in_A : 63),
       };
     case "transformer":
       return {
@@ -298,8 +298,8 @@ export function mergeSpecsIntoDiagramParams(
         tag,
         notes: baseParams?.notes,
         current_A:
-          specs.nominalCurrentA ?? (baseParams?.kind === "busbar" ? baseParams.current_A : 250),
-        voltage_V: specs.voltageV ?? (baseParams?.kind === "busbar" ? baseParams.voltage_V : 380),
+          specs.nominalCurrentA ?? (baseParams?.kind === "busbar" && baseParams.current_A ? baseParams.current_A : 250),
+        voltage_V: specs.voltageV ?? (baseParams?.kind === "busbar" && baseParams.voltage_V ? baseParams.voltage_V : 380),
       };
     case "ccm":
       return {

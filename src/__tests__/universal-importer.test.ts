@@ -181,11 +181,17 @@ describe("Universal Importer - Zero Trust Security Scanning", () => {
   });
 
   it("rejects payloads exceeding size limits or extreme nesting depth", () => {
-    // String gigantesta simulando estouro de memória (> 5MB)
+    // String gigantesta simulando estouro de memória com limite configurável
     const hugeString = "a".repeat(6 * 1024 * 1024);
-    const scanHuge = scanPayloadSecurity(hugeString);
-    expect(scanHuge.safe).toBe(false);
-    expect(scanHuge.issues.some((i) => i.id === "payload-too-large")).toBe(true);
+    const scanConfigured = scanPayloadSecurity(hugeString, { maxPayloadBytes: 5 * 1024 * 1024 });
+    expect(scanConfigured.safe).toBe(false);
+    expect(scanConfigured.issues.some((i) => i.id === "payload-too-large")).toBe(true);
+
+    // Teste de estouro do limite padrão (26MB)
+    const exceedsDefault = "a".repeat(26 * 1024 * 1024);
+    const scanDefault = scanPayloadSecurity(exceedsDefault);
+    expect(scanDefault.safe).toBe(false);
+    expect(scanDefault.issues.some((i) => i.id === "payload-too-large")).toBe(true);
   });
 });
 
@@ -500,5 +506,62 @@ MTR_RECALQUE N3 0 15kW
     expect(report.bundle?.nodes.some((n) => n.id === "KM_BOMBA" && n.type === "contactor")).toBe(true);
     expect(report.bundle?.nodes.some((n) => n.id === "MTR_RECALQUE" && n.type === "motor")).toBe(true);
     expect(report.bundle?.edges.length).toBeGreaterThan(0);
+  });
+
+  it("converts 'In' into required 'in_A' and passes DiagramDocSchema and ingestDiagramDocChange without ZodError", async () => {
+    const { DiagramDocSchema } = await import("@/lib/diagram/schema");
+    const { useUnifiedProjectStore } = await import("@/lib/model/unified-store");
+
+    const bundleJson = JSON.stringify({
+      format: "eletricai.canvas-bundle",
+      schemaVersion: "1.0.0",
+      project: { name: "Bomba Directa", diagramType: "unifilar" },
+      nodes: [
+        {
+          id: "DJ-GERAL",
+          type: "breaker",
+          label: "Disjuntor Geral 63A",
+          position: { x: 200, y: 80 },
+          properties: { tag: "QGBT-DJ01", In: 63, poles: 3, curve: "C" },
+        },
+        {
+          id: "DJ-MOTOR",
+          type: "breaker",
+          label: "Disjuntor-Motor 20A",
+          position: { x: 200, y: 320 },
+          properties: { tag: "QM1", In: 20, poles: 3 },
+        },
+        {
+          id: "K1",
+          type: "contactor",
+          label: "Contator Tripolar 18A",
+          position: { x: 200, y: 440 },
+          properties: { tag: "K1", In: 18, poles: 3 },
+        },
+      ],
+      edges: [
+        { id: "e1", source: "DJ-GERAL", target: "DJ-MOTOR", kind: "power" },
+        { id: "e2", source: "DJ-MOTOR", target: "K1", kind: "power" },
+      ],
+    });
+
+    const report = validateAndParseExternalPayload(bundleJson);
+    expect(report.canImport).toBe(true);
+
+    const doc = convertBundleToDiagramDoc(report.bundle!);
+
+    // Verifica que in_A foi rigorosamente preenchido
+    expect((doc.nodes["DJ-GERAL"].params as any).in_A).toBe(63);
+    expect((doc.nodes["DJ-MOTOR"].params as any).in_A).toBe(20);
+    expect((doc.nodes["K1"].params as any).in_A).toBe(18);
+
+    // Valida com o DiagramDocSchema completo
+    const parsedDoc = DiagramDocSchema.parse(doc);
+    expect(parsedDoc.nodes["DJ-GERAL"]).toBeDefined();
+
+    // Ingestão no UnifiedProjectStore não pode lançar ZodError
+    expect(() => {
+      useUnifiedProjectStore.getState().ingestDiagramDocChange(parsedDoc);
+    }).not.toThrow();
   });
 });

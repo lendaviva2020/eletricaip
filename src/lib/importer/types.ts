@@ -151,6 +151,38 @@ export interface EletricAiCanvasBundle {
   };
 }
 
+export type SupportedImporterFormat =
+  | "json-bundle"
+  | "yaml-bundle"
+  | "csv-table"
+  | "plcopen-xml"
+  | "st-program"
+  | "txt-spec"
+  | "netlist"
+  | "unknown";
+
+export interface ImporterLimits {
+  maxPayloadBytes: number;
+  maxLines: number;
+  maxNodes: number;
+  maxEdges: number;
+  maxTotalKeys: number;
+  maxObjectDepth: number;
+  maxPropertyLength: number;
+  maxProcessingTimeMs: number;
+}
+
+export const DEFAULT_IMPORTER_LIMITS: ImporterLimits = {
+  maxPayloadBytes: 25 * 1024 * 1024, // 25 MB
+  maxLines: 50_000,                  // 50.000 linhas
+  maxNodes: 10_000,                  // 10.000 nós
+  maxEdges: 25_000,                  // 25.000 conexões
+  maxTotalKeys: 150_000,             // 150.000 chaves/elementos
+  maxObjectDepth: 15,                // 15 níveis de profundidade
+  maxPropertyLength: 10_000,         // 10.000 caracteres por propriedade
+  maxProcessingTimeMs: 15_000,       // 15 segundos
+};
+
 export type ImportSecuritySeverity = "critical" | "warning" | "info";
 
 export interface ImportIssue {
@@ -166,7 +198,7 @@ export interface ImportIssue {
 export interface ImportValidationReport {
   isValid: boolean;
   canImport: boolean;
-  detectedFormat: "json-bundle" | "yaml-bundle" | "csv-table" | "plcopen-xml" | "netlist" | "unknown";
+  detectedFormat: SupportedImporterFormat;
   stats: {
     totalNodes: number;
     recognizedNodes: number;
@@ -176,6 +208,9 @@ export interface ImportValidationReport {
     rejectedEdges: number;
     ladderRungsCount: number;
     tagsCount: number;
+    lineCount?: number;
+    payloadBytes?: number;
+    processingTimeMs?: number;
   };
   issues: ImportIssue[];
   bundle?: EletricAiCanvasBundle;

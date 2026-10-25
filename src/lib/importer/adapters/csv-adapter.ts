@@ -12,6 +12,7 @@ import {
   type BundleTag,
   type EletricAiCanvasBundle,
   type ImportIssue,
+  type ImporterLimits,
 } from "../types";
 
 export interface CsvAdapterResult {
@@ -20,10 +21,13 @@ export interface CsvAdapterResult {
   issues: ImportIssue[];
 }
 
-export function parseCsvProject(rawCsv: string): CsvAdapterResult {
+export function parseCsvProject(
+  rawCsv: string,
+  customLimits?: Partial<ImporterLimits>,
+): CsvAdapterResult {
   const issues: ImportIssue[] = [];
 
-  const sizeCheck = validatePayloadSize(rawCsv);
+  const sizeCheck = validatePayloadSize(rawCsv, customLimits);
   if (!sizeCheck.isSafe) {
     return {
       success: false,

@@ -128,19 +128,31 @@ export function CanvasAiChat() {
     if (!textToSend) setVal("");
 
     // Interceptação determinística de pacotes de projeto externos (0 créditos de IA)
+    const detectedFmt = detectFormat(p);
     const isRecognizedBundle =
+      detectedFmt !== "unknown" ||
       p.includes("eletricai.canvas-bundle") ||
       (p.includes('"nodes"') && p.includes('"edges"') && (p.includes('"format"') || p.includes('"project"'))) ||
       (p.startsWith("<?xml") && p.includes("tc6_xml"));
 
     if (isRecognizedBundle) {
-      const summaryText = p.length > 120 ? `${p.slice(0, 100)}... [pacote com ${p.length} caracteres]` : p;
+      const fmtLabels: Record<string, string> = {
+        "json-bundle": "JSON Canvas Bundle",
+        "yaml-bundle": "YAML Canvas Bundle",
+        "csv-table": "Tabela CSV (Cargas / I/O)",
+        "plcopen-xml": "PLCopen XML (IEC 61131-3)",
+        "st-program": "Structured Text (ST / SCL)",
+        "txt-spec": "Especificação Técnica TXT",
+        "netlist": "Netlist SPICE",
+      };
+      const label = detectedFmt !== "unknown" ? (fmtLabels[detectedFmt] || detectedFmt) : "Canvas Bundle";
+      const summaryText = p.length > 120 ? `${p.slice(0, 100)}... [pacote ${label} com ${p.length} caracteres]` : p;
       setMsgs((m) => [
         ...m,
         { role: "user", text: summaryText },
         {
           role: "ai",
-          text: "📦 **Pacote ElétricAi Canvas Bundle detectado!**\n\nOperação interceptada com sucesso **antes** do envio ao provedor de IA interna.\n\n🛡️ **0 créditos consumidos.** O conteúdo foi direcionado ao **Importador Universal Seguro** para inspeção e renderização direta no Canvas.",
+          text: `📦 **Pacote de Projeto Detectado (${label})!**\n\nOperação interceptada com sucesso **antes** do envio ao provedor de IA interna.\n\n🛡️ **0 créditos consumidos.** O conteúdo foi direcionado ao **Importador Universal Seguro** para inspeção estrutural, validação Zero Trust e renderização direta no Canvas.`,
         },
       ]);
       window.dispatchEvent(new CustomEvent("eletricai-open-importer", { detail: { payload: p } }));
@@ -153,19 +165,16 @@ export function CanvasAiChat() {
       (p.startsWith("{") || p.startsWith("```") || p.startsWith("["));
 
     if (isAttemptedExternalData) {
-      const fmt = detectFormat(p);
-      if (fmt === "unknown") {
-        const summaryText = p.length > 120 ? `${p.slice(0, 100)}...` : p;
-        setMsgs((m) => [
-          ...m,
-          { role: "user", text: summaryText },
-          {
-            role: "ai",
-            text: "⚠️ **Formato de pacote externo não suportado.**\n\nO conteúdo colado parece uma tentativa de intercâmbio de circuito, mas não corresponde ao contrato universal **ElétricAi Canvas Bundle (v1.0.0)** nem aos formatos seguros suportados (YAML, CSV, PLCopen XML).\n\n💡 **Como corrigir:** Solicite à sua IA externa que formate a resposta especificamente no padrão `eletricai.canvas-bundle`. Você pode copiar o prompt pronto na aba **\"4. Exportar & Prompts para IA Externa\"** do Importador Universal (0 créditos).",
-          },
-        ]);
-        return;
-      }
+      const summaryText = p.length > 120 ? `${p.slice(0, 100)}...` : p;
+      setMsgs((m) => [
+        ...m,
+        { role: "user", text: summaryText },
+        {
+          role: "ai",
+          text: "⚠️ **Formato de pacote externo não suportado.**\n\nO conteúdo colado parece uma tentativa de intercâmbio de circuito, mas não corresponde ao contrato universal **ElétricAi Canvas Bundle (v1.0.0)** nem aos formatos seguros suportados (YAML, CSV, PLCopen XML, ST/SCL ou TXT).\n\n💡 **Como corrigir:** Solicite à sua IA externa que formate a resposta especificamente no padrão `eletricai.canvas-bundle`. Você pode copiar o prompt pronto na aba **\"4. Exportar & Prompts para IA Externa\"** do Importador Universal (0 créditos).",
+        },
+      ]);
+      return;
     }
 
     setMsgs((m) => [

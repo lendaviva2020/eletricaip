@@ -10,6 +10,7 @@ import {
   type BundleTag,
   type EletricAiCanvasBundle,
   type ImportIssue,
+  type ImporterLimits,
 } from "../types";
 
 export interface PlcopenAdapterResult {
@@ -18,11 +19,14 @@ export interface PlcopenAdapterResult {
   issues: ImportIssue[];
 }
 
-export function parsePlcopenXml(rawXml: string): PlcopenAdapterResult {
+export function parsePlcopenXml(
+  rawXml: string,
+  customLimits?: Partial<ImporterLimits>,
+): PlcopenAdapterResult {
   const issues: ImportIssue[] = [];
 
   // 1. Limite de tamanho
-  const sizeCheck = validatePayloadSize(rawXml);
+  const sizeCheck = validatePayloadSize(rawXml, customLimits);
   if (!sizeCheck.isSafe) {
     return {
       success: false,

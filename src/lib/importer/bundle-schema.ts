@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   CANVAS_BUNDLE_FORMAT,
   CURRENT_BUNDLE_VERSION,
+  DEFAULT_IMPORTER_LIMITS,
   type AllowedCircuitConfig,
   type AllowedEdgeKind,
   type AllowedNodeKind,
@@ -224,11 +225,11 @@ export const EletricAiCanvasBundleSchema = z.object({
   format: z.literal(CANVAS_BUNDLE_FORMAT),
   schemaVersion: z.literal(CURRENT_BUNDLE_VERSION).or(z.string().regex(/^1\.\d+\.\d+$/)),
   project: BundleProjectMetaSchema,
-  nodes: z.array(BundleNodeSchema).min(0).max(500),
-  edges: z.array(BundleEdgeSchema).min(0).max(1000),
+  nodes: z.array(BundleNodeSchema).min(0).max(DEFAULT_IMPORTER_LIMITS.maxNodes),
+  edges: z.array(BundleEdgeSchema).min(0).max(DEFAULT_IMPORTER_LIMITS.maxEdges),
   ladder: z
     .object({
-      rungs: z.array(BundleLadderRungSchema).max(200),
+      rungs: z.array(BundleLadderRungSchema).max(5000),
     })
     .optional(),
   plc: z
@@ -236,10 +237,10 @@ export const EletricAiCanvasBundleSchema = z.object({
       vendor: z.string().max(64).optional().default("siemens"),
       rackName: z.string().max(64).optional().default("Rack Principal"),
       cpuModel: z.string().max(64).optional().default("CPU 1214C DC/DC/DC"),
-      modules: z.array(BundlePlcModuleSchema).max(32).optional().default([]),
+      modules: z.array(BundlePlcModuleSchema).max(128).optional().default([]),
     })
     .optional(),
-  tags: z.array(BundleTagSchema).max(500).optional(),
+  tags: z.array(BundleTagSchema).max(DEFAULT_IMPORTER_LIMITS.maxNodes).optional(),
   metadata: z
     .object({
       author: z.string().max(120).optional(),

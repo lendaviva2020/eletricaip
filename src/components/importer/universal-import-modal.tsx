@@ -43,6 +43,7 @@ import {
   convertBundleToDiagramDoc,
   convertBundleToIndustrialElements,
   convertBundleToLadderRungs,
+  detectFormat,
 } from "@/lib/importer/universal-importer";
 import {
   exportCurrentCanvasToBundle,
@@ -153,6 +154,14 @@ export function UniversalImportModal({
   const [includeBaseProject, setIncludeBaseProject] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const inputStats = useMemo(() => {
+    const lines = rawInput ? rawInput.split(/\r?\n/).length : 0;
+    const bytes = rawInput ? new Blob([rawInput]).size : 0;
+    const kb = (bytes / 1024).toFixed(1);
+    const detected = rawInput ? detectFormat(rawInput) : "unknown";
+    return { lines, bytes, kb, detected };
+  }, [rawInput]);
 
   // Sync initialTab when modal opens or initialTab changes
   useEffect(() => {
@@ -413,7 +422,7 @@ export function UniversalImportModal({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".json,.yaml,.yml,.csv,.xml"
+                    accept=".json,.yaml,.yml,.csv,.xml,.st,.scl,.txt,.cir,.net"
                     className="hidden"
                     onChange={handleFileUpload}
                   />
@@ -423,11 +432,26 @@ export function UniversalImportModal({
               <Textarea
                 id="payload-input"
                 rows={13}
-                placeholder="Cole aqui o JSON gerado pelo ChatGPT, Claude ou DeepSeek..."
+                placeholder="Cole aqui o projeto gerado pelo ChatGPT, Claude, DeepSeek ou arquivo de engenharia (JSON, YAML, CSV, PLCopen XML, Structured Text, TXT)..."
                 value={rawInput}
                 onChange={(e) => setRawInput(e.target.value)}
                 className="font-mono text-xs leading-relaxed resize-none bg-muted/20"
               />
+
+              {/* Barra de Status em Tempo Real */}
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground px-2.5 py-1.5 bg-muted/30 rounded border font-mono">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground/80">Formato:</span>
+                  <strong className="text-foreground uppercase">{inputStats.detected}</strong>
+                </span>
+                <div className="flex items-center gap-3">
+                  <span>Linhas: <strong className="text-foreground">{inputStats.lines.toLocaleString()}</strong></span>
+                  <span>Tamanho: <strong className="text-foreground">{inputStats.kb} KB</strong></span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5" /> 0 Créditos de IA
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-2">
@@ -560,6 +584,36 @@ export function UniversalImportModal({
                     <p className="text-[10px] text-muted-foreground font-medium">
                       endereços mapeados
                     </p>
+                  </div>
+                </div>
+
+                {/* Linhas, Tamanho e Tempo de Processamento */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-muted/20 p-2.5 rounded-lg border">
+                  <div>
+                    <span className="text-muted-foreground">Linhas de Código: </span>
+                    <strong className="text-foreground">
+                      {(validationReport.stats.lineCount ?? inputStats.lines).toLocaleString()}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Tamanho Total: </span>
+                    <strong className="text-foreground">
+                      {validationReport.stats.payloadBytes
+                        ? (validationReport.stats.payloadBytes / 1024).toFixed(1) + " KB"
+                        : inputStats.kb + " KB"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Tempo de Parser: </span>
+                    <strong className="text-foreground">
+                      {validationReport.stats.processingTimeMs !== undefined
+                        ? `${validationReport.stats.processingTimeMs} ms`
+                        : "< 50 ms"}
+                    </strong>
+                  </div>
+                  <div className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <ShieldCheck className="h-4 w-4" />
+                    <span>0 Créditos Consumidos</span>
                   </div>
                 </div>
 

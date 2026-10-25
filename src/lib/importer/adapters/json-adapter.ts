@@ -15,6 +15,7 @@ import {
   CURRENT_BUNDLE_VERSION,
   type EletricAiCanvasBundle,
   type ImportIssue,
+  type ImporterLimits,
 } from "../types";
 
 export interface JsonAdapterResult {
@@ -23,11 +24,14 @@ export interface JsonAdapterResult {
   issues: ImportIssue[];
 }
 
-export function parseJsonBundle(rawText: string): JsonAdapterResult {
+export function parseJsonBundle(
+  rawText: string,
+  customLimits?: Partial<ImporterLimits>,
+): JsonAdapterResult {
   const issues: ImportIssue[] = [];
 
   // 1. Limite de tamanho de carga útil
-  const sizeCheck = validatePayloadSize(rawText);
+  const sizeCheck = validatePayloadSize(rawText, customLimits);
   if (!sizeCheck.isSafe) {
     return {
       success: false,
@@ -67,7 +71,7 @@ export function parseJsonBundle(rawText: string): JsonAdapterResult {
   }
 
   // 3. Verificação Zero Trust de Segurança (Prototype Pollution, XSS, etc.)
-  const secCheck = scanObjectForSecurityViolations(parsed);
+  const secCheck = scanObjectForSecurityViolations(parsed, 0, { count: 0 }, customLimits);
   if (!secCheck.isSafe) {
     return {
       success: false,
