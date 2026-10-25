@@ -130,11 +130,14 @@ export function generateElectricalCalculationMemory(
     const lengthM = 20; // 20m padrão se não declarado explicitamente
 
     // Dimensionamento por Ampacidade e Queda de Tensão
-    let selectedCableMm2: CableSection_mm2 = 2.5;
+    // NBR 5410 Tabela 47: seção mínima para circuitos de força e motores é 2,5 mm²
+    const minSection: CableSection_mm2 = circuitType === "lighting_branch" ? 1.5 : 2.5;
+    let selectedCableMm2: CableSection_mm2 = minSection;
     let nominalAmpacityIzA = 24;
     let correctedAmpacityIzA = 24;
 
     for (const sec of NBR5410_SECTIONS) {
+      if (sec < minSection) continue;
       const izCorr = correctedAmpacityIz(sec, {
         method: installationMethod,
         insulation,

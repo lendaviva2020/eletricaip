@@ -89,7 +89,19 @@ export function extractCanvasData(
   // 2. Determinar escopo técnico do projeto
   const hasUnifilar = equipments.length > 0;
   const hasMultifilar = Object.keys(doc.views.multifilar.nodes).length > 0;
-  const ladderRungs = doc.plc.project.programBlocks.flatMap((b) => b.ladder?.rungs ?? []);
+
+  const allLadderRungs = [
+    ...(doc.plc.project.programBlocks?.flatMap((b) => (b.ladder as any)?.rungs ?? []) ?? []),
+    ...((input.snapshot?.editor?.rungs as any[]) ?? []),
+  ];
+  const seenRungIds = new Set<string>();
+  const ladderRungs = allLadderRungs.filter((r) => {
+    const id = r.id || JSON.stringify(r);
+    if (seenRungIds.has(id)) return false;
+    seenRungIds.add(id);
+    return true;
+  });
+
   const hasLadder = ladderRungs.length > 0;
   const hasFbd = Object.keys(doc.views.scada.widgets).some((w) => doc.views.scada.widgets[w]?.kind === "fbd_block");
   const hasScada = Object.keys(doc.views.scada.widgets).length > 0;
@@ -231,14 +243,15 @@ export function extractCanvasData(
 
   for (const eq of equipments) {
     if (eq.category === "load" || eq.catalogType === "motor") {
-      const motorTag = eq.displayName || eq.tagCode;
+      const motorTag = eq.tagCode || eq.displayName;
+      const motorLabel = eq.displayName || eq.tagCode;
       terminals.push({
         blockId: "X1",
         terminalNumber: termNum++,
         wireTag: `${motorTag}-U1`,
         internalEquipment: `KM_${eq.tagCode}`,
         internalTerminal: "2/T1",
-        externalEquipment: motorTag,
+        externalEquipment: motorLabel,
         externalTerminal: "U1",
         signalType: "power",
       });
@@ -248,7 +261,7 @@ export function extractCanvasData(
         wireTag: `${motorTag}-V1`,
         internalEquipment: `KM_${eq.tagCode}`,
         internalTerminal: "4/T2",
-        externalEquipment: motorTag,
+        externalEquipment: motorLabel,
         externalTerminal: "V1",
         signalType: "power",
       });
@@ -258,7 +271,7 @@ export function extractCanvasData(
         wireTag: `${motorTag}-W1`,
         internalEquipment: `KM_${eq.tagCode}`,
         internalTerminal: "6/T3",
-        externalEquipment: motorTag,
+        externalEquipment: motorLabel,
         externalTerminal: "W1",
         signalType: "power",
       });
@@ -268,7 +281,7 @@ export function extractCanvasData(
         wireTag: `${motorTag}-PE`,
         internalEquipment: "BARRA_PE",
         internalTerminal: "PE",
-        externalEquipment: motorTag,
+        externalEquipment: motorLabel,
         externalTerminal: "PE",
         signalType: "pe",
       });
@@ -276,29 +289,51 @@ export function extractCanvasData(
   }
 
   // 6. Extrair Automação e Mapa de I/O do CLP
-  const plcRack = doc.plc.project.rack;
+  const plcRack = (input.snapshot?.plc as any)?.rack || doc.plc.project.rack;
   const ioMappings: PlcIoMapping[] = [];
 
   for (const mod of (plcRack.modules as any[]) ?? []) {
-    const chCount = typeof mod.channels === "number" ? mod.channels : (Array.isArray(mod.channels) ? mod.channels.length : 8);
     const modType = (mod.category || mod.type || "DI").toUpperCase();
     const slotNum = typeof mod.slot === "number" ? mod.slot : (mod.slotNumber ?? 1);
     const partNum = mod.catalogKey || mod.partNumber || `PLC-${modType}`;
-    for (let c = 0; c < chCount; c++) {
-      const isInput = modType === "DI" || modType === "AI";
-      const addr = isInput ? `%I${slotNum}.${c}` : `%Q${slotNum}.${c}`;
-      const boundTag = tags.find((t) => t.address === addr || t.name.includes(`CH_${c}`));
-      ioMappings.push({
-        address: addr,
-        channel: `Ch ${c}`,
-        direction: modType,
-        symbolicTag: boundTag?.name || `TAG_${modType}_${c}`,
-        description: boundTag?.description || `Canal ${modType} slot ${slotNum} ch ${c}`,
-        boundEquipmentId: boundTag?.linkedEquipmentId,
-        signalType: modType.startsWith("A") ? "0-10V / 4-20mA" : "24Vdc PNP",
-        slotNumber: slotNum,
-        modulePartNumber: partNum,
-      });
+
+    if (Array.isArray(mod.channels)) {
+      for (let c = 0; c < mod.channels.length; c++) {
+        const ch = mod.channels[c];
+        const isInput = modType === "DI" || modType === "AI";
+        const fallbackAddr = isInput ? `%I${slotNum}.${c}` : `%Q${slotNum}.${c}`;
+        const addr = (typeof ch === "object" && ch?.address) ? ch.address : fallbackAddr;
+        const tagSymbol = (typeof ch === "object" && ch?.tag) ? ch.tag : (typeof ch === "string" ? ch : `TAG_${modType}_${c}`);
+        const desc = (typeof ch === "object" && ch?.description) ? ch.description : `Canal ${modType} slot ${slotNum} ch ${c}`;
+        ioMappings.push({
+          address: addr,
+          channel: `Ch ${c}`,
+          direction: modType as any,
+          symbolicTag: tagSymbol,
+          description: desc,
+          signalType: modType.startsWith("A") ? "0-10V / 4-20mA" : "24Vdc PNP",
+          slotNumber: slotNum,
+          modulePartNumber: partNum,
+        });
+      }
+    } else {
+      const chCount = typeof mod.channels === "number" ? mod.channels : 8;
+      for (let c = 0; c < chCount; c++) {
+        const isInput = modType === "DI" || modType === "AI";
+        const addr = isInput ? `%I${slotNum}.${c}` : `%Q${slotNum}.${c}`;
+        const boundTag = tags.find((t) => t.address === addr || t.name.includes(`CH_${c}`));
+        ioMappings.push({
+          address: addr,
+          channel: `Ch ${c}`,
+          direction: modType as any,
+          symbolicTag: boundTag?.name || `TAG_${modType}_${c}`,
+          description: boundTag?.description || `Canal ${modType} slot ${slotNum} ch ${c}`,
+          boundEquipmentId: boundTag?.linkedEquipmentId,
+          signalType: modType.startsWith("A") ? "0-10V / 4-20mA" : "24Vdc PNP",
+          slotNumber: slotNum,
+          modulePartNumber: partNum,
+        });
+      }
     }
   }
 
