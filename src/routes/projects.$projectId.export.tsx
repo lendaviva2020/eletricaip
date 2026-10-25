@@ -19,6 +19,7 @@ function ExportPage() {
   const { projectId } = Route.useParams();
   const dataFn = useServerFn(getProjectExportData);
   const [busy, setBusy] = useState<string | null>(null);
+  const [dossierOpen, setDossierOpen] = useState(false);
   const { t, formatCurrency } = useI18n();
 
   const { data, isLoading } = useQuery({
@@ -131,6 +132,31 @@ function ExportPage() {
             </div>
           </div>
 
+          <div className="border-2 border-primary/40 rounded-lg p-5 mb-6 bg-primary/5 relative overflow-hidden">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold text-base">Dossiê Técnico de Engenharia (Completo)</h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary text-primary-foreground">
+                    NOVO · INDUSTRIAL
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground max-w-2xl">
+                  Geração completa a partir da topologia do Canvas: Capa executiva, memória de cálculo determinística NBR 5410,
+                  BOM em 10 grupos industriais, régua de bornes X1, mapa de I/O do CLP, exportação Excel com 5 abas, PLCopen XML e
+                  validação de conformidade normativa com carimbo formal.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button onClick={() => setDossierOpen(true)} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-9">
+                <Sparkles className="w-3.5 h-3.5" />
+                Abrir Dossiê Técnico de Engenharia
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-border rounded-lg p-5 bg-card">
               <FileText className="w-6 h-6 text-primary mb-3" />
@@ -155,6 +181,12 @@ function ExportPage() {
               </Button>
             </div>
           </div>
+
+          <EngineeringDossierModal
+            projectId={projectId}
+            open={dossierOpen}
+            onOpenChange={setDossierOpen}
+          />
         </>
       )}
     </div>
