@@ -5,11 +5,14 @@ import { RuntimeStatus } from "@/components/runtime-status";
 import { MobileMenu } from "@/components/mobile-menu";
 import { AiCreditsBadge } from "@/components/ai-credits-badge";
 import { NotificationDropdown } from "@/components/ui/notification-dropdown";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { saveManualVersion } from "@/lib/ai-architect-client";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useI18n } from "@/lib/i18n";
 
 export function Topbar() {
   useNotifications();
+  const { t } = useI18n();
   const [saving, setSaving] = useState<"idle" | "busy" | "ok" | "err">("idle");
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
@@ -26,7 +29,7 @@ export function Topbar() {
       }, 2500);
     } else {
       setSaving("err");
-      setSavedMsg(result.error ?? "Falha ao salvar");
+      setSavedMsg(result.error ?? t("common.errorSaving"));
       setTimeout(() => {
         setSaving("idle");
         setSavedMsg(null);
@@ -48,9 +51,9 @@ export function Topbar() {
         <div className="relative w-full max-w-md">
           <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
-            aria-label="Busca global"
-            title="Busca global"
-            placeholder="Buscar..."
+            aria-label={t("common.search")}
+            title={t("common.search")}
+            placeholder={t("common.searchPlaceholder")}
             className="w-full h-9 pl-9 pr-3 rounded-md bg-input/60 border border-border text-sm
                        outline-none focus:ring-2 focus:ring-ring focus:bg-input
                        placeholder:text-muted-foreground/70"
@@ -68,7 +71,7 @@ export function Topbar() {
           onClick={onSave}
           disabled={saving === "busy"}
           className="h-8 px-2 gap-1.5 text-xs"
-          title={savedMsg ?? "Salvar snapshot do projeto"}
+          title={savedMsg ?? t("common.save")}
         >
           {saving === "busy" ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -78,7 +81,7 @@ export function Topbar() {
             <Save className="h-3.5 w-3.5" />
           )}
           <span className="hidden md:inline">
-            {saving === "ok" ? savedMsg : saving === "err" ? "Falhou" : "Salvar"}
+            {saving === "ok" ? savedMsg : saving === "err" ? t("common.error") : t("common.save")}
           </span>
         </Button>
         <Button
@@ -87,13 +90,14 @@ export function Topbar() {
           className="hidden md:inline-flex h-8 px-2 gap-1.5 text-xs"
           onClick={() => window.dispatchEvent(new Event("trigger-share-modal"))}
         >
-          <Share2 className="h-3.5 w-3.5" /> Compartilhar
+          <Share2 className="h-3.5 w-3.5" /> {t("common.share")}
         </Button>
         <div className="hidden md:block h-5 w-px bg-border mx-1" />
         <RuntimeStatus />
         <AiCreditsBadge />
         <div className="hidden sm:block h-5 w-px bg-border mx-1" />
         <NotificationDropdown />
+        <LanguageSwitcher />
         <div className="h-7 w-7 rounded-full ring-1 ring-border bg-linear-to-br from-primary/60 to-info/60" />
       </div>
     </header>

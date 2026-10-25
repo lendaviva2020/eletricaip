@@ -6,6 +6,7 @@ import { ArrowLeft, Search, ExternalLink } from "lucide-react";
 import { listCatalog, listCatalogCategories } from "@/lib/catalog.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({ meta: [{ title: "Catálogo de componentes · EletricAI" }] }),
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/catalog")({
 });
 
 function CatalogPage() {
+  const { t } = useI18n();
   const listFn = useServerFn(listCatalog);
   const catsFn = useServerFn(listCatalogCategories);
   const [search, setSearch] = useState("");
@@ -35,9 +37,9 @@ function CatalogPage() {
       >
         <ArrowLeft className="w-4 h-4" /> Dashboard
       </Link>
-      <h1 className="text-2xl font-bold mb-1">Catálogo de componentes</h1>
+      <h1 className="text-2xl font-bold mb-1">{t("catalogPage.title")}</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Disjuntores, contatores, relés, cabos e demais componentes elétricos.
+        {t("catalogPage.subtitle")}
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -46,7 +48,7 @@ function CatalogPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por part number, nome ou descrição…"
+            placeholder={t("catalogPage.searchPlaceholder")}
             className="pl-9"
           />
         </div>
@@ -57,7 +59,7 @@ function CatalogPage() {
           onChange={(e) => setCategoryId(e.target.value || undefined)}
           className="h-10 rounded-md border border-border bg-background px-3 text-sm"
         >
-          <option value="">Todas as categorias</option>
+          <option value="">{t("catalogPage.allCategories")}</option>
           {(cats?.categories ?? []).map((c: any) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -66,11 +68,11 @@ function CatalogPage() {
         </select>
       </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
 
       {!isLoading && (data?.components?.length ?? 0) === 0 && (
         <div className="border border-dashed border-border rounded-lg p-8 text-center text-sm text-muted-foreground">
-          Nenhum componente encontrado. Catálogo aguardando cadastro pelo administrador.
+          {t("catalogPage.empty")}
         </div>
       )}
 
@@ -105,9 +107,9 @@ function CatalogPage() {
       </div>
 
       <div className="mt-8 border-t border-border pt-6 text-sm text-muted-foreground">
-        Para adicionar componentes ao seu projeto, abra o BOM em{" "}
+        {t("catalogPage.footerHint")}{" "}
         <Link to="/projects" className="text-primary hover:underline">
-          Projetos
+          {t("nav.projects")}
         </Link>
         .
       </div>

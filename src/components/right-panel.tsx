@@ -5,38 +5,40 @@ import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { RightPropertyPanel } from "@/components/editor/right-property-panel";
 import { RevisionHistory } from "@/components/revision-history";
+import { useI18n } from "@/lib/i18n";
 
 const TABS = [
-  { id: "props", label: "Propriedades", icon: Settings2 },
-  { id: "ai", label: "IA", icon: Sparkles },
-  { id: "norms", label: "Normas", icon: ShieldCheck },
-  { id: "versions", label: "Versões", icon: GitBranch },
-  { id: "maint", label: "Manutenção", icon: Wrench },
+  { id: "props", key: "rightPanel.props" as const, icon: Settings2 },
+  { id: "ai", key: "rightPanel.ai" as const, icon: Sparkles },
+  { id: "norms", key: "rightPanel.norms" as const, icon: ShieldCheck },
+  { id: "versions", key: "rightPanel.versions" as const, icon: GitBranch },
+  { id: "maint", key: "rightPanel.maint" as const, icon: Wrench },
 ] as const;
 
 const STRUCTURED_MODES = new Set(["unifilar", "ladder", "fbd"]);
 
 export function RightPanel() {
+  const { t } = useI18n();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("ai");
 
   return (
     <aside className="flex w-[340px] shrink-0 flex-col border-l border-border bg-panel">
       <div className="h-9 flex items-center px-2 border-b border-border">
-        {TABS.map((t) => {
-          const Icon = t.icon;
+        {TABS.map((tabItem) => {
+          const Icon = tabItem.icon;
           return (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={tabItem.id}
+              onClick={() => setTab(tabItem.id)}
               className={cn(
                 "h-7 px-2.5 rounded text-[11px] font-medium flex items-center gap-1.5 transition-colors",
-                tab === t.id
+                tab === tabItem.id
                   ? "bg-accent text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
               )}
             >
               <Icon className="h-3.5 w-3.5" />
-              {t.label}
+              {t(tabItem.key)}
             </button>
           );
         })}
@@ -67,13 +69,14 @@ function PropsPanel() {
 }
 
 function LegacyProjectNodeProps() {
+  const { t } = useI18n();
   const node = useProjectStore((s) => s.nodes.find((n) => n.id === s.selectedId));
   const removeNode = useProjectStore((s) => s.removeNode);
 
   if (!node) {
     return (
       <div className="p-4 text-[12px] text-muted-foreground">
-        Selecione um equipamento no SCADA ou Twin para ver suas propriedades.
+        {t("rightPanel.selectScadaOrTwin")}
       </div>
     );
   }

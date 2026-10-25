@@ -267,13 +267,17 @@ function ProfilePage() {
                 <select
                   id="locale"
                   value={form.locale}
-                  onChange={(e) => setForm((p) => ({ ...p, locale: e.target.value }))}
+                  onChange={(e) => {
+                    const l = e.target.value;
+                    setForm((p) => ({ ...p, locale: l }));
+                    // Atualiza imediatamente o i18n store global sem esperar salvar
+                    import("@/lib/i18n").then((m) => m.useI18nStore.getState().setLocale(l));
+                  }}
                   className="mt-1.5 h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
                   aria-label="Idioma"
                 >
                   <option value="pt-BR">Português (Brasil)</option>
-                  <option value="en-US">English (US)</option>
-                  <option value="es-ES">Español</option>
+                  <option value="en">English (US)</option>
                 </select>
               </div>
             </div>

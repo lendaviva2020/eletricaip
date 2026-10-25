@@ -1,17 +1,21 @@
-import { MODES, type WorkspaceMode } from "@/lib/workspace-data";
+import { MODES } from "@/lib/workspace-data";
 import { cn } from "@/lib/utils";
 import { Activity } from "lucide-react";
 import { useEditorStore } from "@/lib/editor/store";
+import { useI18n } from "@/lib/i18n";
 
 export function ModeTabs() {
   const mode = useEditorStore((s) => s.activeMode);
   const setMode = useEditorStore((s) => s.setActiveMode);
+  const { t } = useI18n();
 
   return (
     <div className="h-11 shrink-0 flex items-end border-b border-border bg-panel/40">
       <div className="flex-1 min-w-0 flex items-end gap-0.5 px-2 overflow-x-auto scrollbar-none">
         {MODES.map((m) => {
           const active = m.id === mode;
+          const label = t(`workspace.modes.${m.id}`);
+          const hint = t(`workspace.modes.${m.id}Hint`);
           return (
             <button
               key={m.id}
@@ -23,9 +27,9 @@ export function ModeTabs() {
                 active && "text-foreground bg-background border border-b-0 border-border",
               )}
             >
-              <span>{m.label}</span>
+              <span>{label || m.label}</span>
               <span className="hidden lg:inline text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70">
-                {m.hint}
+                {hint || m.hint}
               </span>
               {active && (
                 <span
@@ -39,7 +43,7 @@ export function ModeTabs() {
       </div>
       <div className="hidden sm:flex items-center gap-2 pb-2 pr-3 pl-2 text-[11px] text-muted-foreground shrink-0 border-l border-border/60">
         <Activity className="h-3 w-3 text-success" />
-        <span className="font-mono">Sync · 60Hz</span>
+        <span className="font-mono">{t("workspace.sync60Hz")}</span>
       </div>
     </div>
   );

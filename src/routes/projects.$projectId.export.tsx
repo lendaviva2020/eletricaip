@@ -3,13 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, FileText, FileBox } from "lucide-react";
+import { ArrowLeft, FileText, FileBox, ShieldCheck, Sparkles } from "lucide-react";
 import { getProjectExportData } from "@/lib/export.functions";
-// jsPDF é browser-only e pesado: importado dinamicamente no handler para não
-// entrar no grafo do SSR.
-
 import { buildDxf, downloadDxf, type DxfNode, type DxfEdge } from "@/lib/dxf-export";
 import { Button } from "@/components/ui/button";
+import { useI18n, getLocale } from "@/lib/i18n";
+import { EngineeringDossierModal } from "@/components/dossier/engineering-dossier-modal";
 
 export const Route = createFileRoute("/projects/$projectId/export")({
   head: () => ({ meta: [{ title: "Exportar projeto · EletricAI" }] }),
@@ -20,6 +19,7 @@ function ExportPage() {
   const { projectId } = Route.useParams();
   const dataFn = useServerFn(getProjectExportData);
   const [busy, setBusy] = useState<string | null>(null);
+  const { t, formatCurrency } = useI18n();
 
   const { data, isLoading } = useQuery({
     queryKey: ["project-export", projectId],
@@ -39,9 +39,10 @@ function ExportPage() {
         project: data.project,
         bom: data.bom as any,
         totalBRL: data.totalBRL,
+        locale: getLocale(),
       });
       pdf.save(`${safeName(data.project.name)}_memorial.pdf`);
-      toast.success("PDF gerado.");
+      toast.success(t("common.download") + " PDF");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -85,7 +86,7 @@ function ExportPage() {
         toast.warning("Sem nós no canvas para exportar.");
         return;
       }
-      const dxf = buildDxf(nodes, edges);
+      const dxf = buildDxf(nodes, edges, { locale: getLocale(), title: data.project.name });
       downloadDxf(`${safeName(data.project.name)}_unifilar.dxf`, dxf);
       toast.success(`DXF gerado (${nodes.length} componentes, ${edges.length} ligações).`);
     } catch (e) {
@@ -101,14 +102,14 @@ function ExportPage() {
         to="/projects"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
       >
-        <ArrowLeft className="w-4 h-4" /> Projetos
+        <ArrowLeft className="w-4 h-4" /> {t("nav.projects")}
       </Link>
-      <h1 className="text-2xl font-bold mb-1">Exportar projeto</h1>
+      <h1 className="text-2xl font-bold mb-1">{t("common.export")} {data?.project.name ?? ""}</h1>
       <p className="text-sm text-muted-foreground mb-6">
         Gere documentação profissional para apresentação, fabricação ou submissão.
       </p>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
 
       {data && (
         <>
@@ -120,12 +121,12 @@ function ExportPage() {
                 <p className="font-semibold">{data.diagrams.length}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Itens BOM</p>
+                <p className="text-xs text-muted-foreground">{t("reports.bomTitle")}</p>
                 <p className="font-semibold">{data.bom.length}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total estimado</p>
-                <p className="font-semibold">R$ {data.totalBRL.toFixed(2)}</p>
+                <p className="font-semibold">{formatCurrency(data.totalBRL)}</p>
               </div>
             </div>
           </div>
@@ -133,13 +134,13 @@ function ExportPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-border rounded-lg p-5 bg-card">
               <FileText className="w-6 h-6 text-primary mb-3" />
-              <h3 className="font-semibold mb-1">Memorial PDF</h3>
+              <h3 className="font-semibold mb-1">{t("reports.memorialTitle")}</h3>
               <p className="text-xs text-muted-foreground mb-4">
                 Capa, identificação do projeto, lista de materiais com subtotal e total geral.
-                Conforme NBR 5410 / NBR 5444.
+                Conforme NBR 5410 / NBR 5444 / IEC 60364.
               </p>
               <Button className="w-full" onClick={handlePdf} disabled={!!busy}>
-                {busy === "pdf" ? "Gerando…" : "Baixar PDF"}
+                {busy === "pdf" ? t("common.loading") : `${t("common.download")} PDF`}
               </Button>
             </div>
             <div className="border border-border rounded-lg p-5 bg-card">
@@ -150,7 +151,7 @@ function ExportPage() {
                 COMPONENTS/WIRES/LABELS. Compatível com AutoCAD, QCAD e LibreCAD.
               </p>
               <Button className="w-full" onClick={handleDxf} disabled={!!busy}>
-                {busy === "dxf" ? "Gerando…" : "Baixar DXF"}
+                {busy === "dxf" ? t("common.loading") : `${t("common.download")} DXF`}
               </Button>
             </div>
           </div>

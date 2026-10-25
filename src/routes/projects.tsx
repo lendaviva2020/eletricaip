@@ -25,6 +25,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { prefetchRouteQuery } from "@/lib/query-prefetch";
+import { useI18n } from "@/lib/i18n";
+import { formatDate } from "@/lib/i18n/format";
 
 export const Route = createFileRoute("/projects")({
   loader: ({ context }) => {
@@ -43,6 +45,7 @@ export const Route = createFileRoute("/projects")({
 });
 
 function Projects() {
+  const { t, locale } = useI18n();
   const list = useServerFn(listProjects);
   const create = useServerFn(createProject);
   const dup = useServerFn(duplicateProject);
@@ -63,7 +66,7 @@ function Projects() {
     mutationFn: (input: { name: string; client?: string; description?: string }) =>
       create({ data: input }),
     onSuccess: (p: any) => {
-      toast.success(`Projeto "${p.name}" criado`);
+      toast.success(t("projects.createdSuccess", { name: p.name }));
       qc.invalidateQueries({ queryKey: ["projects"] });
       navigate({ to: "/workspace", search: { projectId: p.id } });
     },
@@ -73,7 +76,7 @@ function Projects() {
   const duplicateMut = useMutation({
     mutationFn: (id: string) => dup({ data: { projectId: id } }),
     onSuccess: (p: any) => {
-      toast.success(`Projeto duplicado como "${p.name}"`);
+      toast.success(t("projects.duplicatedSuccess", { name: p.name }));
       qc.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (e: any) => toast.error(`Falha ao duplicar: ${e.message ?? e}`),
@@ -82,7 +85,7 @@ function Projects() {
   const archiveMut = useMutation({
     mutationFn: (id: string) => arch({ data: { projectId: id } }),
     onSuccess: () => {
-      toast.success("Projeto arquivado");
+      toast.success(t("projects.archivedSuccess"));
       qc.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (e: any) => toast.error(`Falha ao arquivar: ${e.message ?? e}`),
@@ -91,7 +94,7 @@ function Projects() {
   const deleteMut = useMutation({
     mutationFn: (id: string) => del({ data: { projectId: id } }),
     onSuccess: () => {
-      toast.success("Projeto excluído permanentemente");
+      toast.success(t("projects.deletedSuccess"));
       qc.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (e: any) => toast.error(`Falha: ${e.message ?? e}`),
@@ -115,11 +118,14 @@ function Projects() {
       <div className="max-w-[1400px] mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-semibold">Projetos industriais</h1>
+            <h1 className="text-2xl font-semibold">{t("projects.title")}</h1>
             <p className="text-sm text-muted-foreground">
               {isLoading
-                ? "Carregando..."
-                : `${filteredProjects.length} de ${projects.length} projeto(s)`}
+                ? t("common.loading")
+                : t("projects.countSummary", {
+                    filtered: filteredProjects.length,
+                    total: projects.length,
+                  })}
             </p>
           </div>
           <CreateProjectDialog
@@ -134,7 +140,7 @@ function Projects() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nome, cliente ou descrição..."
+              placeholder={t("projects.searchPlaceholder")}
               className="pl-9"
             />
           </div>
@@ -142,12 +148,12 @@ function Projects() {
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className="h-9 rounded-md border border-border bg-background px-3 text-sm"
-            aria-label="Filtrar projetos por status"
-            title="Filtrar projetos por status"
+            aria-label={t("projects.filterAria")}
+            title={t("projects.filterAria")}
           >
-            <option value="all">Todos os status</option>
-            <option value="active">Ativos</option>
-            <option value="archived">Arquivados</option>
+            <option value="all">{t("projects.filterAll")}</option>
+            <option value="active">{t("projects.filterActive")}</option>
+            <option value="archived">{t("projects.filterArchived")}</option>
           </select>
         </div>
 
@@ -158,17 +164,19 @@ function Projects() {
         ) : isError ? (
           <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-8 text-center">
             <p className="text-sm text-destructive mb-3">
-              Falha ao carregar projetos: {(error as Error)?.message ?? "erro desconhecido"}
+              {t("projects.loadError", {
+                error: (error as Error)?.message ?? "unknown error",
+              })}
             </p>
             <Button type="button" variant="outline" onClick={() => refetch()}>
-              Tentar novamente
+              {t("common.retry")}
             </Button>
           </div>
         ) : projects.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-12 text-center">
             <Cpu className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
             <p className="text-sm text-muted-foreground mb-4">
-              Você ainda não tem projetos. Crie o primeiro para começar.
+              {t("projects.emptyTitle")}
             </p>
             <CreateProjectDialog
               onCreate={(v) => createMut.mutate(v)}
@@ -179,7 +187,7 @@ function Projects() {
           <div className="rounded-xl border border-dashed border-border p-12 text-center">
             <Search className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Nenhum projeto corresponde aos filtros atuais.
+              {t("projects.noMatchTitle")}
             </p>
           </div>
         ) : (
@@ -203,7 +211,7 @@ function Projects() {
                   </div>
                   <div className="mt-3 pt-3 border-t border-border flex justify-between text-[11px] font-mono text-muted-foreground">
                     <span>{p.status ?? "active"}</span>
-                    <span>{new Date(p.updated_at).toLocaleDateString()}</span>
+                    <span>{formatDate(new Date(p.updated_at), locale)}</span>
                   </div>
                 </Link>
                 <div className="mt-2 flex gap-2 text-[11px]">
@@ -212,14 +220,14 @@ function Projects() {
                     params={{ projectId: p.id }}
                     className="text-primary hover:underline"
                   >
-                    BOM
+                    {t("projects.actionBOM")}
                   </Link>
                   <Link
                     to="/projects/$projectId/export"
                     params={{ projectId: p.id }}
                     className="text-primary hover:underline"
                   >
-                    Exportar
+                    {t("projects.actionExport")}
                   </Link>
                 </div>
                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition">
@@ -227,19 +235,19 @@ function Projects() {
                     type="button"
                     onClick={() => duplicateMut.mutate(p.id)}
                     className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition"
-                    aria-label="Duplicar"
-                    title="Duplicar projeto"
+                    aria-label={t("projects.actionDuplicate")}
+                    title={t("projects.actionDuplicate")}
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm(`Arquivar "${p.name}"?`)) archiveMut.mutate(p.id);
+                      if (confirm(t("projects.confirmArchive", { name: p.name }))) archiveMut.mutate(p.id);
                     }}
                     className="p-1 rounded hover:bg-warning/10 text-muted-foreground hover:text-warning transition"
-                    aria-label="Arquivar"
-                    title="Arquivar projeto"
+                    aria-label={t("projects.actionArchive")}
+                    title={t("projects.actionArchive")}
                   >
                     <Archive className="h-3.5 w-3.5" />
                   </button>
@@ -248,14 +256,14 @@ function Projects() {
                     onClick={() => {
                       if (
                         confirm(
-                          `Excluir permanentemente "${p.name}"?\n\nEsta ação não pode ser desfeita.`,
+                          t("projects.confirmDelete", { name: p.name }),
                         )
                       )
                         deleteMut.mutate(p.id);
                     }}
                     className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
-                    aria-label="Excluir"
-                    title="Excluir permanentemente"
+                    aria-label={t("projects.actionDelete")}
+                    title={t("projects.actionDelete")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -276,6 +284,7 @@ function CreateProjectDialog({
   onCreate: (v: { name: string; client?: string; description?: string }) => void;
   pending: boolean;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [client, setClient] = useState("");
@@ -302,37 +311,37 @@ function CreateProjectDialog({
           className="h-10 px-4 rounded-md text-sm font-semibold text-primary-foreground inline-flex items-center gap-2 glow-primary"
           style={{ background: "var(--gradient-primary)" }}
         >
-          <Plus className="h-4 w-4" /> Novo projeto
+          <Plus className="h-4 w-4" /> {t("projects.newProject")}
         </button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Novo projeto industrial</DialogTitle>
+          <DialogTitle>{t("projects.newProjectTitle")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="np-name">Nome *</Label>
+            <Label htmlFor="np-name">{t("projects.nameLabel")}</Label>
             <Input
               id="np-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex.: Engarrafamento - Linha 03"
+              placeholder={t("projects.namePlaceholder")}
               required
               maxLength={200}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="np-client">Cliente</Label>
+            <Label htmlFor="np-client">{t("projects.clientLabel")}</Label>
             <Input
               id="np-client"
               value={client}
               onChange={(e) => setClient(e.target.value)}
-              placeholder="Ex.: Coca-Cola FEMSA"
+              placeholder={t("projects.clientPlaceholder")}
               maxLength={200}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="np-desc">Descrição</Label>
+            <Label htmlFor="np-desc">{t("projects.descriptionLabel")}</Label>
             <Textarea
               id="np-desc"
               value={description}
@@ -344,7 +353,7 @@ function CreateProjectDialog({
           <DialogFooter>
             <Button type="submit" disabled={pending || !name.trim()}>
               {pending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Criar e abrir
+              {t("projects.createAndOpen")}
             </Button>
           </DialogFooter>
         </form>

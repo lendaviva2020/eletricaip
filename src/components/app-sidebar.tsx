@@ -14,9 +14,11 @@ import { useEffect } from "react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { cn } from "@/lib/utils";
 import { useCurrentProject } from "@/lib/current-project";
+import { useI18n } from "@/lib/i18n";
 
 type NavItem = {
-  title: string;
+  key: string;
+  defaultTitle: string;
   url: string;
   icon: typeof LayoutDashboard;
   accent?: boolean;
@@ -24,17 +26,18 @@ type NavItem = {
 };
 
 const items: NavItem[] = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Projetos", url: "/projects", icon: FolderKanban },
-  { title: "Industrial Workspace", url: "/workspace", icon: Cpu, accent: true },
-  { title: "Digital Twin", url: "/digital-twin", icon: Box, accent: true },
-  { title: "IA Industrial", url: "/ai", icon: Sparkles, core: true },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
-  { title: "Clientes", url: "/clients", icon: Users },
-  { title: "Configurações", url: "/settings", icon: Settings },
+  { key: "dashboard", defaultTitle: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { key: "projects", defaultTitle: "Projetos", url: "/projects", icon: FolderKanban },
+  { key: "workspace", defaultTitle: "Industrial Workspace", url: "/workspace", icon: Cpu, accent: true },
+  { key: "twin", defaultTitle: "Digital Twin", url: "/digital-twin", icon: Box, accent: true },
+  { key: "ai", defaultTitle: "IA Industrial", url: "/ai", icon: Sparkles, core: true },
+  { key: "analytics", defaultTitle: "Analytics", url: "/analytics", icon: BarChart3 },
+  { key: "clients", defaultTitle: "Clientes", url: "/clients", icon: Users },
+  { key: "settings", defaultTitle: "Configurações", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
+  const { t } = useI18n();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const project = useCurrentProject((s) => s.project);
   const hydrate = useCurrentProject((s) => s.hydrateFromStorage);
@@ -58,7 +61,7 @@ export function AppSidebar() {
             EletricAI
           </div>
           <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Industrial OS
+            {t("nav.industrialOs")}
           </div>
         </div>
       </div>
@@ -72,7 +75,7 @@ export function AppSidebar() {
             <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Projeto ativo
+                {t("nav.activeProject")}
               </div>
               <div className="text-[12px] font-medium truncate text-sidebar-foreground">
                 {project.name}
@@ -86,6 +89,7 @@ export function AppSidebar() {
         {items.map((item) => {
           const active = path === item.url || path.startsWith(item.url + "/");
           const Icon = item.icon;
+          const title = t(`nav.${item.key}`) || item.defaultTitle;
           return (
             <Link
               key={item.url}
@@ -98,9 +102,13 @@ export function AppSidebar() {
               )}
             >
               <Icon
-                className={cn("h-4 w-4", active && "text-primary", item.core && "text-primary")}
+                className={cn(
+                  "h-4 w-4 shrink-0 text-muted-foreground group-hover:text-sidebar-foreground",
+                  active && "text-primary",
+                  item.core && "text-primary",
+                )}
               />
-              <span className="flex-1">{item.title}</span>
+              <span className="flex-1 truncate">{title}</span>
               {item.accent && (
                 <span className="text-[9px] font-mono uppercase tracking-wider text-primary/80">
                   OS

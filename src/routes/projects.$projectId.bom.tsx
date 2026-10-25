@@ -14,6 +14,8 @@ import {
 import { listCatalog } from "@/lib/catalog.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
+import { formatCurrency } from "@/lib/i18n/format";
 
 export const Route = createFileRoute("/projects/$projectId/bom")({
   head: () => ({ meta: [{ title: "BOM · EletricAI" }] }),
@@ -21,6 +23,7 @@ export const Route = createFileRoute("/projects/$projectId/bom")({
 });
 
 function BomPage() {
+  const { t, locale } = useI18n();
   const { projectId } = Route.useParams();
   const qc = useQueryClient();
   const listFn = useServerFn(listBom);
@@ -47,7 +50,7 @@ function BomPage() {
     setBusy(true);
     try {
       const r = await genFn({ data: { projectId } });
-      toast.success(`${r.itemsAdded} itens gerados a partir do canvas.`);
+      toast.success(t("bom.itemGeneratedSuccess", { count: r.itemsAdded }));
       await qc.invalidateQueries({ queryKey: ["bom", projectId] });
     } catch (e) {
       toast.error((e as Error).message);
@@ -69,7 +72,7 @@ function BomPage() {
           unit: "un",
         },
       });
-      toast.success("Item adicionado ao BOM.");
+      toast.success(t("bom.itemAdded"));
       setSearch("");
       await qc.invalidateQueries({ queryKey: ["bom", projectId] });
     } catch (e) {
@@ -87,7 +90,7 @@ function BomPage() {
       await addFn({
         data: { projectId, partNumber: part, description: desc, quantity, unit: "un" },
       });
-      toast.success("Item adicionado.");
+      toast.success(t("bom.itemAdded"));
       await qc.invalidateQueries({ queryKey: ["bom", projectId] });
     } catch (e) {
       toast.error((e as Error).message);
@@ -117,7 +120,7 @@ function BomPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Remover item do BOM?")) return;
+    if (!confirm(t("bom.confirmDelete"))) return;
     try {
       await delFn({ data: { id } });
       await qc.invalidateQueries({ queryKey: ["bom", projectId] });
@@ -132,37 +135,37 @@ function BomPage() {
         to="/projects"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
       >
-        <ArrowLeft className="w-4 h-4" /> Projetos
+        <ArrowLeft className="w-4 h-4" /> {t("bom.backToProjects")}
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Lista de Materiais (BOM)</h1>
+          <h1 className="text-2xl font-bold mb-1">{t("bom.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Total estimado:{" "}
+            {t("bom.estimatedTotal")}{" "}
             <span className="font-semibold text-foreground">
-              R$ {(data?.totalBRL ?? 0).toFixed(2)}
+              {formatCurrency(data?.totalBRL ?? 0, locale, locale === "pt-BR" ? "BRL" : "USD")}
             </span>{" "}
-            · {data?.items?.length ?? 0} itens
+            · {t("bom.itemsCount", { count: data?.items?.length ?? 0 })}
           </p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={handleAddManual}>
-            <Plus className="w-4 h-4 mr-1" /> Manual
+            <Plus className="w-4 h-4 mr-1" /> {t("bom.addManual")}
           </Button>
           <Button size="sm" onClick={handleGenerate} disabled={busy}>
-            <Wand2 className="w-4 h-4 mr-1" /> {busy ? "Gerando…" : "Gerar do canvas"}
+            <Wand2 className="w-4 h-4 mr-1" /> {busy ? t("bom.generating") : t("bom.generateFromCanvas")}
           </Button>
         </div>
       </div>
 
       <div className="mb-6 border border-border rounded-lg p-4">
-        <label className="text-xs text-muted-foreground mb-2 block">Adicionar do catálogo</label>
+        <label className="text-xs text-muted-foreground mb-2 block">{t("bom.addFromCatalog")}</label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar componente no catálogo…"
+            placeholder={t("bom.searchCatalogPlaceholder")}
             className="pl-9"
           />
         </div>
@@ -183,22 +186,24 @@ function BomPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando…</p>
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : (data?.items?.length ?? 0) === 0 ? (
         <div className="border border-dashed border-border rounded-lg p-8 text-center text-sm text-muted-foreground">
-          BOM vazio. Adicione manualmente, do catálogo, ou gere a partir do canvas.
+          {locale === "pt-BR"
+            ? "BOM vazio. Adicione manualmente, do catálogo, ou gere a partir do canvas."
+            : "Empty BOM. Add items manually, from the catalog, or generate from canvas."}
         </div>
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="text-left px-3 py-2">Part Number</th>
-                <th className="text-left px-3 py-2">Descrição</th>
-                <th className="text-left px-3 py-2">Fabricante</th>
-                <th className="text-right px-3 py-2">Qtd</th>
-                <th className="text-right px-3 py-2">R$ unit.</th>
-                <th className="text-right px-3 py-2">Subtotal</th>
+                <th className="text-left px-3 py-2">{t("bom.colPartNumber")}</th>
+                <th className="text-left px-3 py-2">{t("bom.colDescription")}</th>
+                <th className="text-left px-3 py-2">{t("bom.colManufacturer")}</th>
+                <th className="text-right px-3 py-2">{t("bom.colQuantity")}</th>
+                <th className="text-right px-3 py-2">{t("bom.colUnitPrice")}</th>
+                <th className="text-right px-3 py-2">{t("bom.colSubtotal")}</th>
                 <th className="text-left px-3 py-2">Origem</th>
                 <th className="px-3 py-2"></th>
               </tr>
@@ -235,7 +240,9 @@ function BomPage() {
                         className="w-24 text-right bg-transparent border border-border rounded px-2 py-1"
                       />
                     </td>
-                    <td className="px-3 py-2 text-right font-medium">R$ {subtotal.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right font-medium">
+                      {formatCurrency(subtotal, locale, locale === "pt-BR" ? "BRL" : "USD")}
+                    </td>
                     <td className="px-3 py-2">
                       <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-muted">
                         {it.source}
@@ -258,7 +265,9 @@ function BomPage() {
                 <td colSpan={5} className="px-3 py-2 text-right">
                   Total
                 </td>
-                <td className="px-3 py-2 text-right">R$ {(data?.totalBRL ?? 0).toFixed(2)}</td>
+                <td className="px-3 py-2 text-right">
+                  {formatCurrency(data?.totalBRL ?? 0, locale, locale === "pt-BR" ? "BRL" : "USD")}
+                </td>
                 <td colSpan={2}></td>
               </tr>
             </tfoot>

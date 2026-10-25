@@ -4,6 +4,8 @@ import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useAlarmStore, type LiveAlarm } from "@/lib/alarm-store";
 import { toast } from "sonner";
 import { useNotificationStore } from "@/lib/notification-store";
+import { useI18n } from "@/lib/i18n";
+import { formatDate } from "@/lib/i18n/format";
 
 const SEV_CONF = {
   critical: {
@@ -44,6 +46,7 @@ const SEV_CONF = {
 } as const;
 
 export function AlarmsCanvas() {
+  const { t, locale } = useI18n();
   const alarms = useAlarmStore((s) => s.alarms);
   const unackedCount = useAlarmStore((s) => s.unackedCount);
   const totalToday = useAlarmStore((s) => s.totalToday);
@@ -55,8 +58,13 @@ export function AlarmsCanvas() {
   // Register callback for new alarms — fires pushNotification + toast
   useEffect(() => {
     registerNewAlarmCb((alarm: LiveAlarm) => {
+      const timeStr = formatDate(new Date(alarm.triggeredAt), locale, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
       toast.error(`[${alarm.priority.toUpperCase()}] ${alarm.message}`, {
-        description: `Tag: ${alarm.tagName} · ${new Date(alarm.triggeredAt).toLocaleTimeString("pt-BR")}`,
+        description: `Tag: ${alarm.tagName} · ${timeStr}`,
         duration: 8000,
       });
       pushNotification({
@@ -69,7 +77,7 @@ export function AlarmsCanvas() {
       });
     });
     return () => registerNewAlarmCb(null);
-  }, [registerNewAlarmCb, pushNotification]);
+  }, [registerNewAlarmCb, pushNotification, locale]);
 
   const activeCount = alarms.filter((a) => a.isActive).length;
   const ackedCount = alarms.filter((a) => a.state === "acknowledged").length;
@@ -78,7 +86,12 @@ export function AlarmsCanvas() {
     <div className="relative h-full w-full overflow-auto p-6 pt-16 pb-20">
       <FloatingLegend
         title="Alarmes · ISA-18.2"
-        items={[`Active ${activeCount}`, `Acked ${ackedCount}`, `Shelved 0`, `Suppressed 0`]}
+        items={[
+          `${t("canvases.alarms.active")} ${activeCount}`,
+          `${t("canvases.alarms.acked")} ${ackedCount}`,
+          `${t("canvases.alarms.shelved")} 0`,
+          `${t("canvases.alarms.suppressed")} 0`,
+        ]}
       />
 
       {unackedCount > 0 && (
@@ -88,7 +101,7 @@ export function AlarmsCanvas() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary/40 bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 transition-colors cursor-pointer"
           >
             <BellRing className="h-3.5 w-3.5" />
-            Reconhecer todos ({unackedCount})
+            {t("canvases.alarms.acknowledgeAll", { count: unackedCount })}
           </button>
         </div>
       )}
@@ -97,9 +110,9 @@ export function AlarmsCanvas() {
         <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
           <div className="text-center space-y-2">
             <CheckCircle2 className="h-8 w-8 mx-auto opacity-30" />
-            <p>Nenhum alarme ativo</p>
+            <p>{t("canvases.alarms.noneActive")}</p>
             <p className="text-[11px] text-muted-foreground/60">
-              Os alarmes aparecerão aqui quando as regras do ScadaEngine forem violadas.
+              {t("canvases.alarms.emptyHint")}
             </p>
           </div>
         </div>
@@ -108,12 +121,12 @@ export function AlarmsCanvas() {
           <table className="w-full text-[12px]">
             <thead className="text-left text-muted-foreground bg-muted/40 text-[10px] uppercase tracking-wider">
               <tr>
-                <th className="px-3 py-2">Sev.</th>
-                <th className="px-3 py-2">Tag</th>
-                <th className="px-3 py-2">Mensagem</th>
-                <th className="px-3 py-2">Disparo</th>
-                <th className="px-3 py-2">Cat.</th>
-                <th className="px-3 py-2 text-right">Status</th>
+                <th className="px-3 py-2">{t("canvases.alarms.colSev")}</th>
+                <th className="px-3 py-2">{t("canvases.alarms.colTag")}</th>
+                <th className="px-3 py-2">{t("canvases.alarms.colMessage")}</th>
+                <th className="px-3 py-2">{t("canvases.alarms.colTrigger")}</th>
+                <th className="px-3 py-2">{t("canvases.alarms.colCategory")}</th>
+                <th className="px-3 py-2 text-right">{t("canvases.alarms.colStatus")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -139,7 +152,11 @@ export function AlarmsCanvas() {
                     <td className="px-3 py-2 font-mono text-foreground">{a.tagName}</td>
                     <td className="px-3 py-2 text-muted-foreground">{a.message}</td>
                     <td className="px-3 py-2 font-mono text-muted-foreground text-[11px]">
-                      {new Date(a.triggeredAt).toLocaleTimeString("pt-BR")}
+                      {formatDate(new Date(a.triggeredAt), locale, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
                     </td>
                     <td className="px-3 py-2">
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground font-mono">
@@ -170,9 +187,9 @@ export function AlarmsCanvas() {
 
       <BottomStrip
         items={[
-          ["Total hoje", String(totalToday)],
-          ["Ativos", String(activeCount)],
-          ["Não reconhecidos", String(unackedCount)],
+          [t("canvases.alarms.totalToday"), String(totalToday)],
+          [t("canvases.alarms.active"), String(activeCount)],
+          [t("canvases.alarms.unacknowledged"), String(unackedCount)],
           ["ISA-18.2", "✓"],
         ]}
       />

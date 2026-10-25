@@ -24,6 +24,7 @@ import { useRuntimeStore } from "@/lib/model/runtime-store";
 import { LadderCellView } from "./ladder-cell";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 import {
   Plus,
   Play,
@@ -56,6 +57,7 @@ interface HistoryEntry {
 const MAX_HISTORY = 200;
 
 export function RungGrid() {
+  const { t } = useI18n();
   const rungs = useEditorStore((s) => s.rungs);
   const setRungs = useEditorStore((s) => s.setRungs);
   const setRungsRuntime = useEditorStore((s) => s.setRungsRuntime);
@@ -265,7 +267,7 @@ export function RungGrid() {
           variant="outline"
           onClick={() => setRungs((r) => [...r, newRung(r.length)])}
         >
-          <Plus className="mr-1 h-3 w-3" /> Rung
+          <Plus className="mr-1 h-3 w-3" /> {t("canvases.ladder.addRung")}
         </Button>
         <Button
           size="sm"
@@ -282,21 +284,21 @@ export function RungGrid() {
           }}
         >
           {running ? <Square className="mr-1 h-3 w-3" /> : <Play className="mr-1 h-3 w-3" />}
-          {running ? "Parar scan" : "Simular"}
+          {running ? t("canvases.ladder.stopScan") : t("canvases.ladder.runScan")}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setShowIL((v) => !v)}>
-          <Code2 className="mr-1 h-3 w-3" /> {showIL ? "Ocultar Código" : "Compilar"}
+          <Code2 className="mr-1 h-3 w-3" /> {showIL ? t("canvases.ladder.hideCode") : t("canvases.ladder.showCode")}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setShowHistory((v) => !v)}>
-          <History className="mr-1 h-3 w-3" /> {showHistory ? "Ocultar histórico" : "Histórico"}
+          <History className="mr-1 h-3 w-3" /> {showHistory ? t("canvases.ladder.hideHistory") : t("canvases.ladder.history")}
         </Button>
         <Button
           size="sm"
           variant="ghost"
           onClick={openImportPicker}
-          title="Importar programa IL/ST"
+          title={t("canvases.ladder.importTitle")}
         >
-          <Upload className="mr-1 h-3 w-3" /> Importar
+          <Upload className="mr-1 h-3 w-3" /> {t("canvases.ladder.importBtn")}
         </Button>
         <Button
           size="sm"
@@ -307,9 +309,9 @@ export function RungGrid() {
               toast.success(`Programa de referência 8M+2EX carregado (${result.rungsCount} rungs)`);
             }
           }}
-          title="Carregar programa de referência 8M+2EX"
+          title={t("canvases.ladder.plantRefTitle")}
         >
-          <FolderOpen className="mr-1 h-3 w-3" /> Referência 8M+2EX
+          <FolderOpen className="mr-1 h-3 w-3" /> {t("canvases.ladder.plantRefProgram")}
         </Button>
         <input
           ref={fileInputRef}
@@ -347,7 +349,7 @@ export function RungGrid() {
                       <span className="text-xs font-medium">{rung.label}</span>
                       {rung.poweredOut && (
                         <span className="rounded bg-success/20 px-1.5 py-0.5 font-mono text-[10px] text-success">
-                          ENERGIZADO
+                          {t("canvases.ladder.energizedBadge")}
                         </span>
                       )}
                       {(issuesByRung.get(rung.id)?.length ?? 0) > 0 && (
@@ -367,7 +369,9 @@ export function RungGrid() {
                           ) : (
                             <AlertTriangle className="h-3 w-3" />
                           )}
-                          {issuesByRung.get(rung.id)!.length} aviso(s)
+                          {t("canvases.ladder.warningsBadge", {
+                            count: issuesByRung.get(rung.id)!.length,
+                          })}
                         </span>
                       )}
                     </div>
@@ -375,7 +379,7 @@ export function RungGrid() {
                       <div
                         className="flex items-center gap-0.5 rounded border border-border bg-muted/40 px-1"
                         onClick={(e) => e.stopPropagation()}
-                        title="Colunas do rung"
+                        title={t("canvases.ladder.columnsTitle")}
                       >
                         <button
                           onClick={() => changeCols(rung.id, -1)}
@@ -403,7 +407,7 @@ export function RungGrid() {
                           addBranch(rung.id);
                         }}
                         className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        title="Adicionar branch (OR)"
+                        title={t("canvases.ladder.addBranchTitle")}
                       >
                         <Rows3 className="h-3 w-3" />
                       </button>
@@ -413,8 +417,8 @@ export function RungGrid() {
                           removeRung(rung.id);
                         }}
                         className="rounded p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
-                        title={`Remover rung ${idx + 1}`}
-                        aria-label={`Remover rung ${idx + 1}`}
+                        title={t("canvases.ladder.removeRungTitle", { index: idx + 1 })}
+                        aria-label={t("canvases.ladder.removeRungTitle", { index: idx + 1 })}
                       >
                         <X className="h-3 w-3" />
                       </button>

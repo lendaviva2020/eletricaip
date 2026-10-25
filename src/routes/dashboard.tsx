@@ -26,6 +26,8 @@ import { listProjects } from "@/lib/projects.functions";
 import { getDashboardTelemetry } from "@/lib/iot.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { prefetchRouteQuery } from "@/lib/query-prefetch";
+import { useI18n } from "@/lib/i18n";
+import { formatDate } from "@/lib/i18n/format";
 
 export const Route = createFileRoute("/dashboard")({
   loader: ({ context }) => {
@@ -56,7 +58,15 @@ type ProjectSummary = {
   updated_at?: string | null;
 };
 
-function getGreeting(hour: number) {
+function getGreeting(hour: number, locale = "pt-BR") {
+  if (locale === "en") {
+    if (hour < 5) return { text: "Good early morning", icon: Moon, hint: "Working late, aren't you?" };
+    if (hour < 12) return { text: "Good morning", icon: Sunrise, hint: "Grab a coffee and let's build." };
+    if (hour < 14) return { text: "Good afternoon", icon: Coffee, hint: "Time for a brief break." };
+    if (hour < 18) return { text: "Good afternoon", icon: Sun, hint: "Peak productivity hours." };
+    if (hour < 22) return { text: "Good evening", icon: Sunset, hint: "Wrap up the day with success." };
+    return { text: "Good night", icon: Moon, hint: "Take some time to rest." };
+  }
   if (hour < 5) return { text: "Boa madrugada", icon: Moon, hint: "Trabalhando até tarde, hein?" };
   if (hour < 12) return { text: "Bom dia", icon: Sunrise, hint: "Bom café e mãos à obra." };
   if (hour < 14) return { text: "Bom almoço", icon: Coffee, hint: "Hora de uma pausa breve." };
@@ -66,16 +76,18 @@ function getGreeting(hour: number) {
   return { text: "Boa noite", icon: Moon, hint: "Cuide do descanso também." };
 }
 
-function getFirstName(user: ReturnType<typeof useAuth>["user"]): string {
-  if (!user) return "Engenheiro";
+function getFirstName(user: ReturnType<typeof useAuth>["user"], locale = "pt-BR"): string {
+  const defaultTitle = locale === "en" ? "Engineer" : "Engenheiro";
+  if (!user) return defaultTitle;
   const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
   const full = (meta.full_name as string) || (meta.name as string) || "";
   if (full) return full.split(" ")[0];
   if (user.email) return user.email.split("@")[0].split(".")[0];
-  return "Engenheiro";
+  return defaultTitle;
 }
 
 function Dashboard() {
+  const { t, locale } = useI18n();
   const { user } = useAuth();
   const list = useServerFn(listProjects);
   const creditsFn = useServerFn(getAiCredits);
@@ -112,18 +124,22 @@ function Dashboard() {
   const creditsLabel =
     credits?.ok === true
       ? credits.unlimited
-        ? "Ilimitado"
+        ? locale === "pt-BR"
+          ? "Ilimitado"
+          : "Unlimited"
         : `${credits.remaining}/${credits.max_credits}`
-      : "Indisp.";
+      : locale === "pt-BR"
+        ? "Indisp."
+        : "N/A";
 
   const now = new Date();
-  const greeting = getGreeting(now.getHours());
-  const firstName = getFirstName(user);
+  const greeting = getGreeting(now.getHours(), locale);
+  const firstName = getFirstName(user, locale);
   const GreetIcon = greeting.icon;
   const lastEdited = latestProject?.updated_at
     ? formatDistanceToNow(new Date(latestProject.updated_at), {
         addSuffix: true,
-        locale: ptBR,
+        ...(locale === "pt-BR" ? { locale: ptBR } : {}),
       })
     : null;
 
@@ -132,12 +148,24 @@ function Dashboard() {
   const hasTelemetry = Object.keys(telemetrySeries).length > 0;
 
   const plantHealth = projectsQuery.isError
-    ? { label: "Falha de conexão", tone: "warning" as const }
+    ? {
+        label: locale === "pt-BR" ? "Falha de conexão" : "Connection failed",
+        tone: "warning" as const,
+      }
     : activeProjects.length === 0
-      ? { label: "Sem projetos ativos", tone: "primary" as const }
+      ? {
+          label: locale === "pt-BR" ? "Sem projetos ativos" : "No active projects",
+          tone: "primary" as const,
+        }
       : hasTelemetry
-        ? { label: "Telemetria ativa", tone: "success" as const }
-        : { label: "Aguardando telemetria", tone: "primary" as const };
+        ? {
+            label: locale === "pt-BR" ? "Telemetria ativa" : "Active telemetry",
+            tone: "success" as const,
+          }
+        : {
+            label: locale === "pt-BR" ? "Aguardando telemetria" : "Awaiting telemetry",
+            tone: "primary" as const,
+          };
 
   const energyData = telemetrySeries.energy ?? telemetrySeries.power ?? telemetrySeries.consumption ?? [];
   const productionData = telemetrySeries.production ?? telemetrySeries.count ?? telemetrySeries.output ?? [];
@@ -155,7 +183,7 @@ function Dashboard() {
             <div className="min-w-0">
               <div className="text-[10px] uppercase tracking-[0.2em] text-primary mb-2 flex items-center gap-2">
                 <GreetIcon className="h-3 w-3" />
-                {now.toLocaleDateString("pt-BR", {
+                {formatDate(now, locale, {
                   weekday: "long",
                   day: "2-digit",
                   month: "long",

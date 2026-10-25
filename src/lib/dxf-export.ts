@@ -126,9 +126,23 @@ function drawSymbol(n: DxfNode): string {
   return rect(p, w, h, "COMPONENTS");
 }
 
-export function buildDxf(nodes: DxfNode[], edges: DxfEdge[]): string {
+import type { SupportedLocale } from "@/lib/i18n/types";
+
+export function buildDxf(
+  nodes: DxfNode[],
+  edges: DxfEdge[],
+  opts?: { locale?: SupportedLocale; title?: string },
+): string {
   let body = "";
   body += pair(0, "SECTION") + pair(2, "ENTITIES");
+
+  const isEn = opts?.locale === "en";
+
+  // Optional Title block / header text
+  if (opts?.title) {
+    const headerPrefix = isEn ? "EletricAI - Schematic:" : "EletricAI - Esquema:";
+    body += text({ x: 0, y: -20 }, `${headerPrefix} ${opts.title}`, 10, "LABELS");
+  }
 
   // Draw all components and symbols
   for (const n of nodes) {

@@ -44,11 +44,11 @@ export interface SaveResult {
 
 // ── Schemas ────────────────────────────────────────────────────
 
-const CURRENT_SNAPSHOT_VERSION = 2;
+export const CURRENT_SNAPSHOT_VERSION = 3;
 
 const RuntimeTagSchema = z.union([z.number(), z.boolean(), z.string()]);
 
-const SnapshotSchema = z
+export const SnapshotSchema = z
   .object({
     schemaVersion: z.number().int().positive().default(CURRENT_SNAPSHOT_VERSION),
     project: z
@@ -105,11 +105,22 @@ const SnapshotSchema = z
         programBlocks: [],
         cycleTimeMs: 10,
       }),
+    twin: z
+      .object({
+        mappings: z.array(z.any()).default([]),
+        nameplates: z.record(z.any()).default({}),
+        modelUrl: z.string().nullable().optional(),
+      })
+      .optional(),
+    studies: z.record(z.any()).optional(),
+    controlBindings: z.record(z.any()).optional(),
+    diagnostics: z.array(z.any()).optional(),
+    unifiedDoc: z.any().optional(),
   })
   .passthrough()
   .transform((snapshot) => ({
     ...snapshot,
-    schemaVersion: CURRENT_SNAPSHOT_VERSION,
+    schemaVersion: snapshot.schemaVersion ?? CURRENT_SNAPSHOT_VERSION,
   }));
 
 export type ProjectSnapshot = z.infer<typeof SnapshotSchema>;
@@ -126,6 +137,10 @@ const EMPTY_SNAPSHOT: ProjectSnapshot = {
     programBlocks: [],
     cycleTimeMs: 10,
   },
+  twin: { mappings: [], nameplates: {} },
+  studies: {},
+  controlBindings: {},
+  diagnostics: [],
 };
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -363,80 +378,110 @@ export const loadProject = createServerFn({ method: "POST" })
     };
   });
 
+export interface SaveProjectInput {
+  projectId: string;
+  snapshot: ProjectSnapshot;
+  expectedVersion?: number;
+  force?: boolean;
+  createVersion?: boolean;
+}
+
+export async function saveProjectRecord(
+  authCtx: Pick<AuthContext, "supabase" | "userId">,
+  data: SaveProjectInput,
+): Promise<{ diagramId: string; version: number; savedAt: string }> {
+  const { supabase, userId } = authCtx;
+
+  const { data: existing } = await supabase
+    .from("diagrams")
+    .select("id, version")
+    .eq("project_id", data.projectId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (
+    !data.force &&
+    data.expectedVersion !== undefined &&
+    existing &&
+    existing.version !== undefined &&
+    existing.version !== data.expectedVersion
+  ) {
+    throw new Error(
+      `VERSION_CONFLICT: O projeto foi alterado no servidor (versão atual: ${existing.version}, versão esperada: ${data.expectedVersion}).`,
+    );
+  }
+
+  let diagramId: string;
+  let nextVersion: number;
+  if (existing) {
+    diagramId = existing.id;
+    nextVersion = (existing.version ?? 1) + 1;
+    const { error } = await supabase
+      .from("diagrams")
+      .update({
+        canvas_data: data.snapshot as unknown as Json,
+        version: nextVersion,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", diagramId);
+    if (error) throw new Error(error.message);
+  } else {
+    nextVersion = 1;
+    const { data: row, error } = await supabase
+      .from("diagrams")
+      .insert({
+        project_id: data.projectId,
+        name: "main",
+        version: 1,
+        canvas_data: data.snapshot as unknown as Json,
+      })
+      .select("id, version")
+      .single();
+    if (error) throw new Error(error.message);
+    diagramId = row.id;
+    nextVersion = row.version;
+  }
+
+  await supabase
+    .from("projects")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", data.projectId);
+
+  if (data.createVersion) {
+    const { data: last } = await supabase
+      .from("project_versions")
+      .select("version_number")
+      .eq("project_id", data.projectId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const next = (last?.version_number ?? 0) + 1;
+    await supabase.from("project_versions").insert({
+      project_id: data.projectId,
+      version_number: next,
+      snapshot: data.snapshot as unknown as Json,
+      created_by: userId,
+    });
+  }
+
+  return { diagramId, version: nextVersion, savedAt: new Date().toISOString() };
+}
+
 export const saveProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       projectId: z.string().uuid(),
       snapshot: SnapshotSchema,
+      expectedVersion: z.number().int().positive().optional(),
+      force: z.boolean().optional(),
       createVersion: z.boolean().optional(),
     }),
   )
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
-    const { supabase, userId } = authCtx;
-
-    const { data: existing } = await supabase
-      .from("diagrams")
-      .select("id, version")
-      .eq("project_id", data.projectId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    let diagramId: string;
-    let version: number;
-    if (existing) {
-      diagramId = existing.id;
-      version = existing.version ?? 1;
-      const { error } = await supabase
-        .from("diagrams")
-        .update({
-          canvas_data: data.snapshot as unknown as Json,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", diagramId);
-      if (error) throw new Error(error.message);
-    } else {
-      const { data: row, error } = await supabase
-        .from("diagrams")
-        .insert({
-          project_id: data.projectId,
-          name: "main",
-          version: 1,
-          canvas_data: data.snapshot as unknown as Json,
-        })
-        .select("id, version")
-        .single();
-      if (error) throw new Error(error.message);
-      diagramId = row.id;
-      version = row.version;
-    }
-
-    await supabase
-      .from("projects")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", data.projectId);
-
-    if (data.createVersion) {
-      const { data: last } = await supabase
-        .from("project_versions")
-        .select("version_number")
-        .eq("project_id", data.projectId)
-        .order("version_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const next = (last?.version_number ?? 0) + 1;
-      await supabase.from("project_versions").insert({
-        project_id: data.projectId,
-        version_number: next,
-        snapshot: data.snapshot as unknown as Json,
-        created_by: userId,
-      });
-      version = next;
-    }
-
-    return { diagramId, version, savedAt: new Date().toISOString() };
+    return saveProjectRecord(authCtx, data);
   });
 
 export const duplicateProject = createServerFn({ method: "POST" })
@@ -655,4 +700,115 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
         .eq("id", diagram.id);
     }
     return { ok: true, restoredVersion: ver.version_number };
+  });
+
+export const ProjectPackageSchema = z.object({
+  format: z.literal("eletricai-package"),
+  formatVersion: z.literal(1),
+  exportedAt: z.string(),
+  project: z.object({
+    name: z.string().min(1).max(200),
+    description: z.string().max(2000).nullable().optional(),
+    client: z.string().max(200).nullable().optional(),
+  }),
+  snapshot: SnapshotSchema,
+});
+
+export type ProjectPackage = z.infer<typeof ProjectPackageSchema>;
+
+export async function exportProjectPackageData(
+  supabase: SupabaseClient<Database>,
+  projectId: string,
+): Promise<ProjectPackage> {
+  const { data: project, error: pErr } = await supabase
+    .from("projects")
+    .select("id, name, description, metadata")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (pErr) throw new Error(pErr.message);
+  if (!project) throw new Error("Projeto não encontrado");
+
+  const { data: diagram } = await supabase
+    .from("diagrams")
+    .select("canvas_data")
+    .eq("project_id", projectId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const parsed = SnapshotSchema.safeParse(diagram?.canvas_data ?? EMPTY_SNAPSHOT);
+  const metadata = project.metadata as Record<string, unknown> | null;
+
+  return {
+    format: "eletricai-package",
+    formatVersion: 1,
+    exportedAt: new Date().toISOString(),
+    project: {
+      name: project.name,
+      description: project.description,
+      client: (metadata?.client as string | null) ?? null,
+    },
+    snapshot: parsed.success ? parsed.data : EMPTY_SNAPSHOT,
+  };
+}
+
+export async function importProjectPackageData(
+  authCtx: Pick<AuthContext, "supabase" | "userId" | "claims">,
+  input: { packageData: unknown; customName?: string },
+): Promise<{ id: string; name: string; client: string | null }> {
+  const { supabase } = authCtx;
+  const parsed = ProjectPackageSchema.safeParse(input.packageData);
+  if (!parsed.success) {
+    throw new Error(`Pacote inválido: ${parsed.error.errors.map((e) => e.message).join(", ")}`);
+  }
+
+  const pkg = parsed.data;
+  const name = input.customName ?? `${pkg.project.name} (Importado)`;
+  const created = await createProjectRecord(authCtx, {
+    name,
+    description: pkg.project.description ?? undefined,
+    client: pkg.project.client ?? undefined,
+  });
+
+  const { error: dErr } = await supabase
+    .from("diagrams")
+    .update({
+      canvas_data: pkg.snapshot as unknown as Json,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("project_id", created.id);
+
+  if (dErr) {
+    throw new Error(`Falha ao carregar conteúdo do projeto importado: ${dErr.message}`);
+  }
+
+  return {
+    id: created.id,
+    name: created.name,
+    client: created.client,
+  };
+}
+
+export const exportProjectPackage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const authCtx = context as unknown as AuthContext;
+    return exportProjectPackageData(authCtx.supabase, data.projectId);
+  });
+
+export const importProjectPackage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      packageData: z.unknown(),
+      customName: z.string().min(1).max(200).optional(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const authCtx = context as unknown as AuthContext;
+    return importProjectPackageData(authCtx, {
+      packageData: data.packageData,
+      customName: data.customName,
+    });
   });

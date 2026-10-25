@@ -98,51 +98,72 @@ flowchart LR
 
 ---
 
-## Fase D — Persistência, Versionamento, Conflitos e Recuperação
+## Fase D — Persistência, Versionamento, Conflitos e Recuperação (Concluída ✅)
 
 ### Arquivos Afetados
 - [`src/lib/use-project-persistence.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/use-project-persistence.ts)
 - [`src/lib/projects.functions.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/projects.functions.ts)
-- [`src/lib/dxf-export.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/dxf-export.ts)
-- [`src/lib/pdf-export.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/pdf-export.ts)
+- [`src/components/industrial-workspace.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/industrial-workspace.tsx)
+- [`src/__tests__/persistence-full-roundtrip.test.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/__tests__/persistence-full-roundtrip.test.ts)
+- [`src/__tests__/persistence-concurrency-conflict.test.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/__tests__/persistence-concurrency-conflict.test.ts)
+- [`src/__tests__/no-render-loops-or-sim-autosave.test.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/__tests__/no-render-loops-or-sim-autosave.test.ts)
+- [`src/__tests__/project-import-export-v3.test.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/__tests__/project-import-export-v3.test.ts)
 
-### Alterações Propostas
-1. Remover o `queueMicrotask` que clona `doc` após o load em `use-project-persistence.ts` (eliminando o autosave fantasma ao abrir projeto).
-2. Incluir `views.twin`, `studies`, `controlBindings` e `diagnostics` no `ProjectSnapshot` salvo no Supabase.
-3. Adicionar verificação de `expectedVersion` em `saveProject` (`projects.functions.ts`) para detectar conflitos de concorrência (`VERSION_CONFLICT`) e apresentar modal de resolução ao usuário.
-4. Garantir exportação e importação determinística de projeto completo com validação Zod v3.
-
----
-
-## Fase E — Internacionalização Centralizada (`pt-BR` e `en`)
-
-### Diagnóstico da Infraestrutura Existente
-- Não há biblioteca externa de i18n em `package.json`.
-- Existem dois seletores de idioma desconectados:
-  1. [`src/routes/settings.appearance.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/routes/settings.appearance.tsx#L33-L45) (`useAppearance.language` em `localStorage` chave `eletricai-appearance`).
-  2. [`src/routes/settings.profile.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/routes/settings.profile.tsx#L264-L278) (`profiles.locale` no Supabase).
-
-### Solução Recomendada
-Consolidar em um motor i18n nativo em TypeScript strict + Zustand (`src/lib/i18n/`), zero dependências pesadas externas, compatível com SSR/TanStack Start:
-- `src/lib/i18n/types.ts`: Define `SupportedLocale = "pt-BR" | "en"` (normalizando `"en-US"` legado para `"en"`) e o tipo recursivo de chaves `TranslationKey` derivado de `ptBRCatalog` (`typeof ptBRCatalog`).
-- `src/lib/i18n/catalogs/pt-BR.ts` e `src/lib/i18n/catalogs/en.ts`: Catálogos estritamente tipados (o compilador TypeScript falha se `en.ts` omitir qualquer chave presente em `pt-BR.ts`).
-- `src/lib/i18n/store.ts`:
-  - Idioma inicial padrão: `"pt-BR"`.
-  - Para visitantes não autenticados: lê/persiste em `localStorage` (`eletricai-locale`) e sincroniza com `useAppearance`.
-  - Para usuários autenticados: sincroniza bidirecionalmente com `profiles.locale` no Supabase sem recarregar a página nem perder estado do canvas.
-- `src/lib/i18n/format.ts`: Formatadores `formatNumber(value, locale, options)`, `formatCurrency(value, locale, currency)`, `formatDateTime(date, locale)` usando `Intl.NumberFormat` e `Intl.DateTimeFormat`, mantendo unidades técnicas SI/IEC intactas (`kW`, `kVA`, `mm²`, `A`, `V`, `Hz`, `Ω`).
-- `src/lib/i18n/missing-key-detector.ts`: Registra e alerta em dev/test qualquer tentativa de acesso a chave ausente ou texto não traduzido.
+### Implementações Entregues
+1. **Eliminação do Autosave Fantasma:** Removido o `queueMicrotask` que clonava o `doc` do diagrama após o carregamento em `use-project-persistence.ts`. Adicionada guarda `isHydratingRef` que bloqueia chamadas espúrias de autosave durante toda a reidratação inicial do projeto.
+2. **Snapshot v3 Canônico Estrito:** `SnapshotSchema` e `buildProjectSnapshot()` atualizados para a versão 3 do schema, incluindo `twin` (`mappings`, `nameplates`, `modelUrl`), `studies`, `controlBindings`, `diagnostics` e `unifiedDoc`.
+3. **Controle de Concorrência Otimista (OCC):**
+   - Implementado `expectedVersion` e verificação no servidor em `saveProjectRecord` / `saveProject`. Se outra sessão alterou o projeto, o servidor rejeita o salvamento com `VERSION_CONFLICT: O projeto foi alterado no servidor`.
+   - A versão do diagrama avança monotonicamente (`nextVersion = (existing.version ?? 1) + 1`).
+   - Flag `force: true` permite resolução explícita de sobreposição de versão pelo usuário.
+   - Interface de resolução com modal interativo (`Dialog`) em `industrial-workspace.tsx` com as opções "Recarregar do servidor" e "Sobrescrever servidor".
+4. **Exportação e Importação Determinística de Pacote:**
+   - Criados `ProjectPackageSchema`, `exportProjectPackageData` / `exportProjectPackage` e `importProjectPackageData` / `importProjectPackage` validando o arquivo de pacote `.eletricai` serializado com schema Zod estrito v3.
+5. **Cobertura de Testes Automatizados (Fase D):**
+   - `persistence-full-roundtrip.test.ts`: Valida round-trip perfeito `load(save(doc)) === doc` sem perda de equipamentos, terminais, tags, estudos, gêmeo digital ou layouts.
+   - `persistence-concurrency-conflict.test.ts`: Valida rejeição estrita de concorrência com `VERSION_CONFLICT` e bypass via `force: true`.
+   - `no-render-loops-or-sim-autosave.test.ts`: Valida 0 autosaves no carregamento e 0 gravações durante 120 ciclos contínuos de simulação a 60 Hz.
+   - `project-import-export-v3.test.ts`: Valida exportação e importação determinística com Zod.
 
 ---
 
-## Fase F — Cobertura Completa de Português (`pt-BR`) e Inglês (`en`)
+## Fase E — Internacionalização Centralizada (`pt-BR` e `en`) [Concluída ✅]
 
-### Escopo de Tradução (Baseado no Inventário da Parte 4)
-1. **Navegação, Shell e Configurações:** `app-sidebar.tsx`, `topbar.tsx`, `mode-tabs.tsx`, `right-panel.tsx`, `bottom-panel.tsx`, `onboarding-tour.tsx`, todas as rotas `/settings/*`, `/login`, `/signup`, `/dashboard`, `/projects`, `/billing`, `/team`.
-2. **Editores, Paletas e Propriedades Técnicas:** `COMPONENT_CATALOG` (`src/lib/diagram/catalog.ts`), `PALETTE` (`src/lib/palette/component-catalog.ts`), `KIND_CATALOG` (`src/lib/project-store.ts`), `RightPropertyPanel`, `LadderCanvas`, `FbdCanvas`, `PlcCanvas`, `ScadaCanvas`, `SimCanvas`, `TwinCanvas`.
-   - **Regra Crítica:** Os identificadores técnicos (`tagCode` como `QF1`, `KM1`, `M1`, endereços `%I0.0`, `%Q0.0`, mnemônicos IEC 61131-3 `TON`, `TOF`, `CTU`, `PID`, e códigos de normas `NBR 5410`, `IEC 60909`, `NR-12`) **NÃO são alterados** ao trocar o idioma; apenas rótulos de UI, descrições de catálogo, tooltips e diagnósticos mudam entre `pt-BR` e `en`.
-3. **Backend, Validações e Mensagens de Erro:** Códigos de erro estruturados nos `.functions.ts` (`auth`, `billing`, `projects`, `team`, `catalog`) mapeados para mensagens localizadas em `pt-BR` e `en`.
-4. **Relatórios, Memoriais e Exportações:** [`src/lib/pdf-export.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/pdf-export.ts) e [`src/lib/dxf-export.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/dxf-export.ts) passam a receber `locale: SupportedLocale`, gerando cabeçalhos, tabelas de materiais (BOM), memoriais de cálculo e carimbos ABNT/ISO no idioma escolhido.
+### Entregas Implementadas
+- Motor nativo i18n em TypeScript strict + Zustand (`src/lib/i18n/`) com zero dependências externas pesadas e compatível com SSR/TanStack Start.
+- `src/lib/i18n/types.ts`: `SupportedLocale = "pt-BR" | "en"` com normalização de `"en-US"` legado e tipagem recursiva `TranslationCatalog` baseada no catálogo mestre.
+- `src/lib/i18n/catalogs/pt-BR.ts` e `src/lib/i18n/catalogs/en.ts`: Catálogos 100% simétricos validados pelo compilador TypeScript (zero chaves ausentes).
+- `src/lib/i18n/store.ts`: Persistência atômica em `localStorage` (`eletricai-locale`), atualização de `document.documentElement.lang`, sincronização em background com `profiles.locale` no Supabase sem reload nem perda de estado do canvas, e método `t(key, params)` com notação ponto e interpolação.
+- `src/lib/i18n/format.ts`: Funções de formatação localizada (`formatNumber`, `formatCurrency`, `formatDate`, `formatRelativeTime`) respeitando padrões internacionais e ABNT sem tocar em grandezas e unidades de engenharia.
+- `src/lib/i18n/missing-key-detector.ts`: Registrador em memória para captura de chaves ausentes ou requisições inválidas em dev e testes.
+- `src/__tests__/i18n-store-and-catalogs.test.ts`: 7 testes unitários cobrindo simetria de catálogos, interpolação, normalização, detecção de chaves ausentes e formatação.
+
+---
+
+## Fase F — Cobertura Completa de Português (`pt-BR`) e Inglês (`en`) [Concluída ✅]
+
+### Entregas Implementadas
+1. **Seletor de Idioma e Shell:**
+   - Criado `src/components/language-switcher.tsx` acessível e integrado diretamente na `topbar.tsx`.
+   - Seletor unificado nas páginas de configurações (`settings.appearance.tsx` e `settings.profile.tsx`).
+   - Abas e navegação localizadas: `app-sidebar.tsx`, `mode-tabs.tsx`, `right-panel.tsx`, `bottom-panel.tsx`.
+2. **Canvases e Sidebars Técnicos:**
+   - `alarms-canvas.tsx`: Cabeçalhos ISA-18.2, status, badges, botões de reconhecimento e estampas de tempo traduzidos e formatados via `formatDate(..., locale)`.
+   - `rung-grid.tsx`: Botões de scan ("Simular" / "Simulate"), compilação, histórico, importação de programas ST/IL, colunas e badges de energização.
+   - `editor-unifilar-sidebar.tsx` e `editor-ladder-sidebar.tsx`: Títulos de categorias, caixas de busca e validações locais de disjuntores traduzidas.
+3. **Páginas de Negócio e Hub de Projetos:**
+   - `src/routes/projects.tsx`: Listagem, filtros por status, busca, diálogo de criação, cards de projetos, alertas de exclusão/arquivamento e formatação de datas.
+   - `src/routes/projects.$projectId.bom.tsx`: Título, total estimado formatado em BRL/USD com `formatCurrency`, colunas da tabela de materiais, ações manuais e de geração por canvas.
+   - `src/routes/catalog.tsx`: Catálogo geral de componentes com busca, seletor de categorias e estados vazios localizados.
+   - `src/routes/dashboard.tsx`: Saudação dinâmica sensível ao horário e idioma ("Good morning", "Bom dia"), contadores de KPI e formatação da data atual.
+4. **Exportações Técnicas Bilíngues:**
+   - `src/lib/pdf-export.ts`: Memorial Descritivo e de Cálculo (`Engineering Report`), Lista de Materiais Consolidada (BOM) e disclaimer normativo gerados em `pt-BR` ou `en` conforme parâmetro `locale`.
+   - `src/lib/dxf-export.ts`: Esquemas e carimbos DXF bilíngues com camadas ABNT/ISO padronizadas.
+   - `src/routes/projects.$projectId.export.tsx`: Opções de exportação e download localizados.
+5. **Invariância de Símbolos Técnicos:**
+   - Garantida rigorosamente a estabilidade de identificadores de projeto (`tagCode` como `QF1`, `KM1`, `M1`), endereços PLC (`%I0.0`, `%Q0.0`, `%MW10`), mnemônicos IEC 61131-3 (`TON`, `TOF`, `PID`) e normas técnicas (`NBR 5410`, `IEC 60909`).
+6. **Bateria de Testes:**
+   - `src/__tests__/i18n-ui-and-exports.test.ts` e `src/__tests__/i18n-store-and-catalogs.test.ts` integrados à suite contínua (389 testes passando em 54 arquivos de teste).
 
 ---
 

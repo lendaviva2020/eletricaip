@@ -4,8 +4,10 @@ import { toast } from "sonner";
 import { LADDER_ELEMENTS, type LadderElement } from "@/lib/ladder/definitions";
 import { PaletteGroup, SidebarShell } from "./sidebar-primitives";
 import { Search } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export function EditorLadderSidebar() {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<"supported" | "all">("supported");
 
@@ -30,7 +32,7 @@ export function EditorLadderSidebar() {
   return (
     <SidebarShell width={240}>
       <div className="h-9 flex items-center px-3 border-b border-border text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        Elementos Ladder (IEC 61131-3)
+        {t("sidebars.ladderTitle")}
       </div>
 
       <div className="p-2 space-y-2 border-b border-border/60">
@@ -41,7 +43,7 @@ export function EditorLadderSidebar() {
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Buscar elementos Ladder"
             title="Buscar elementos Ladder"
-            placeholder="XIC, OTE, TON..."
+            placeholder={t("sidebars.ladderPlaceholder")}
             className="w-full h-7 pl-8 pr-2 rounded bg-input/60 border border-border text-[11px] outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
@@ -58,7 +60,7 @@ export function EditorLadderSidebar() {
             }`}
           >
             <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-            Ativos (9)
+            {t("sidebars.filterActive")}
           </button>
           <button
             type="button"
@@ -70,7 +72,7 @@ export function EditorLadderSidebar() {
             }`}
           >
             <Clock className="h-3 w-3 text-amber-500" />
-            Todos
+            {t("sidebars.filterAll")}
           </button>
         </div>
       </div>
@@ -78,7 +80,7 @@ export function EditorLadderSidebar() {
       <div className="px-2 py-2 space-y-3 overflow-auto scrollbar-thin">
         {categories.length === 0 ? (
           <div className="p-4 text-center text-[11px] text-muted-foreground">
-            Nenhum elemento encontrado.
+            {t("sidebars.emptyElements")}
           </div>
         ) : (
           categories.map((category) => (

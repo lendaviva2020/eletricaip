@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { ClientOnly, useRouter } from "@tanstack/react-router";
 import { ModeTabs } from "@/components/mode-tabs";
 import { BottomPanel } from "@/components/bottom-panel";
@@ -11,6 +11,7 @@ import {
   ChevronRight,
   FolderOpen,
   PlusCircle,
+  FileText,
 } from "lucide-react";
 import { CanvasAiChat } from "@/components/canvas-ai-chat";
 import { useProjectPersistence } from "@/lib/use-project-persistence";
@@ -21,6 +22,15 @@ import { shouldAutoCollapsePanels } from "@/lib/editor/tablet-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { EditorAiConfigBanner } from "@/components/editor-ai-config-banner";
 import { OnboardingTour } from "@/components/onboarding-tour";
+import { EngineeringDossierModal } from "@/components/dossier/engineering-dossier-modal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const UnifilarCanvas = lazy(() =>
   import("@/components/canvases/webgl-canvas").then((m) => ({ default: m.WebglCanvas })),
@@ -85,7 +95,8 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
     }
   }, [setPanelsCollapsed]);
 
-  const { loading, saveState } = useProjectPersistence(projectId);
+  const { loading, saveState, conflict, resolveConflict } = useProjectPersistence(projectId);
+  const [dossierOpen, setDossierOpen] = useState(false);
 
   if (!projectId) {
     return <WorkspaceEmptyState />;
@@ -129,7 +140,12 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         <ErrorBoundary fallback={null}>
           <EditorAiConfigBanner />
         </ErrorBoundary>
-        <SaveBadge projectId={projectId} loading={loading} state={saveState} />
+        <SaveBadge
+          projectId={projectId}
+          loading={loading}
+          state={saveState}
+          onOpenDossier={() => setDossierOpen(true)}
+        />
         <div className="flex-1 min-h-0 relative bg-background">
           {/* ErrorBoundary keyed por `mode`: isola crashes (ex.: React #185)
               ao canvas ativo e cria um boundary fresco ao trocar de aba. */}
@@ -187,6 +203,55 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       )}
 
       <OnboardingTour />
+
+      {/* Modal de Conflito de Versão Concorrente */}
+      <Dialog
+        open={!!conflict}
+        onOpenChange={(open) => {
+          if (!open && conflict) resolveConflict("reload");
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Conflito de Versão Detectado
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-sm text-foreground/80 space-y-2">
+              <span className="block">
+                Este projeto foi modificado no servidor por outra sessão ou usuário.
+              </span>
+              <span className="block text-xs text-muted-foreground bg-muted p-2.5 rounded font-mono break-all">
+                {conflict?.message}
+              </span>
+              <span className="block text-xs">
+                Para evitar inconsistências ou perda de alterações, escolha como prosseguir:
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2 mt-2">
+            <button
+              onClick={() => resolveConflict("reload")}
+              className="px-4 py-2 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent text-foreground transition-colors"
+            >
+              Recarregar do servidor
+            </button>
+            <button
+              onClick={() => resolveConflict("overwrite")}
+              className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+            >
+              Sobrescrever servidor
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Interativo do Dossiê Técnico de Engenharia */}
+      <EngineeringDossierModal
+        projectId={projectId}
+        open={dossierOpen}
+        onOpenChange={setDossierOpen}
+      />
     </div>
   );
 }
@@ -250,33 +315,46 @@ function SaveBadge({
   projectId,
   loading,
   state,
+  onOpenDossier,
 }: {
   projectId: string | null;
   loading: boolean;
   state: "idle" | "saving" | "saved" | "error";
+  onOpenDossier: () => void;
 }) {
   if (!projectId) return null;
   return (
-    <div className="h-6 px-3 flex items-center gap-1.5 text-[10px] text-muted-foreground border-b border-border bg-panel/40">
-      {loading ? (
-        <>
-          <Loader2 className="h-3 w-3 animate-spin" /> Carregando projeto...
-        </>
-      ) : state === "saving" ? (
-        <>
-          <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
-        </>
-      ) : state === "saved" ? (
-        <>
-          <CheckCircle2 className="h-3 w-3 text-success" /> Salvo
-        </>
-      ) : state === "error" ? (
-        <>
-          <AlertCircle className="h-3 w-3 text-destructive" /> Erro ao salvar
-        </>
-      ) : (
-        <>Auto-save ativo (2s)</>
-      )}
+    <div className="h-7 px-3 flex items-center justify-between text-[11px] text-muted-foreground border-b border-border bg-panel/40">
+      <div className="flex items-center gap-1.5 text-[10px]">
+        {loading ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin" /> Carregando projeto...
+          </>
+        ) : state === "saving" ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
+          </>
+        ) : state === "saved" ? (
+          <>
+            <CheckCircle2 className="h-3 w-3 text-success" /> Salvo
+          </>
+        ) : state === "error" ? (
+          <>
+            <AlertCircle className="h-3 w-3 text-destructive" /> Erro ao salvar
+          </>
+        ) : (
+          <>Auto-save ativo (2s)</>
+        )}
+      </div>
+
+      <button
+        onClick={onOpenDossier}
+        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all cursor-pointer shadow-xs"
+        title="Gerar Dossiê Técnico de Engenharia a partir do Canvas"
+      >
+        <FileText className="h-3.5 w-3.5" />
+        Gerar Dossiê Técnico
+      </button>
     </div>
   );
 }

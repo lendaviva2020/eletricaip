@@ -20,6 +20,19 @@ import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/lib/project-store";
 import { useOpcuaBridge } from "@/hooks/use-opcua-bridge";
 import { useEditorStore } from "@/lib/editor/store";
+import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n";
+
+const TAB_I18N_KEY: Record<ConsoleTab, TranslationKey> = {
+  Logs: "bottomPanel.logs",
+  Alarmes: "bottomPanel.alarms",
+  IA: "bottomPanel.ai",
+  Terminal: "bottomPanel.terminal",
+  Eventos: "bottomPanel.events",
+  "OPC-UA": "bottomPanel.opcua",
+  Modbus: "bottomPanel.modbus",
+  Runtime: "bottomPanel.runtime",
+};
 
 const TAB_ICON: Record<ConsoleTab, typeof TerminalIcon> = {
   Logs: List,
@@ -58,6 +71,7 @@ const lvlColor = {
 };
 
 export function BottomPanel() {
+  const { t } = useI18n();
   const tab = useEditorStore((s) => s.consoleTab);
   const setTab = useEditorStore((s) => s.setConsoleTab);
   const open = useEditorStore((s) => s.consoleOpen);
@@ -82,7 +96,9 @@ export function BottomPanel() {
     >
       <div className="h-9 flex items-center px-2 gap-1 border-b border-border/60">
         <TabIcon className="h-3.5 w-3.5 text-muted-foreground mx-1.5 shrink-0" />
-        <span className="text-[11px] font-semibold text-muted-foreground mr-1">{tab}</span>
+        <span className="text-[11px] font-semibold text-muted-foreground mr-1">
+          {t(TAB_I18N_KEY[tab])}
+        </span>
         <div className="flex gap-0.5 overflow-x-auto scrollbar-none">
           {CONSOLE_TABS.map((c) => {
             const Icon = TAB_ICON[c];
@@ -99,10 +115,10 @@ export function BottomPanel() {
                     ? "bg-accent text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
                 )}
-                title={c}
+                title={t(TAB_I18N_KEY[c])}
               >
                 <Icon className="h-3 w-3" />
-                <span className="hidden sm:inline">{c}</span>
+                <span className="hidden sm:inline">{t(TAB_I18N_KEY[c])}</span>
                 {c === "Runtime" && (
                   <span
                     className={cn(

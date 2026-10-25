@@ -6,8 +6,10 @@ import {
 } from "@/lib/palette/component-catalog";
 import { PaletteGroup, SidebarSearch, SidebarShell } from "./sidebar-primitives";
 import { useEditorStore } from "@/lib/editor/store";
+import { useI18n } from "@/lib/i18n";
 
 export function EditorUnifilarSidebar() {
+  const { t } = useI18n();
   const dragValidation = useEditorStore((s) => s.dragValidation);
   const validateComponent = useEditorStore((s) => s.validateComponent);
 
@@ -26,24 +28,27 @@ export function EditorUnifilarSidebar() {
 
   return (
     <SidebarShell footer={dragValidation}>
-      <SidebarSearch title="Componentes de Potência e Controle" placeholder="IEC 60617..." />
+      <SidebarSearch
+        title={t("sidebars.unifilarTitle")}
+        placeholder={t("sidebars.unifilarPlaceholder")}
+      />
       <div className="px-2 pb-3 space-y-3 overflow-auto scrollbar-thin">
-        <PaletteGroup icon={Cable} title="Proteção">
+        <PaletteGroup icon={Cable} title={t("sidebars.protection")}>
           {protectionComponents.map((c) => (
             <PaletteItem key={c.type} component={c} />
           ))}
         </PaletteGroup>
-        <PaletteGroup icon={Boxes} title="Potência">
+        <PaletteGroup icon={Boxes} title={t("sidebars.power")}>
           {powerComponents.map((c) => (
             <PaletteItem key={c.type} component={c} />
           ))}
         </PaletteGroup>
-        <PaletteGroup icon={Gauge} title="Controle">
+        <PaletteGroup icon={Gauge} title={t("sidebars.control")}>
           {controlComponents.map((c) => (
             <PaletteItem key={c.type} component={c} />
           ))}
         </PaletteGroup>
-        <PaletteGroup icon={Gauge} title="Medição e Sinal">
+        <PaletteGroup icon={Gauge} title={t("sidebars.measurementAndSignal")}>
           {signalComponents.map((c) => (
             <PaletteItem key={c.type} component={c} />
           ))}
@@ -54,6 +59,7 @@ export function EditorUnifilarSidebar() {
 }
 
 function PaletteItem({ component }: { component: VoltaiComponentDefinition }) {
+  const { t } = useI18n();
   const validateComponent = useEditorStore((s) => s.validateComponent);
 
   return (
@@ -65,7 +71,9 @@ function PaletteItem({ component }: { component: VoltaiComponentDefinition }) {
         event.dataTransfer.effectAllowed = "move";
       }}
       title={
-        isBreakerComponent(component.type) ? `${component.type} validado como disjuntor` : undefined
+        isBreakerComponent(component.type)
+          ? t("sidebars.breakerValidated", { type: component.type })
+          : undefined
       }
       className="group flex items-center gap-2 text-left px-2 py-1.5 rounded text-[11px] text-foreground/85
                  hover:bg-accent hover:text-foreground border border-transparent hover:border-border transition-all cursor-grab active:cursor-grabbing"
