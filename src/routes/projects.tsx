@@ -216,16 +216,25 @@ function Projects() {
                 </Link>
                 <div className="mt-2 flex gap-2 text-[11px]">
                   <Link
+                    to="/projects/$projectId/export"
+                    params={{ projectId: p.id }}
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    Dossiê Técnico
+                  </Link>
+                  <span className="text-muted-foreground/40">·</span>
+                  <Link
                     to="/projects/$projectId/bom"
                     params={{ projectId: p.id }}
-                    className="text-primary hover:underline"
+                    className="text-muted-foreground hover:text-primary hover:underline"
                   >
                     {t("projects.actionBOM")}
                   </Link>
+                  <span className="text-muted-foreground/40">·</span>
                   <Link
                     to="/projects/$projectId/export"
                     params={{ projectId: p.id }}
-                    className="text-primary hover:underline"
+                    className="text-muted-foreground hover:text-primary hover:underline"
                   >
                     {t("projects.actionExport")}
                   </Link>
