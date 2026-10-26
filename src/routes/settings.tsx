@@ -18,7 +18,9 @@ import {
   Shield,
   Palette,
   Plug,
+  LogOut,
 } from "lucide-react";
+import { LogoutButton } from "@/components/auth/logout-dialog";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -260,6 +262,28 @@ function SettingsPage() {
                   </div>
                 );
               })}
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="pt-2 border-t border-border">
+          <SectionLabel icon={Shield} title="Conta & Segurança da Sessão" />
+          <Card className="border-border bg-card">
+            <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <LogOut className="h-4 w-4 text-muted-foreground" />
+                  <span>Sair da conta</span>
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Encerre sua sessão com segurança neste dispositivo. Seus projetos e configurações salvos permanecerão preservados na nuvem.
+                </p>
+              </div>
+              <LogoutButton
+                variant="outline"
+                className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive border-border hover:border-destructive/30 shrink-0 inline-flex items-center gap-2"
+                label="Sair da conta"
+              />
             </CardContent>
           </Card>
         </section>

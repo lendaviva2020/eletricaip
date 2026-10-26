@@ -77,9 +77,10 @@ export function CanvasAiChat() {
 
   // Keep first greeting in sync if user changes language before sending prompts
   useEffect(() => {
+    const nextGreeting = t("aiChat.initialGreeting");
     setMsgs((m) => {
-      if (m.length === 1 && m[0].role === "ai") {
-        return [{ role: "ai", text: t("aiChat.initialGreeting") }];
+      if (m.length === 1 && m[0].role === "ai" && m[0].text !== nextGreeting) {
+        return [{ ...m[0], text: nextGreeting }];
       }
       return m;
     });
@@ -116,11 +117,12 @@ export function CanvasAiChat() {
   );
 
   // Refetch server-side credits when any IA call dispatches the event
+  const refetchCredits = creditsQuery.refetch;
   useEffect(() => {
-    const handler = () => creditsQuery.refetch();
+    const handler = () => refetchCredits();
     window.addEventListener("ai-usage-event", handler);
     return () => window.removeEventListener("ai-usage-event", handler);
-  }, [creditsQuery]);
+  }, [refetchCredits]);
 
   const send = async (textToSend?: string, briefingDocument?: BriefingDocumentInput) => {
     const p = (textToSend ?? val).trim();

@@ -1,0 +1,7 @@
+ElétricAi Typography Licenses:
+- Space Grotesk: SIL Open Font License 1.1 (Copyright 2020 The Space Grotesk Project Authors)
+- IBM Plex Sans: SIL Open Font License 1.1 (Copyright 2018 IBM Corp. with Reserved Font Name "Plex")
+- IBM Plex Mono: SIL Open Font License 1.1 (Copyright 2018 IBM Corp. with Reserved Font Name "Plex")
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of the Font Software...
+Full OFL text: https://openfontlicense.org/open-font-license-official-text/

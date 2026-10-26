@@ -16,6 +16,7 @@ import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DigitalTwinRouteImport } from './routes/digital-twin'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
@@ -87,6 +88,11 @@ const ClientsRoute = ClientsRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesignSystemRoute = DesignSystemRouteImport.update({
+  id: '/design-system',
+  path: '/design-system',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DigitalTwinRoute = DigitalTwinRouteImport.update({
@@ -284,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRoute
   '/clients': typeof ClientsRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/design-system': typeof DesignSystemRoute
   '/digital-twin': typeof DigitalTwinRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -330,6 +337,7 @@ export interface FileRoutesByTo {
   '/chat': typeof ChatRoute
   '/clients': typeof ClientsRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/design-system': typeof DesignSystemRoute
   '/digital-twin': typeof DigitalTwinRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -377,6 +385,7 @@ export interface FileRoutesById {
   '/chat': typeof ChatRoute
   '/clients': typeof ClientsRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/design-system': typeof DesignSystemRoute
   '/digital-twin': typeof DigitalTwinRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -425,6 +434,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/clients'
     | '/dashboard'
+    | '/design-system'
     | '/digital-twin'
     | '/forgot-password'
     | '/login'
@@ -471,6 +481,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/clients'
     | '/dashboard'
+    | '/design-system'
     | '/digital-twin'
     | '/forgot-password'
     | '/login'
@@ -517,6 +528,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/clients'
     | '/dashboard'
+    | '/design-system'
     | '/digital-twin'
     | '/forgot-password'
     | '/login'
@@ -564,6 +576,7 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRoute
   ClientsRoute: typeof ClientsRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  DesignSystemRoute: typeof DesignSystemRoute
   DigitalTwinRoute: typeof DigitalTwinRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
@@ -635,6 +648,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/design-system': {
+      id: '/design-system'
+      path: '/design-system'
+      fullPath: '/design-system'
+      preLoaderRoute: typeof DesignSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/digital-twin': {
@@ -970,6 +990,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRoute,
   ClientsRoute: ClientsRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  DesignSystemRoute: DesignSystemRoute,
   DigitalTwinRoute: DigitalTwinRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,

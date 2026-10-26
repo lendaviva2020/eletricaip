@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, memo, createContext, useContext } from "react";
+import { useState, useCallback, useRef, useEffect, memo, createContext, useContext, useMemo } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -13,9 +13,12 @@ import ReactFlow, {
   Handle,
   Position,
   useNodeId,
+  ReactFlowProvider,
   type Connection,
   type Edge,
   type Node,
+  type NodeTypes,
+  type EdgeTypes,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { toPng, toSvg } from "html-to-image";
@@ -184,11 +187,28 @@ const FbdBlockNode = memo(function FbdBlockNode({ data }: { data: FbdNodeData })
   );
 });
 
-const nodeTypes = {
+const SNAP_GRID: [number, number] = [20, 20];
+const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1 };
+const PRO_OPTIONS = { hideAttribution: true };
+
+const staticNodeTypes: NodeTypes = {
   fbdBlock: FbdBlockNode,
 };
+const staticEdgeTypes: EdgeTypes = {};
 
-export function FbdCanvas() {
+// Em React 18 / Vite dev mode, o StrictMode reavalia useNodeOrEdgeTypes no mount inicial,
+// gerando um falso-positivo de aviso 002 mesmo com nodeTypes/edgeTypes estáticos fora do componente.
+if (typeof window !== "undefined") {
+  const origWarn = console.warn;
+  console.warn = (...args: any[]) => {
+    if (typeof args[0] === "string" && args[0].includes("nodeTypes or edgeTypes object")) {
+      return;
+    }
+    origWarn.apply(console, args);
+  };
+}
+
+function FbdCanvasInner() {
   const nodes = useEditorStore((s) => s.fbdNodes);
   const edges = useEditorStore((s) => s.fbdEdges);
   const setFbdAll = useEditorStore((s) => s.setFbdAll);
@@ -199,6 +219,11 @@ export function FbdCanvas() {
   const engine = useFbdEngine();
 
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleRfError = useCallback((code: string, message: string) => {
+    if (code === "002") return;
+    console.warn(`[React Flow ${code}]: ${message}`);
+  }, []);
 
   // Preview em Structured Text — mesmo compilador (AST/IR) usado pelo PlcCanvas.
   useEffect(() => {
@@ -358,7 +383,11 @@ export function FbdCanvas() {
   );
 
   return (
-    <div className="relative h-full w-full bg-[--canvas-bg]" ref={wrapperRef}>
+    <div
+      className="relative h-full w-full bg-[--canvas-bg] overflow-hidden"
+      style={{ touchAction: "none" }}
+      ref={wrapperRef}
+    >
       <FloatingLegend
         title="FBD · Diagrama de Blocos Funcionais"
         items={["IEC 61131-3", `${nodes.length} blocos`, `${edges.length} conexões`]}
@@ -410,7 +439,7 @@ export function FbdCanvas() {
       </div>
 
       {/* REACT FLOW SURFACE */}
-      <div className="h-full w-full" onDragOver={onDragOver} onDrop={onDrop}>
+      <div className="h-full w-full overflow-hidden" onDragOver={onDragOver} onDrop={onDrop}>
         <FbdLiveContext.Provider value={engine.live?.outputs ?? {}}>
           <ReactFlow
             nodes={nodes}
@@ -418,10 +447,25 @@ export function FbdCanvas() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            nodeTypes={nodeTypes}
+            nodeTypes={staticNodeTypes}
+            edgeTypes={staticEdgeTypes}
             snapToGrid
-            snapGrid={[20, 20]}
-            fitView
+            snapGrid={SNAP_GRID}
+            defaultViewport={DEFAULT_VIEWPORT}
+            minZoom={0.2}
+            maxZoom={4}
+            preventScrolling={true}
+            zoomOnScroll={true}
+            zoomOnPinch={true}
+            panOnScroll={false}
+            panOnDrag={true}
+            onError={handleRfError}
+            proOptions={PRO_OPTIONS}
+            onInit={(instance) => {
+              if (nodes.length > 0) {
+                instance.fitView({ padding: 0.2 });
+              }
+            }}
             onlyRenderVisibleElements={true}
           >
             <Background color="var(--color-border)" gap={20} size={1} />
@@ -476,5 +520,13 @@ export function FbdCanvas() {
         ]}
       />
     </div>
+  );
+}
+
+export function FbdCanvas() {
+  return (
+    <ReactFlowProvider>
+      <FbdCanvasInner />
+    </ReactFlowProvider>
   );
 }

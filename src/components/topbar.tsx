@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Save, Share2, GitBranch, Loader2, Check } from "lucide-react";
+import { Search, Save, Share2, GitBranch, Loader2, Check, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RuntimeStatus } from "@/components/runtime-status";
 import { MobileMenu } from "@/components/mobile-menu";
@@ -9,12 +9,18 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { saveManualVersion } from "@/lib/ai-architect-client";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useI18n } from "@/lib/i18n";
+import { useTheme } from "@/lib/design-system/theme";
 
 export function Topbar() {
   useNotifications();
   const { t } = useI18n();
+  const { resolvedTheme, setTheme } = useTheme();
   const [saving, setSaving] = useState<"idle" | "busy" | "ok" | "err">("idle");
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  };
 
   const onSave = async () => {
     setSaving("busy");
@@ -98,6 +104,20 @@ export function Topbar() {
         <div className="hidden sm:block h-5 w-px bg-border mx-1" />
         <NotificationDropdown />
         <LanguageSwitcher />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          aria-label={resolvedTheme === "dark" ? "Alternar para tema claro" : "Alternar para tema escuro"}
+          title={resolvedTheme === "dark" ? "Tema Claro" : "Tema Escuro"}
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        >
+          {resolvedTheme === "dark" ? (
+            <Sun className="h-4 w-4 text-warning" />
+          ) : (
+            <Moon className="h-4 w-4 text-primary" />
+          )}
+        </Button>
         <div className="h-7 w-7 rounded-full ring-1 ring-border bg-linear-to-br from-primary/60 to-info/60" />
       </div>
     </header>

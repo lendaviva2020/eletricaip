@@ -1,22 +1,44 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "../public/fonts/fonts.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-display: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  --color-brand-graphite: var(--brand-graphite);
+  --color-brand-steel: var(--brand-steel);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-white: var(--brand-white);
+  --color-brand-gray: var(--brand-gray);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-inverted: var(--surface-inverted);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -26,20 +48,32 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-focus-ring: var(--focus-ring);
+
   --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
   --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
   --color-info: var(--info);
-  --color-energized: var(--energized);
+  --color-info-surface: var(--info-surface);
+  --color-disabled: var(--disabled);
+
   --color-panel: var(--panel);
   --color-panel-foreground: var(--panel-foreground);
   --color-grid: var(--grid);
+  --color-energized: var(--energized);
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -48,74 +82,201 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* Dark industrial by default */
-:root {
+/* ═══════════════════════════════════════════════════════════════════════════
+   ELÉTRICAI DESIGN TOKENS — TEMA ESCURO (PADRÃO INDUSTRIAL)
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root,
+.dark {
   --radius: 0.5rem;
 
-  --background: oklch(0.16 0.01 35);
-  --foreground: oklch(0.96 0.005 60);
+  /* Cores de Marca Oficiais */
+  --brand-graphite: #0B0F14;
+  --brand-steel: #151C24;
+  --brand-orange: #FF8A00;
+  --brand-white: #F1F5F9;
+  --brand-gray: #A7B0BB;
 
-  --panel: oklch(0.19 0.012 35);
-  --panel-foreground: oklch(0.94 0.006 60);
+  /* Superfícies & Fundo */
+  --background: #0B0F14;
+  --foreground: #F1F5F9;
+  --surface: #151C24;
+  --surface-raised: #1C2530;
+  --surface-muted: #10161E;
+  --surface-inverted: #F1F5F9;
 
-  --card: oklch(0.205 0.012 35);
-  --card-foreground: oklch(0.96 0.005 60);
+  --text-primary: #F1F5F9;
+  --text-secondary: #A7B0BB;
+  --text-muted: #738090;
 
-  --popover: oklch(0.21 0.013 35);
-  --popover-foreground: oklch(0.96 0.005 60);
+  --panel: #151C24;
+  --panel-foreground: #F1F5F9;
 
-  --primary: oklch(0.78 0.18 55); /* industrial amber */
-  --primary-foreground: oklch(0.15 0.02 40);
+  --card: #151C24;
+  --card-foreground: #F1F5F9;
 
-  --secondary: oklch(0.26 0.014 30);
-  --secondary-foreground: oklch(0.96 0.005 60);
+  --popover: #1C2530;
+  --popover-foreground: #F1F5F9;
 
-  --muted: oklch(0.24 0.01 30);
-  --muted-foreground: oklch(0.68 0.018 50);
+  /* Ações Primárias (Laranja Industrial) */
+  --primary: #FF8A00;
+  --primary-hover: #FFA033;
+  --primary-active: #E67C00;
+  --primary-foreground: #0B0F14; /* Contraste 9.4:1 sobre #FF8A00 (AAA) */
 
-  --accent: oklch(0.32 0.06 50);
-  --accent-foreground: oklch(0.96 0.005 60);
+  --secondary: #1E2632;
+  --secondary-foreground: #F1F5F9;
 
-  --destructive: oklch(0.66 0.22 25);
-  --destructive-foreground: oklch(0.98 0.005 60);
+  --muted: #10161E;
+  --muted-foreground: #A7B0BB;
 
-  --success: oklch(0.76 0.18 155);
-  --warning: oklch(0.82 0.17 80);
-  --info: oklch(0.74 0.15 280);
-  --energized: oklch(0.86 0.2 90);
+  --accent: #1E2632;
+  --accent-foreground: #F1F5F9;
 
-  --border: oklch(0.3 0.014 40 / 0.7);
-  --input: oklch(0.26 0.012 35);
-  --ring: oklch(0.78 0.18 55);
-  --grid: oklch(0.3 0.014 40 / 0.35);
+  /* Estados Funcionais Semânticos */
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
 
-  --chart-1: oklch(0.78 0.18 55);
-  --chart-2: oklch(0.76 0.18 155);
-  --chart-3: oklch(0.74 0.18 305);
-  --chart-4: oklch(0.66 0.22 25);
-  --chart-5: oklch(0.82 0.17 80);
+  --success: #22C55E;
+  --success-surface: rgba(34, 197, 94, 0.12);
+  --warning: #F59E0B;
+  --warning-surface: rgba(245, 158, 11, 0.12);
+  --danger: #EF4444;
+  --danger-surface: rgba(239, 68, 68, 0.12);
+  --info: #38BDF8;
+  --info-surface: rgba(56, 189, 248, 0.12);
+  --disabled: #475569;
+  --disabled-surface: #131820;
+  --overlay: rgba(5, 8, 12, 0.78);
 
-  --sidebar: oklch(0.155 0.01 35);
-  --sidebar-foreground: oklch(0.92 0.005 60);
-  --sidebar-primary: oklch(0.78 0.18 55);
-  --sidebar-primary-foreground: oklch(0.15 0.02 40);
-  --sidebar-accent: oklch(0.22 0.012 35);
-  --sidebar-accent-foreground: oklch(0.96 0.005 60);
-  --sidebar-border: oklch(0.26 0.012 35);
-  --sidebar-ring: oklch(0.78 0.18 55);
+  --energized: #FF8A00;
 
-  --gradient-industrial: linear-gradient(135deg, oklch(0.22 0.02 40), oklch(0.16 0.012 35));
-  --gradient-primary: linear-gradient(135deg, oklch(0.78 0.18 55), oklch(0.7 0.2 30));
-  --gradient-energized: linear-gradient(90deg, oklch(0.86 0.2 90), oklch(0.78 0.18 60));
-  --shadow-glow: 0 0 24px oklch(0.78 0.18 55 / 0.35);
-  --shadow-panel: 0 8px 32px oklch(0 0 0 / 0.45);
+  /* Bordas e Controles */
+  --border: rgba(241, 245, 249, 0.1);
+  --border-strong: rgba(241, 245, 249, 0.2);
+  --input: #1C2530;
+  --ring: #FF8A00;
+  --focus-ring: #FF8A00;
+  --grid: rgba(241, 245, 249, 0.05);
+
+  /* Gráficos */
+  --chart-1: #FF8A00;
+  --chart-2: #22C55E;
+  --chart-3: #38BDF8;
+  --chart-4: #EF4444;
+  --chart-5: #F59E0B;
+
+  /* Sidebar */
+  --sidebar: #0B0F14;
+  --sidebar-foreground: #F1F5F9;
+  --sidebar-primary: #FF8A00;
+  --sidebar-primary-foreground: #0B0F14;
+  --sidebar-accent: #151C24;
+  --sidebar-accent-foreground: #F1F5F9;
+  --sidebar-border: rgba(241, 245, 249, 0.08);
+  --sidebar-ring: #FF8A00;
+
+  --gradient-industrial: linear-gradient(135deg, #1C2530, #0B0F14);
+  --gradient-primary: linear-gradient(135deg, #FF8A00, #E67C00);
+  --gradient-energized: linear-gradient(90deg, #FFA033, #FF8A00);
+  --shadow-glow: 0 0 24px rgba(255, 138, 0, 0.28);
+  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
-.dark {
-  /* same scheme; app is dark-first */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ELÉTRICAI DESIGN TOKENS — TEMA CLARO (PROFISSIONAL ENGENHARIA)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.light {
+  --radius: 0.5rem;
+
+  --brand-graphite: #0B0F14;
+  --brand-steel: #151C24;
+  --brand-orange: #FF8A00;
+  --brand-white: #F1F5F9;
+  --brand-gray: #A7B0BB;
+
+  /* Fundo & Superfícies Claras */
+  --background: #F8FAFC;
+  --foreground: #0B0F14;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-muted: #F1F5F9;
+  --surface-inverted: #0B0F14;
+
+  --text-primary: #0B0F14;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+
+  --panel: #FFFFFF;
+  --panel-foreground: #0B0F14;
+
+  --card: #FFFFFF;
+  --card-foreground: #0B0F14;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #0B0F14;
+
+  /* Botão Laranja com Texto Escuro de Alto Contraste */
+  --primary: #FF8A00;
+  --primary-hover: #E67C00;
+  --primary-active: #CC6E00;
+  --primary-foreground: #0B0F14; /* Contraste 9.4:1 sobre #FF8A00 (AAA) */
+
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0B0F14;
+
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+
+  --accent: #F1F5F9;
+  --accent-foreground: #0B0F14;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+
+  --success: #16A34A;
+  --success-surface: #DCFCE7;
+  --warning: #D97706;
+  --warning-surface: #FEF3C7;
+  --danger: #DC2626;
+  --danger-surface: #FEE2E2;
+  --info: #0284C7;
+  --info-surface: #E0F2FE;
+  --disabled: #94A3B8;
+  --disabled-surface: #F1F5F9;
+  --overlay: rgba(15, 23, 42, 0.5);
+
+  --energized: #D97706;
+
+  /* Bordas e Controles no Tema Claro */
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --input: #FFFFFF;
+  --ring: #FF8A00;
+  --focus-ring: #FF8A00;
+  --grid: rgba(15, 23, 42, 0.06);
+
+  --chart-1: #FF8A00;
+  --chart-2: #16A34A;
+  --chart-3: #0284C7;
+  --chart-4: #DC2626;
+  --chart-5: #D97706;
+
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #0B0F14;
+  --sidebar-primary: #FF8A00;
+  --sidebar-primary-foreground: #0B0F14;
+  --sidebar-accent: #F1F5F9;
+  --sidebar-accent-foreground: #0B0F14;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #FF8A00;
+
+  --gradient-industrial: linear-gradient(135deg, #FFFFFF, #F1F5F9);
+  --gradient-primary: linear-gradient(135deg, #FF8A00, #E67C00);
+  --gradient-energized: linear-gradient(90deg, #FFA033, #FF8A00);
+  --shadow-glow: 0 0 20px rgba(255, 138, 0, 0.2);
+  --shadow-panel: 0 4px 20px rgba(15, 23, 42, 0.08);
 }
 
 @layer base {
@@ -132,8 +293,35 @@
   body {
     background: var(--background);
     color: var(--foreground);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  code, pre, kbd, samp, .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* Indicador de foco visível universal e acessível (WCAG 2.2 AA) */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* Respeito à preferência de movimento reduzido (prefers-reduced-motion) */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -196,6 +384,25 @@
   }
   .energized {
     animation: pulse-energy 1.4s ease-in-out infinite;
+  }
+
+  .glow-orange-lg {
+    box-shadow: 0 0 45px rgba(255, 107, 0, 0.35);
+  }
+  .glow-orange-sm {
+    box-shadow: 0 0 18px rgba(255, 107, 0, 0.28);
+  }
+  .border-orange-subtle {
+    border: 1px solid rgba(255, 107, 0, 0.35);
+  }
+  .bg-graphite {
+    background-color: #07090E;
+  }
+  .bg-panel-dark {
+    background-color: #0D1118;
+  }
+  .bg-panel-surface {
+    background-color: #121722;
   }
 
   @keyframes scan-line {

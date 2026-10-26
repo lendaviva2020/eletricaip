@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { LogoutButton } from "@/components/auth/logout-dialog";
 
 export const Route = createFileRoute("/settings/security")({
   head: () => ({ meta: [{ title: "Segurança · EletricAI" }] }),
@@ -71,16 +72,26 @@ function SecurityPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-5 flex items-center justify-between gap-4">
+          <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-sm font-semibold">Sessões</h2>
+              <h2 className="text-sm font-semibold">Sair deste dispositivo</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Encerre todas as sessões ativas em todos os dispositivos.
+                Encerre sua sessão atual com segurança neste navegador.
               </p>
             </div>
-            <Button variant="outline" onClick={signOutAll}>
-              <LogOut className="h-4 w-4" /> Encerrar todas
-            </Button>
+            <LogoutButton variant="outline" label="Sair da conta" scope="local" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold">Encerrar em todos os dispositivos</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Encerra todas as sessões ativas em todos os computadores, tablets e celulares.
+              </p>
+            </div>
+            <LogoutButton variant="destructive" label="Encerrar todas" scope="global" />
           </CardContent>
         </Card>
       </div>

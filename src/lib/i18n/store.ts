@@ -1,4 +1,5 @@
 // Centralized i18n Store with persist, HTML lang sync, and profile synchronization
+import { useCallback, useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { ptBR, type TranslationCatalog } from "./catalogs/pt-BR";
@@ -136,19 +137,52 @@ export function useI18n() {
   const setLocale = useI18nStore((s) => s.setLocale);
   const toggleLocale = useI18nStore((s) => s.toggleLocale);
 
-  return {
-    locale,
-    setLocale,
-    toggleLocale,
-    t: (key: string, params?: Record<string, string | number>) =>
+  const boundT = useCallback(
+    (key: string, params?: Record<string, string | number>) =>
       translate(key, params, locale),
-    formatNumber: (val: number, options?: Intl.NumberFormatOptions) =>
+    [locale],
+  );
+  const boundFormatNumber = useCallback(
+    (val: number, options?: Intl.NumberFormatOptions) =>
       formatNumber(val, locale, options),
-    formatCurrency: (val: number, currency?: string) =>
+    [locale],
+  );
+  const boundFormatCurrency = useCallback(
+    (val: number, currency?: string) =>
       formatCurrency(val, locale, currency),
-    formatDate: (d: Date | string | number, options?: Intl.DateTimeFormatOptions) =>
+    [locale],
+  );
+  const boundFormatDate = useCallback(
+    (d: Date | string | number, options?: Intl.DateTimeFormatOptions) =>
       formatDate(d, locale, options),
-    formatRelativeTime: (d: Date | string | number) =>
+    [locale],
+  );
+  const boundFormatRelativeTime = useCallback(
+    (d: Date | string | number) =>
       formatRelativeTime(d, locale),
-  };
+    [locale],
+  );
+
+  return useMemo(
+    () => ({
+      locale,
+      setLocale,
+      toggleLocale,
+      t: boundT,
+      formatNumber: boundFormatNumber,
+      formatCurrency: boundFormatCurrency,
+      formatDate: boundFormatDate,
+      formatRelativeTime: boundFormatRelativeTime,
+    }),
+    [
+      locale,
+      setLocale,
+      toggleLocale,
+      boundT,
+      boundFormatNumber,
+      boundFormatCurrency,
+      boundFormatDate,
+      boundFormatRelativeTime,
+    ],
+  );
 }

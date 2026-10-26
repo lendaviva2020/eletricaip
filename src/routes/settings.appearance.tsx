@@ -1,7 +1,4 @@
-import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { Palette } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -13,57 +10,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useI18n, normalizeLocale } from "@/lib/i18n";
+import { useTheme, type Theme, type Density } from "@/lib/design-system/theme";
 
 export const Route = createFileRoute("/settings/appearance")({
   head: () => ({ meta: [{ title: "Aparência · EletricAI" }] }),
   component: AppearancePage,
 });
 
-type Theme = "dark" | "light" | "system";
-type Density = "comfortable" | "compact";
-
-interface AppearanceState {
-  theme: Theme;
-  density: Density;
-  language: string;
-  setTheme: (t: Theme) => void;
-  setDensity: (d: Density) => void;
-  setLanguage: (l: string) => void;
-}
-
-export const useAppearance = create<AppearanceState>()(
-  persist(
-    (set) => ({
-      theme: "dark",
-      density: "comfortable",
-      language: "pt-BR",
-      setTheme: (theme) => set({ theme }),
-      setDensity: (density) => set({ density }),
-      setLanguage: (language) => set({ language }),
-    }),
-    { name: "eletricai-appearance" },
-  ),
-);
-
-function applyTheme(t: Theme) {
-  if (typeof document === "undefined") return;
-  const root = document.documentElement;
-  root.classList.remove("light", "dark");
-  if (t === "system") {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    root.classList.add(prefersDark ? "dark" : "light");
-  } else {
-    root.classList.add(t);
-  }
-}
+export const useAppearance = useTheme;
 
 function AppearancePage() {
-  const { theme, density, setTheme, setDensity } = useAppearance();
+  const { theme, density, setTheme, setDensity } = useTheme();
   const { locale, setLocale, t } = useI18n();
-
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
 
   const handleLanguageChange = (val: string) => {
     const normalized = normalizeLocale(val);

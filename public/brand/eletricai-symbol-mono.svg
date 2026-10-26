@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%" fill="none">
+  <!-- Monochromatic / Flat High-Contrast Version -->
+  <!-- E Base -->
+  <path
+    d="M 26 18 L 96 18 L 96 38 L 56 38 L 56 49 L 88 49 L 88 69 L 56 69 L 56 80 L 96 80 L 96 100 L 26 100 Z"
+    fill="currentColor"
+  />
+  <!-- Cutaway / Slicing Bolt Silhouette -->
+  <polygon
+    points="82,8 34,62 58,62 16,114 46,114 94,54 70,54"
+    fill="#FF6B00"
+  />
+</svg>

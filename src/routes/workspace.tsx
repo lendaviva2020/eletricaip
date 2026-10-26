@@ -23,5 +23,9 @@ export const Route = createFileRoute("/workspace")({
 
 function WorkspaceRoute() {
   const { projectId } = Route.useSearch();
-  return <IndustrialWorkspace projectId={projectId ?? null} />;
+  return (
+    <div className="flex-1 flex flex-col min-h-0 h-full w-full overflow-hidden">
+      <IndustrialWorkspace projectId={projectId ?? null} />
+    </div>
+  );
 }

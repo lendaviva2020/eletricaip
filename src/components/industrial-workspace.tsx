@@ -125,10 +125,10 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
   }
 
   return (
-    <div className="flex-1 flex min-h-0 relative">
+    <div className="flex-1 flex min-h-0 h-full w-full relative overflow-hidden">
       {/* Painel Esquerdo */}
       {!leftCollapsed ? (
-        <div className="hidden md:flex relative shrink-0 z-10">
+        <div className="hidden md:flex relative shrink-0 z-10 h-full overflow-hidden">
           <LeftSidebarHost mode={mode} />
           {/* Botão para recolher o painel esquerdo */}
           <button
@@ -153,7 +153,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       )}
 
       {/* Área Central (Canvas + Controles) */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <ModeTabs />
         <ErrorBoundary fallback={null}>
           <EditorAiConfigBanner />
@@ -174,7 +174,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
             setImporterOpen(true);
           }}
         />
-        <div className="flex-1 min-h-0 relative bg-background">
+        <div className="flex-1 min-h-0 relative bg-background overflow-hidden">
           {/* ErrorBoundary keyed por `mode`: isola crashes (ex.: React #185)
               ao canvas ativo e cria um boundary fresco ao trocar de aba. */}
           <ErrorBoundary key={mode}>

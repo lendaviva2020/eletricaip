@@ -191,11 +191,11 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
 export type NodeParams = z.infer<typeof NodeParamsSchema>;
 
 export const DiagramNodeSchema = z.object({
-  id: z.string().min(1).max(40),
+  id: z.string().min(1).max(128),
   sheet: SheetKindSchema,
   position: PositionSchema,
   rotation: z.number().default(0),
-  label: z.string().max(80).default(""),
+  label: z.string().max(160).default(""),
   params: NodeParamsSchema,
   // metadados livres só para UI (JSON-serializável)
   ui: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
@@ -203,12 +203,12 @@ export const DiagramNodeSchema = z.object({
 export type DiagramNode = z.infer<typeof DiagramNodeSchema>;
 
 export const DiagramEdgeSchema = z.object({
-  id: z.string().min(1).max(40),
+  id: z.string().min(1).max(128),
   sheet: SheetKindSchema,
   source: z.string().min(1),
   target: z.string().min(1),
-  sourcePort: z.string().max(16).optional(),
-  targetPort: z.string().max(16).optional(),
+  sourcePort: z.string().max(128).optional(),
+  targetPort: z.string().max(128).optional(),
   kind: EdgeKindSchema,
   // configuração de condutores do circuito (modo multifilar)
   circuitConfig: z.enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"]).optional(),
@@ -218,7 +218,7 @@ export const DiagramEdgeSchema = z.object({
       section_mm2: z.number().positive().optional(),
       length_m: z.number().positive().optional(),
       insulation: z.enum(["PVC", "EPR", "XLPE"]).default("PVC"),
-      installation: z.string().max(16).optional(), // método A1, B1 etc
+      installation: z.string().max(32).optional(), // método A1, B1 etc
     })
     .optional(),
   // pontos de roteamento orto (cache de layout, não-canônico)
@@ -228,10 +228,10 @@ export type DiagramEdge = z.infer<typeof DiagramEdgeSchema>;
 export type CircuitConfig = NonNullable<DiagramEdge["circuitConfig"]>;
 
 export const DiagramMetadataSchema = z.object({
-  title: z.string().max(120).default("Sem título"),
+  title: z.string().max(160).default("Sem título"),
   author: z.string().max(120).optional(),
   client: z.string().max(120).optional(),
-  norms: z.array(z.string().max(32)).default(["NBR 5410"]),
+  norms: z.array(z.string().max(64)).default(["NBR 5410"]),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
 });
@@ -254,14 +254,14 @@ export const AiDiagramPatchSchema = z.object({
   rationale: z.string().max(2000),
   addNodes: z.array(DiagramNodeSchema).max(100).default([]),
   addEdges: z.array(DiagramEdgeSchema).max(200).default([]),
-  removeNodeIds: z.array(z.string().min(1).max(40)).max(200).default([]),
-  removeEdgeIds: z.array(z.string().min(1).max(40)).max(400).default([]),
+  removeNodeIds: z.array(z.string().min(1).max(128)).max(200).default([]),
+  removeEdgeIds: z.array(z.string().min(1).max(128)).max(400).default([]),
   updateNodes: z
     .array(
       z.object({
-        id: z.string().min(1).max(40),
+        id: z.string().min(1).max(128),
         position: PositionSchema.optional(),
-        label: z.string().max(80).optional(),
+        label: z.string().max(160).optional(),
         params: NodeParamsSchema.optional(),
       }),
     )

@@ -9,16 +9,27 @@ import {
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import appCss from "../styles.css?url";
-import { AppSidebar } from "@/components/app-sidebar";
-import { Topbar } from "@/components/topbar";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
-import { UpgradeModal } from "@/components/upgrade-modal";
-import { ShareModal } from "@/components/share-modal";
 import { installDiagnosticsInterceptor } from "@/lib/diagnostics-counter";
 import { captureException, maskSensitiveString } from "@/lib/error-capture";
+
+// Lazy-load authenticated shells and heavy modals so public routes (like Landing /)
+// don't download billing, workspace chrome, and diagnostics bundles upfront.
+const LazyAppSidebar = lazy(() =>
+  import("@/components/app-sidebar").then((m) => ({ default: m.AppSidebar })),
+);
+const LazyTopbar = lazy(() =>
+  import("@/components/topbar").then((m) => ({ default: m.Topbar })),
+);
+const LazyUpgradeModal = lazy(() =>
+  import("@/components/upgrade-modal").then((m) => ({ default: m.UpgradeModal })),
+);
+const LazyShareModal = lazy(() =>
+  import("@/components/share-modal").then((m) => ({ default: m.ShareModal })),
+);
 
 if (typeof window !== "undefined") installDiagnosticsInterceptor();
 
@@ -30,6 +41,7 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/privacidade",
   "/termos",
+  "/design-system",
 ];
 const PUBLIC_PREFIXES = ["/auth/callback", "/invite/"];
 const AUTH_NO_CHROME = ["/onboarding"];
@@ -114,7 +126,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "preload", href: "/fonts/ibm-plex-sans-400.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
+      { rel: "preload", href: "/fonts/ibm-plex-sans-600.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
+      { rel: "preload", href: "/fonts/space-grotesk-600.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
+      { rel: "stylesheet", href: appCss },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -124,8 +141,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=JSON.parse(localStorage.getItem('eletricai-theme')||'{}').state?.theme||'dark';var d=(t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t);document.documentElement.classList.remove('dark','light');document.documentElement.classList.add(d);document.documentElement.style.colorScheme=d;}catch(e){document.documentElement.classList.add('dark');}})();`,
+          }}
+        />
         <HeadContent />
       </head>
       <body>
@@ -168,12 +190,27 @@ function AuthGate() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      <AppSidebar />
+      <Suspense fallback={<div className="w-[240px] hidden md:block border-r border-border bg-sidebar shrink-0" />}>
+        <LazyAppSidebar />
+      </Suspense>
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar />
+        <Suspense fallback={<div className="h-14 border-b border-border glass-strong shrink-0" />}>
+          <LazyTopbar />
+        </Suspense>
         <Outlet />
       </div>
     </div>
+  );
+}
+
+function AuthenticatedModals() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return (
+    <Suspense fallback={null}>
+      <LazyUpgradeModal />
+      <LazyShareModal />
+    </Suspense>
   );
 }
 
@@ -221,8 +258,7 @@ function RootComponent() {
       <AuthProvider>
         <AuthGate />
         <Toaster />
-        <UpgradeModal />
-        <ShareModal />
+        <AuthenticatedModals />
       </AuthProvider>
     </QueryClientProvider>
   );

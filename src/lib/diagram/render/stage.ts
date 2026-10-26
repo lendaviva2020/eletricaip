@@ -92,6 +92,7 @@ export class DiagramStage {
   private selectedIds = new Set<string>();
   private resizeObs?: ResizeObserver;
   private host?: HTMLElement;
+  private wheelListener?: (e: WheelEvent) => void;
 
   private drag: DragState | null = null;
   private draft: EdgeDraft | null = null;
@@ -146,6 +147,12 @@ export class DiagramStage {
     // Bloqueia menu nativo no canvas (deixamos overlay HTML cuidar).
     this.app.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
+    // Impede o navegador de aplicar zoom ou scroll global na página ao usar a roda do mouse sobre o canvas
+    this.wheelListener = (e: WheelEvent) => {
+      e.preventDefault();
+    };
+    this.app.canvas.addEventListener("wheel", this.wheelListener, { passive: false });
+
     this.resizeObs = new ResizeObserver(() => {
       const w = host.clientWidth;
       const h = host.clientHeight;
@@ -156,6 +163,9 @@ export class DiagramStage {
 
   destroy() {
     this.resizeObs?.disconnect();
+    if (this.wheelListener && this.app.canvas) {
+      this.app.canvas.removeEventListener("wheel", this.wheelListener);
+    }
     if (this.app.renderer) {
       if (this.host && this.app.canvas.parentElement === this.host) {
         this.host.removeChild(this.app.canvas);
@@ -290,9 +300,23 @@ export class DiagramStage {
 
   // ============== edges ==============
 
-  private portWorld(node: DiagramNode, portId: string | undefined): { x: number; y: number } {
+  private portWorld(
+    node: DiagramNode,
+    portId: string | undefined,
+    role: "source" | "target" = "source",
+  ): { x: number; y: number } {
     const ports = getPorts(node.params.kind);
-    const port = (portId && ports.find((p) => p.id === portId)) || ports[0];
+    const shortId = portId?.includes(":") ? portId.slice(portId.lastIndexOf(":") + 1) : portId;
+    let port =
+      (portId && ports.find((p) => p.id === portId)) ||
+      (shortId && ports.find((p) => p.id === shortId));
+    if (!port) {
+      if (shortId === "out" || (!shortId && role === "source")) {
+        port = ports[1] ?? ports[0];
+      } else {
+        port = ports[0];
+      }
+    }
     if (!port) return { ...node.position };
     const rotated = rotatePort(port, node.rotation ?? 0);
     return { x: node.position.x + rotated.x, y: node.position.y + rotated.y };
@@ -302,8 +326,8 @@ export class DiagramStage {
     const srcNode = doc.nodes[e.source];
     const tgtNode = doc.nodes[e.target];
     if (!srcNode || !tgtNode) return;
-    const from = this.portWorld(srcNode, e.sourcePort);
-    const to = this.portWorld(tgtNode, e.targetPort);
+    const from = this.portWorld(srcNode, e.sourcePort, "source");
+    const to = this.portWorld(tgtNode, e.targetPort, "target");
     const hash = `${e.source}:${from.x.toFixed(1)},${from.y.toFixed(1)}->${e.target}:${to.x.toFixed(1)},${to.y.toFixed(1)}:${e.kind}:${e.circuitConfig ?? ""}`;
     const existing = this.edges.get(e.id);
     if (existing && existing.hash === hash) return;

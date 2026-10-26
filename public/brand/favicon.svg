@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <defs>
+    <linearGradient id="favMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="50%" stop-color="#94A3B8" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+    <linearGradient id="favOrange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF9E2C" />
+      <stop offset="50%" stop-color="#FF6B00" />
+      <stop offset="100%" stop-color="#C2410C" />
+    </linearGradient>
+  </defs>
+
+  <!-- Dark Rounded Container for Favicon Visibility -->
+  <rect width="64" height="64" rx="14" fill="#0B0E14" />
+  <rect width="64" height="64" rx="14" fill="none" stroke="#FF6B00" stroke-width="1.5" stroke-opacity="0.4" />
+
+  <!-- Scale 120x120 down to ~48x48 inside 64x64 -->
+  <g transform="translate(8, 8) scale(0.4)">
+    <!-- Letter E -->
+    <path
+      d="M 26 18 L 96 18 L 96 38 L 56 38 L 56 49 L 88 49 L 88 69 L 56 69 L 56 80 L 96 80 L 96 100 L 26 100 Z"
+      fill="url(#favMetal)"
+    />
+    <!-- Bolt -->
+    <polygon
+      points="82,8 34,62 58,62 16,114 46,114 94,54 70,54"
+      fill="url(#favOrange)"
+    />
+    <!-- Core highlight -->
+    <polygon
+      points="78,14 42,58 60,58 28,104 38,104 86,55 68,55"
+      fill="#FFFFFF"
+      opacity="0.9"
+    />
+  </g>
+</svg>

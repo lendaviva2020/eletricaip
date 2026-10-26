@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 100" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Metallic Gradient -->
+    <linearGradient id="logoMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="50%" stop-color="#CBD5E1" />
+      <stop offset="100%" stop-color="#64748B" />
+    </linearGradient>
+
+    <!-- Industrial Orange Gradient -->
+    <linearGradient id="logoOrange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF8A00" />
+      <stop offset="50%" stop-color="#FF6B00" />
+      <stop offset="100%" stop-color="#EA580C" />
+    </linearGradient>
+
+    <!-- Bolt Grad -->
+    <linearGradient id="logoBolt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF7ED" />
+      <stop offset="30%" stop-color="#FDBA74" />
+      <stop offset="70%" stop-color="#FF6B00" />
+      <stop offset="100%" stop-color="#C2410C" />
+    </linearGradient>
+  </defs>
+
+  <!-- Left Symbol Icon (80x80 within 10-90) -->
+  <g transform="translate(10, 10) scale(0.666)">
+    <!-- Base Shadow -->
+    <path
+      d="M 28 20 L 98 20 L 98 40 L 58 40 L 58 50 L 90 50 L 90 70 L 58 70 L 58 80 L 98 80 L 98 100 L 28 100 Z"
+      fill="#05080E"
+      opacity="0.8"
+      transform="translate(2, 3)"
+    />
+    <!-- Main Letter E Body -->
+    <path
+      d="M 26 18 L 96 18 L 96 38 L 56 38 L 56 49 L 88 49 L 88 69 L 56 69 L 56 80 L 96 80 L 96 100 L 26 100 Z"
+      fill="url(#logoMetal)"
+    />
+    <!-- Bevel Accents -->
+    <polygon points="26,18 96,18 92,23 32,23 32,95 26,100" fill="#FFFFFF" opacity="0.6" />
+    <polygon points="56,38 96,38 92,42 56,42" fill="#0F172A" opacity="0.7" />
+    <polygon points="56,49 88,49 84,53 56,53" fill="#FFFFFF" opacity="0.4" />
+    <polygon points="56,69 88,69 84,65 56,65" fill="#0F172A" opacity="0.8" />
+    <polygon points="26,100 96,100 92,96 32,96" fill="#05080E" opacity="0.9" />
+
+    <!-- Lightning Bolt Outer Contour -->
+    <polygon
+      points="82,8 34,62 58,62 16,114 46,114 94,54 70,54"
+      fill="#C2410C"
+    />
+    <!-- Lightning Bolt Core -->
+    <polygon
+      points="80,10 36,60 60,60 20,110 44,110 92,54 68,54"
+      fill="url(#logoBolt)"
+    />
+    <!-- Highlight Spark Line -->
+    <polygon
+      points="77,14 41,58 61,58 29,105 40,105 85,55 67,55"
+      fill="#FFFBEB"
+      opacity="0.9"
+    />
+  </g>
+
+  <!-- Typography: ElétricAi -->
+  <!-- "Elétric" in Crisp Clean Tech White -->
+  <text
+    x="105"
+    y="56"
+    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Space Grotesk', sans-serif"
+    font-size="44"
+    font-weight="800"
+    letter-spacing="-1.2"
+    fill="url(#logoMetal)"
+  >Elétric</text>
+
+  <!-- "Ai" in Vibrant Industrial Electric Orange -->
+  <text
+    x="262"
+    y="56"
+    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Space Grotesk', sans-serif"
+    font-size="44"
+    font-weight="800"
+    letter-spacing="-1.2"
+    fill="url(#logoOrange)"
+  >Ai</text>
+
+  <!-- Subtitle: PROJETOS ELÉTRICOS & AUTOMAÇÃO -->
+  <text
+    x="108"
+    y="78"
+    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'JetBrains Mono', monospace"
+    font-size="10.5"
+    font-weight="700"
+    letter-spacing="3.2"
+    fill="#94A3B8"
+  >ENGENHARIA &amp; AUTOMAÇÃO</text>
+</svg>

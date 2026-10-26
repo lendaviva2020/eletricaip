@@ -418,7 +418,8 @@ export function WebglCanvas({ sheet, projectId }: Props) {
 
   return (
     <div
-      className="relative h-full w-full bg-[#0b0f17]"
+      className="relative h-full w-full bg-[#0b0f17] overflow-hidden"
+      style={{ touchAction: "none" }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
