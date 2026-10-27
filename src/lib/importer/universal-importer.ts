@@ -6,7 +6,7 @@ import { ulid } from "ulid";
 import type { DiagramDoc, DiagramEdge, DiagramNode, NodeKind, NodeParams } from "@/lib/diagram/schema";
 import { makeEdge, makeNode } from "@/lib/diagram/model";
 import type { IndustrialEdge, IndustrialNode } from "@/lib/project-store";
-import type { LadderRung, LadderCell } from "@/lib/ladder/types";
+import { type LadderRung, type LadderCell, normalizeLadderRungs } from "@/lib/ladder/types";
 import { parseJsonBundle } from "./adapters/json-adapter";
 import { parseYamlBundle } from "./adapters/yaml-adapter";
 import { parseCsvProject } from "./adapters/csv-adapter";
@@ -561,7 +561,7 @@ export function convertBundleToIndustrialElements(
  */
 export function convertBundleToLadderRungs(bundle: EletricAiCanvasBundle): LadderRung[] {
   if (!bundle.ladder?.rungs) return [];
-  return bundle.ladder.rungs.map((r) => {
+  const rawRungs: LadderRung[] = bundle.ladder.rungs.map((r, idx) => {
     const cells: LadderCell[][] = r.branches.map((b, rowIdx) => {
       const row: LadderCell[] = b.map((c) => ({
         kind: c.kind as any,
@@ -578,8 +578,8 @@ export function convertBundleToLadderRungs(bundle: EletricAiCanvasBundle): Ladde
     });
 
     const rung: LadderRung = {
-      id: r.id,
-      label: r.comment || r.id,
+      id: r.id || `rung_${idx}`,
+      label: r.comment || r.id || `Rung ${idx + 1}`,
       cells:
         cells.length > 0
           ? cells
@@ -597,4 +597,5 @@ export function convertBundleToLadderRungs(bundle: EletricAiCanvasBundle): Ladde
     (rung as any).output = r.output;
     return rung;
   });
+  return normalizeLadderRungs(rawRungs);
 }

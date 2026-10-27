@@ -1,7 +1,7 @@
 // Multi-tenant server functions: list/switch tenants, manage members and invites.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth, requireActiveSession } from "@/integrations/supabase/auth-middleware";
 
 export type TenantSummary = {
   id: string;
@@ -190,7 +190,7 @@ export const revokeInvite = createServerFn({ method: "POST" })
   });
 
 export const removeMember = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .inputValidator((input) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;

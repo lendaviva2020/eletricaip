@@ -16,20 +16,26 @@ export const NodeKindSchema = z.enum([
   "rcd",
   "contactor",
   "relay",
+  "thermal_relay",
   "fuse",
   "disconnector",
   // fonte / conversão
   "transformer",
+  "generator",
   "psu",
   "vfd",
   "softstarter",
   "busbar",
   "ccm",
+  "capacitor_bank",
   // cargas
   "motor",
   "load",
   "lamp",
   "socket",
+  // automação / controle
+  "plc",
+  "hmi",
   // instrumentação
   "pt100",
   "pressure",
@@ -57,6 +63,8 @@ export type SheetKind = z.infer<typeof SheetKindSchema>;
 const ParamsBase = {
   tag: z.string().max(64).optional(),
   notes: z.string().max(500).optional(),
+  manufacturer: z.string().max(120).optional(),
+  model: z.string().max(120).optional(),
 };
 
 export const NodeParamsSchema = z.discriminatedUnion("kind", [
@@ -127,6 +135,7 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
     ...ParamsBase,
     power_kW: z.number().positive(),
     voltage_V: z.number().positive().default(380),
+    current_A: z.number().positive().optional(),
     fla_A: z.number().positive().optional(),
     startMethod: z.enum(["DOL", "SOFT", "VFD"]).default("DOL"),
   }),
@@ -183,6 +192,36 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
     kind: z.literal("lightcurtain"),
     ...ParamsBase,
     resolution_mm: z.number().positive().default(14),
+  }),
+  z.object({
+    kind: z.literal("thermal_relay"),
+    ...ParamsBase,
+    in_A: z.number().positive().default(32),
+    trip_class: z.string().default("10A"),
+  }),
+  z.object({
+    kind: z.literal("capacitor_bank"),
+    ...ParamsBase,
+    kvar: z.number().positive().default(25),
+    voltage_V: z.number().positive().default(380),
+  }),
+  z.object({
+    kind: z.literal("generator"),
+    ...ParamsBase,
+    kVA: z.number().positive().default(150),
+    voltage_V: z.number().positive().default(380),
+  }),
+  z.object({
+    kind: z.literal("plc"),
+    ...ParamsBase,
+    cpu: z.string().default("1769-L33ER"),
+    io_count: z.number().int().default(16),
+  }),
+  z.object({
+    kind: z.literal("hmi"),
+    ...ParamsBase,
+    screen_size_in: z.number().default(10.1),
+    protocol: z.string().default("EtherNet/IP"),
   }),
   z.object({ kind: z.literal("ground"), ...ParamsBase }),
   z.object({ kind: z.literal("neutral"), ...ParamsBase }),

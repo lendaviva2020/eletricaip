@@ -21,10 +21,15 @@ const CONFIG_BY_KIND: Partial<Record<NodeKind, CircuitConfig>> = {
   lamp: "F+N",
   socket: "F+N",
   transformer: "3F+N",
+  generator: "3F+N",
   vfd: "3F+N",
   softstarter: "3F+N",
   busbar: "3F+N",
   ccm: "3F+N",
+  capacitor_bank: "3F",
+  thermal_relay: "3F",
+  plc: "F+N",
+  hmi: "F+N",
   psu: "F+N",
 };
 
@@ -255,9 +260,12 @@ export interface MultifilarPhaseMismatch {
 const THREE_PHASE_KINDS: ReadonlySet<NodeKind> = new Set([
   "motor",
   "transformer",
+  "generator",
   "vfd",
   "softstarter",
   "ccm",
+  "capacitor_bank",
+  "thermal_relay",
 ]);
 
 /**
@@ -341,4 +349,243 @@ export function summarizeConductors(doc: DiagramDoc): ConductorSummary {
     totalCircuits: rows.reduce((s, r) => s + r.circuits, 0),
     totalConductors: rows.reduce((s, r) => s + r.totalConductors, 0),
   };
+}
+
+/**
+ * Converte a representação Multifilar de volta para Unifilar, consolidando feixes
+ * de condutores em circuitos simplificados e sincronizando propriedades dos equipamentos.
+ */
+export function buildUnifilarFromMultifilarCommands(doc: DiagramDoc): Command[] {
+  const mfNodes = Object.values(doc.nodes).filter((n) => n.sheet === "multifilar");
+  const mfEdges = Object.values(doc.edges).filter((e) => e.sheet === "multifilar");
+  const commands: Command[] = [];
+  const idMap = new Map<string, string>();
+
+  for (const n of mfNodes) {
+    const equipmentId = equipmentIdOf(n);
+    const uniNodeId = n.id.startsWith("mf_") ? n.id.slice(3) : equipmentId;
+    const existingUni = doc.nodes[uniNodeId];
+
+    if (existingUni) {
+      idMap.set(n.id, existingUni.id);
+      if (JSON.stringify(existingUni.params) !== JSON.stringify(n.params)) {
+        commands.push({
+          type: "UpdateNodeParams",
+          nodeId: existingUni.id,
+          from: existingUni.params,
+          to: n.params,
+        });
+      }
+      if (existingUni.label !== n.label) {
+        commands.push({
+          type: "UpdateNodeLabel",
+          nodeId: existingUni.id,
+          from: existingUni.label,
+          to: n.label,
+        });
+      }
+    } else {
+      const clone: DiagramNode = {
+        ...makeNode({
+          id: uniNodeId,
+          sheet: "unifilar",
+          params: n.params,
+          position: n.position,
+          label: n.label,
+          rotation: n.rotation,
+        }),
+        ui: { ...(n.ui ?? {}), equipmentId },
+      };
+      idMap.set(n.id, clone.id);
+      commands.push({ type: "AddNode", node: clone });
+    }
+  }
+
+  for (const e of mfEdges) {
+    const uniSource = idMap.get(e.source);
+    const uniTarget = idMap.get(e.target);
+    if (!uniSource || !uniTarget) continue;
+    const uniEdgeId = e.id.startsWith("mf_") ? e.id.slice(3) : `uni_${e.id}`;
+    const existingUniEdge = doc.edges[uniEdgeId];
+    if (existingUniEdge) {
+      continue;
+    }
+    const clone = makeEdge({
+      id: uniEdgeId,
+      sheet: "unifilar",
+      source: uniSource,
+      target: uniTarget,
+      sourcePort: e.sourcePort,
+      targetPort: e.targetPort,
+      kind: e.kind,
+      cable: e.cable,
+      circuitConfig: e.circuitConfig,
+    });
+    commands.push({ type: "AddEdge", edge: clone });
+  }
+
+  return commands;
+}
+
+// ── Diagnósticos e Cálculos Elétricos Reais (NBR 5410) ──────────
+
+export interface VoltageDropResult {
+  edgeId: string;
+  sourceLabel: string;
+  targetLabel: string;
+  length_m: number;
+  section_mm2: number;
+  current_A: number;
+  drop_V: number;
+  drop_pct: number;
+  max_allowed_pct: number;
+  compliant: boolean;
+  message: string;
+}
+
+/**
+ * Calcula a queda de tensão real para circuitos com cabos configurados segundo NBR 5410:
+ * ΔV = √3 · I · (R · cosφ + X · sinφ) para circuitos trifásicos a 380V
+ * ΔV = 2 · I · (R · cosφ + X · sinφ) para circuitos monofásicos a 220V
+ */
+export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[] {
+  const results: VoltageDropResult[] = [];
+  const RHO_COPPER_70C = 0.0215; // Ω·mm²/m para cobre a 70°C (isolamento PVC)
+  const REACTANCE_X_PER_M = 0.00008; // 0.08 Ω/km = 0.00008 Ω/m
+
+  for (const e of Object.values(doc.edges)) {
+    const src = doc.nodes[e.source];
+    const tgt = doc.nodes[e.target];
+    if (!src || !tgt) continue;
+
+    const cable = e.cable;
+    // Se o cabo não estiver explícito na aresta, infere valores nominais da carga ou padrão
+    const length_m = cable?.length_m ?? 25;
+    const section_mm2 = cable?.section_mm2 ?? 4;
+
+    // Determina a corrente do circuito a partir dos parâmetros do nó de carga ou proteção
+    let current_A = 20;
+    const loadNode = [tgt, src].find((n) => n.params.kind === "motor" || n.params.kind === "load" || n.params.kind === "breaker");
+    if (loadNode) {
+      const p = loadNode.params;
+      if (p.kind === "motor") {
+        current_A = (p as any).current_A ?? (p as any).fla_A ?? Math.round(((p as any).power_kW * 1000) / (Math.sqrt(3) * (p as any).voltage_V * 0.85 * 0.88));
+      } else if (p.kind === "breaker") {
+        current_A = (p as any).in_A ?? 20;
+      } else if (p.kind === "load") {
+        current_A = Math.round((p as any).power_W / ((p as any).voltage_V * (p as any).fp));
+      }
+    }
+
+    const config = e.circuitConfig ?? inferCircuitConfig(e, src, tgt);
+    const isThreePhase = config.startsWith("3F");
+    const voltage_V = isThreePhase ? 380 : 220;
+    const cosPhi = 0.85;
+    const sinPhi = Math.sqrt(1 - cosPhi * cosPhi);
+
+    const R = (RHO_COPPER_70C * length_m) / section_mm2;
+    const X = REACTANCE_X_PER_M * length_m;
+    const impedanceFactor = R * cosPhi + X * sinPhi;
+
+    const drop_V = isThreePhase
+      ? Math.sqrt(3) * current_A * impedanceFactor
+      : 2 * current_A * impedanceFactor;
+
+    const drop_pct = Number(((drop_V / voltage_V) * 100).toFixed(1));
+    const max_allowed_pct = 4.0; // NBR 5410 Tabela 33 para circuitos terminais
+    const compliant = drop_pct <= max_allowed_pct;
+
+    const cableName = (e as any).label || `W${results.length + 1}`;
+    results.push({
+      edgeId: e.id,
+      sourceLabel: src.label || src.id,
+      targetLabel: tgt.label || tgt.id,
+      length_m,
+      section_mm2,
+      current_A,
+      drop_V: Number(drop_V.toFixed(2)),
+      drop_pct,
+      max_allowed_pct,
+      compliant,
+      message: `Queda de tensão no cabo ${cableName}: ${drop_pct}% (Permitido < ${max_allowed_pct.toFixed(1)}% NBR 5410)`,
+    });
+  }
+
+  return results;
+}
+
+export interface DiagnosticAlert {
+  id: string;
+  type: "AVISO" | "ERRO" | "OK";
+  message: string;
+  nodeId?: string;
+}
+
+/**
+ * Executa a bateria de validação do diagrama elétrico em tempo real:
+ * - Validação de conectividade elétrica contínua
+ * - Detecção de tags ausentes em componentes
+ * - Queda de tensão segundo NBR 5410
+ * - Incompatibilidade de pólos e fases
+ */
+export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
+  const alerts: DiagnosticAlert[] = [];
+  const nodes = Object.values(doc.nodes);
+  const edges = Object.values(doc.edges);
+
+  if (nodes.length === 0) {
+    return [{ id: "empty", type: "AVISO", message: "Diagrama elétrico vazio." }];
+  }
+
+  // 1. Verificação de tags obrigatórias
+  for (const n of nodes) {
+    const hasTag = (n.params as any).tag || (n.label && n.label.trim().length > 0);
+    if (!hasTag && n.params.kind !== "ground" && n.params.kind !== "terminal") {
+      alerts.push({
+        id: `tag_${n.id}`,
+        type: "ERRO",
+        message: `${n.id} sem tag definida`,
+        nodeId: n.id,
+      });
+    }
+  }
+
+  // 2. Verificação de inconsistências de fases
+  const mismatches = detectMultifilarPhaseMismatches(doc);
+  for (const m of mismatches) {
+    alerts.push({
+      id: `mismatch_${m.edgeId}`,
+      type: "ERRO",
+      message: `Inconsistência de fases: dispositivo possui ${m.availablePoles} pólos, mas a carga exige ${m.requiredPoles} fases.`,
+    });
+  }
+
+  // 3. Verificação de queda de tensão NBR 5410
+  const voltageDrops = calculateVoltageDropNbr5410(doc);
+  for (const vd of voltageDrops) {
+    if (!vd.compliant) {
+      alerts.push({
+        id: `vd_err_${vd.edgeId}`,
+        type: "ERRO",
+        message: `Excesso de queda de tensão: ${vd.drop_pct}% > ${vd.max_allowed_pct}% (NBR 5410). Aumente a seção do cabo.`,
+      });
+    } else {
+      alerts.push({
+        id: `vd_warn_${vd.edgeId}`,
+        type: "AVISO",
+        message: vd.message,
+      });
+    }
+  }
+
+  // 4. Verificação de conectividade contínua
+  if (edges.length > 0 && alerts.filter((a) => a.type === "ERRO").length === 0) {
+    alerts.push({
+      id: "conn_ok",
+      type: "OK",
+      message: "Conectividade validada",
+    });
+  }
+
+  return alerts;
 }

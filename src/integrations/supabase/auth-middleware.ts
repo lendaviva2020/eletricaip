@@ -36,6 +36,13 @@ export interface AuthContext {
   supabase: ReturnType<typeof createClient<Database>>;
   userId: string;
   claims: Record<string, unknown>;
+  sessionId?: string;
+  token?: string;
+}
+
+export interface ActiveSessionContext extends AuthContext {
+  activeUser: import("@supabase/supabase-js").User;
+  isSessionConfirmedActive: true;
 }
 
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
@@ -93,12 +100,15 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
     //    incompatibilidade de assinatura derrube TODAS as rotas autenticadas.
     let userId: string | undefined;
     let claims: Record<string, unknown> = {};
+    let sessionId: string | undefined;
 
     const applyPayload = (payload: Record<string, unknown>) => {
       userId = typeof payload.sub === "string" ? payload.sub : undefined;
+      sessionId = typeof payload.session_id === "string" ? payload.session_id : undefined;
       claims = {
         ...((payload["app_metadata"] as Record<string, unknown> | undefined) ?? {}),
         email: payload["email"],
+        sessionId,
       };
     };
 
@@ -142,7 +152,56 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
         supabase,
         userId,
         claims,
+        sessionId,
+        token,
       } satisfies AuthContext,
     });
   },
 );
+
+/**
+ * Middleware para operações críticas e sensíveis que exigem garantia
+ * de sessão ativa no Supabase Auth em tempo real (ex.: exclusão de conta/projeto,
+ * faturamento, alterações de planos e privilégios administrativos).
+ *
+ * Ao contrário do `requireSupabaseAuth` (que verifica a assinatura criptográfica
+ * do JWT e o tempo de expiração 'exp' localmente sem chamadas de rede para máxima
+ * performance), o `requireActiveSession` realiza validação em tempo real com o
+ * Supabase Auth (`supabase.auth.getUser(token)`).
+ * Caso o usuário tenha efetuado logout ou a sessão tenha sido revogada no servidor,
+ * o token pré-logout é imediatamente rejeitado com HTTP 401, impedindo ações com
+ * tokens vazados dentro de sua janela de validade restante (TTL).
+ */
+export const requireActiveSession = createMiddleware({ type: "function" })
+  .middleware([requireSupabaseAuth])
+  .server(async ({ next, context }) => {
+    const authCtx = context as unknown as AuthContext;
+    const { supabase, token: contextToken } = authCtx;
+
+    let token = contextToken;
+    if (!token) {
+      const request = getRequest();
+      token = request?.headers?.get("authorization")?.replace("Bearer ", "")?.trim();
+    }
+
+    if (!token) {
+      throw new Response("Unauthorized: No token provided", { status: 401 });
+    }
+
+    // Consulta autoritativa ao GoTrue do Supabase para validar a sessão ativa
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data.user) {
+      throw new Response(
+        `Unauthorized: Session has been revoked or is no longer active (${error?.message ?? "session_revoked"})`,
+        { status: 401 },
+      );
+    }
+
+    return next({
+      context: {
+        ...authCtx,
+        activeUser: data.user,
+        isSessionConfirmedActive: true as const,
+      } satisfies ActiveSessionContext,
+    });
+  });

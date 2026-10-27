@@ -33,12 +33,6 @@ function SecurityPage() {
     }
   };
 
-  const signOutAll = async () => {
-    const { error } = await supabase.auth.signOut({ scope: "global" });
-    if (error) toast.error(error.message);
-    else toast.success("Todas as sessões foram encerradas");
-  };
-
   return (
     <div className="flex-1 overflow-auto p-6">
       <div className="max-w-2xl mx-auto space-y-4">

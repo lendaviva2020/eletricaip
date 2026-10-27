@@ -40,26 +40,42 @@ const singleCenter: ReadonlyArray<PortDef> = [
   { id: "C", x: 0, y: 0, side: "center", accepts: ["any"] },
 ];
 
+const busbarPorts: ReadonlyArray<PortDef> = [
+  { id: "T", x: 0, y: -4, side: "top", accepts: ["power", "any"] },
+  { id: "B1", x: -40, y: 4, side: "bottom", accepts: ["power", "any"] },
+  { id: "B2", x: -20, y: 4, side: "bottom", accepts: ["power", "any"] },
+  { id: "B", x: 0, y: 4, side: "bottom", accepts: ["power", "any"] },
+  { id: "B3", x: 20, y: 4, side: "bottom", accepts: ["power", "any"] },
+  { id: "B4", x: 40, y: 4, side: "bottom", accepts: ["power", "any"] },
+  { id: "L", x: -60, y: 0, side: "left", accepts: ["power", "any"] },
+  { id: "R", x: 60, y: 0, side: "right", accepts: ["power", "any"] },
+];
+
 const REGISTRY: Partial<Record<NodeKind, ReadonlyArray<PortDef>>> = {
-  // 2 terminais horizontais (proteção / manobra / fonte série)
-  breaker: twoTerminalH,
-  rcd: twoTerminalH,
-  contactor: twoTerminalH,
-  fuse: twoTerminalH,
-  disconnector: twoTerminalH,
-  relay: twoTerminalH,
-  // motores e cargas: portas vertical (entrada superior, retorno inferior)
+  // proteção / manobra (4 portas para suportar encaminhamento vertical e derivações)
+  breaker: fourTerminal,
+  rcd: fourTerminal,
+  contactor: fourTerminal,
+  fuse: fourTerminal,
+  disconnector: fourTerminal,
+  relay: fourTerminal,
+  thermal_relay: fourTerminal,
+  // cargas e conversores
   motor: twoTerminalV,
   load: twoTerminalV,
   lamp: twoTerminalV,
   socket: twoTerminalV,
-  // conversores e barramentos: 4 portas
+  capacitor_bank: twoTerminalV,
+  generator: twoTerminalV,
+  // automação e fontes
   transformer: fourTerminal,
   psu: fourTerminal,
   vfd: fourTerminal,
   softstarter: fourTerminal,
-  busbar: fourTerminal,
+  busbar: busbarPorts,
   ccm: fourTerminal,
+  plc: fourTerminal,
+  hmi: fourTerminal,
   // referências de terra/neutro: porta única no topo
   ground: referenceTop,
   neutral: referenceTop,

@@ -1,7 +1,7 @@
 // Project server functions — CRUD operations for industrial projects
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth, requireActiveSession } from "@/integrations/supabase/auth-middleware";
 import type { AuthContext } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -615,7 +615,7 @@ async function deleteProjectChildren(
 }
 
 export const deleteProject = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .inputValidator(z.object({ projectId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;

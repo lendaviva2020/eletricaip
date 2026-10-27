@@ -11,15 +11,20 @@ type Draw = (g: Graphics) => void;
 const stroke = (g: Graphics) => g.stroke({ width: 1.5, color: 0xe5e7eb });
 
 const breaker: Draw = (g) => {
-  g.moveTo(-24, 0).lineTo(-8, 0);
-  g.moveTo(24, 0).lineTo(8, 0);
-  g.moveTo(-8, 0).lineTo(8, -14);
+  // Disjuntor IEC 60617 vertical/bidirecional com terminais de contato
+  g.circle(0, -14, 2.5).circle(0, 14, 2.5);
+  g.moveTo(0, -22).lineTo(0, -14);
+  g.moveTo(0, 14).lineTo(0, 22);
+  g.moveTo(0, -14).lineTo(8, 10);
+  // Cruz de disparo magnético
+  g.moveTo(5, -2).lineTo(11, -6);
   stroke(g);
 };
 
 const fuse: Draw = (g) => {
-  g.moveTo(-24, 0).lineTo(-12, 0).moveTo(24, 0).lineTo(12, 0);
-  g.rect(-12, -6, 24, 12);
+  g.moveTo(0, -22).lineTo(0, -12).moveTo(0, 22).lineTo(0, 12);
+  g.rect(-6, -12, 12, 24);
+  g.moveTo(0, -12).lineTo(0, 12);
   stroke(g);
 };
 
@@ -30,9 +35,65 @@ const rcd: Draw = (g) => {
 };
 
 const contactor: Draw = (g) => {
-  g.moveTo(-24, 0).lineTo(-8, 0).moveTo(24, 0).lineTo(8, 0);
-  g.moveTo(-8, 0).lineTo(8, -12);
-  g.circle(-8, 0, 2).circle(8, 0, 2);
+  // Contator de potência IEC 60617 com terminais e lâmina de contato
+  g.circle(0, -14, 2.5).circle(0, 14, 2.5);
+  g.moveTo(0, -22).lineTo(0, -14);
+  g.moveTo(0, 14).lineTo(0, 22);
+  g.moveTo(0, -14).lineTo(8, 8);
+  // Semicírculo de retenção de contator
+  g.arc(8, 8, 3, -Math.PI / 2, Math.PI / 2);
+  stroke(g);
+};
+
+const thermal_relay: Draw = (g) => {
+  // Relé térmico bimetálico de sobrecarga IEC 60617 (FT1 na referência visual)
+  g.rect(-16, -14, 32, 28);
+  g.moveTo(0, -22).lineTo(0, -14);
+  g.moveTo(0, 14).lineTo(0, 22);
+  // Elemento bimetálico térmico interno
+  g.moveTo(-8, -6).lineTo(-2, -6).lineTo(-2, 6).lineTo(-8, 6);
+  g.moveTo(2, -6).lineTo(8, -6).moveTo(5, -6).lineTo(5, 6);
+  stroke(g);
+};
+
+const capacitor_bank: Draw = (g) => {
+  // Banco de capacitores trifásico (como na referência visual)
+  g.moveTo(-18, -14).lineTo(18, -14);
+  g.moveTo(0, -22).lineTo(0, -14);
+  for (const cx of [-12, 0, 12]) {
+    g.moveTo(cx, -14).lineTo(cx, -5);
+    g.moveTo(cx - 5, -5).lineTo(cx + 5, -5);
+    g.moveTo(cx - 5, 3).lineTo(cx + 5, 3);
+    g.moveTo(cx, 3).lineTo(cx, 14);
+  }
+  g.moveTo(-18, 14).lineTo(18, 14);
+  g.moveTo(0, 14).lineTo(0, 22);
+  stroke(g);
+};
+
+const plc: Draw = (g) => {
+  // Bastidor de automação CLP com módulos de I/O e CPU
+  g.rect(-24, -20, 48, 40);
+  g.moveTo(-8, -20).lineTo(-8, 20);
+  g.moveTo(8, -20).lineTo(8, 20);
+  g.circle(-16, -12, 2).circle(-16, -4, 2).circle(-16, 4, 2);
+  g.rect(12, -14, 8, 12);
+  g.rect(12, 2, 8, 12);
+  stroke(g);
+};
+
+const hmi: Draw = (g) => {
+  // Painel de interface IHM industrial
+  g.rect(-24, -18, 48, 36);
+  g.rect(-20, -14, 40, 24);
+  g.moveTo(-12, 14).lineTo(12, 14);
+  stroke(g);
+};
+
+const generator: Draw = (g) => {
+  g.circle(0, 0, 18);
+  g.moveTo(4, -6).lineTo(-4, -6).lineTo(-4, 6).lineTo(4, 6).lineTo(4, 0).lineTo(0, 0);
+  g.moveTo(-6, 11).lineTo(-3, 9).lineTo(0, 11).lineTo(3, 13).lineTo(6, 11);
   stroke(g);
 };
 
@@ -42,15 +103,22 @@ const relay: Draw = (g) => {
 };
 
 const transformer: Draw = (g) => {
-  g.circle(-7, 0, 10).circle(7, 0, 10);
+  // Dois círculos entrelaçados verticalmente (IEC 60617)
+  g.circle(0, -8, 12).circle(0, 8, 12);
+  g.moveTo(0, -20).lineTo(0, -18);
+  g.moveTo(0, 18).lineTo(0, 20);
   stroke(g);
 };
 
 const motor: Draw = (g) => {
-  g.circle(0, 0, 16);
+  g.circle(0, 0, 18);
+  // Base do motor / pés (como na referência visual)
+  g.moveTo(-14, 20).lineTo(14, 20);
+  g.moveTo(-10, 16).lineTo(-10, 20);
+  g.moveTo(10, 16).lineTo(10, 20);
   stroke(g);
-  // letra M desenhada como linhas
-  g.moveTo(-7, 6).lineTo(-7, -6).lineTo(0, 2).lineTo(7, -6).lineTo(7, 6);
+  // Letra M central
+  g.moveTo(-7, 7).lineTo(-7, -7).lineTo(0, 2).lineTo(7, -7).lineTo(7, 7);
   stroke(g);
 };
 
@@ -128,10 +196,18 @@ const psu: Draw = (g) => {
 };
 
 const vfd: Draw = (g) => {
-  g.rect(-20, -12, 40, 24);
-  g.moveTo(-16, 0).lineTo(-13, -6).lineTo(-10, 6).lineTo(-7, 0);
-  g.moveTo(-3, -6).lineTo(-3, 6).moveTo(3, -6).lineTo(3, 6);
-  g.moveTo(7, 0).lineTo(10, -6).lineTo(13, 6).lineTo(16, 0);
+  // Inversor de Frequência (VFD) IEC 60617 (como na referência visual)
+  g.rect(-20, -22, 40, 44);
+  // Linha diagonal divisória
+  g.moveTo(-20, 22).lineTo(20, -22);
+  // Símbolo CC (=) no quadrante superior
+  g.moveTo(-10, -14).lineTo(2, -14);
+  g.moveTo(-10, -10).lineTo(2, -10);
+  // Símbolo CA (senóide) no quadrante inferior
+  g.moveTo(-4, 10).lineTo(-1, 7).lineTo(2, 10).lineTo(5, 13).lineTo(8, 10);
+  // Terminais verticais de entrada e saída
+  g.moveTo(0, -28).lineTo(0, -22);
+  g.moveTo(0, 22).lineTo(0, 28);
   stroke(g);
 };
 
@@ -149,8 +225,9 @@ const softstarter: Draw = (g) => {
 };
 
 const busbar: Draw = (g) => {
-  g.moveTo(-26, 0).lineTo(26, 0);
-  g.stroke({ width: 5, color: 0xe5e7eb });
+  // Barramento de distribuição trifásico principal (como linha horizontal grossa na imagem)
+  g.moveTo(-60, 0).lineTo(60, 0);
+  g.stroke({ width: 5.5, color: 0xffffff });
 };
 
 const ccm: Draw = (g) => {
@@ -201,8 +278,13 @@ const REGISTRY: Partial<Record<NodeKind, Draw>> = {
   rcd,
   contactor,
   relay,
+  thermal_relay,
   disconnector,
   transformer,
+  generator,
+  capacitor_bank,
+  plc,
+  hmi,
   motor,
   load,
   lamp,

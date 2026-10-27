@@ -37,17 +37,17 @@ function LoginPage() {
         redirect !== "/onboarding" &&
         !redirect.startsWith("/invite/")
       ) {
-        router.navigate({ to: "/onboarding" });
+        router.navigate({ to: "/onboarding", replace: true });
         return;
       }
 
       // Destinos com query string (ex.: consentimento OAuth do MCP) precisam
       // de navegação completa para preservar os parâmetros.
       if (redirect.includes("?")) {
-        window.location.assign(redirect);
+        window.location.replace(redirect);
         return;
       }
-      router.navigate({ to: redirect as never });
+      router.navigate({ to: redirect as never, replace: true });
     })();
   }, [redirect, router, user]);
 

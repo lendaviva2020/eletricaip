@@ -2,8 +2,8 @@ import { useState } from "react";
 import { LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth, type SignOutResult } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { useCurrentProject } from "@/lib/current-project";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -22,14 +22,18 @@ export interface LogoutButtonProps {
   className?: string;
   scope?: "local" | "global";
   label?: string;
+  redirectTo?: string;
+  onLogoutSuccess?: () => void;
 }
 
 /**
  * Botão funcional e seguro para encerramento de sessão no ElétricAi.
  * - Confirmação via modal acessível (Radix AlertDialog).
- * - Encerramento real no Supabase Auth.
- * - Limpeza total de caches privados no React Query e estado de projeto.
- * - Redirecionamento completo para /login impedindo navegação retrógrada.
+ * - Encerramento real no Supabase Auth coordenado via useAuth.signOut.
+ * - Limpeza integral de caches privados no React Query.
+ * - Diferenciação clara entre revogação remota confirmada vs. erro de conexão.
+ * - useAuth.signOut é o ÚNICO responsável pela navegação pós-logout (para /),
+ *   evitando redirecionamentos duplicados e garantindo substituição de histórico.
  */
 export function LogoutButton({
   variant = "outline",
@@ -37,48 +41,75 @@ export function LogoutButton({
   className,
   scope = "local",
   label = "Sair da conta",
+  redirectTo = "/",
+  onLogoutSuccess,
 }: LogoutButtonProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
+  const { signOut } = useAuth();
 
   const handleLogout = async () => {
     setLoading(true);
+
     try {
-      // 1. Encerramento real da sessão via cliente oficial Supabase
-      const { error } = await supabase.auth.signOut({ scope });
-      if (error) {
-        console.warn("[Logout] Aviso ao encerrar sessão:", error.message);
-        toast.error(`Falha ao encerrar sessão: ${error.message}`);
-        setLoading(false);
-        return;
+      // 1. Encerramento da sessão via useAuth (responsável único pela navegação e projeto)
+      let res: SignOutResult | null = null;
+      if (signOut) {
+        res = await signOut({ scope, redirectTo });
+      } else {
+        const { error } = await supabase.auth.signOut({ scope });
+        res = {
+          error: error ? new Error(error.message) : null,
+          localSignedOut: true,
+          remoteStatus: error ? "unconfirmed" : "confirmed",
+          remoteRevoked: !error,
+          storageError: null,
+        };
       }
 
-      // 2. Limpeza de estado de projeto ativo em memória e storage
-      try {
-        useCurrentProject.getState().setProject(null);
-      } catch (e) {
-        console.warn("[Logout] Limpeza de projeto em memória:", e);
-      }
-
-      // 3. Invalidação e limpeza total da memória em cache do React Query
+      // 2. Limpeza de caches privados do React Query
+      // Em logout voluntário a sessão local foi removida; purgamos todo o cache imediatamente.
       queryClient.clear();
 
-      toast.success(
-        scope === "global"
-          ? "Todas as sessões foram encerradas com sucesso."
-          : "Sessão encerrada com sucesso."
-      );
-
-      // 4. Redirecionamento completo para a tela de login
-      // O uso de location.assign garante que o heap de memória seja resetado
-      // e impede que o botão 'Voltar' do navegador renderize dados privados
-      if (typeof window !== "undefined") {
-        window.location.assign("/login");
+      // 3. Diferenciação transparente de feedback ao usuário
+      if (res?.error || res?.remoteStatus === "unconfirmed") {
+        const detail = res?.error?.message ?? "Falha de rede";
+        console.warn("[Logout] Revogação remota não confirmada:", detail);
+        if (scope === "global") {
+          toast.warning(
+            `Sessão deste dispositivo encerrada. Não foi possível confirmar a desconexão nos demais dispositivos (${detail}).`,
+          );
+        } else {
+          toast.warning(
+            `Sessão encerrada neste dispositivo. A revogação no servidor não pôde ser confirmada (${detail}).`,
+          );
+        }
+      } else {
+        toast.success(
+          scope === "global"
+            ? "Todas as sessões foram encerradas com sucesso."
+            : "Sessão encerrada com sucesso.",
+        );
       }
+
+      if (res && !res.localSignedOut) {
+        console.error("[Logout] Falha na confirmação da sessão local:", res.storageError);
+        toast.error(
+          "Aviso: Não foi possível confirmar a exclusão dos dados de sessão no armazenamento deste dispositivo.",
+        );
+      }
+
+      setOpen(false);
+      onLogoutSuccess?.();
     } catch (err) {
+      try {
+        queryClient.clear();
+      } catch (e) {
+        console.warn("[Logout] Falha ao limpar cache em fallback:", e);
+      }
       console.error("[Logout] Erro inesperado:", err);
-      toast.error("Ocorreu um erro ao encerrar a sessão. Tente novamente.");
+      toast.warning("Sessão finalizada localmente com aviso de conexão.");
       setLoading(false);
     }
   };
@@ -101,7 +132,9 @@ export function LogoutButton({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-base font-semibold">
             <LogOut className="h-4 w-4 text-destructive" />
-            <span>{scope === "global" ? "Encerrar todas as sessões?" : "Deseja sair da sua conta?"}</span>
+            <span>
+              {scope === "global" ? "Encerrar todas as sessões?" : "Deseja sair da sua conta?"}
+            </span>
           </AlertDialogTitle>
           <AlertDialogDescription className="text-xs text-muted-foreground mt-2">
             {scope === "global"

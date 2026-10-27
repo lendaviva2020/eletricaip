@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, lazy, Suspense } from "react";
 import appCss from "../styles.css?url";
-import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { AuthProvider, useAuth, getIsExplicitLogoutInProgress } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
 import { installDiagnosticsInterceptor } from "@/lib/diagnostics-counter";
 import { captureException, maskSensitiveString } from "@/lib/error-capture";
@@ -21,9 +21,7 @@ import { captureException, maskSensitiveString } from "@/lib/error-capture";
 const LazyAppSidebar = lazy(() =>
   import("@/components/app-sidebar").then((m) => ({ default: m.AppSidebar })),
 );
-const LazyTopbar = lazy(() =>
-  import("@/components/topbar").then((m) => ({ default: m.Topbar })),
-);
+const LazyTopbar = lazy(() => import("@/components/topbar").then((m) => ({ default: m.Topbar })));
 const LazyUpgradeModal = lazy(() =>
   import("@/components/upgrade-modal").then((m) => ({ default: m.UpgradeModal })),
 );
@@ -127,9 +125,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
     ],
     links: [
-      { rel: "preload", href: "/fonts/ibm-plex-sans-400.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
-      { rel: "preload", href: "/fonts/ibm-plex-sans-600.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
-      { rel: "preload", href: "/fonts/space-grotesk-600.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
+      {
+        rel: "preload",
+        href: "/fonts/ibm-plex-sans-400.woff2",
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "preload",
+        href: "/fonts/ibm-plex-sans-600.woff2",
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "preload",
+        href: "/fonts/space-grotesk-600.woff2",
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
       { rel: "stylesheet", href: appCss },
     ],
   }),
@@ -160,17 +176,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function AuthGate() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const { user, loading } = useAuth();
+  const { user, loading, isLoggingOut } = useAuth();
   const router = useRouter();
   const isPublic = isPublicPath(path);
 
-  useAuthRedirect(loading, user, isPublic, path, router);
+  useAuthRedirect(loading, user, isPublic, path, router, isLoggingOut);
 
   if (isPublic) {
     return <Outlet />;
   }
 
-  if (loading) {
+  if (loading || isLoggingOut) {
     return (
       <div className="min-h-screen grid place-items-center text-muted-foreground text-sm">
         Carregando...
@@ -190,7 +206,11 @@ function AuthGate() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      <Suspense fallback={<div className="w-[240px] hidden md:block border-r border-border bg-sidebar shrink-0" />}>
+      <Suspense
+        fallback={
+          <div className="w-[240px] hidden md:block border-r border-border bg-sidebar shrink-0" />
+        }
+      >
         <LazyAppSidebar />
       </Suspense>
       <div className="flex-1 flex flex-col min-w-0">
@@ -236,17 +256,22 @@ function SessionExpired({ path }: { path: string }) {
 
 function useAuthRedirect(
   loading: boolean,
-
   user: unknown,
   isPublic: boolean,
   path: string,
   router: ReturnType<typeof useRouter>,
+  isLoggingOut: boolean,
 ) {
   useEffect(() => {
+    // Se um encerramento explícito de sessão estiver em andamento, NUNCA redirecionar para /login com redirect!
+    if (isLoggingOut || getIsExplicitLogoutInProgress()) {
+      return;
+    }
+
     if (!loading && !user && !isPublic) {
       router.navigate({ to: "/login", search: { redirect: path } });
     }
-  }, [loading, user, isPublic, path, router]);
+  }, [loading, user, isPublic, path, router, isLoggingOut]);
 }
 
 function RootComponent() {

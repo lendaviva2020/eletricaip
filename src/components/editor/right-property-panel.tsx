@@ -1,40 +1,121 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Lock, Unlock } from "lucide-react";
+import { Plus, Trash2, Lock, Unlock, Zap, Shield, CheckSquare, Square, ExternalLink } from "lucide-react";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { cmd } from "@/lib/diagram/commands";
 import { getParamSpecs } from "@/lib/diagram/param-specs";
-import { NodeParamsSchema, type NodeParams } from "@/lib/diagram/schema";
+import { NodeParamsSchema, type NodeParams, type DiagramNode, type DiagramEdge } from "@/lib/diagram/schema";
 import { useEditorStore, type EditorTag, type EditorTagType } from "@/lib/editor/store";
 import { validateTagName } from "@/lib/editor/property-schemas";
 import { ValidatedParamField } from "./property-fields/validated-param-field";
 import { cn } from "@/lib/utils";
+import { LadderPropertyPanel } from "./ladder-property-panel";
 
 const TAG_TYPES: EditorTagType[] = ["BOOL", "INT", "REAL", "STRING"];
 
 /**
- * Type-aware property panel — versão migrada para o DiagramStore canônico
- * (#WGL-07 · etapa 2). Lê o nó selecionado, resolve `paramSpecs` a partir do
- * `NodeKind`, e despacha `UpdateNodeParams` (reversível via undo/redo).
+ * Encontra o dispositivo de proteção (disjuntor) ou alimentador a montante associado ao circuito
+ */
+function findRelatedCircuitNode(
+  nodeId: string,
+  nodes: Record<string, DiagramNode>,
+  edges: Record<string, DiagramEdge>,
+): DiagramNode | null {
+  const current = nodes[nodeId];
+  if (!current) return null;
+
+  // Se o nó já for breaker, procure a jusante (motor, vfd, capacitor) ou a montante (transformador, barra)
+  if (current.params.kind === "breaker") {
+    for (const e of Object.values(edges)) {
+      if (e.source === nodeId && nodes[e.target]) {
+        const tgt = nodes[e.target];
+        if (tgt.params.kind === "motor" || tgt.params.kind === "vfd" || tgt.params.kind === "capacitor_bank") {
+          return tgt;
+        }
+      }
+    }
+    for (const e of Object.values(edges)) {
+      if (e.target === nodeId && nodes[e.source]) {
+        const src = nodes[e.source];
+        if (src.params.kind === "transformer" || src.params.kind === "busbar") {
+          return src;
+        }
+      }
+    }
+  }
+
+  // Se for carga (motor, vfd, etc.), procure a montante na cadeia de ligações
+  const visited = new Set<string>();
+  const queue = [nodeId];
+  while (queue.length > 0) {
+    const curId = queue.shift()!;
+    if (visited.has(curId)) continue;
+    visited.add(curId);
+
+    for (const e of Object.values(edges)) {
+      if (e.target === curId) {
+        const src = nodes[e.source];
+        if (!src) continue;
+        if (src.params.kind === "breaker") {
+          return src;
+        }
+        queue.push(src.id);
+      }
+    }
+  }
+
+  // Fallback: se houver outro disjuntor de proteção no diagrama, associe como referência
+  const fallbackBreaker = Object.values(nodes).find((n) => n.params.kind === "breaker" && n.id !== nodeId);
+  if (fallbackBreaker) {
+    return fallbackBreaker;
+  }
+
+  return null;
+}
+
+/**
+ * Type-aware property panel profissional — com inspeção multinível contextual
+ * e suporte a blocos duplos de propriedades (ex.: Motor M1 + Disjuntor QF1)
+ * como ilustrado na referência visual do ElétricAi.
  */
 export function RightPropertyPanel() {
+  const activeMode = useEditorStore((s) => s.activeMode);
+  if (activeMode === "ladder") {
+    return <LadderPropertyPanel />;
+  }
+
   const selectedId = useDiagramStore((s) => s.selectedNodeIds[0] ?? null);
+  const doc = useDiagramStore((s) => s.doc);
   const node = useDiagramStore((s) => (selectedId ? s.doc.nodes[selectedId] : null));
   const dispatch = useDiagramStore((s) => s.dispatch);
+  const setSelection = useDiagramStore((s) => s.setSelection);
+
+  const [isConfigured, setIsConfigured] = useState(true);
+
+  const relatedNode = useMemo(() => {
+    if (!selectedId) return null;
+    return findRelatedCircuitNode(selectedId, doc.nodes, doc.edges);
+  }, [selectedId, doc.nodes, doc.edges]);
 
   if (!node) {
     return (
-      <div className="p-4 text-[12px] text-muted-foreground">
-        Selecione um componente no canvas para editar suas propriedades.
+      <div className="p-4 text-[12px] text-muted-foreground flex flex-col items-center justify-center text-center py-12 gap-2">
+        <Zap className="h-6 w-6 text-muted-foreground/50 mb-1" />
+        <p className="font-semibold text-foreground/80">Nenhum componente selecionado</p>
+        <p className="text-[11px] text-muted-foreground">
+          Clique em um motor, disjuntor, contator ou relé no canvas para inspecionar seus parâmetros elétricos e dispositivo de proteção associado.
+        </p>
       </div>
     );
   }
 
   const kind = node.params.kind;
   const paramSpecs = getParamSpecs(kind);
+  const tag = (node.params as any).tag || node.label || node.id;
+  const kindTitle = kind === "motor" ? "MOTOR" : kind === "breaker" ? "DISJUNTOR" : kind.toUpperCase();
 
-  const commitParam = (key: string, value: string | number | boolean) => {
-    const nextRaw = { ...node.params, [key]: value } as unknown;
+  const commitParam = (targetNodeId: string, currentParams: any, key: string, value: string | number | boolean) => {
+    const nextRaw = { ...currentParams, [key]: value } as unknown;
     const parsed = NodeParamsSchema.safeParse(nextRaw);
     if (!parsed.success) {
       toast.error(parsed.error.errors[0]?.message ?? "Valor inválido");
@@ -44,8 +125,8 @@ export function RightPropertyPanel() {
       cmd.batch([
         {
           type: "UpdateNodeParams",
-          nodeId: node.id,
-          from: node.params,
+          nodeId: targetNodeId,
+          from: currentParams,
           to: parsed.data,
         },
       ]),
@@ -69,46 +150,178 @@ export function RightPropertyPanel() {
       from: node.params,
       to: parsed.data,
     });
-    toast.success(`Padrões restaurados para ${node.label || node.id}`);
+    toast.success(`Padrões restaurados para ${tag}`);
   };
 
   return (
-    <div className="p-4 space-y-3 text-[12px]">
-      <Section title="Selecionado">
-        <div className="text-sm font-medium">
-          {node.label || node.id} · {kind}
+    <div className="p-3 space-y-3.5 text-[12px] font-sans">
+      {/* BLOCO 1: PROPRIEDADES DO COMPONENTE PRIMÁRIO SELECIONADO */}
+      <div className="rounded-md border border-[#38bdf8]/40 bg-[#0e1626] overflow-hidden shadow-sm">
+        <div className="bg-[#131d2e] px-3 py-2 border-b border-border/70 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-[#38bdf8]" />
+            <span className="font-bold text-xs tracking-wider text-[#38bdf8]">
+              PROPRIEDADES - {kindTitle} {tag}
+            </span>
+          </div>
+          <button
+            onClick={() => setIsConfigured((c) => !c)}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+            title="Alternar estado de parametrização"
+          >
+            {isConfigured ? (
+              <CheckSquare className="h-3.5 w-3.5 text-emerald-400" />
+            ) : (
+              <Square className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+            <span className={isConfigured ? "text-emerald-400 font-medium" : ""}>Setado</span>
+          </button>
         </div>
-        <div className="text-[11px] text-muted-foreground">Folha: {node.sheet}</div>
-      </Section>
 
-      <Section title="Parâmetros">
-        {Object.keys(paramSpecs).length === 0 ? (
-          <div className="text-[11px] text-muted-foreground italic">
-            Sem parâmetros configuráveis.
+        <div className="p-3 space-y-3">
+          {/* Resumo Industrial Rápido */}
+          <div className="grid grid-cols-2 gap-2 p-2 rounded bg-[#0a0f1c] border border-border/50 text-[11px] font-mono">
+            <div>
+              <span className="text-muted-foreground block text-[10px]">TAG</span>
+              <span className="font-bold text-[#38bdf8]">{tag}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-[10px]">TIPO / LAYOUT</span>
+              <span className="font-medium">{kind === "motor" ? "Trifásico / Gaiola" : kind}</span>
+            </div>
+            {kind === "motor" && (
+              <>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">POTÊNCIA</span>
+                  <span className="font-medium text-amber-300">{(node.params as any).power_kW ?? 7.5} kW</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">CORRENTE In</span>
+                  <span className="font-medium text-amber-300">{(node.params as any).current_A ?? 15.2} A</span>
+                </div>
+              </>
+            )}
+            <div>
+              <span className="text-muted-foreground block text-[10px]">FABRICANTE</span>
+              <span>{(node.params as any).manufacturer ?? "WEG"}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-[10px]">MODELO</span>
+              <span>{(node.params as any).model ?? "W22 Premium"}</span>
+            </div>
           </div>
-        ) : (
+
+          {/* Parâmetros Editáveis com Validação Zod */}
           <div className="space-y-2">
-            {Object.entries(paramSpecs).map(([key, spec]) => (
-              <ValidatedParamField
-                key={key}
-                spec={spec}
-                value={
-                  (node.params as unknown as Record<string, unknown>)[key] ?? spec.defaultValue
-                }
-                onCommit={(value) => commitParam(key, value)}
-              />
-            ))}
+            <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+              Parâmetros Técnicos
+            </div>
+            {Object.keys(paramSpecs).length === 0 ? (
+              <div className="text-[11px] text-muted-foreground italic">Sem parâmetros adicionais.</div>
+            ) : (
+              Object.entries(paramSpecs).map(([key, spec]) => (
+                <ValidatedParamField
+                  key={key}
+                  spec={spec}
+                  value={
+                    (node.params as unknown as Record<string, unknown>)[key] ?? spec.defaultValue
+                  }
+                  onCommit={(value) => commitParam(node.id, node.params, key, value)}
+                />
+              ))
+            )}
           </div>
-        )}
-      </Section>
+        </div>
+      </div>
 
+      {/* BLOCO 2: DISPOSITIVO DE PROTEÇÃO OU ALIMENTAÇÃO ASSOCIADO (Ex: DISJUNTOR QF1) */}
+      {relatedNode && (
+        <div className="rounded-md border border-[#f97316]/40 bg-[#0e1626] overflow-hidden shadow-sm">
+          <div className="bg-[#131d2e] px-3 py-2 border-b border-border/70 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-[#f97316]" />
+              <span className="font-bold text-xs tracking-wider text-[#f97316]">
+                PROPRIEDADES - {relatedNode.params.kind === "breaker" ? "DISJUNTOR" : relatedNode.params.kind.toUpperCase()}{" "}
+                {(relatedNode.params as any).tag || relatedNode.label || relatedNode.id}
+              </span>
+            </div>
+            <button
+              onClick={() => setSelection([relatedNode.id])}
+              className="flex items-center gap-1 text-[10px] text-[#38bdf8] hover:underline"
+              title="Focar este componente no canvas"
+            >
+              <span>Ver</span>
+              <ExternalLink className="h-3 w-3" />
+            </button>
+          </div>
+
+          <div className="p-3 space-y-2.5">
+            <div className="grid grid-cols-2 gap-2 p-2 rounded bg-[#0a0f1c] border border-border/50 text-[11px] font-mono">
+              <div>
+                <span className="text-muted-foreground block text-[10px]">TAG PROTEÇÃO</span>
+                <span className="font-bold text-[#f97316]">
+                  {(relatedNode.params as any).tag || relatedNode.label || relatedNode.id}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px]">CURVA DISPARO</span>
+                <span className="font-medium text-amber-300">
+                  Curva {(relatedNode.params as any).curve ?? "C"}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px]">CORRENTE In</span>
+                <span className="font-bold text-amber-300">
+                  {(relatedNode.params as any).in_A ?? 63} A
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px]">CAPACIDADE Icu</span>
+                <span className="font-medium">10 kA</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px]">FABRICANTE</span>
+                <span>{(relatedNode.params as any).manufacturer ?? "Schneider"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px]">MODELO</span>
+                <span>{(relatedNode.params as any).model ?? "iC60N"}</span>
+              </div>
+            </div>
+
+            {/* Edição rápida da corrente do disjuntor de proteção */}
+            {relatedNode.params.kind === "breaker" && (
+              <div className="flex items-center justify-between text-[11px] pt-1">
+                <span className="text-muted-foreground">Ajuste In (A):</span>
+                <div className="flex gap-1">
+                  {[20, 32, 63, 100].map((amp) => (
+                    <button
+                      key={amp}
+                      onClick={() => commitParam(relatedNode.id, relatedNode.params, "in_A", amp)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
+                        (relatedNode.params as any).in_A === amp
+                          ? "bg-[#f97316] text-black font-bold border-[#f97316]"
+                          : "bg-[#131d2e] text-muted-foreground hover:text-foreground border-border"
+                      }`}
+                    >
+                      {amp}A
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* BLOCO 3: TAGS DE ENGENHARIA E PLC */}
       <TagsSection nodeId={node.id} />
 
       <button
         onClick={restoreFactory}
-        className="w-full text-[11px] py-1.5 rounded border border-primary/40 text-primary hover:bg-primary/10"
+        className="w-full text-[11px] py-1.5 rounded border border-primary/40 text-primary hover:bg-primary/10 transition-colors"
       >
-        Restaurar padrões
+        Restaurar padrões de fábrica
       </button>
     </div>
   );
@@ -152,7 +365,7 @@ function TagsSection({ nodeId }: { nodeId: string }) {
   };
 
   return (
-    <Section title="Tags vinculadas">
+    <Section title="Tags PLC & Automação">
       <div className="space-y-1.5">
         {tags.length === 0 && (
           <div className="text-[11px] text-muted-foreground italic">Nenhuma tag vinculada.</div>
@@ -160,14 +373,14 @@ function TagsSection({ nodeId }: { nodeId: string }) {
         {tags.map((t) => (
           <div
             key={t.id}
-            className="flex items-center gap-1.5 text-[11px] font-mono bg-card/60 border border-border rounded px-2 py-1"
+            className="flex items-center gap-1.5 text-[11px] font-mono bg-[#0a0f1c] border border-border/60 rounded px-2 py-1"
           >
-            <span className="text-primary truncate flex-1" title={t.id}>
+            <span className="text-[#38bdf8] truncate flex-1" title={t.id}>
               {t.name}
             </span>
             <span className="text-[9px] uppercase text-muted-foreground">{t.type}</span>
             <span
-              className={cn("text-[10px]", t.forced ? "text-warning" : "text-foreground/70")}
+              className={cn("text-[10px]", t.forced ? "text-amber-400" : "text-foreground/70")}
               title={`valor=${String(t.value)}`}
             >
               {String(t.value)}
@@ -182,7 +395,7 @@ function TagsSection({ nodeId }: { nodeId: string }) {
               title={t.forced ? "Liberar (release)" : "Forçar valor"}
             >
               {t.forced ? (
-                <Unlock className="h-3 w-3 text-warning" />
+                <Unlock className="h-3 w-3 text-amber-400" />
               ) : (
                 <Lock className="h-3 w-3 text-muted-foreground" />
               )}
@@ -210,7 +423,7 @@ function TagsSection({ nodeId }: { nodeId: string }) {
             placeholder="RUN, FAULT, %Q0.0…"
             maxLength={64}
             className={cn(
-              "flex-1 h-7 rounded bg-input border px-2 text-[11px] font-mono outline-none",
+              "flex-1 h-7 rounded bg-[#101929] border px-2 text-[11px] font-mono outline-none text-foreground",
               error ? "border-destructive" : "border-border",
             )}
           />
@@ -219,7 +432,7 @@ function TagsSection({ nodeId }: { nodeId: string }) {
             title="Tipo da nova tag"
             value={type}
             onChange={(e) => setType(e.target.value as EditorTagType)}
-            className="h-7 rounded bg-input border border-border text-[10px] px-1"
+            className="h-7 rounded bg-[#101929] border border-border text-[10px] px-1 text-foreground"
           >
             {TAG_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -229,7 +442,7 @@ function TagsSection({ nodeId }: { nodeId: string }) {
           </select>
           <button
             onClick={add}
-            className="h-7 w-7 grid place-items-center rounded bg-primary text-primary-foreground hover:opacity-90"
+            className="h-7 w-7 grid place-items-center rounded bg-[#38bdf8] text-black font-bold hover:opacity-90"
             title="Adicionar tag"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -244,10 +457,10 @@ function TagsSection({ nodeId }: { nodeId: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-1.5 font-bold">
         {title}
       </div>
-      <div className="rounded-md border border-border bg-card p-3 space-y-1">{children}</div>
+      <div className="rounded-md border border-border/70 bg-[#0e1626] p-2.5 space-y-1">{children}</div>
     </div>
   );
 }

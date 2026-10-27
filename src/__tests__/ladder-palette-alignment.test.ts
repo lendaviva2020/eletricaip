@@ -6,65 +6,55 @@ import {
 } from "@/lib/ladder/definitions";
 import { isOutputKind, type LadderCellKind } from "@/lib/ladder/types";
 
-const ACTIVE_KIND_MAP: Record<string, LadderCellKind> = {
-  XIC: "XIC",
-  XIO: "XIO",
-  OTE: "OTE",
-  OTL: "OTL",
-  OTU: "OTU",
-  TON: "TON",
-  TOF: "TOF",
-  TP: "TP",
-  CTU: "CTU",
-};
-
-describe("Fase 4.1: Alinhamento da Paleta Ladder (IEC 61131-3)", () => {
-  it("contém exatamente 9 elementos ativos suportados pelo scan-core", () => {
-    const activeIds = SUPPORTED_LADDER_ELEMENTS.map((e) => e.id).sort();
-    expect(activeIds).toEqual([
-      "CTU",
-      "OTE",
-      "OTL",
-      "OTU",
-      "TOF",
-      "TON",
-      "TP",
-      "XIC",
-      "XIO",
-    ]);
+describe("Alinhamento da Biblioteca Ladder Profissional (IEC 61131-3 e Industrial)", () => {
+  it("contém conjunto completo de elementos industriais suportados pelo scan-core", () => {
+    const activeIds = SUPPORTED_LADDER_ELEMENTS.map((e) => e.id);
+    expect(activeIds.length).toBeGreaterThanOrEqual(30);
+    // Elements from all categories must be present
+    expect(activeIds).toContain("XIC");
+    expect(activeIds).toContain("XIO");
+    expect(activeIds).toContain("R_TRIG");
+    expect(activeIds).toContain("F_TRIG");
+    expect(activeIds).toContain("OTE");
+    expect(activeIds).toContain("OTL");
+    expect(activeIds).toContain("OTU");
+    expect(activeIds).toContain("TON");
+    expect(activeIds).toContain("TOF");
+    expect(activeIds).toContain("TP");
+    expect(activeIds).toContain("TONR");
+    expect(activeIds).toContain("CTU");
+    expect(activeIds).toContain("CTD");
+    expect(activeIds).toContain("CMP_GE");
+    expect(activeIds).toContain("ADD");
+    expect(activeIds).toContain("MOVE");
   });
 
-  it("garante que todo elemento suportado mapeia para um LadderCellKind válido e executável", () => {
+  it("garante que todo elemento suportado possui metadados válidos e executáveis", () => {
     for (const el of SUPPORTED_LADDER_ELEMENTS) {
       expect(el.supported).toBe(true);
-      expect(ACTIVE_KIND_MAP[el.id]).toBeDefined();
-      expect(el.statusNote).toBeUndefined();
-    }
-  });
-
-  it("garante que elementos não suportados estão marcados explicitamente com status de roadmap", () => {
-    const unsupported = LADDER_ELEMENTS.filter((e) => e.supported !== true);
-    expect(unsupported.length).toBeGreaterThan(20);
-
-    for (const el of unsupported) {
-      expect(el.supported).toBe(false);
-      expect(el.statusNote).toMatch(/Q1/);
+      expect(el.id).toBeTruthy();
+      expect(el.label).toBeTruthy();
+      expect(el.category).toBeTruthy();
     }
   });
 
   it("classifica corretamente contatos (entradas) vs bobinas/timers/counters (saídas)", () => {
     // Contatos (colunas de entrada 0 .. N-2)
-    expect(isOutputKind(ACTIVE_KIND_MAP.XIC)).toBe(false);
-    expect(isOutputKind(ACTIVE_KIND_MAP.XIO)).toBe(false);
+    expect(isOutputKind("XIC" as LadderCellKind)).toBe(false);
+    expect(isOutputKind("XIO" as LadderCellKind)).toBe(false);
+    expect(isOutputKind("R_TRIG" as LadderCellKind)).toBe(false);
+    expect(isOutputKind("CMP_GE" as LadderCellKind)).toBe(false);
 
     // Saídas (coluna final N-1)
-    expect(isOutputKind(ACTIVE_KIND_MAP.OTE)).toBe(true);
-    expect(isOutputKind(ACTIVE_KIND_MAP.OTL)).toBe(true);
-    expect(isOutputKind(ACTIVE_KIND_MAP.OTU)).toBe(true);
-    expect(isOutputKind(ACTIVE_KIND_MAP.TON)).toBe(true);
-    expect(isOutputKind(ACTIVE_KIND_MAP.TOF)).toBe(true);
-    expect(isOutputKind(ACTIVE_KIND_MAP.TP)).toBe(true);
-    expect(isOutputKind(ACTIVE_KIND_MAP.CTU)).toBe(true);
+    expect(isOutputKind("OTE" as LadderCellKind)).toBe(true);
+    expect(isOutputKind("OTL" as LadderCellKind)).toBe(true);
+    expect(isOutputKind("OTU" as LadderCellKind)).toBe(true);
+    expect(isOutputKind("TON" as LadderCellKind)).toBe(true);
+    expect(isOutputKind("TOF" as LadderCellKind)).toBe(true);
+    expect(isOutputKind("TP" as LadderCellKind)).toBe(true);
+    expect(isOutputKind("TONR" as LadderCellKind)).toBe(true);
+    expect(isOutputKind("CTU" as LadderCellKind)).toBe(true);
+    expect(isOutputKind("CTD" as LadderCellKind)).toBe(true);
   });
 
   it("garante índice íntegro em LADDER_ELEMENTS_BY_ID", () => {

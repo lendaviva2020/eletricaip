@@ -5,6 +5,7 @@ import {
   resizeRungCols,
   RUNG_COLS_MIN,
   RUNG_COLS_MAX,
+  normalizeLadderRungs,
   type LadderCell,
   type LadderCellKind,
   type LadderRung,
@@ -69,7 +70,8 @@ export function fromAiRungSpec(spec: AiRungSpec, index = 0): LadderRung {
 
 export function fromAiRungSpecs(specs: unknown): LadderRung[] {
   if (!Array.isArray(specs)) return [];
-  return specs
+  const parsed = specs
     .filter((s): s is AiRungSpec => !!s && typeof s === "object" && !!(s as AiRungSpec).output)
     .map((s, i) => fromAiRungSpec(s, i));
+  return normalizeLadderRungs(parsed);
 }

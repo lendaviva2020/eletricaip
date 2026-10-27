@@ -14,6 +14,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
       signOut: vi.fn().mockResolvedValue({ error: null }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
     },
   },
 }));
@@ -45,7 +46,7 @@ describe("Settings Logout functionality", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <LogoutButton label="Sair da conta" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     const btn = screen.getByRole("button", { name: /sair da conta/i });
@@ -56,7 +57,7 @@ describe("Settings Logout functionality", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <LogoutButton label="Sair da conta" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     const triggerBtn = screen.getByRole("button", { name: /sair da conta/i });
@@ -71,7 +72,7 @@ describe("Settings Logout functionality", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <LogoutButton label="Sair da conta" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /sair da conta/i }));
@@ -82,19 +83,22 @@ describe("Settings Logout functionality", () => {
     expect(useCurrentProject.getState().project).not.toBeNull();
   });
 
-  it("calls supabase.auth.signOut, clears query cache and current project on confirmation", async () => {
+  it("calls supabase.auth.signOut, clears query cache and current project, and redirects to public home '/' via history replacement", async () => {
     const clearSpy = vi.spyOn(queryClient, "clear");
 
-    // Mock window.location.assign
     const originalLocation = window.location;
+    const replaceMock = vi.fn();
     const assignMock = vi.fn();
     delete (window as unknown as { location?: unknown }).location;
-    (window as unknown as { location: unknown }).location = { assign: assignMock };
+    (window as unknown as { location: unknown }).location = {
+      replace: replaceMock,
+      assign: assignMock,
+    };
 
     render(
       <QueryClientProvider client={queryClient}>
         <LogoutButton label="Sair da conta" scope="local" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /sair da conta/i }));
@@ -107,21 +111,27 @@ describe("Settings Logout functionality", () => {
 
     expect(useCurrentProject.getState().project).toBeNull();
     expect(clearSpy).toHaveBeenCalled();
-    expect(assignMock).toHaveBeenCalledWith("/login");
+    // Garante que o redirecionamento foi para '/' (home pública) e NÃO para /login com redirect=/settings
+    expect(replaceMock).toHaveBeenCalledWith("/");
+    expect(assignMock).not.toHaveBeenCalled();
 
     (window as unknown as { location: unknown }).location = originalLocation;
   });
 
-  it("supports global scope for ending sessions on all devices", async () => {
+  it("supports global scope for ending sessions on all devices and redirects cleanly to '/'", async () => {
+    const replaceMock = vi.fn();
     const assignMock = vi.fn();
     const originalLocation = window.location;
     delete (window as unknown as { location?: unknown }).location;
-    (window as unknown as { location: unknown }).location = { assign: assignMock };
+    (window as unknown as { location: unknown }).location = {
+      replace: replaceMock,
+      assign: assignMock,
+    };
 
     render(
       <QueryClientProvider client={queryClient}>
         <LogoutButton label="Encerrar todas" scope="global" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /encerrar todas/i }));
@@ -132,7 +142,33 @@ describe("Settings Logout functionality", () => {
       expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: "global" });
     });
 
-    expect(assignMock).toHaveBeenCalledWith("/login");
+    expect(replaceMock).toHaveBeenCalledWith("/");
+    (window as unknown as { location: unknown }).location = originalLocation;
+  });
+
+  it("falls back to location.assign if replace is unavailable in legacy environments", async () => {
+    const assignMock = vi.fn();
+    const originalLocation = window.location;
+    delete (window as unknown as { location?: unknown }).location;
+    (window as unknown as { location: unknown }).location = {
+      assign: assignMock,
+    };
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <LogoutButton label="Sair da conta" scope="local" />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /sair da conta/i }));
+    const confirmBtn = await screen.findByRole("button", { name: /sim, sair da conta/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: "local" });
+    });
+
+    expect(assignMock).toHaveBeenCalledWith("/");
     (window as unknown as { location: unknown }).location = originalLocation;
   });
 

@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import type { WorkspaceMode, ConsoleTab } from "@/lib/workspace-data";
-import type { LadderRung } from "@/lib/ladder/types";
+import { type LadderRung, normalizeLadderRungs } from "@/lib/ladder/types";
 import type { Node, Edge } from "reactflow";
 import type { VoltaiComponentType } from "@/lib/palette/component-catalog";
 
@@ -24,12 +24,27 @@ export type FbdEdge = Edge;
 /** Estado salvo da simulação FBD (para reabrir o projeto e continuar). */
 export type FbdSimSnapshot = RuntimeSnapshot & { readonly inputs: Record<string, boolean> };
 
+export interface SelectedLadderTarget {
+  rungId: string;
+  elementId?: string;
+  kind?: string;
+  operand?: string;
+  tag?: string;
+  type?: string;
+  preset?: number;
+  params?: Record<string, string | number | boolean>;
+  isOutput?: boolean;
+}
+
+export type LadderProfile = "generic" | "rockwell" | "siemens";
+
 export interface EditorSnapshot {
   fbdSim?: FbdSimSnapshot | null;
   editorTags?: Record<string, EditorTag>;
   rungs?: LadderRung[];
   fbdNodes?: FbdNode[];
   fbdEdges?: FbdEdge[];
+  ladderProfile?: LadderProfile;
 }
 
 interface EditorState {
@@ -38,6 +53,8 @@ interface EditorState {
 
   // === Selection (single source of truth) ===
   selectedNodeId: string | null;
+  selectedLadderTarget: SelectedLadderTarget | null;
+  ladderProfile: LadderProfile;
 
   // === Editor tags ===
   editorTags: Record<string, EditorTag>;
@@ -67,6 +84,8 @@ interface EditorState {
   // === Actions ===
   setActiveMode: (mode: WorkspaceMode) => void;
   setSelectedNode: (id: string | null) => void;
+  setSelectedLadderTarget: (target: SelectedLadderTarget | null) => void;
+  setLadderProfile: (profile: LadderProfile) => void;
 
   upsertTag: (tag: EditorTag) => void;
   removeTag: (id: string) => void;
@@ -102,6 +121,8 @@ export const useEditorStore = create<EditorState>()(
   subscribeWithSelector((set) => ({
     activeMode: "unifilar",
     selectedNodeId: null,
+    selectedLadderTarget: null,
+    ladderProfile: "generic",
     editorTags: {},
     rungs: [],
     fbdNodes: [],
@@ -116,8 +137,10 @@ export const useEditorStore = create<EditorState>()(
     dragValidation: "Arraste componentes IEC 60617 para o canvas.",
     validateComponent: null,
 
-    setActiveMode: (mode) => set({ activeMode: mode, selectedNodeId: null }),
+    setActiveMode: (mode) => set({ activeMode: mode, selectedNodeId: null, selectedLadderTarget: null }),
     setSelectedNode: (id) => set({ selectedNodeId: id }),
+    setSelectedLadderTarget: (target) => set({ selectedLadderTarget: target }),
+    setLadderProfile: (profile) => set({ ladderProfile: profile }),
 
     upsertTag: (tag) =>
       set((s) => ({ editorTags: { ...s.editorTags, [tag.id]: tag }, dirty: true })),
@@ -153,9 +176,15 @@ export const useEditorStore = create<EditorState>()(
       }),
 
     setRungs: (rungs) =>
-      set((s) => ({ rungs: typeof rungs === "function" ? rungs(s.rungs) : rungs, dirty: true })),
+      set((s) => {
+        const next = typeof rungs === "function" ? rungs(s.rungs) : rungs;
+        return { rungs: normalizeLadderRungs(next), dirty: true };
+      }),
     setRungsRuntime: (rungs) =>
-      set((s) => ({ rungs: typeof rungs === "function" ? rungs(s.rungs) : rungs })),
+      set((s) => {
+        const next = typeof rungs === "function" ? rungs(s.rungs) : rungs;
+        return { rungs: normalizeLadderRungs(next) };
+      }),
     setFbdAll: (nodes, edges) =>
       set((s) => ({
         fbdNodes: typeof nodes === "function" ? nodes(s.fbdNodes) : nodes,
@@ -166,7 +195,7 @@ export const useEditorStore = create<EditorState>()(
     hydrateSnapshot: (snapshot) =>
       set({
         editorTags: snapshot.editorTags ?? {},
-        rungs: snapshot.rungs ?? [],
+        rungs: normalizeLadderRungs(snapshot.rungs ?? []),
         fbdNodes: snapshot.fbdNodes ?? [],
         fbdEdges: snapshot.fbdEdges ?? [],
         fbdSim: snapshot.fbdSim ?? null,
@@ -211,3 +240,8 @@ export function useEditorMode() {
     })),
   );
 }
+
+if (typeof window !== "undefined" && import.meta.env.DEV) {
+  (window as any).__editorStore = useEditorStore;
+}
+

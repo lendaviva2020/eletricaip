@@ -14,6 +14,7 @@ import ReactFlow, {
   Position,
   useNodeId,
   ReactFlowProvider,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
@@ -196,22 +197,11 @@ const staticNodeTypes: NodeTypes = {
 };
 const staticEdgeTypes: EdgeTypes = {};
 
-// Em React 18 / Vite dev mode, o StrictMode reavalia useNodeOrEdgeTypes no mount inicial,
-// gerando um falso-positivo de aviso 002 mesmo com nodeTypes/edgeTypes estáticos fora do componente.
-if (typeof window !== "undefined") {
-  const origWarn = console.warn;
-  console.warn = (...args: any[]) => {
-    if (typeof args[0] === "string" && args[0].includes("nodeTypes or edgeTypes object")) {
-      return;
-    }
-    origWarn.apply(console, args);
-  };
-}
-
 function FbdCanvasInner() {
   const nodes = useEditorStore((s) => s.fbdNodes);
   const edges = useEditorStore((s) => s.fbdEdges);
   const setFbdAll = useEditorStore((s) => s.setFbdAll);
+  const { fitView } = useReactFlow();
 
   const [stCode, setStCode] = useState("");
   const [showStPanel, setShowStPanel] = useState(false);
@@ -219,9 +209,25 @@ function FbdCanvasInner() {
   const engine = useFbdEngine();
 
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const hasFittedInitialNodes = useRef(false);
 
+  // Ajuste do viewport ao carregar nós (tanto na montagem inicial quanto ao carregar projeto salvo),
+  // sem provocar loops de renderização durante adições ou edições subsequentes.
+  useEffect(() => {
+    if (nodes.length > 0 && !hasFittedInitialNodes.current) {
+      hasFittedInitialNodes.current = true;
+      const timer = window.setTimeout(() => {
+        fitView({ padding: 0.2 });
+      }, 50);
+      return () => window.clearTimeout(timer);
+    }
+    if (nodes.length === 0) {
+      hasFittedInitialNodes.current = false;
+    }
+  }, [nodes.length, fitView]);
+
+  // Registro transparente de erros e avisos reais do React Flow sem mascaramento artificial.
   const handleRfError = useCallback((code: string, message: string) => {
-    if (code === "002") return;
     console.warn(`[React Flow ${code}]: ${message}`);
   }, []);
 
@@ -384,8 +390,8 @@ function FbdCanvasInner() {
 
   return (
     <div
-      className="relative h-full w-full bg-[--canvas-bg] overflow-hidden"
-      style={{ touchAction: "none" }}
+      className="relative h-full w-full bg-[--canvas-bg] overflow-hidden flex flex-col min-h-[300px]"
+      style={{ touchAction: "none", width: "100%", height: "100%" }}
       ref={wrapperRef}
     >
       <FloatingLegend
@@ -439,9 +445,15 @@ function FbdCanvasInner() {
       </div>
 
       {/* REACT FLOW SURFACE */}
-      <div className="h-full w-full overflow-hidden" onDragOver={onDragOver} onDrop={onDrop}>
+      <div
+        className="h-full w-full flex-1 min-h-[300px] overflow-hidden relative"
+        style={{ width: "100%", height: "100%" }}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+      >
         <FbdLiveContext.Provider value={engine.live?.outputs ?? {}}>
           <ReactFlow
+            style={{ width: "100%", height: "100%" }}
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}

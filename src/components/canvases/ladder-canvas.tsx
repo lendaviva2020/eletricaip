@@ -5,7 +5,7 @@ export function LadderCanvas() {
   // Rungs use a true matrix model (rows × cols). Outputs land on the right column.
   // Tags are shared via useEditorStore so Simulação cross-module integration works.
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full" data-testid="ladder-canvas">
       <RungGrid />
     </div>
   );

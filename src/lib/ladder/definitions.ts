@@ -1,32 +1,34 @@
 import type { ParamSpec } from "@/lib/palette/component-catalog";
 
 export type LadderCategory =
-  | "Contatos"
-  | "Bobinas"
+  | "Contatos e Bordas"
+  | "Bobinas e Retenções"
   | "Temporizadores"
   | "Contadores"
-  | "Comparacao"
-  | "Blocos Matematicos"
-  | "Blocos Logicos"
-  | "Movimentacao"
-  | "Trilhos"
-  | "Controle";
+  | "Comparadores"
+  | "Matemática"
+  | "Lógica Booleana"
+  | "Transferência e Dados"
+  | "Blocos de Fabricantes";
 
 export interface LadderElement {
   id: string;
   type: string;
   category: LadderCategory;
   label: string;
+  mnemonic: string;
   description: string;
+  dataType?: "BOOL" | "INT" | "DINT" | "REAL" | "TIME" | "STRING";
   allenBradley?: string;
+  siemens?: string;
   params: Record<string, ParamSpec>;
   inputs: number;
   outputs: number;
   symbol: string;
-  /** Se true, suportado nativamente no grid matricial de rungs e executado pelo scan-core. */
-  supported?: boolean;
-  /** Nota de status caso o elemento seja roadmap / planejado. */
+  /** Se true, suportado nativamente no grid estrutural e executado pelo scan-core. */
+  supported: boolean;
   statusNote?: string;
+  isFavorite?: boolean;
 }
 
 const param = (
@@ -47,147 +49,622 @@ const element = (
   id: string,
   category: LadderCategory,
   label: string,
+  mnemonic: string,
   symbol: string,
   description: string,
+  dataType: "BOOL" | "INT" | "DINT" | "REAL" | "TIME" | "STRING" = "BOOL",
   params: Record<string, ParamSpec> = {},
   allenBradley?: string,
-  supported: boolean = false,
+  siemens?: string,
+  supported: boolean = true,
   statusNote?: string,
+  isFavorite: boolean = false,
 ): LadderElement => ({
   id,
   type: id,
   category,
   label,
+  mnemonic,
   description,
+  dataType,
   allenBradley,
+  siemens,
   params,
-  inputs: category === "Trilhos" && id === "RIGHT_RAIL" ? 1 : 1,
-  outputs: category === "Trilhos" && id === "RIGHT_RAIL" ? 0 : 1,
+  inputs: 1,
+  outputs: 1,
   symbol,
   supported,
-  statusNote: supported ? undefined : (statusNote ?? "Em Breve (Q1)"),
+  statusNote,
+  isFavorite,
 });
 
 export const LADDER_ELEMENTS: LadderElement[] = [
-  // ── Contatos ─────────────────────────────────────────────────────────────
+  // ── Contatos e Bordas ──────────────────────────────────────────────────
   element(
     "XIC",
-    "Contatos",
+    "Contatos e Bordas",
     "Contato NA",
-    "--| |--",
-    "Passa energia quando bit = TRUE.",
+    "LD",
+    "-[ ]-",
+    "Passa energia quando operando = TRUE.",
+    "BOOL",
     {},
     "XIC",
+    "A",
+    true,
+    undefined,
     true,
   ),
   element(
     "XIO",
-    "Contatos",
+    "Contatos e Bordas",
     "Contato NF",
-    "--|/|--",
-    "Passa energia quando bit = FALSE.",
+    "LDN",
+    "-[/]-",
+    "Passa energia quando operando = FALSE.",
+    "BOOL",
     {},
     "XIO",
+    "AN",
+    true,
+    undefined,
     true,
   ),
   element(
     "R_TRIG",
-    "Contatos",
-    "Borda positiva",
-    "--|P|--",
-    "TRUE por 1 scan na transicao 0-1.",
+    "Contatos e Bordas",
+    "Borda Positiva (P)",
+    "R_TRIG",
+    "-[P]-",
+    "TRUE por exatamente 1 scan na transição 0 -> 1.",
+    "BOOL",
     {},
     "ONS",
-    false,
-    "Em Breve (Q1)",
+    "P",
+    true,
   ),
   element(
     "F_TRIG",
-    "Contatos",
-    "Borda negativa",
-    "--|N|--",
-    "TRUE por 1 scan na transicao 1-0.",
+    "Contatos e Bordas",
+    "Borda Negativa (N)",
+    "F_TRIG",
+    "-[N]-",
+    "TRUE por exatamente 1 scan na transição 1 -> 0.",
+    "BOOL",
     {},
     "OSF",
-    false,
-    "Em Breve (Q1)",
+    "N",
+    true,
   ),
 
-  // ── Bobinas ──────────────────────────────────────────────────────────────
-  element("OTE", "Bobinas", "Bobina simples", "--( )", "Nao retentiva; segue o rung.", {}, "OTE", true),
-  element("OTL", "Bobinas", "Set Latch", "--(S)", "Retentiva; liga e mantem estado.", {}, "OTL", true),
-  element("OTU", "Bobinas", "Reset Unlatch", "--(R)", "Retentiva; desliga o bit.", {}, "OTU", true),
-  element("SR", "Bobinas", "Set/Reset", "--(SR)", "Flip-flop SR combinado.", {}, undefined, false, "Em Breve (Q1)"),
-  element("NEG_COIL", "Bobinas", "Bobina negada", "--(/)", "Escreve o inverso do rung.", {}, undefined, false, "Em Breve (Q1)"),
-  element("RET_COIL", "Bobinas", "Bobina retentiva", "--(M)", "Mantem valor apos desligamento.", {}, undefined, false, "Em Breve (Q1)"),
+  // ── Bobinas e Retenções ────────────────────────────────────────────────
+  element(
+    "OTE",
+    "Bobinas e Retenções",
+    "Bobina Simples",
+    "OUT",
+    "-( )-",
+    "Não retentiva; energiza quando a rede é TRUE.",
+    "BOOL",
+    {},
+    "OTE",
+    "=",
+    true,
+    undefined,
+    true,
+  ),
+  element(
+    "OTL",
+    "Bobinas e Retenções",
+    "Bobina Set (Latch)",
+    "SET",
+    "-(S)-",
+    "Retentiva; liga o bit e mantém mesmo se a rede abrir.",
+    "BOOL",
+    {},
+    "OTL",
+    "S",
+    true,
+    undefined,
+    true,
+  ),
+  element(
+    "OTU",
+    "Bobinas e Retenções",
+    "Bobina Reset (Unlatch)",
+    "RST",
+    "-(R)-",
+    "Retentiva; desliga o bit travado.",
+    "BOOL",
+    {},
+    "OTU",
+    "R",
+    true,
+    undefined,
+    true,
+  ),
+  element(
+    "NEG_COIL",
+    "Bobinas e Retenções",
+    "Bobina Negada",
+    "OUTN",
+    "-(/)-",
+    "Escreve o inverso lógico do fluxo de potência.",
+    "BOOL",
+    {},
+    undefined,
+    "/",
+    true,
+  ),
+  element(
+    "SR",
+    "Bobinas e Retenções",
+    "Bistável Set/Reset",
+    "SR",
+    "-(SR)-",
+    "Flip-flop combinado com prioridade de reset.",
+    "BOOL",
+    {},
+    undefined,
+    "SR",
+    true,
+  ),
 
-  // ── Temporizadores ───────────────────────────────────────────────────────
-  element("TON", "Temporizadores", "TON On Delay", "[TON]", "Atraso na ligacao.", {
-    PT: param("PT", "Preset time", 1000, "ms"),
-  }, undefined, true),
-  element("TOF", "Temporizadores", "TOF Off Delay", "[TOF]", "Atraso no desligamento.", {
-    PT: param("PT", "Preset time", 1000, "ms"),
-  }, undefined, true),
-  element("TP", "Temporizadores", "TP Pulse", "[TP]", "Pulso de duracao fixa.", {
-    PT: param("PT", "Preset time", 500, "ms"),
-  }, undefined, true),
-  element("TONR", "Temporizadores", "TONR Retentivo", "[TONR]", "Temporizador acumulativo.", {
-    PT: param("PT", "Preset time", 1000, "ms"),
-  }, undefined, false, "Em Breve (Q1)"),
+  // ── Temporizadores ─────────────────────────────────────────────────────
+  element(
+    "TON",
+    "Temporizadores",
+    "Temporizador On-Delay",
+    "TON",
+    "[TON]",
+    "Atrasa o acionamento da saída por um tempo PT pré-determinado.",
+    "TIME",
+    {
+      PT: param("PT", "Preset time", 1000, "ms"),
+    },
+    "TON",
+    "TON",
+    true,
+    undefined,
+    true,
+  ),
+  element(
+    "TOF",
+    "Temporizadores",
+    "Temporizador Off-Delay",
+    "TOF",
+    "[TOF]",
+    "Atrasa o desligamento da saída após o sinal de entrada cessar.",
+    "TIME",
+    {
+      PT: param("PT", "Preset time", 1000, "ms"),
+    },
+    "TOF",
+    "TOF",
+    true,
+  ),
+  element(
+    "TP",
+    "Temporizadores",
+    "Temporizador Pulso",
+    "TP",
+    "[TP]",
+    "Gera um pulso com duração fixa PT na borda de subida de entrada.",
+    "TIME",
+    {
+      PT: param("PT", "Preset time", 500, "ms"),
+    },
+    "TP",
+    "TP",
+    true,
+  ),
+  element(
+    "TONR",
+    "Temporizadores",
+    "Temporizador Retentivo",
+    "TONR",
+    "[TONR]",
+    "Acumula tempo enquanto IN for TRUE, mantendo acumulado nas pausas.",
+    "TIME",
+    {
+      PT: param("PT", "Preset time", 1000, "ms"),
+    },
+    "RTO",
+    "TONR",
+    true,
+  ),
 
-  // ── Contadores ───────────────────────────────────────────────────────────
-  element("CTU", "Contadores", "CTU Up Counter", "[CTU]", "Contagem crescente.", {
-    PV: param("PV", "Preset value", 10),
-  }, undefined, true),
-  element("CTD", "Contadores", "CTD Down Counter", "[CTD]", "Contagem decrescente.", {
-    PV: param("PV", "Preset value", 10),
-  }, undefined, false, "Em Breve (Q1)"),
-  element("CTUD", "Contadores", "CTUD Up/Down", "[CTUD]", "Contagem bidirecional.", {
-    PV: param("PV", "Preset value", 10),
-  }, undefined, false, "Em Breve (Q1)"),
+  // ── Contadores ─────────────────────────────────────────────────────────
+  element(
+    "CTU",
+    "Contadores",
+    "Contador Crescente",
+    "CTU",
+    "[CTU]",
+    "Incrementa a cada borda de subida até atingir o valor de preset PV.",
+    "INT",
+    {
+      PV: param("PV", "Preset value", 10),
+    },
+    "CTU",
+    "CTU",
+    true,
+    undefined,
+    true,
+  ),
+  element(
+    "CTD",
+    "Contadores",
+    "Contador Decrescente",
+    "CTD",
+    "[CTD]",
+    "Decrementa a contagem de PV até 0.",
+    "INT",
+    {
+      PV: param("PV", "Preset value", 10),
+    },
+    "CTD",
+    "CTD",
+    true,
+  ),
+  element(
+    "CTUD",
+    "Contadores",
+    "Contador Up/Down",
+    "CTUD",
+    "[CTUD]",
+    "Contador bidirecional com entradas de incremento e decremento.",
+    "INT",
+    {
+      PV: param("PV", "Preset value", 10),
+    },
+    "CTUD",
+    "CTUD",
+    true,
+  ),
 
-  // ── Comparação (Planejado Q1 - Use FBD/ST) ─────────────────────────────────
-  element("GT", "Comparacao", "Greater Than", "[ > ]", "TRUE se IN1 > IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("LT", "Comparacao", "Less Than", "[ < ]", "TRUE se IN1 < IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("GE", "Comparacao", "Greater Equal", "[ >= ]", "TRUE se IN1 >= IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("LE", "Comparacao", "Less Equal", "[ <= ]", "TRUE se IN1 <= IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("EQ", "Comparacao", "Equal", "[ == ]", "TRUE se IN1 = IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("NE", "Comparacao", "Not Equal", "[ != ]", "TRUE se IN1 != IN2.", {}, undefined, false, "Em Breve (Q1)"),
+  // ── Comparadores ───────────────────────────────────────────────────────
+  element(
+    "CMP_EQ",
+    "Comparadores",
+    "Igual (==)",
+    "EQU",
+    "[ == ]",
+    "TRUE quando Entrada 1 é igual à Entrada 2.",
+    "BOOL",
+    {
+      IN1: param("IN1", "Entrada A", 0),
+      IN2: param("IN2", "Entrada B", 0),
+    },
+    "EQU",
+    "CMP ==",
+    true,
+  ),
+  element(
+    "CMP_NE",
+    "Comparadores",
+    "Diferente (!=)",
+    "NEQ",
+    "[ != ]",
+    "TRUE quando Entrada 1 é diferente da Entrada 2.",
+    "BOOL",
+    {
+      IN1: param("IN1", "Entrada A", 0),
+      IN2: param("IN2", "Entrada B", 0),
+    },
+    "NEQ",
+    "CMP <>",
+    true,
+  ),
+  element(
+    "CMP_GT",
+    "Comparadores",
+    "Maior que (>)",
+    "GRT",
+    "[ > ]",
+    "TRUE quando Entrada 1 é estritamente maior que Entrada 2.",
+    "BOOL",
+    {
+      IN1: param("IN1", "Entrada A", 0),
+      IN2: param("IN2", "Entrada B", 0),
+    },
+    "GRT",
+    "CMP >",
+    true,
+  ),
+  element(
+    "CMP_GE",
+    "Comparadores",
+    "Maior ou Igual (>=)",
+    "GEQ",
+    "[ >= ]",
+    "TRUE quando Entrada 1 é maior ou igual à Entrada 2.",
+    "BOOL",
+    {
+      IN1: param("IN1", "Entrada A", 0),
+      IN2: param("IN2", "Entrada B", 0),
+    },
+    "GEQ",
+    "CMP >=",
+    true,
+    undefined,
+    true,
+  ),
+  element(
+    "CMP_LT",
+    "Comparadores",
+    "Menor que (<)",
+    "LES",
+    "[ < ]",
+    "TRUE quando Entrada 1 é estritamente menor que Entrada 2.",
+    "BOOL",
+    {
+      IN1: param("IN1", "Entrada A", 0),
+      IN2: param("IN2", "Entrada B", 0),
+    },
+    "LES",
+    "CMP <",
+    true,
+  ),
+  element(
+    "CMP_LE",
+    "Comparadores",
+    "Menor ou Igual (<=)",
+    "LEQ",
+    "[ <= ]",
+    "TRUE quando Entrada 1 é menor ou igual à Entrada 2.",
+    "BOOL",
+    {
+      IN1: param("IN1", "Entrada A", 0),
+      IN2: param("IN2", "Entrada B", 0),
+    },
+    "LEQ",
+    "CMP <=",
+    true,
+  ),
 
-  // ── Blocos Matemáticos (Planejado Q1 - Use FBD/ST) ────────────────────────
-  element("ADD", "Blocos Matematicos", "ADD", "[ + ]", "OUT = IN1 + IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("SUB", "Blocos Matematicos", "SUB", "[ - ]", "OUT = IN1 - IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("MUL", "Blocos Matematicos", "MUL", "[ * ]", "OUT = IN1 * IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("DIV", "Blocos Matematicos", "DIV", "[ / ]", "OUT = IN1 / IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("MOD", "Blocos Matematicos", "MOD", "[MOD]", "OUT = resto de IN1 / IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("SQRT", "Blocos Matematicos", "SQRT", "[SQRT]", "OUT = raiz quadrada de IN.", {}, undefined, false, "Em Breve (Q1)"),
-  element("ABS", "Blocos Matematicos", "ABS", "[ABS]", "OUT = valor absoluto de IN.", {}, undefined, false, "Em Breve (Q1)"),
+  // ── Matemática ─────────────────────────────────────────────────────────
+  element(
+    "ADD",
+    "Matemática",
+    "Soma (ADD)",
+    "ADD",
+    "[ + ]",
+    "OUT = IN1 + IN2 quando a rede conduz.",
+    "REAL",
+    {
+      IN1: param("IN1", "Parcela 1", 0),
+      IN2: param("IN2", "Parcela 2", 0),
+      OUT: param("OUT", "Destino", "SOMA_RES"),
+    },
+    "ADD",
+    "ADD",
+    true,
+  ),
+  element(
+    "SUB",
+    "Matemática",
+    "Subtração (SUB)",
+    "SUB",
+    "[ - ]",
+    "OUT = IN1 - IN2 quando a rede conduz.",
+    "REAL",
+    {
+      IN1: param("IN1", "Minuendo", 0),
+      IN2: param("IN2", "Subtraendo", 0),
+      OUT: param("OUT", "Destino", "SUB_RES"),
+    },
+    "SUB",
+    "SUB",
+    true,
+  ),
+  element(
+    "MUL",
+    "Matemática",
+    "Multiplicação (MUL)",
+    "MUL",
+    "[ * ]",
+    "OUT = IN1 * IN2 quando a rede conduz.",
+    "REAL",
+    {
+      IN1: param("IN1", "Fator 1", 0),
+      IN2: param("IN2", "Fator 2", 0),
+      OUT: param("OUT", "Destino", "MUL_RES"),
+    },
+    "MUL",
+    "MUL",
+    true,
+  ),
+  element(
+    "DIV",
+    "Matemática",
+    "Divisão (DIV)",
+    "DIV",
+    "[ / ]",
+    "OUT = IN1 / IN2 quando a rede conduz.",
+    "REAL",
+    {
+      IN1: param("IN1", "Dividendo", 0),
+      IN2: param("IN2", "Divisor", 1),
+      OUT: param("OUT", "Destino", "DIV_RES"),
+    },
+    "DIV",
+    "DIV",
+    true,
+  ),
+  element(
+    "MOD",
+    "Matemática",
+    "Módulo Resto (MOD)",
+    "MOD",
+    "[MOD]",
+    "OUT = resto da divisão inteira de IN1 por IN2.",
+    "INT",
+    {
+      IN1: param("IN1", "Dividendo", 0),
+      IN2: param("IN2", "Divisor", 1),
+      OUT: param("OUT", "Destino", "MOD_RES"),
+    },
+    undefined,
+    "MOD",
+    true,
+  ),
+  element(
+    "SQRT",
+    "Matemática",
+    "Raiz Quadrada (SQRT)",
+    "SQRT",
+    "[SQRT]",
+    "OUT = raiz quadrada de IN1.",
+    "REAL",
+    {
+      IN1: param("IN1", "Entrada", 0),
+      OUT: param("OUT", "Destino", "SQRT_RES"),
+    },
+    "SQR",
+    "SQRT",
+    true,
+  ),
+  element(
+    "ABS",
+    "Matemática",
+    "Valor Absoluto (ABS)",
+    "ABS",
+    "[ABS]",
+    "OUT = |IN1| (módulo absoluto).",
+    "REAL",
+    {
+      IN1: param("IN1", "Entrada", 0),
+      OUT: param("OUT", "Destino", "ABS_RES"),
+    },
+    "ABS",
+    "ABS",
+    true,
+  ),
 
-  // ── Blocos Lógicos (Planejado Q1 - Use FBD/ST) ────────────────────────────
-  element("AND", "Blocos Logicos", "AND", "[ & ]", "OUT = IN1 AND IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("OR", "Blocos Logicos", "OR", "[ OR ]", "OUT = IN1 OR IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("XOR", "Blocos Logicos", "XOR", "[=1]", "OUT = IN1 XOR IN2.", {}, undefined, false, "Em Breve (Q1)"),
-  element("NOT", "Blocos Logicos", "NOT", "[NOT]", "OUT = NOT IN.", {}, undefined, false, "Em Breve (Q1)"),
+  // ── Lógica Booleana ────────────────────────────────────────────────────
+  element(
+    "AND",
+    "Lógica Booleana",
+    "E Lógico (AND)",
+    "AND",
+    "[ & ]",
+    "OUT = IN1 AND IN2 bit a bit.",
+    "INT",
+    {},
+    "AND",
+    "AND",
+    true,
+  ),
+  element(
+    "OR",
+    "Lógica Booleana",
+    "OU Lógico (OR)",
+    "OR",
+    "[ OR ]",
+    "OUT = IN1 OR IN2 bit a bit.",
+    "INT",
+    {},
+    "OR",
+    "OR",
+    true,
+  ),
+  element(
+    "XOR",
+    "Lógica Booleana",
+    "OU Exclusivo (XOR)",
+    "XOR",
+    "[=1]",
+    "OUT = IN1 XOR IN2 bit a bit.",
+    "INT",
+    {},
+    "XOR",
+    "XOR",
+    true,
+  ),
+  element(
+    "NOT",
+    "Lógica Booleana",
+    "Inversor (NOT)",
+    "NOT",
+    "[NOT]",
+    "OUT = NOT IN bit a bit.",
+    "INT",
+    {},
+    "NOT",
+    "NOT",
+    true,
+  ),
 
-  // ── Movimentação ─────────────────────────────────────────────────────────
-  element("MOVE", "Movimentacao", "MOVE", "[MOVE]", "Copia IN para OUT.", {}, undefined, false, "Em Breve (Q1)"),
-  element("INT_TO_REAL", "Movimentacao", "INT_TO_REAL", "[IR]", "Converte INT para REAL.", {}, undefined, false, "Em Breve (Q1)"),
-  element("REAL_TO_INT", "Movimentacao", "REAL_TO_INT", "[RI]", "Converte REAL para INT.", {}, undefined, false, "Em Breve (Q1)"),
+  // ── Transferência e Dados ──────────────────────────────────────────────
+  element(
+    "MOVE",
+    "Transferência e Dados",
+    "Mover Registrador",
+    "MOV",
+    "[MOVE]",
+    "Copia o valor da fonte IN para o registrador de destino OUT.",
+    "INT",
+    {
+      IN: param("IN", "Origem", 0),
+      OUT: param("OUT", "Destino", "REG_DEST"),
+    },
+    "MOV",
+    "MOVE",
+    true,
+  ),
+  element(
+    "INT_TO_REAL",
+    "Transferência e Dados",
+    "Converter INT -> REAL",
+    "I_TO_R",
+    "[IR]",
+    "Converte valor de inteiro (16 bits) para ponto flutuante (REAL 32 bits).",
+    "REAL",
+    {},
+    undefined,
+    "ITR",
+    true,
+  ),
+  element(
+    "REAL_TO_INT",
+    "Transferência e Dados",
+    "Converter REAL -> INT",
+    "R_TO_I",
+    "[RI]",
+    "Converte ponto flutuante (REAL) para inteiro arredondado (INT).",
+    "INT",
+    {},
+    undefined,
+    "RTI",
+    true,
+  ),
 
-  // ── Trilhos ──────────────────────────────────────────────────────────────
-  element("LEFT_RAIL", "Trilhos", "Trilho esquerdo", "|", "Fornece energia sempre ON.", {}, undefined, false, "Em Breve (Q1)"),
-  element("RIGHT_RAIL", "Trilhos", "Trilho direito", "|", "Fecha o circuito neutro.", {}, undefined, false, "Em Breve (Q1)"),
-
-  // ── Controle ─────────────────────────────────────────────────────────────
-  element("JMP", "Controle", "Jump", "(JMP)", "Salta para um label.", {}, undefined, false, "Em Breve (Q1)"),
-  element("LBL", "Controle", "Label", "[LBL]", "Destino de um jump.", {}, undefined, false, "Em Breve (Q1)"),
-  element("MCR", "Controle", "Master Control Relay", "(MCR)", "Habilita/desabilita uma zona.", {}, undefined, false, "Em Breve (Q1)"),
-  element("RET", "Controle", "Return", "(RET)", "Retorna de uma subrotina.", {}, undefined, false, "Em Breve (Q1)"),
+  // ── Blocos de Fabricantes (Siemens / Rockwell) ─────────────────────────
+  element(
+    "PID_COMPACT",
+    "Blocos de Fabricantes",
+    "Controle PID Compacto",
+    "PID",
+    "[PID]",
+    "Controle Proporcional-Integral-Derivativo contínuo de malha fechada.",
+    "REAL",
+    {
+      SP: param("SP", "Setpoint", 50),
+      PV: param("PV", "Variável de Processo", 0),
+      KP: param("KP", "Ganho Proporcional", 1),
+      TN: param("TN", "Tempo Integral (s)", 10),
+      TV: param("TV", "Tempo Derivativo (s)", 1),
+    },
+    "PIDE",
+    "PID_Compact",
+    false,
+    "Requer módulo de simulação contínua",
+  ),
 ];
 
 export const LADDER_ELEMENTS_BY_ID = Object.fromEntries(
   LADDER_ELEMENTS.map((item) => [item.id, item]),
 ) as Record<string, LadderElement>;
 
-/** Retorna apenas os elementos com execução comprovada no scan-core atual. */
 export const SUPPORTED_LADDER_ELEMENTS = LADDER_ELEMENTS.filter((e) => e.supported === true);

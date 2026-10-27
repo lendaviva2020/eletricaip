@@ -174,7 +174,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
             setImporterOpen(true);
           }}
         />
-        <div className="flex-1 min-h-0 relative bg-background overflow-hidden">
+        <div className="flex-1 min-h-0 relative bg-background overflow-hidden h-full w-full flex flex-col">
           {/* ErrorBoundary keyed por `mode`: isola crashes (ex.: React #185)
               ao canvas ativo e cria um boundary fresco ao trocar de aba. */}
           <ErrorBoundary key={mode}>

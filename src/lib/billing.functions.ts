@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth, requireActiveSession } from "@/integrations/supabase/auth-middleware";
 // NOTE: do NOT import `supabaseAdmin` at module scope — the getter throws if
 // SUPABASE_SERVICE_ROLE_KEY is absent, which would break every handler in this
 // file (including ones that don't need admin). Load it lazily inside handlers.
@@ -133,7 +133,7 @@ export const getBillingOverview = createServerFn({ method: "GET" })
 
 /** Manual plan change — platform-admin only (server-enforced via RPC). */
 export const changePlanManual = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .inputValidator((input) =>
     z.object({ plan: z.enum(["free", "basic", "pro", "premium"]) }).parse(input),
   )
@@ -205,7 +205,7 @@ export const getIsPlatformAdmin = createServerFn({ method: "GET" })
  * Requires STRIPE_SECRET_KEY + STRIPE_PRICE_PRO/PREMIUM secrets.
  */
 export const createStripeCheckout = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .inputValidator((input) => z.object({ plan: z.enum(["basic", "pro", "premium"]) }).parse(input))
   .handler(async ({ data, context }) => {
     const stripeKey = process.env.STRIPE_SECRET_KEY;

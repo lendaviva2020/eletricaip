@@ -1,5 +1,5 @@
 // Editor shell do scan-cycle: lê tags do useEditorStore, delega ao núcleo puro
-// (scan-core.ts) e escreve os resultados de volta via writeBool.
+// (scan-core.ts) e escreve os resultados de volta via writeTagValue.
 // A API pública (scanRungs, ScanResult, resetRuntimeState, scanRungsPure) é preservada.
 import type { LadderRung } from "./types";
 import { useEditorStore, type EditorTag } from "@/lib/editor/store";
@@ -27,32 +27,37 @@ export type { PureTags, ScanState, ScanResult, TimerState, CounterState };
 
 // Estado persistente do editor (compartilhado entre scans).
 const editorState: ScanState = createScanState();
+let lastScanDurationMs = 12;
 
 export const resetRuntimeState = () => {
   editorState.timers.clear();
   editorState.counters.clear();
+  editorState.edges.clear();
 };
+
+export const getLastScanDuration = () => lastScanDurationMs;
 
 const toPureTags = (editorTags: Record<string, EditorTag>): PureTags => {
   const out: PureTags = {};
   for (const t of Object.values(editorTags)) {
-    const v = t.value;
-    out[t.name] = typeof v === "boolean" || typeof v === "number" ? v : Boolean(v);
+    // Tags forçadas mantêm valor imutável pelo scan
+    out[t.name] = t.value as any;
   }
   return out;
 };
 
-const writeBool = (operand: string, value: boolean) => {
+const writeTagValue = (operand: string, value: boolean | number | string) => {
   if (!operand) return;
   const state = useEditorStore.getState();
   const existing = Object.values(state.editorTags).find((t) => t.name === operand);
   if (existing) {
+    if (existing.forced) return; // Respeita forçamento manual de simulação
     state.setTagValue(existing.id, value);
   } else {
     state.upsertTag({
       id: `auto-${operand}`,
       name: operand,
-      type: "BOOL",
+      type: typeof value === "number" ? "INT" : "BOOL",
       value,
       forced: false,
     });
@@ -87,10 +92,11 @@ export const scanRungs = (
     after = { ...after, ...out.tags };
   }
 
-  // Escreve as saídas de volta no store (mesmo efeito colateral de antes).
+  // Escreve as saídas de volta no store (preservando booleanos e numéricos)
   for (const [name, value] of Object.entries(after)) {
-    if (before[name] !== value) writeBool(name, Boolean(value));
+    if (before[name] !== value) writeTagValue(name, value);
   }
 
+  lastScanDurationMs = Math.max(1, Math.round(nowFn() - start));
   return results;
 };

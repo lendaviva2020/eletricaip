@@ -291,9 +291,25 @@ export class DiagramStage {
     const selected = this.selectedIds.has(id);
     view.selection.clear();
     if (selected) {
+      // Moldura interna translúcida ciano
+      const w = 30;
+      const h = 24;
       view.selection
-        .roundRect(-30, -22, 60, 44, 6)
-        .stroke({ width: 1.5, color: SELECT_COLOR, alpha: 0.9 });
+        .rect(-w, -h, w * 2, h * 2)
+        .stroke({ width: 1.5, color: 0x38bdf8, alpha: 0.7 });
+
+      // Alças de canto industriais em laranja elétrico (como na referência visual)
+      const cLen = 7;
+      view.selection
+        // canto superior esquerdo
+        .moveTo(-w - 2, -h + cLen).lineTo(-w - 2, -h - 2).lineTo(-w + cLen, -h - 2)
+        // canto superior direito
+        .moveTo(w - cLen, -h - 2).lineTo(w + 2, -h - 2).lineTo(w + 2, -h + cLen)
+        // canto inferior esquerdo
+        .moveTo(-w - 2, h - cLen).lineTo(-w - 2, h + 2).lineTo(-w + cLen, h + 2)
+        // canto inferior direito
+        .moveTo(w - cLen, h + 2).lineTo(w + 2, h + 2).lineTo(w + 2, h - cLen)
+        .stroke({ width: 2.5, color: 0xf97316 });
     }
     view.container.alpha = 1;
   }
@@ -363,10 +379,57 @@ export class DiagramStage {
       return;
     }
 
-    const color = colorForEdge(e.kind);
+    const isSignal = e.kind === "signal";
+    const color = isSignal ? 0xf97316 : colorForEdge(e.kind);
     const g = new Graphics();
-    g.moveTo(from.x, from.y).lineTo(midX, from.y).lineTo(midX, to.y).lineTo(to.x, to.y);
-    g.stroke({ width: 1.5, color });
+
+    if (isSignal) {
+      // Linha tracejada industrial para controle / comando / CLP (como na referência visual)
+      const segments = [
+        { x1: from.x, y1: from.y, x2: midX, y2: from.y },
+        { x1: midX, y1: from.y, x2: midX, y2: to.y },
+        { x1: midX, y1: to.y, x2: to.x, y2: to.y },
+      ];
+      for (const seg of segments) {
+        const dx = seg.x2 - seg.x1;
+        const dy = seg.y2 - seg.y1;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) continue;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        const dash = 6;
+        const gap = 4;
+        let curr = 0;
+        let drawing = true;
+        while (curr < dist) {
+          const len = drawing ? dash : gap;
+          const next = Math.min(curr + len, dist);
+          if (drawing) {
+            g.moveTo(seg.x1 + ux * curr, seg.y1 + uy * curr).lineTo(
+              seg.x1 + ux * next,
+              seg.y1 + uy * next,
+            );
+          }
+          curr = next;
+          drawing = !drawing;
+        }
+      }
+      g.stroke({ width: 1.6, color: 0xf97316 });
+      // Nós de derivação em laranja para controle
+      g.circle(from.x, from.y, 3).fill({ color: 0xf97316 });
+      g.circle(to.x, to.y, 2.5).fill({ color: 0xf97316 });
+    } else {
+      g.moveTo(from.x, from.y).lineTo(midX, from.y).lineTo(midX, to.y).lineTo(to.x, to.y);
+      g.stroke({ width: 1.6, color });
+
+      // Terminal circular de conexão em derivações de barramento ou transformador
+      if (srcNode.params.kind === "busbar" || tgtNode.params.kind === "busbar") {
+        const dotX = srcNode.params.kind === "busbar" ? from.x : to.x;
+        const dotY = srcNode.params.kind === "busbar" ? from.y : to.y;
+        g.circle(dotX, dotY, 3.5).fill({ color: 0xffffff });
+      }
+    }
+
     this.edgesLayer.addChild(g);
     this.edges.set(e.id, { graphics: g, hash });
   }
@@ -624,14 +687,14 @@ export class DiagramStage {
 function colorForEdge(k: EdgeKind): number {
   switch (k) {
     case "power":
-      return 0x60a5fa;
+      return 0xf8fafc;
     case "signal":
-      return 0xa78bfa;
+      return 0xf97316;
     case "ground":
-      return 0x10b981;
+      return 0x84cc16;
     case "pipe":
-      return 0xf59e0b;
+      return 0x38bdf8;
     default:
-      return 0x94a3b8;
+      return 0xe2e8f0;
   }
 }

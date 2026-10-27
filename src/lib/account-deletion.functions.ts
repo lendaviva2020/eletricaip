@@ -13,7 +13,7 @@
 // limpeza via rotina de expurgo com service role.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth, requireActiveSession } from "@/integrations/supabase/auth-middleware";
 import type { AuthContext } from "@/integrations/supabase/auth-middleware";
 
 
@@ -26,7 +26,7 @@ export interface EraseStep {
 }
 
 export const requestAccountDeletion = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .inputValidator((input) =>
     z.object({ reason: z.string().trim().max(1000).optional() }).parse(input ?? {}),
   )
@@ -74,7 +74,7 @@ export const listMyDeletionRequests = createServerFn({ method: "GET" })
   });
 
 export const eraseUserData = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .inputValidator((input) => z.object({ targetUserId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<{ ok: boolean; report: EraseStep[] }> => {
     const { supabase, userId } = context as unknown as AuthContext;
