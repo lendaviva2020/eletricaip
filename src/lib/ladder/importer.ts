@@ -337,34 +337,74 @@ export function parseStProgram(src: string): ImportResult {
 // imediatamente anterior para popular as branches.
 
 function parseIlBlock(lines: string[]): { branches: Branch[]; output: LadderCell } | null {
-  let ld: string | null = null;
+  const exprTokens: string[] = [];
+
   for (const raw of lines) {
     const line = raw.trim();
-    if (!line) continue;
-    const upper = line.toUpperCase();
-    if (upper.startsWith("LD ")) {
-      ld = line.slice(3).trim();
+    if (!line || line.startsWith("//") || line.startsWith("(*")) continue;
+
+    // 1. Carga inicial (LD, LDN)
+    if (/^LDN\s+/i.test(line)) {
+      exprTokens.push(`(NOT ${line.replace(/^LDN\s+/i, "").trim()})`);
       continue;
     }
-    const branches = parseBoolExpr(ld ?? "FALSE");
-    if (upper.startsWith("ST ")) {
-      return { branches, output: { kind: "OTE", operand: line.slice(3).trim() } };
+    if (/^LD\s+/i.test(line)) {
+      exprTokens.push(line.replace(/^LD\s+/i, "").trim());
+      continue;
     }
-    if (upper.startsWith("S ") || upper.startsWith("S\t")) {
-      return { branches, output: { kind: "OTL", operand: line.slice(2).trim() } };
+
+    // 2. Operações E (AND, ANDN)
+    if (/^ANDN\s+/i.test(line)) {
+      exprTokens.push(`AND (NOT ${line.replace(/^ANDN\s+/i, "").trim()})`);
+      continue;
     }
-    if (upper.startsWith("R ") || upper.startsWith("R\t")) {
-      return { branches, output: { kind: "OTU", operand: line.slice(2).trim() } };
+    if (/^AND\s+/i.test(line)) {
+      exprTokens.push(`AND ${line.replace(/^AND\s+/i, "").trim()}`);
+      continue;
     }
-    if (upper.startsWith("CAL ")) {
-      const body = line.slice(4).trim();
+
+    // 3. Operações OU (OR, ORN)
+    if (/^ORN\s+/i.test(line)) {
+      exprTokens.push(`OR (NOT ${line.replace(/^ORN\s+/i, "").trim()})`);
+      continue;
+    }
+    if (/^OR\s+/i.test(line)) {
+      exprTokens.push(`OR ${line.replace(/^OR\s+/i, "").trim()}`);
+      continue;
+    }
+
+    // 4. Fechamento de parênteses de bloco
+    if (line === ")" || line.startsWith(")")) {
+      exprTokens.push(")");
+      continue;
+    }
+
+    const currentExpr = exprTokens.length > 0 ? exprTokens.join(" ") : "FALSE";
+    const branches = parseBoolExpr(currentExpr);
+
+    // 5. Instruções de saída
+    if (/^STN\s+/i.test(line)) {
+      return { branches, output: { kind: "NEG_COIL", operand: line.replace(/^STN\s+/i, "").trim() } };
+    }
+    if (/^ST\s+/i.test(line)) {
+      return { branches, output: { kind: "OTE", operand: line.replace(/^ST\s+/i, "").trim() } };
+    }
+    if (/^S\s+/i.test(line)) {
+      return { branches, output: { kind: "OTL", operand: line.replace(/^S\s+/i, "").trim() } };
+    }
+    if (/^R\s+/i.test(line)) {
+      return { branches, output: { kind: "OTU", operand: line.replace(/^R\s+/i, "").trim() } };
+    }
+    if (/^CAL\s+/i.test(line)) {
+      const body = line.replace(/^CAL\s+/i, "").trim();
       const tof = /\(\*\s*TOF\s*\*\)/i.test(raw);
       const tp = /\(\*\s*TP\s*\*\)/i.test(raw);
+      const tonr = /\(\*\s*TONR\s*\*\)/i.test(raw);
       const timer = body.match(
         /^([A-Za-z_%][\w.]*)\s*\(\s*IN\s*:=\s*[^,]+,\s*PT\s*:=\s*(T#[0-9]+(?:ms|s|m)?)\s*\)/i,
       );
       if (timer) {
-        const kind: LadderCellKind = tof ? "TOF" : tp ? "TP" : "TON";
+        const kind: LadderCellKind = tof ? "TOF" : tp ? "TP" : tonr ? "TONR" : "TON";
         return {
           branches,
           output: { kind, operand: timer[1], preset: parseTimeMs(timer[2]) },
@@ -389,8 +429,10 @@ function parseIlBlock(lines: string[]): { branches: Branch[]; output: LadderCell
 }
 
 export function parseIlProgram(src: string): ImportResult {
+  // Remove blocos de comentário (* ... *) como o aviso normativo de legado
+  const cleanSrc = src.replace(/\(\*[\s\S]*?\*\)/g, "");
   // Blocos separados por linha em branco OU por linha de comentário `//`
-  const rawLines = src.split(/\r?\n/);
+  const rawLines = cleanSrc.split(/\r?\n/);
   const blocks: { lines: string[]; label?: string; index: number }[] = [];
   let pendingLabel: string | undefined;
   let current: string[] = [];

@@ -26,6 +26,7 @@ const KIND_GLYPH: Record<string, string> = {
   OTU: "(R)",
   NEG_COIL: "(/)",
   SR: "(SR)",
+  RS: "(RS)",
   TON: "[TON]",
   TOF: "[TOF]",
   TP: "[TP]",
@@ -49,6 +50,10 @@ const KIND_GLYPH: Record<string, string> = {
   MOVE: "[MOVE]",
   INT_TO_REAL: "[IR]",
   REAL_TO_INT: "[RI]",
+  AND: "[ & ]",
+  OR: "[ OR ]",
+  XOR: "[=1]",
+  NOT: "[NOT]",
 };
 
 const ELEMENT_TO_KIND: Record<string, LadderCellKind> = {
@@ -61,6 +66,7 @@ const ELEMENT_TO_KIND: Record<string, LadderCellKind> = {
   OTU: "OTU",
   NEG_COIL: "NEG_COIL",
   SR: "SR",
+  RS: "RS",
   TON: "TON",
   TOF: "TOF",
   TP: "TP",
@@ -84,6 +90,10 @@ const ELEMENT_TO_KIND: Record<string, LadderCellKind> = {
   MOVE: "MOVE",
   INT_TO_REAL: "INT_TO_REAL",
   REAL_TO_INT: "REAL_TO_INT",
+  AND: "AND",
+  OR: "OR",
+  XOR: "XOR",
+  NOT: "NOT",
 };
 
 interface Props {

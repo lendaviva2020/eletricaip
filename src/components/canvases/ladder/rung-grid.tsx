@@ -1589,7 +1589,7 @@ export function RungGrid() {
                       compileFormat === "IL" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                     }`}
                   >
-                    Instruction List (IL)
+                    Instruction List (IL - Legado)
                   </button>
                 </div>
               </div>
@@ -1597,6 +1597,12 @@ export function RungGrid() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
+            {compileFormat === "IL" && (
+              <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-[11px] text-amber-500 flex items-center gap-2">
+                <span className="font-semibold uppercase tracking-wider">Formato Legado (IEC 61131-3):</span>
+                <span>A linguagem IL foi formalmente descontinuada na norma IEC 61131-3:2025 em favor de ST. Exportação mantida exclusivamente para interoperabilidade com CLPs clássicos (2ª Edição).</span>
+              </div>
+            )}
             <pre className="p-4 flex-1 overflow-auto font-mono text-xs text-foreground/90 bg-muted/10 whitespace-pre-wrap select-text">
               {compileProgram(rungs, compileFormat)}
             </pre>

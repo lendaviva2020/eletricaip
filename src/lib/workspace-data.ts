@@ -4,7 +4,19 @@ export type WorkspaceMode =
   "unifilar" | "ladder" | "fbd" | "scada" | "twin" | "plc" | "sim" | "alarms";
 
 export type ConsoleTab =
-  "Logs" | "Alarmes" | "IA" | "Terminal" | "Eventos" | "OPC-UA" | "Modbus" | "Runtime";
+  | "Logs"
+  | "Alarmes"
+  | "IA"
+  | "Terminal"
+  | "Eventos"
+  | "OPC-UA"
+  | "Modbus"
+  | "Runtime"
+  | "diagnosticos"
+  | "calculos_nbr"
+  | "bom"
+  | "variaveis"
+  | "simulacao";
 
 export const MODES: { id: WorkspaceMode; label: string; hint: string }[] = [
   { id: "unifilar", label: "Unifilar", hint: "IEC 60617" },

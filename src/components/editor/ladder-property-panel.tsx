@@ -66,8 +66,12 @@ export function LadderPropertyPanel() {
   const op = selectedTarget.operand || "";
   const isTimer = ["TON", "TOF", "TP", "TONR"].includes(kind);
   const isCounter = ["CTU", "CTD", "CTUD"].includes(kind);
+  const isCtud = kind === "CTUD";
+  const isBistable = ["SR", "RS"].includes(kind);
   const isCmp = kind.startsWith("CMP_") || ["GT", "LT", "GE", "LE", "EQ", "NE"].includes(kind);
   const isMath = ["ADD", "SUB", "MUL", "DIV", "MOD", "ABS", "SQRT"].includes(kind);
+  const isConversion = ["INT_TO_REAL", "REAL_TO_INT"].includes(kind);
+  const isLogic = ["AND", "OR", "XOR", "NOT"].includes(kind);
 
   const updateOperand = (newOp: string) => {
     setSelectedTarget({ ...selectedTarget, operand: newOp });
@@ -230,6 +234,181 @@ export function LadderPropertyPanel() {
               className="h-7 text-xs font-mono bg-background"
             />
           </div>
+        )}
+
+        {isCtud && (
+          <>
+            <div>
+              <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                Entrada CD (Count Down):
+              </label>
+              <Input
+                value={String(selectedTarget.params?.CD ?? "")}
+                onChange={(e) => updateParam("CD", e.target.value)}
+                placeholder="Ex.: B_DECREMENTA"
+                className="h-7 text-xs font-mono bg-background"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                Entrada Reset (R):
+              </label>
+              <Input
+                value={String(selectedTarget.params?.R ?? "")}
+                onChange={(e) => updateParam("R", e.target.value)}
+                placeholder="Ex.: B_RESET"
+                className="h-7 text-xs font-mono bg-background"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                Entrada Load (LD):
+              </label>
+              <Input
+                value={String(selectedTarget.params?.LD ?? "")}
+                onChange={(e) => updateParam("LD", e.target.value)}
+                placeholder="Ex.: B_LOAD"
+                className="h-7 text-xs font-mono bg-background"
+              />
+            </div>
+          </>
+        )}
+
+        {isBistable && (
+          <>
+            {kind === "SR" ? (
+              <div>
+                <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                  Entrada Reset (R):
+                </label>
+                <Input
+                  value={String(selectedTarget.params?.R ?? "")}
+                  onChange={(e) => updateParam("R", e.target.value)}
+                  placeholder="Ex.: B_RESET"
+                  className="h-7 text-xs font-mono bg-background"
+                />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                    Entrada Set (S):
+                  </label>
+                  <Input
+                    value={String(selectedTarget.params?.S ?? "")}
+                    onChange={(e) => updateParam("S", e.target.value)}
+                    placeholder="Ex.: B_SET"
+                    className="h-7 text-xs font-mono bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                    Reset Dominante (R1):
+                  </label>
+                  <Input
+                    value={String(selectedTarget.params?.R1 ?? selectedTarget.params?.R ?? "")}
+                    onChange={(e) => updateParam("R1", e.target.value)}
+                    placeholder="Ex.: B_RESET_DOM"
+                    className="h-7 text-xs font-mono bg-background"
+                  />
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {isConversion && (
+          <>
+            <div>
+              <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                Origem (IN):
+              </label>
+              <Input
+                value={String(selectedTarget.params?.IN ?? selectedTarget.operand ?? "")}
+                onChange={(e) => updateParam("IN", e.target.value)}
+                placeholder="Ex.: VAR_ORIGEM"
+                className="h-7 text-xs font-mono bg-background"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                Destino (OUT):
+              </label>
+              <Input
+                value={String(selectedTarget.params?.OUT ?? "")}
+                onChange={(e) => updateParam("OUT", e.target.value)}
+                placeholder="Ex.: VAR_DESTINO"
+                className="h-7 text-xs font-mono bg-background"
+              />
+            </div>
+          </>
+        )}
+
+        {isLogic && (
+          <>
+            {kind === "NOT" ? (
+              <>
+                <div>
+                  <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                    Entrada (IN):
+                  </label>
+                  <Input
+                    value={String(selectedTarget.params?.IN ?? selectedTarget.params?.IN1 ?? selectedTarget.operand ?? "")}
+                    onChange={(e) => updateParam("IN", e.target.value)}
+                    placeholder="Ex.: SINAL_IN"
+                    className="h-7 text-xs font-mono bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                    Destino (OUT):
+                  </label>
+                  <Input
+                    value={String(selectedTarget.params?.OUT ?? "")}
+                    onChange={(e) => updateParam("OUT", e.target.value)}
+                    placeholder="Ex.: SINAL_INV"
+                    className="h-7 text-xs font-mono bg-background"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                    Entrada 1 (IN1):
+                  </label>
+                  <Input
+                    value={String(selectedTarget.params?.IN1 ?? selectedTarget.operand ?? "")}
+                    onChange={(e) => updateParam("IN1", e.target.value)}
+                    placeholder="Ex.: BIT_A"
+                    className="h-7 text-xs font-mono bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                    Entrada 2 (IN2):
+                  </label>
+                  <Input
+                    value={String(selectedTarget.params?.IN2 ?? "")}
+                    onChange={(e) => updateParam("IN2", e.target.value)}
+                    placeholder="Ex.: BIT_B"
+                    className="h-7 text-xs font-mono bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-semibold text-muted-foreground block mb-1">
+                    Destino (OUT):
+                  </label>
+                  <Input
+                    value={String(selectedTarget.params?.OUT ?? "")}
+                    onChange={(e) => updateParam("OUT", e.target.value)}
+                    placeholder="Ex.: RESULTADO"
+                    className="h-7 text-xs font-mono bg-background"
+                  />
+                </div>
+              </>
+            )}
+          </>
         )}
 
         {isCmp && (

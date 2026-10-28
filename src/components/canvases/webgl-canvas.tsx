@@ -41,6 +41,7 @@ import {
 import { DiagramStage, type EdgeDraftCommit, type MoveDelta } from "@/lib/diagram/render/stage";
 import { cmd } from "@/lib/diagram/commands";
 import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
+import { useEditorStore } from "@/lib/editor/store";
 import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
 import { exportDiagramSvg } from "@/lib/diagram/export-svg";
 import {
@@ -218,9 +219,6 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const openContextMenu = useDiagramStore((s) => s.openContextMenu);
   const closeContextMenu = useDiagramStore((s) => s.closeContextMenu);
 
-  // Painel Inferior de Engenharia (Diagnósticos, Queda de Tensão, BOM)
-  const [bottomOpen, setBottomOpen] = useState(true);
-  const [activeBottomTab, setActiveBottomTab] = useState<"diagnostics" | "calc" | "bom">("diagnostics");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
@@ -465,8 +463,8 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   );
 
   const handleValidate = useCallback(() => {
-    setBottomOpen(true);
-    setActiveBottomTab("diagnostics");
+    useEditorStore.getState().setConsoleTab("diagnosticos");
+    useEditorStore.getState().setConsoleOpen(true);
     const errors = diagnostics.filter((d) => d.type === "ERRO");
     const warnings = diagnostics.filter((d) => d.type === "AVISO");
     if (errors.length > 0) {
@@ -733,236 +731,6 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         </div>
 
         <ContextMenu onClose={closeContextMenu} hostRef={hostRef} />
-      </div>
-
-      {/* 3. PAINEL INFERIOR DE ENGENHARIA ELÉTRICA (DIAGNÓSTICOS, CÁLCULOS E BOM) */}
-      <div
-        className={`z-20 shrink-0 border-t border-border/80 bg-[#0c1322] flex flex-col transition-all duration-200 shadow-xl ${
-          bottomOpen ? "h-56" : "h-9"
-        }`}
-      >
-        {/* Barra de Título e Abas do Painel Inferior */}
-        <div className="h-9 shrink-0 flex items-center justify-between px-3 bg-[#0a0f1c] border-b border-border/60">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => {
-                setActiveBottomTab("diagnostics");
-                setBottomOpen(true);
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold tracking-wide transition-all ${
-                activeBottomTab === "diagnostics" && bottomOpen
-                  ? "bg-[#162136] text-[#38bdf8]"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <AlertTriangle className="h-3.5 w-3.5 text-[#f97316]" />
-              <span>DIAGNÓSTICOS E ALERTAS</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-[#1e293b] font-mono text-[#38bdf8]">
-                {diagnostics.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveBottomTab("calc");
-                setBottomOpen(true);
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold tracking-wide transition-all ${
-                activeBottomTab === "calc" && bottomOpen
-                  ? "bg-[#162136] text-[#38bdf8]"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Activity className="h-3.5 w-3.5 text-[#38bdf8]" />
-              <span>CÁLCULOS E QUEDA DE TENSÃO</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-[#1e293b] font-mono text-emerald-400">
-                NBR 5410 &lt; 4.0%
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveBottomTab("bom");
-                setBottomOpen(true);
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold tracking-wide transition-all ${
-                activeBottomTab === "bom" && bottomOpen
-                  ? "bg-[#162136] text-[#38bdf8]"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5 text-[#34d399]" />
-              <span>LISTA DE MATERIAIS (BOM)</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-[#1e293b] font-mono text-[#34d399]">
-                {bomItems.length}
-              </span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setBottomOpen((o) => !o)}
-              className="p-1 rounded hover:bg-[#162136] text-muted-foreground hover:text-foreground"
-              title={bottomOpen ? "Recolher Painel" : "Expandir Painel"}
-            >
-              {bottomOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Conteúdo Dinâmico do Painel Inferior */}
-        {bottomOpen && (
-          <div className="flex-1 min-h-0 overflow-auto p-2.5 font-mono text-xs">
-            {/* ABA 1: DIAGNÓSTICOS E ALERTAS */}
-            {activeBottomTab === "diagnostics" && (
-              <div className="space-y-1.5">
-                {diagnostics.length === 0 ? (
-                  <div className="text-muted-foreground italic p-2">Nenhum diagnóstico registrado.</div>
-                ) : (
-                  diagnostics.map((diag, idx) => (
-                    <div
-                      key={diag.id || idx}
-                      onClick={() => {
-                        if (diag.nodeId) setSelection([diag.nodeId]);
-                      }}
-                      className={`flex items-center gap-2.5 px-3 py-1.5 rounded border transition-colors cursor-pointer ${
-                        diag.type === "ERRO"
-                          ? "bg-destructive/15 border-destructive/40 text-destructive-foreground hover:bg-destructive/25"
-                          : diag.type === "AVISO"
-                            ? "bg-amber-950/25 border-amber-500/40 text-amber-200 hover:bg-amber-950/40"
-                            : "bg-emerald-950/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/35"
-                      }`}
-                    >
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                          diag.type === "ERRO"
-                            ? "bg-destructive text-white"
-                            : diag.type === "AVISO"
-                              ? "bg-amber-500 text-black"
-                              : "bg-emerald-600 text-white"
-                        }`}
-                      >
-                        {diag.type}
-                      </span>
-                      <span className="flex-1">{diag.message}</span>
-                      {diag.nodeId && (
-                        <span className="text-[10px] text-muted-foreground underline">
-                          Ver componente
-                        </span>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {/* ABA 2: CÁLCULOS E QUEDA DE TENSÃO SEGUNDO NBR 5410 */}
-            {activeBottomTab === "calc" && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-border/70 text-muted-foreground text-[11px]">
-                      <th className="py-1 px-2 font-semibold">Cabo / Trecho</th>
-                      <th className="py-1 px-2 font-semibold">Origem → Destino</th>
-                      <th className="py-1 px-2 font-semibold">In (A)</th>
-                      <th className="py-1 px-2 font-semibold">Seção (mm²)</th>
-                      <th className="py-1 px-2 font-semibold">Comprimento</th>
-                      <th className="py-1 px-2 font-semibold">ΔV (V)</th>
-                      <th className="py-1 px-2 font-semibold">ΔV (%)</th>
-                      <th className="py-1 px-2 font-semibold">Limite NBR 5410</th>
-                      <th className="py-1 px-2 font-semibold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {voltageDrops.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="py-3 text-center text-muted-foreground italic">
-                          Adicione ligações elétricas para calcular a queda de tensão.
-                        </td>
-                      </tr>
-                    ) : (
-                      voltageDrops.map((vd, i) => (
-                        <tr
-                          key={vd.edgeId || i}
-                          className="border-b border-border/30 hover:bg-[#131d2e]/40 transition-colors"
-                        >
-                          <td className="py-1.5 px-2 font-bold text-[#38bdf8]">W{i + 1}</td>
-                          <td className="py-1.5 px-2 text-foreground">
-                            {vd.sourceLabel} → {vd.targetLabel}
-                          </td>
-                          <td className="py-1.5 px-2">{vd.current_A} A</td>
-                          <td className="py-1.5 px-2">{vd.section_mm2} mm²</td>
-                          <td className="py-1.5 px-2">{vd.length_m} m</td>
-                          <td className="py-1.5 px-2">{vd.drop_V} V</td>
-                          <td
-                            className={`py-1.5 px-2 font-bold ${
-                              vd.compliant ? "text-emerald-400" : "text-destructive"
-                            }`}
-                          >
-                            {vd.drop_pct}%
-                          </td>
-                          <td className="py-1.5 px-2 text-muted-foreground">&lt; {vd.max_allowed_pct.toFixed(1)}%</td>
-                          <td className="py-1.5 px-2">
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                vd.compliant
-                                  ? "bg-emerald-950/60 text-emerald-300 border border-emerald-500/40"
-                                  : "bg-destructive/60 text-destructive-foreground border border-destructive"
-                              }`}
-                            >
-                              {vd.compliant ? "CONFORME" : "NÃO CONFORME"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* ABA 3: LISTA DE MATERIAIS (BOM) */}
-            {activeBottomTab === "bom" && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-border/70 text-muted-foreground text-[11px]">
-                      <th className="py-1 px-2 font-semibold">Item</th>
-                      <th className="py-1 px-2 font-semibold">Tag(s)</th>
-                      <th className="py-1 px-2 font-semibold">Tipo / Descrição</th>
-                      <th className="py-1 px-2 font-semibold">Fabricante</th>
-                      <th className="py-1 px-2 font-semibold">Modelo</th>
-                      <th className="py-1 px-2 font-semibold">Qtd</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bomItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-3 text-center text-muted-foreground italic">
-                          Nenhum componente inserido na folha ativa.
-                        </td>
-                      </tr>
-                    ) : (
-                      bomItems.map((item, idx) => (
-                        <tr
-                          key={idx}
-                          className="border-b border-border/30 hover:bg-[#131d2e]/40 transition-colors"
-                        >
-                          <td className="py-1.5 px-2 text-muted-foreground">{idx + 1}</td>
-                          <td className="py-1.5 px-2 font-bold text-[#38bdf8]">{item.tag}</td>
-                          <td className="py-1.5 px-2 text-foreground">{item.desc}</td>
-                          <td className="py-1.5 px-2 text-foreground/80">{item.manufacturer}</td>
-                          <td className="py-1.5 px-2 text-foreground/80">{item.model}</td>
-                          <td className="py-1.5 px-2 font-bold">{item.qty}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Modal de Configurações Técnicas do Diagrama */}

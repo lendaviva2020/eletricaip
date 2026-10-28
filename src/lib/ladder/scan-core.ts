@@ -7,6 +7,7 @@ import type {
   LadderBranch,
   LadderBranchItem,
   RungTopology,
+  LadderProfile,
 } from "./types";
 import { isOutputKind, isContactKind, isBlockKind, ensureRungTopology } from "./types";
 
@@ -26,17 +27,79 @@ export interface CounterState {
   prevIn: boolean;
 }
 
+export interface CtudState {
+  cv: number;
+  qu: boolean;
+  qd: boolean;
+  prevCU: boolean;
+  prevCD: boolean;
+}
+
 export interface ScanState {
   timers: Map<string, TimerState>;
   counters: Map<string, CounterState>;
   edges: Map<string, boolean>; // Histórico para detecção de borda (R_TRIG, F_TRIG)
+  ctud: Map<string, CtudState>;
+  bistables: Map<string, boolean>;
 }
 
 export const createScanState = (): ScanState => ({
   timers: new Map(),
   counters: new Map(),
   edges: new Map(),
+  ctud: new Map(),
+  bistables: new Map(),
 });
+
+export const INT16_MIN = -32768;
+export const INT16_MAX = 32767;
+export const DINT32_MIN = -2147483648;
+export const DINT32_MAX = 2147483647;
+
+/**
+ * Arredondamento normativo IEC 61131-3 / IEEE 754 "Round to nearest, ties to even" (Banker's Rounding).
+ * Se a parte fracionária for exatamente 0.5, arredonda para o número par mais próximo.
+ * Retorna null para entradas não finitas ou NaN (sem substituição arbitrária por zero).
+ * Sem tolerâncias fixas artificiais que distorçam valores próximos de meio inteiro.
+ */
+export function roundToNearestEven(value: number): number | null {
+  if (!Number.isFinite(value) || Number.isNaN(value)) {
+    return null;
+  }
+  if (value === 0) return 0;
+
+  const lower = Math.floor(value);
+  const fraction = value - lower;
+
+  if (fraction < 0.5) return lower;
+  if (fraction > 0.5) return lower + 1;
+
+  // Empate exato com 0.5 no valor recebido: arredonda para o par mais próximo
+  return Math.abs(lower) % 2 === 0 ? lower : lower + 1;
+}
+
+export function clampInt16(val: number): number {
+  return Math.max(INT16_MIN, Math.min(INT16_MAX, val));
+}
+
+export function clampDint32(val: number): number {
+  return Math.max(DINT32_MIN, Math.min(DINT32_MAX, val));
+}
+
+export function toReal32(val: number): number {
+  return Math.fround(val);
+}
+
+export function toLReal64(val: number): number {
+  return val;
+}
+
+export function getProfileIntLimits(profile: LadderProfile = "generic"): { min: number; max: number } {
+  if (profile === "rockwell") {
+    return { min: DINT32_MIN, max: DINT32_MAX };
+  }
+  return { min: INT16_MIN, max: INT16_MAX };
+}
 
 const truthy = (v: boolean | number | string | undefined): boolean => {
   if (typeof v === "boolean") return v;
@@ -53,12 +116,18 @@ export const readBool = (operand: string, tags: PureTags): boolean => {
 export const readNum = (val: string | number | boolean | undefined, tags: PureTags, defaultVal = 0): number => {
   if (val === undefined || val === null || val === "") return defaultVal;
   if (typeof val === "boolean") return val ? 1 : 0;
-  if (typeof val === "number") return Number.isFinite(val) ? val : defaultVal;
+  if (typeof val === "number") return val; // Preserva NaN e Infinity para validação fiel pelo bloco consumidor
   const fromTag = tags[val];
   if (typeof fromTag === "number") return fromTag;
   if (typeof fromTag === "boolean") return fromTag ? 1 : 0;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (trimmed.toLowerCase() === "nan") return Number.NaN;
+    if (trimmed === "Infinity" || trimmed === "+Infinity") return Number.POSITIVE_INFINITY;
+    if (trimmed === "-Infinity") return Number.NEGATIVE_INFINITY;
+  }
   const parsed = Number(val);
-  return Number.isFinite(parsed) ? parsed : defaultVal;
+  return Number.isNaN(parsed) ? defaultVal : parsed;
 };
 
 const cellKey = (rungId: string, row: number, col: number) => `${rungId}:${row}:${col}`;
@@ -245,12 +314,90 @@ export const tickCounterDown = (
   return { done: st.done, count: st.count };
 };
 
+// IEC 61131-3 CTUD (Contador Crescente/Decrescente Up/Down):
+export const tickCTUD = (
+  ctudMap: Map<string, CtudState>,
+  key: string,
+  cu: boolean,
+  cd: boolean,
+  reset: boolean,
+  load: boolean,
+  preset: number,
+  limits: { min?: number; max?: number } = { min: INT16_MIN, max: INT16_MAX },
+): { qu: boolean; qd: boolean; cv: number } => {
+  let st = ctudMap.get(key);
+  if (!st) {
+    st = { cv: 0, qu: false, qd: false, prevCU: false, prevCD: false };
+    ctudMap.set(key, st);
+  }
+
+  const cuRising = cu && !st.prevCU;
+  const cdRising = cd && !st.prevCD;
+  const minLimit = limits.min ?? INT16_MIN;
+  const maxLimit = limits.max ?? INT16_MAX;
+
+  // Prioridade normativa IEC 61131-3: Reset (R) > Load (LD) > Contagem (CU/CD)
+  if (reset) {
+    st.cv = 0;
+  } else if (load) {
+    st.cv = preset;
+  } else {
+    if (cuRising && !cdRising) {
+      if (st.cv < maxLimit) st.cv += 1;
+    } else if (cdRising && !cuRising) {
+      if (st.cv > minLimit) st.cv -= 1;
+    }
+    // Entradas simultâneas de contagem em borda no mesmo scan mantêm CV estável
+  }
+
+  st.qu = st.cv >= preset;
+  st.qd = st.cv <= 0;
+  st.prevCU = cu;
+  st.prevCD = cd;
+
+  return { qu: st.qu, qd: st.qd, cv: st.cv };
+};
+
+// IEC 61131-3 Bistáveis SR (Set dominante) e RS (Reset dominante):
+export const tickBistable = (
+  bistables: Map<string, boolean>,
+  key: string,
+  kind: "SR" | "RS",
+  setIn: boolean,
+  resetIn: boolean,
+  initialVal = false,
+): boolean => {
+  const prevQ = bistables.get(key) ?? initialVal;
+  let q = prevQ;
+  if (kind === "SR") {
+    // Set dominante: se S1 e R forem ambos TRUE, Set vence (Q1 = TRUE)
+    if (setIn) {
+      q = true;
+    } else if (resetIn) {
+      q = false;
+    }
+  } else {
+    // Reset dominante: se R1 e S forem ambos TRUE, Reset vence (Q1 = FALSE)
+    if (resetIn) {
+      q = false;
+    } else if (setIn) {
+      q = true;
+    }
+  }
+  bistables.set(key, q);
+  return q;
+};
+
 export interface DiagnosticItem {
   kind: string;
   value: number;
   preset: number;
   done: boolean;
   text?: string;
+  isErr?: boolean;
+  errCode?: string;
+  targetTag?: string;
+  targetPreserved?: boolean;
 }
 
 export interface ScanResult {
@@ -291,18 +438,34 @@ function evalInstructionNode(
   writes: PureTags,
   diagnostics: Record<string, DiagnosticItem>,
   diagKey: string,
+  profile: LadderProfile = "generic",
 ): boolean {
   const kind = inst.kind;
   const op = inst.operand || "";
   const params = inst.params ?? {};
   let outPower = false;
 
-  // Contatos, comparadores e blocos matemáticos não conduzem sem energia de entrada
+  // Contatos, comparadores, blocos matemáticos, conversões e lógica não conduzem sem energia de entrada
   if (
     !incomingPower &&
     (isContactKind(kind) ||
       kind.startsWith("CMP_") ||
-      ["ADD", "SUB", "MUL", "DIV", "MOD", "ABS", "SQRT", "MOVE"].includes(kind))
+      [
+        "ADD",
+        "SUB",
+        "MUL",
+        "DIV",
+        "MOD",
+        "ABS",
+        "SQRT",
+        "MOVE",
+        "INT_TO_REAL",
+        "REAL_TO_INT",
+        "AND",
+        "OR",
+        "XOR",
+        "NOT",
+      ].includes(kind))
   ) {
     inst.energized = false;
     return false;
@@ -402,8 +565,55 @@ function evalInstructionNode(
       done,
       text: `${count} / ${preset}`,
     };
+  } else if (kind === "CTUD") {
+    const preset = inst.preset ?? Number(params.PV ?? 10);
+    const cd = readBool(String(params.CD ?? ""), tags);
+    const reset = readBool(String(params.R ?? ""), tags);
+    const load = readBool(String(params.LD ?? ""), tags);
+    const limits = getProfileIntLimits(profile);
+    const { qu, qd, cv } = tickCTUD(state.ctud, inst.id, incomingPower, cd, reset, load, preset, limits);
+    if (op) writes[op] = qu;
+    if (params.QU) writes[String(params.QU)] = qu;
+    if (params.QD) writes[String(params.QD)] = qd;
+    if (params.CV) writes[String(params.CV)] = cv;
+    outPower = qu;
+    diagnostics[diagKey] = {
+      kind: "CTUD",
+      value: cv,
+      preset,
+      done: qu,
+      text: `CV:${cv} PV:${preset} (QU:${qu ? 1 : 0} QD:${qd ? 1 : 0})`,
+    };
   }
-  // 4. Comparadores
+  // 4. Bistáveis
+  else if (kind === "SR") {
+    const setIn = incomingPower || readBool(String(params.S1 ?? params.S ?? ""), tags);
+    const resetIn = readBool(String(params.R ?? ""), tags);
+    const q = tickBistable(state.bistables, inst.id, "SR", setIn, resetIn, readBool(op, tags));
+    if (op) writes[op] = q;
+    outPower = q;
+    diagnostics[diagKey] = {
+      kind: "SR",
+      value: q ? 1 : 0,
+      preset: 0,
+      done: q,
+      text: `Q=${q ? "TRUE" : "FALSE"} (S:${setIn ? 1 : 0} R:${resetIn ? 1 : 0})`,
+    };
+  } else if (kind === "RS") {
+    const setIn = incomingPower || readBool(String(params.S ?? ""), tags);
+    const resetIn = readBool(String(params.R1 ?? params.R ?? ""), tags);
+    const q = tickBistable(state.bistables, inst.id, "RS", setIn, resetIn, readBool(op, tags));
+    if (op) writes[op] = q;
+    outPower = q;
+    diagnostics[diagKey] = {
+      kind: "RS",
+      value: q ? 1 : 0,
+      preset: 0,
+      done: q,
+      text: `Q=${q ? "TRUE" : "FALSE"} (S:${setIn ? 1 : 0} R1:${resetIn ? 1 : 0})`,
+    };
+  }
+  // 5. Comparadores
   else if (kind.startsWith("CMP_")) {
     const in1 = readNum(params.IN1 ?? params.A ?? op, tags);
     const in2 = readNum(params.IN2 ?? params.B, tags);
@@ -423,47 +633,327 @@ function evalInstructionNode(
       text: `${in1} vs ${in2}`,
     };
   }
-  // 5. Blocos Matemáticos
+  // 6. Blocos Matemáticos
   else if (["ADD", "SUB", "MUL", "DIV", "MOD", "ABS", "SQRT"].includes(kind)) {
     const in1 = readNum(params.IN1, tags);
     const in2 = readNum(params.IN2, tags);
+    const targetOp = String(params.OUT || op || "");
+    const targetType = String(params.TYPE || "").toUpperCase();
+    const isLReal = targetType === "LREAL";
+    const limits = getProfileIntLimits(profile);
     let result = 0;
-    if (kind === "ADD") result = in1 + in2;
-    else if (kind === "SUB") result = in1 - in2;
-    else if (kind === "MUL") result = in1 * in2;
-    else if (kind === "DIV") result = in2 !== 0 ? in1 / in2 : 0;
-    else if (kind === "MOD") result = in2 !== 0 ? in1 % in2 : 0;
-    else if (kind === "ABS") result = Math.abs(in1);
-    else if (kind === "SQRT") result = in1 >= 0 ? Math.sqrt(in1) : 0;
+    let isErr = false;
+    let errCode = "";
+    let errText = "";
 
-    const targetOp = String(params.OUT || op);
-    if (targetOp) {
+    // Validação de entrada: rejeição explícita de entradas não finitas ou NaN
+    if (!Number.isFinite(in1) || Number.isNaN(in1)) {
+      isErr = true;
+      errCode = "INVALID_INPUT";
+      errText = "ERR: INVALID_INPUT (IN1)";
+    } else if (kind !== "ABS" && kind !== "SQRT" && (!Number.isFinite(in2) || Number.isNaN(in2))) {
+      isErr = true;
+      errCode = "INVALID_INPUT";
+      errText = "ERR: INVALID_INPUT (IN2)";
+    } else if (kind === "ADD") {
+      result = in1 + in2;
+    } else if (kind === "SUB") {
+      result = in1 - in2;
+    } else if (kind === "MUL") {
+      result = in1 * in2;
+    } else if (kind === "DIV") {
+      if (in2 === 0) {
+        isErr = true;
+        errCode = "DIV_BY_ZERO";
+        errText = "ERR: DIV_BY_ZERO";
+      } else {
+        result = in1 / in2;
+      }
+    } else if (kind === "MOD") {
+      if (in2 === 0) {
+        isErr = true;
+        errCode = "MOD_BY_ZERO";
+        errText = "ERR: MOD_BY_ZERO";
+      } else {
+        result = in1 % in2;
+      }
+    } else if (kind === "ABS") {
+      // ABS do menor inteiro representável em complemento de dois produz overflow no tipo correspondente
+      const isIntTarget =
+        targetType === "INT" ||
+        (!targetType && profile !== "rockwell" && Number.isInteger(in1) && in1 <= INT16_MAX && in1 >= INT16_MIN);
+      const isDintTarget =
+        targetType === "DINT" ||
+        (!targetType && profile === "rockwell" && Number.isInteger(in1));
+
+      if (isIntTarget && in1 === INT16_MIN) {
+        isErr = true;
+        errCode = "OVERFLOW";
+        errText = "ERR: OVERFLOW (ABS of INT16_MIN)";
+      } else if (isDintTarget && in1 === DINT32_MIN) {
+        isErr = true;
+        errCode = "OVERFLOW";
+        errText = "ERR: OVERFLOW (ABS of DINT32_MIN)";
+      } else {
+        result = Math.abs(in1);
+      }
+    } else if (kind === "SQRT") {
+      if (in1 < 0) {
+        isErr = true;
+        errCode = "SQRT_NEGATIVE";
+        errText = "ERR: SQRT_NEGATIVE";
+      } else {
+        result = Math.sqrt(in1);
+      }
+    }
+
+    if (!isErr) {
+      if (!Number.isFinite(result) || Number.isNaN(result)) {
+        isErr = true;
+        errCode = "OVERFLOW";
+        errText = "ERR: OVERFLOW";
+      } else if (targetType === "INT") {
+        if (result > limits.max || result < limits.min) {
+          isErr = true;
+          errCode = "INT_OVERFLOW";
+          errText = `ERR: INT_OVERFLOW (${result > limits.max ? "> " + limits.max : "< " + limits.min})`;
+        }
+      } else if (targetType === "DINT") {
+        if (result > DINT32_MAX || result < DINT32_MIN) {
+          isErr = true;
+          errCode = "INT_OVERFLOW";
+          errText = `ERR: INT_OVERFLOW (${result > DINT32_MAX ? "> " + DINT32_MAX : "< " + DINT32_MIN})`;
+        }
+      } else if (!isLReal) {
+        // Se o destino for REAL (padrão binary32): normaliza via toReal32 e valida se float 32-bit extrapolou para Infinity
+        const f32 = toReal32(result);
+        if (!Number.isFinite(f32)) {
+          isErr = true;
+          errCode = "OVERFLOW";
+          errText = "ERR: OVERFLOW (REAL binary32)";
+        } else {
+          result = f32;
+        }
+      }
+    }
+
+    // Em caso de falha matemática, NÃO sobrescrever a tag de destino (preserva valor pré-existente)
+    if (!isErr && targetOp) {
       writes[targetOp] = result;
     }
+
     diagnostics[diagKey] = {
       kind,
-      value: result,
+      value: isErr ? 0 : result,
       preset: in1,
-      done: true,
-      text: `= ${result}`,
+      done: !isErr,
+      text: isErr ? errText : `= ${result}`,
+      isErr,
+      errCode: isErr ? errCode : undefined,
+      targetTag: targetOp || undefined,
+      targetPreserved: isErr && Boolean(targetOp),
     };
-    outPower = incomingPower; // Bloco matemático repassa ENO
+    outPower = incomingPower && !isErr; // Bloco matemático repassa ENO se sem erro
   }
-  // 6. Movimentação de Registradores
+  // 7. Movimentação de Registradores
   else if (kind === "MOVE") {
-    const src = readNum(params.IN ?? op, tags);
+    const rawSrc = params.IN !== undefined ? params.IN : op;
+    const src = readNum(rawSrc, tags);
     const targetOp = String(params.OUT || "");
-    if (targetOp) {
-      writes[targetOp] = src;
+    const targetType = String(params.TYPE || "").toUpperCase();
+    let isErr = false;
+    let errCode = "";
+    let errText = "";
+    let finalVal = src;
+
+    if (!Number.isFinite(src) || Number.isNaN(src)) {
+      isErr = true;
+      errCode = "INVALID_INPUT";
+      errText = "ERR: INVALID_INPUT";
+    } else {
+      if (targetType === "REAL") {
+        finalVal = toReal32(src);
+        if (!Number.isFinite(finalVal)) {
+          isErr = true;
+          errCode = "OVERFLOW";
+          errText = "ERR: OVERFLOW (REAL binary32)";
+        }
+      } else if (targetType === "INT") {
+        const rounded = roundToNearestEven(src);
+        if (rounded === null || rounded > INT16_MAX || rounded < INT16_MIN) {
+          isErr = true;
+          errCode = "INT_OVERFLOW";
+          errText = "ERR: INT_OVERFLOW";
+        } else {
+          finalVal = rounded;
+        }
+      } else if (targetType === "DINT") {
+        const rounded = roundToNearestEven(src);
+        if (rounded === null || rounded > DINT32_MAX || rounded < DINT32_MIN) {
+          isErr = true;
+          errCode = "INT_OVERFLOW";
+          errText = "ERR: INT_OVERFLOW";
+        } else {
+          finalVal = rounded;
+        }
+      }
+    }
+
+    if (!isErr && targetOp) {
+      writes[targetOp] = finalVal;
     }
     diagnostics[diagKey] = {
       kind: "MOVE",
-      value: src,
+      value: isErr ? 0 : finalVal,
       preset: src,
-      done: true,
-      text: `-> ${src}`,
+      done: !isErr,
+      text: isErr ? errText : `-> ${finalVal}`,
+      isErr,
+      errCode: isErr ? errCode : undefined,
+      targetTag: targetOp || undefined,
+      targetPreserved: isErr && Boolean(targetOp),
     };
-    outPower = incomingPower;
+    outPower = incomingPower && !isErr;
+  }
+  // 8. Conversões Numéricas
+  else if (kind === "INT_TO_REAL") {
+    const rawIn = params.IN !== undefined ? params.IN : op;
+    const inVal = readNum(rawIn, tags);
+    const targetOp = String(params.OUT || "");
+    const targetType = String(params.TYPE || "REAL").toUpperCase();
+    let isErr = false;
+    let errCode = "";
+    let errText = "";
+
+    if (!Number.isFinite(inVal) || Number.isNaN(inVal)) {
+      isErr = true;
+      errCode = "INVALID_INPUT";
+      errText = "ERR: INVALID_INPUT";
+    }
+
+    let result = 0;
+    if (!isErr) {
+      result = targetType === "LREAL" ? toLReal64(inVal) : toReal32(inVal);
+      if (!Number.isFinite(result)) {
+        isErr = true;
+        errCode = "OVERFLOW";
+        errText = "ERR: OVERFLOW";
+      }
+    }
+
+    // Não sobrescrever tag destino em caso de erro
+    if (!isErr && targetOp) {
+      writes[targetOp] = result;
+    }
+
+    diagnostics[diagKey] = {
+      kind: "INT_TO_REAL",
+      value: isErr ? 0 : result,
+      preset: inVal,
+      done: !isErr,
+      text: isErr ? errText : `= ${result.toFixed(2)} (${targetType})`,
+      isErr,
+      errCode: isErr ? errCode : undefined,
+      targetTag: targetOp || undefined,
+      targetPreserved: isErr && Boolean(targetOp),
+    };
+    outPower = incomingPower && !isErr;
+  } else if (kind === "REAL_TO_INT") {
+    const rawIn = params.IN !== undefined ? params.IN : op;
+    const inVal = readNum(rawIn, tags);
+    const targetOp = String(params.OUT || "");
+    const limits = getProfileIntLimits(profile);
+    let isErr = false;
+    let errCode = "";
+    let errText = "";
+    let result = 0;
+
+    // Arredondamento IEC 61131-3 / IEEE 754 "round to nearest, ties to even"
+    const rounded = roundToNearestEven(inVal);
+    if (rounded === null) {
+      isErr = true;
+      if (inVal === Number.POSITIVE_INFINITY || inVal === Number.NEGATIVE_INFINITY) {
+        errCode = "REAL_TO_INT_INFINITY";
+        errText = "ERR: REAL_TO_INT_INFINITY";
+      } else {
+        errCode = "REAL_TO_INT_NAN";
+        errText = "ERR: REAL_TO_INT_NAN";
+      }
+    } else if (rounded > limits.max) {
+      // Limites verificados após o arredondamento
+      isErr = true;
+      errCode = "INT_OVERFLOW";
+      errText = `ERR: INT_OVERFLOW (> ${limits.max})`;
+    } else if (rounded < limits.min) {
+      isErr = true;
+      errCode = "INT_OVERFLOW";
+      errText = `ERR: INT_OVERFLOW (< ${limits.min})`;
+    } else {
+      result = rounded;
+    }
+
+    // Em caso de overflow ou entrada inválida, NÃO escreve na tag de destino
+    if (!isErr && targetOp) {
+      writes[targetOp] = result;
+    }
+
+    diagnostics[diagKey] = {
+      kind: "REAL_TO_INT",
+      value: isErr ? 0 : result,
+      preset: inVal,
+      done: !isErr,
+      text: isErr ? errText : `= ${result} (INT)`,
+      isErr,
+      errCode: isErr ? errCode : undefined,
+      targetTag: targetOp || undefined,
+      targetPreserved: isErr && Boolean(targetOp),
+    };
+    outPower = incomingPower && !isErr;
+  }
+  // 9. Lógica Booleana
+  else if (["AND", "OR", "XOR", "NOT"].includes(kind)) {
+    const in1Raw =
+      params.IN1 !== undefined ? params.IN1 : params.IN !== undefined ? params.IN : op;
+    const in2Raw = params.IN2;
+    const targetOp = String(params.OUT || op || "");
+
+    let resBool = false;
+    let isErr = false;
+    let errText = "";
+
+    if (kind === "NOT") {
+      if (in1Raw === undefined || in1Raw === "") {
+        isErr = true;
+        errText = "ERR: MISSING_OPERAND";
+      } else {
+        const b1 = readBool(String(in1Raw), tags);
+        resBool = !b1;
+      }
+    } else {
+      if (in1Raw === undefined || in1Raw === "" || in2Raw === undefined || in2Raw === "") {
+        isErr = true;
+        errText = "ERR: MISSING_OPERAND";
+      } else {
+        const b1 = readBool(String(in1Raw), tags);
+        const b2 = readBool(String(in2Raw), tags);
+        if (kind === "AND") resBool = b1 && b2;
+        else if (kind === "OR") resBool = b1 || b2;
+        else if (kind === "XOR") resBool = b1 !== b2;
+      }
+    }
+
+    if (targetOp && !isErr) {
+      writes[targetOp] = resBool;
+    }
+
+    diagnostics[diagKey] = {
+      kind,
+      value: resBool ? 1 : 0,
+      preset: 0,
+      done: !isErr,
+      text: isErr ? errText : `= ${resBool ? "TRUE" : "FALSE"}`,
+    };
+    outPower = incomingPower && !isErr;
   }
 
   inst.energized = outPower;
@@ -483,6 +973,7 @@ function evalBranchRecursive(
   now: number,
   writes: PureTags,
   diagnostics: Record<string, DiagnosticItem>,
+  profile: LadderProfile = "generic",
 ): boolean {
   if (!incomingPower) {
     for (const item of branch.items ?? []) {
@@ -494,10 +985,10 @@ function evalBranchRecursive(
       }
       if (anyItem.branches) {
         for (const sub of anyItem.branches) {
-          evalBranchRecursive(sub, false, tags, state, now, writes, diagnostics);
+          evalBranchRecursive(sub, false, tags, state, now, writes, diagnostics, profile);
         }
       } else if (anyItem.items) {
-        evalBranchRecursive(anyItem, false, tags, state, now, writes, diagnostics);
+        evalBranchRecursive(anyItem, false, tags, state, now, writes, diagnostics, profile);
       }
     }
     return false;
@@ -522,16 +1013,17 @@ function evalBranchRecursive(
           writes,
           diagnostics,
           `inst:${inst.id}`,
+          profile,
         );
       } else if (item.branches && item.branches.length > 0) {
         let subAny = false;
         for (const sub of item.branches) {
-          const subOn = evalBranchRecursive(sub, true, tags, state, now, writes, diagnostics);
+          const subOn = evalBranchRecursive(sub, true, tags, state, now, writes, diagnostics, profile);
           subAny = subAny || subOn;
         }
         itemPower = subAny;
       } else if (item.items && item.items.length > 0) {
-        itemPower = evalBranchRecursive(item, true, tags, state, now, writes, diagnostics);
+        itemPower = evalBranchRecursive(item, true, tags, state, now, writes, diagnostics, profile);
       }
       anyBranchPower = anyBranchPower || itemPower;
     }
@@ -552,25 +1044,26 @@ function evalBranchRecursive(
           writes,
           diagnostics,
           `inst:${inst.id}`,
+          profile,
         );
       } else if (item.branches && item.branches.length > 0) {
         if (!power) {
           for (const sub of item.branches) {
-            evalBranchRecursive(sub, false, tags, state, now, writes, diagnostics);
+            evalBranchRecursive(sub, false, tags, state, now, writes, diagnostics, profile);
           }
         } else {
           let anySubPower = false;
           for (const sub of item.branches) {
-            const subOn = evalBranchRecursive(sub, power, tags, state, now, writes, diagnostics);
+            const subOn = evalBranchRecursive(sub, power, tags, state, now, writes, diagnostics, profile);
             anySubPower = anySubPower || subOn;
           }
           power = anySubPower;
         }
       } else if (item.type === "PARALLEL" || (item.items && item.type === "PARALLEL")) {
         if (!power) {
-          evalBranchRecursive(item, false, tags, state, now, writes, diagnostics);
+          evalBranchRecursive(item, false, tags, state, now, writes, diagnostics, profile);
         } else {
-          power = evalBranchRecursive(item, power, tags, state, now, writes, diagnostics);
+          power = evalBranchRecursive(item, power, tags, state, now, writes, diagnostics, profile);
         }
       }
     }
@@ -589,25 +1082,60 @@ function evalRungOutputs(
   now: number,
   writes: PureTags,
   diagnostics: Record<string, DiagnosticItem>,
+  profile: LadderProfile = "generic",
+  oteTracker?: Map<string, number>,
 ) {
   for (const out of outputs) {
     out.energized = power;
     const kind = out.kind;
     const op = out.operand;
-    if (!op) continue;
+    if (!op && !out.params?.OUT) continue;
 
     if (kind === "OTE") {
-      writes[op] = power;
+      if (op) {
+        writes[op] = power;
+        if (oteTracker) {
+          const prevCount = oteTracker.get(op) ?? 0;
+          oteTracker.set(op, prevCount + 1);
+          if (prevCount > 0) {
+            diagnostics[`out:${out.id}`] = {
+              kind: "OTE",
+              value: power ? 1 : 0,
+              preset: 0,
+              done: power,
+              text: `OTE ${op} [WARN: DOUBLE_COIL]`,
+            };
+          }
+        }
+      }
     } else if (kind === "OTL" && power) {
-      writes[op] = true;
+      if (op) writes[op] = true;
     } else if (kind === "OTU" && power) {
-      writes[op] = false;
+      if (op) writes[op] = false;
     } else if (kind === "NEG_COIL") {
-      writes[op] = !power;
-    } else if (kind === "SR") {
-      if (power) writes[op] = true;
-    } else if (kind === "TON" || kind === "TOF" || kind === "TP" || kind === "CTU" || kind === "CTD") {
-      evalInstructionNode(out, power, tags, state, now, writes, diagnostics, `out:${out.id}`);
+      if (op) writes[op] = !power;
+    } else if (
+      [
+        "TON",
+        "TOF",
+        "TP",
+        "TONR",
+        "CTU",
+        "CTD",
+        "CTUD",
+        "SR",
+        "RS",
+        "INT_TO_REAL",
+        "REAL_TO_INT",
+        "AND",
+        "OR",
+        "XOR",
+        "NOT",
+      ].includes(kind) ||
+      kind.startsWith("CMP_") ||
+      ["ADD", "SUB", "MUL", "DIV", "MOD", "ABS", "SQRT", "MOVE"].includes(kind)
+    ) {
+      evalInstructionNode(out, power, tags, state, now, writes, diagnostics, `out:${out.id}`, profile);
     }
   }
 }
@@ -639,57 +1167,86 @@ export function scanRungsPure(
   tags: PureTags,
   state: ScanState,
   now: number,
+  forcedTags?: ReadonlySet<string>,
+  profile: LadderProfile = "generic",
 ): { results: ScanResult[]; tags: PureTags } {
   const results: ScanResult[] = [];
-  const writes: PureTags = {};
+  let workingTags: PureTags = { ...tags };
+  const oteWritesInScan = new Map<string, number>();
 
   for (let idx = 0; idx < rungs.length; idx++) {
     const rung = rungs[idx];
     const diagnostics: Record<string, DiagnosticItem> = {};
     const topology = ensureRungTopology(rung);
+    const rungWrites: PureTags = {};
 
-    // 1. Avaliação Estrutural da Topologia Real
+    // 1. Avaliação Estrutural da Topologia Real com workingTags atualizadas
     const poweredOut = evalBranchRecursive(
       topology.rootBranch,
       true, // Trilho esquerdo sempre fornece energia
-      tags,
+      workingTags,
       state,
       now,
-      writes,
+      rungWrites,
       diagnostics,
+      profile,
     );
 
     // 2. Avaliação de Todas as Saídas em Paralelo
-    evalRungOutputs(topology.outputs, poweredOut, tags, state, now, writes, diagnostics);
-    rung.poweredOut = poweredOut;
+    evalRungOutputs(
+      topology.outputs,
+      poweredOut,
+      workingTags,
+      state,
+      now,
+      rungWrites,
+      diagnostics,
+      profile,
+      oteWritesInScan,
+    );
+    const finalPoweredOut =
+      topology.outputs.length > 0
+        ? topology.outputs.some((o) => o.energized)
+        : poweredOut;
+    rung.poweredOut = finalPoweredOut;
 
-    // 3. Projeção na Matriz perCell para Retrocompatibilidade Visual
+    // 3. Propagação determinística entre redes no mesmo scan (IEC 61131-3)
+    // A última escrita no scan vence, e a rede imediatamente seguinte já vê o valor atualizado
+    for (const [k, v] of Object.entries(rungWrites)) {
+      if (forcedTags && forcedTags.has(k)) {
+        // Tag forçada tem prioridade estrita sobre a lógica
+        continue;
+      }
+      workingTags[k] = v;
+    }
+
+    // 4. Projeção na Matriz perCell para Retrocompatibilidade Visual
     const perCell: boolean[][] = [];
     for (let ri = 0; ri < rung.cells.length; ri++) {
       const row = rung.cells[ri];
-      const rowOn = evalLegacyRow(row, tags) || poweredOut;
+      const rowOn = evalLegacyRow(row, workingTags) || finalPoweredOut;
       perCell.push(
         row.map((c, i) =>
           i === row.length - 1
-            ? poweredOut
+            ? finalPoweredOut
             : c.kind === "EMPTY"
               ? rowOn
               : c.kind === "XIC"
-                ? readBool(c.operand, tags)
+                ? readBool(c.operand, workingTags)
                 : c.kind === "XIO"
-                  ? !readBool(c.operand, tags)
-                  : poweredOut,
+                  ? !readBool(c.operand, workingTags)
+                  : finalPoweredOut,
         ),
       );
     }
 
     results.push({
       rungId: rung.id,
-      poweredOut,
+      poweredOut: finalPoweredOut,
       perCell,
       diagnostics,
     });
   }
 
-  return { results, tags: { ...tags, ...writes } };
+  return { results, tags: workingTags };
 }

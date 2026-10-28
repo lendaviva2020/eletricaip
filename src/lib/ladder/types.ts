@@ -4,6 +4,8 @@
 //    sub-branches, function blocks (TON, TOF, TP, CTU, CMP, ADD, SUB), and parallel coils.
 // 2. Matrix model (cells: rows × cols) preserved for 100% backward compatibility.
 
+export type LadderProfile = "generic" | "rockwell" | "siemens";
+
 export type LadderCellKind =
   | "EMPTY"
   | "XIC" // contato NA (Normally Open)
@@ -14,7 +16,8 @@ export type LadderCellKind =
   | "OTL" // set latch (retentiva)
   | "OTU" // reset unlatch (retentiva)
   | "NEG_COIL" // bobina negada
-  | "SR" // bistável Set-Reset
+  | "SR" // bistável Set-Reset (Set dominante)
+  | "RS" // bistável Reset-Set (Reset dominante)
   | "TON" // timer on-delay
   | "TOF" // timer off-delay
   | "TP" // timer pulse
@@ -37,6 +40,11 @@ export type LadderCellKind =
   | "MOD" // resto da divisão
   | "ABS" // valor absoluto
   | "SQRT" // raiz quadrada
+  // Lógica Booleana
+  | "AND" // E lógico
+  | "OR" // OU lógico
+  | "XOR" // OU exclusivo
+  | "NOT" // Inversor
   // Movimentação & Dados
   | "MOVE" // mover registrador
   | "INT_TO_REAL" // conversão INT -> REAL
@@ -210,6 +218,7 @@ export const OUTPUT_KINDS: LadderCellKind[] = [
   "OTU",
   "NEG_COIL",
   "SR",
+  "RS",
   "TON",
   "TOF",
   "TP",
@@ -238,6 +247,10 @@ export const BLOCK_KINDS: LadderCellKind[] = [
   "MOVE",
   "INT_TO_REAL",
   "REAL_TO_INT",
+  "AND",
+  "OR",
+  "XOR",
+  "NOT",
 ];
 
 export const isOutputKind = (k: LadderCellKind) => OUTPUT_KINDS.includes(k);

@@ -1,7 +1,7 @@
 // Editor shell do scan-cycle: lê tags do useEditorStore, delega ao núcleo puro
 // (scan-core.ts) e escreve os resultados de volta via writeTagValue.
 // A API pública (scanRungs, ScanResult, resetRuntimeState, scanRungsPure) é preservada.
-import type { LadderRung } from "./types";
+import type { LadderRung, LadderProfile } from "./types";
 import { useEditorStore, type EditorTag } from "@/lib/editor/store";
 import {
   scanRungsPure,
@@ -14,6 +14,7 @@ import {
   type ScanResult,
   type TimerState,
   type CounterState,
+  type CtudState,
 } from "./scan-core";
 
 export {
@@ -23,7 +24,7 @@ export {
   LADDER_SCAN_BUDGET_MS,
   LADDER_MAX_RUNGS,
 };
-export type { PureTags, ScanState, ScanResult, TimerState, CounterState };
+export type { PureTags, ScanState, ScanResult, TimerState, CounterState, CtudState };
 
 // Estado persistente do editor (compartilhado entre scans).
 const editorState: ScanState = createScanState();
@@ -33,6 +34,8 @@ export const resetRuntimeState = () => {
   editorState.timers.clear();
   editorState.counters.clear();
   editorState.edges.clear();
+  editorState.ctud?.clear();
+  editorState.bistables?.clear();
 };
 
 export const getLastScanDuration = () => lastScanDurationMs;
@@ -66,7 +69,7 @@ const writeTagValue = (operand: string, value: boolean | number | string) => {
 
 export const scanRungs = (
   rungs: LadderRung[],
-  opts: { budgetMs?: number; maxRungs?: number } = {},
+  opts: { budgetMs?: number; maxRungs?: number; profile?: LadderProfile } = {},
 ): ScanResult[] => {
   const budgetMs = opts.budgetMs ?? LADDER_SCAN_BUDGET_MS;
   const maxRungs = opts.maxRungs ?? LADDER_MAX_RUNGS;
@@ -76,25 +79,34 @@ export const scanRungs = (
 
   const nowFn = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
   const start = nowFn();
-  const before = toPureTags(useEditorStore.getState().editorTags);
+  const storeState = useEditorStore.getState();
+  const profile = opts.profile ?? storeState.ladderProfile ?? "generic";
+  const before = toPureTags(storeState.editorTags);
+  const forcedSet = new Set(
+    Object.values(storeState.editorTags)
+      .filter((t) => t.forced)
+      .map((t) => t.name),
+  );
 
-  // Executa em blocos de 32 rungs para preservar a checagem de orçamento.
+  // Executa em blocos de 32 rungs preservando a propagação sequencial entre redes e blocos
   const results: ScanResult[] = [];
-  let after: PureTags = before;
+  let currentTags: PureTags = before;
   for (let i = 0; i < rungs.length; i += 32) {
     const elapsed = nowFn() - start;
     if (elapsed > budgetMs) {
       throw new LadderScanTimeoutError(i, rungs.length, elapsed);
     }
     const chunk = rungs.slice(i, i + 32);
-    const out = scanRungsPure(chunk, before, editorState, start);
+    const out = scanRungsPure(chunk, currentTags, editorState, start, forcedSet, profile);
     results.push(...out.results);
-    after = { ...after, ...out.tags };
+    currentTags = out.tags;
   }
 
-  // Escreve as saídas de volta no store (preservando booleanos e numéricos)
-  for (const [name, value] of Object.entries(after)) {
-    if (before[name] !== value) writeTagValue(name, value);
+  // Escreve as saídas de volta no store (preservando booleanos e numéricos e respeitando forçadas)
+  for (const [name, value] of Object.entries(currentTags)) {
+    if (before[name] !== value && !forcedSet.has(name)) {
+      writeTagValue(name, value);
+    }
   }
 
   lastScanDurationMs = Math.max(1, Math.round(nowFn() - start));

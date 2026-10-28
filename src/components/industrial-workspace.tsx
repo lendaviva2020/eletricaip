@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { ClientOnly, useRouter } from "@tanstack/react-router";
 import { ModeTabs } from "@/components/mode-tabs";
-import { BottomPanel } from "@/components/bottom-panel";
+import { UnifiedBottomDock } from "@/components/editor/unified-bottom-dock";
 import { RightPanel } from "@/components/right-panel";
 import {
   Loader2,
@@ -200,7 +200,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           </ErrorBoundary>
         </div>
         <ErrorBoundary fallback={null}>
-          <BottomPanel />
+          <UnifiedBottomDock />
         </ErrorBoundary>
       </div>
 
