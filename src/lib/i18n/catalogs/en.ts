@@ -93,6 +93,8 @@ export const en: TranslationCatalog = {
     modes: {
       unifilar: "Single-Line",
       unifilarHint: "IEC 60617",
+      multifilar: "Multi-Line",
+      multifilarHint: "IEC 60617",
       ladder: "Ladder",
       ladderHint: "IEC 61131-3",
       fbd: "FBD",

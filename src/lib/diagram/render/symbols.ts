@@ -8,7 +8,7 @@ export const SYMBOL_SIZE = 56; // grid lógico
 
 type Draw = (g: Graphics) => void;
 
-const stroke = (g: Graphics) => g.stroke({ width: 1.5, color: 0xe5e7eb });
+const stroke = (g: Graphics) => g.stroke({ width: 1.5, color: 0x1e293b });
 
 const breaker: Draw = (g) => {
   // Disjuntor IEC 60617 vertical/bidirecional com terminais de contato
@@ -227,7 +227,7 @@ const softstarter: Draw = (g) => {
 const busbar: Draw = (g) => {
   // Barramento de distribuição trifásico principal (como linha horizontal grossa na imagem)
   g.moveTo(-60, 0).lineTo(60, 0);
-  g.stroke({ width: 5.5, color: 0xffffff });
+  g.stroke({ width: 5.5, color: 0x1e293b });
 };
 
 const ccm: Draw = (g) => {

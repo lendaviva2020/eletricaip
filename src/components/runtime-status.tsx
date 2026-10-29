@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useProjectStore } from "@/lib/project-store";
+import { useEditorStore } from "@/lib/editor/store";
 import {
   connectSupabase,
   disconnect,
@@ -25,6 +26,8 @@ import { cn } from "@/lib/utils";
 
 export function RuntimeStatus() {
   const runtime = useProjectStore((s) => s.runtime);
+  const simulationStatus = useEditorStore((s) => s.simulationStatus);
+  const setSimulationStatus = useEditorStore((s) => s.setSimulationStatus);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState("");
@@ -56,19 +59,32 @@ export function RuntimeStatus() {
   };
 
   const handleDisconnect = async () => {
+    setSimulationStatus("stopped");
     await disconnect();
   };
 
-  const dot = runtime.connected
+  const handleStartSim = () => {
+    setSimulationStatus("running");
+    startLocalSimulation();
+  };
+
+  const isSimActive = runtime.connected || simulationStatus === "running";
+  const isSimPaused = !isSimActive && simulationStatus === "paused";
+
+  const dot = isSimActive
     ? runtime.source === "supabase"
       ? "bg-success"
-      : "bg-primary"
-    : "bg-muted-foreground/40";
-  const label = runtime.connected
+      : "bg-emerald-400"
+    : isSimPaused
+      ? "bg-amber-400"
+      : "bg-muted-foreground/40";
+  const label = isSimActive
     ? runtime.source === "supabase"
       ? "Realtime · LIVE"
-      : "Sim local · LIVE"
-    : "Runtime offline";
+      : "Simulação Ativa"
+    : isSimPaused
+      ? "Simulação Pausada"
+      : "Simulação Parada";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -76,25 +92,25 @@ export function RuntimeStatus() {
         <DialogTrigger asChild>
           <button className="h-8 px-2.5 rounded-md border border-border bg-card/60 hover:bg-accent/50 flex items-center gap-2 text-[11px] font-mono">
             <span
-              className={cn("h-1.5 w-1.5 rounded-full", dot, runtime.connected && "energized")}
+              className={cn("h-1.5 w-1.5 rounded-full", dot, isSimActive && "energized")}
             />
-            {runtime.connected ? (
-              <Wifi className="h-3 w-3 text-success" />
+            {isSimActive ? (
+              <Wifi className="h-3 w-3 text-emerald-400" />
             ) : (
               <WifiOff className="h-3 w-3 text-muted-foreground" />
             )}
-            <span>{label}</span>
-            {runtime.cycleMs && (
-              <span className="text-muted-foreground">· {runtime.cycleMs}ms</span>
+            <span className="hidden sm:inline">{label}</span>
+            {runtime.cycleMs && isSimActive && (
+              <span className="hidden md:inline text-muted-foreground">· {runtime.cycleMs}ms</span>
             )}
           </button>
         </DialogTrigger>
-        {!runtime.connected ? (
+        {!isSimActive ? (
           <Button
             size="sm"
             variant="ghost"
             className="h-8 px-2 gap-1.5 text-xs"
-            onClick={startLocalSimulation}
+            onClick={handleStartSim}
           >
             <BrandBolt className="h-3.5 w-3.5 text-primary" /> Sim
           </Button>

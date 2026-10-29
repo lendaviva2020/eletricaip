@@ -126,9 +126,18 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
 
   return (
     <div className="flex-1 flex min-h-0 h-full w-full relative overflow-hidden">
-      {/* Painel Esquerdo */}
+      {/* Backdrop para gavetas móveis/tablet (< 1024px) quando algum painel lateral estiver aberto */}
+      {(!leftCollapsed || !rightCollapsed) && (
+        <div
+          onClick={() => setPanelsCollapsed(true, true)}
+          className="lg:hidden absolute inset-0 z-30 bg-black/50 backdrop-blur-[1px]"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Painel Esquerdo (fixo em >= 1024px, gaveta sobreposta em < 1024px) */}
       {!leftCollapsed ? (
-        <div className="hidden md:flex relative shrink-0 z-10 h-full overflow-hidden">
+        <div className="flex max-lg:absolute max-lg:left-0 max-lg:inset-y-0 max-lg:z-40 max-lg:shadow-2xl relative shrink-0 z-10 h-full overflow-hidden">
           <LeftSidebarHost mode={mode} />
           {/* Botão para recolher o painel esquerdo */}
           <button
@@ -141,11 +150,11 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           </button>
         </div>
       ) : (
-        /* Alça elegante para expandir o painel esquerdo */
+        /* Alça elegante para expandir o painel esquerdo (visível em todas as resoluções) */
         <button
           onClick={toggleLeftPanel}
-          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 bg-panel/85 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all touch-manipulation"
-          title="Expandir painel esquerdo"
+          className="flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-6 bg-panel/90 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all touch-manipulation"
+          title="Expandir biblioteca de componentes"
           aria-label="Expandir painel esquerdo"
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -183,7 +192,8 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
                 renderização inteira da rota. */}
             <ClientOnly fallback={<CanvasFallback />}>
               <Suspense fallback={<CanvasFallback />}>
-                {mode === "unifilar" && <UnifilarCanvas projectId={projectId} />}
+                {mode === "unifilar" && <UnifilarCanvas projectId={projectId} sheet="unifilar" />}
+                {mode === "multifilar" && <UnifilarCanvas projectId={projectId} sheet="multifilar" />}
                 {mode === "ladder" && <LadderCanvas />}
                 {mode === "fbd" && <FbdCanvas />}
                 {mode === "scada" && <ScadaCanvas />}
@@ -204,9 +214,9 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         </ErrorBoundary>
       </div>
 
-      {/* Painel Direito */}
+      {/* Painel Direito (fixo em >= 1024px, gaveta sobreposta em < 1024px) */}
       {!rightCollapsed ? (
-        <div className="hidden md:flex relative shrink-0 z-10">
+        <div className="flex max-lg:absolute max-lg:right-0 max-lg:inset-y-0 max-lg:z-40 max-lg:shadow-2xl relative shrink-0 z-10 h-full">
           {/* Botão para recolher o painel direito */}
           <button
             onClick={toggleRightPanel}
@@ -219,11 +229,11 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           <RightPanel />
         </div>
       ) : (
-        /* Alça elegante para expandir o painel direito */
+        /* Alça elegante para expandir o painel direito (visível em todas as resoluções) */
         <button
           onClick={toggleRightPanel}
-          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 bg-panel/85 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all touch-manipulation"
-          title="Expandir painel direito"
+          className="flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-6 bg-panel/90 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all touch-manipulation"
+          title="Expandir painel de propriedades e IA"
           aria-label="Expandir painel direito"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -365,8 +375,8 @@ function SaveBadge({
 }) {
   if (!projectId) return null;
   return (
-    <div className="h-7 px-3 flex items-center justify-between text-[11px] text-muted-foreground border-b border-border bg-panel/40">
-      <div className="flex items-center gap-1.5 text-[10px]">
+    <div className="h-7 px-3 flex items-center justify-between gap-2 text-[11px] text-muted-foreground border-b border-border bg-panel/40 overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-1.5 text-[10px] shrink-0">
         {loading ? (
           <>
             <Loader2 className="h-3 w-3 animate-spin" /> Carregando projeto...
@@ -388,32 +398,35 @@ function SaveBadge({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 shrink-0">
         <button
           onClick={onOpenPrompt}
-          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-all cursor-pointer shadow-xs"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-all cursor-pointer shadow-xs whitespace-nowrap"
           title="Copiar prompt padronizado para ChatGPT, Claude ou DeepSeek (0 créditos)"
         >
           <Bot className="h-3.5 w-3.5" />
-          Prompt IA Externa
+          <span className="hidden sm:inline">Prompt IA Externa</span>
+          <span className="sm:hidden">Prompt IA</span>
         </button>
 
         <button
           onClick={onOpenImporter}
-          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all cursor-pointer shadow-xs"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all cursor-pointer shadow-xs whitespace-nowrap"
           title="Importar projetos criados por IAs externas sem consumir créditos"
         >
           <Download className="h-3.5 w-3.5" />
-          Importar IA Externa
+          <span className="hidden sm:inline">Importar IA Externa</span>
+          <span className="sm:hidden">Importar</span>
         </button>
 
         <button
           onClick={onOpenDossier}
-          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all cursor-pointer shadow-xs"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all cursor-pointer shadow-xs whitespace-nowrap"
           title="Gerar Dossiê Técnico de Engenharia a partir do Canvas"
         >
           <FileText className="h-3.5 w-3.5" />
-          Gerar Dossiê Técnico
+          <span className="hidden sm:inline">Gerar Dossiê Técnico</span>
+          <span className="sm:hidden">Dossiê</span>
         </button>
       </div>
     </div>

@@ -103,6 +103,7 @@ interface Props {
   energized: boolean;
   diagnostic?: { kind: string; value: number; preset: number; done: boolean; text?: string };
   onChange: (next: LadderCell) => void;
+  onDelete?: () => void;
 }
 
 const IEC_OPERAND_RE = /^%(I|Q|M)(W|D)?(\d+)(\.(\d+))?$/i;
@@ -123,6 +124,7 @@ export function LadderCellView({
   energized,
   diagnostic,
   onChange,
+  onDelete,
 }: Props) {
   const [open, setOpen] = useState(false);
   const editorTags = useEditorStore((s) => s.editorTags);
@@ -131,7 +133,8 @@ export function LadderCellView({
 
   const isSelected =
     selectedTarget?.rungId === rungId &&
-    (selectedTarget?.elementId === cell.id || selectedTarget?.operand === cell.operand);
+    Boolean(cell.id) &&
+    selectedTarget?.elementId === cell.id;
 
   const tagNames = useMemo(
     () =>
@@ -225,6 +228,16 @@ export function LadderCellView({
     });
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleClick(e);
+    setOpen(true);
+  };
+
+  const handlePopoverOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setOpen(false);
+  };
+
   const isTimerBlock = ["TON", "TOF", "TP", "TONR"].includes(cell.kind);
   const isCmpBlock = cell.kind.startsWith("CMP_") || ["GT", "LT", "GE", "LE", "EQ", "NE"].includes(cell.kind);
   const isMathBlock = ["ADD", "SUB", "MUL", "DIV", "MOD", "ABS", "SQRT"].includes(cell.kind);
@@ -233,12 +246,14 @@ export function LadderCellView({
   if (isTimerBlock && cell.kind !== "EMPTY") {
     const elapsedText = diagnostic?.text || "00:00:00 / 10s";
     return (
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handlePopoverOpenChange}>
         <PopoverTrigger asChild>
           <div
             onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
             onDragOver={onDragOver}
             onDrop={onDrop}
+            title="Clique para selecionar · Duplo clique para editar"
             className={`flex flex-col min-w-[200px] rounded border transition-all cursor-pointer select-none bg-card/95 shadow-md ${
               isSelected
                 ? "border-primary ring-1 ring-primary shadow-glow"
@@ -291,6 +306,18 @@ export function LadderCellView({
               className="h-7 text-xs font-mono"
             />
           </div>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onDelete();
+              }}
+              className="w-full rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/20"
+            >
+              Excluir instrução
+            </button>
+          )}
         </PopoverContent>
       </Popover>
     );
@@ -308,12 +335,14 @@ export function LadderCellView({
       cell.kind === "CMP_NE" ? "<>" : "==";
 
     return (
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handlePopoverOpenChange}>
         <PopoverTrigger asChild>
           <div
             onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
             onDragOver={onDragOver}
             onDrop={onDrop}
+            title="Clique para selecionar · Duplo clique para editar"
             className={`flex flex-col min-w-[150px] rounded border transition-all cursor-pointer select-none bg-card/95 shadow-md ${
               isSelected
                 ? "border-primary ring-1 ring-primary shadow-glow"
@@ -363,6 +392,18 @@ export function LadderCellView({
               className="h-7 text-xs font-mono"
             />
           </div>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onDelete();
+              }}
+              className="w-full rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/20"
+            >
+              Excluir instrução
+            </button>
+          )}
         </PopoverContent>
       </Popover>
     );
@@ -370,12 +411,14 @@ export function LadderCellView({
 
   // RENDERIZAÇÃO PADRÃO DE CONTATO OU BOBINA INDUSTRIAL (COM TAG ACIMA DO GLIFO)
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handlePopoverOpenChange}>
       <PopoverTrigger asChild>
         <div
           onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
           onDragOver={onDragOver}
           onDrop={onDrop}
+          title="Clique para selecionar · Duplo clique para editar"
           className={`group relative flex flex-col items-center justify-center min-w-[76px] h-14 px-2 rounded border transition-all cursor-pointer select-none ${
             isSelected
               ? "border-primary bg-primary/10 ring-1 ring-primary shadow-glow"
@@ -453,6 +496,18 @@ export function LadderCellView({
                 <option key={name} value={name} />
               ))}
             </datalist>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onDelete();
+                }}
+                className="w-full mt-2 rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/20"
+              >
+                Excluir instrução
+              </button>
+            )}
           </div>
         )}
       </PopoverContent>

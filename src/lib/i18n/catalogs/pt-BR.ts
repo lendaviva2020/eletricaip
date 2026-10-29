@@ -92,6 +92,8 @@ export const ptBR = {
     modes: {
       unifilar: "Unifilar",
       unifilarHint: "IEC 60617",
+      multifilar: "Multifilar",
+      multifilarHint: "IEC 60617",
       ladder: "Ladder",
       ladderHint: "IEC 61131-3",
       fbd: "FBD",

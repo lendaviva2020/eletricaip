@@ -44,6 +44,7 @@ import { validateRungs, type LadderIssue } from "@/lib/ladder/validator";
 export function getContextualTabsForMode(mode: WorkspaceMode): ConsoleTab[] {
   switch (mode) {
     case "unifilar":
+    case "multifilar":
       return ["diagnosticos", "calculos_nbr", "bom", "Logs", "Eventos"];
     case "ladder":
       return ["diagnosticos", "variaveis", "Logs", "Alarmes", "Terminal", "OPC-UA", "Modbus"];
@@ -289,10 +290,10 @@ export function UnifiedBottomDock() {
       {/* 1. Barra de Abas Unificada e Controles */}
       <div className="h-9 shrink-0 flex items-center justify-between px-2.5 bg-[#070b14] border-b border-border/60">
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
-          <CurrentIcon className="h-3.5 w-3.5 text-[#38bdf8] mx-1 shrink-0" />
-          <span className="text-[11px] font-bold text-muted-foreground mr-1 shrink-0 uppercase tracking-wide">
-            {currentTabMeta.label}
-          </span>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-r border-border/50 mr-1 shrink-0">
+            <CurrentIcon className="h-3.5 w-3.5 text-[#38bdf8]" />
+            <span className="hidden sm:inline">DOCK</span>
+          </div>
 
           {availableTabs.map((tName) => {
             const meta = TAB_METADATA[tName] || { label: tName, icon: List };
@@ -319,7 +320,7 @@ export function UnifiedBottomDock() {
                 <span>{meta.label}</span>
 
                 {/* Badges contextuais com dados REAIS (sem números fictícios) */}
-                {tName === "diagnosticos" && activeMode === "unifilar" && (
+                {tName === "diagnosticos" && (activeMode === "unifilar" || activeMode === "multifilar") && (
                   <span
                     className={cn(
                       "ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono",
@@ -432,8 +433,8 @@ export function UnifiedBottomDock() {
       {/* 2. Conteúdo Expandido do Dock */}
       {open && (
         <div className="flex-1 min-h-0 overflow-auto bg-[#0a0f1c] p-2.5 font-mono text-xs text-foreground scrollbar-thin">
-          {/* ABA 1: DIAGNÓSTICOS UNIFILAR */}
-          {tab === "diagnosticos" && activeMode === "unifilar" && (
+          {/* ABA 1: DIAGNÓSTICOS UNIFILAR / MULTIFILAR */}
+          {tab === "diagnosticos" && (activeMode === "unifilar" || activeMode === "multifilar") && (
             <div className="space-y-1.5">
               {unifilarDiagnostics.length === 0 ? (
                 <div className="flex items-center gap-2 text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 p-3 rounded">

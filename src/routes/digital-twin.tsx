@@ -128,7 +128,9 @@ function rowsToMappings(rows: TwinHotspotRow[]): TwinMapping[] {
 
 function DigitalTwinPage() {
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 768 : true,
+  );
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [whatIfOpen, setWhatIfOpen] = useState(false);
   const [telemetryOpen, setTelemetryOpen] = useState(false);
@@ -357,8 +359,8 @@ function DigitalTwinPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
-      <header className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0 bg-card/50">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between gap-2 px-3 sm:px-4 h-12 border-b border-border shrink-0 bg-card/50 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={() => setSidebarOpen((o) => !o)}
@@ -482,9 +484,9 @@ function DigitalTwinPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex relative overflow-hidden">
         {sidebarOpen && (
-          <aside className="w-64 shrink-0 border-r border-border flex flex-col bg-card/30">
+          <aside className="w-64 shrink-0 border-r border-border flex flex-col bg-card/30 max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:bg-card max-md:shadow-2xl">
             <div className="p-3 border-b border-border space-y-2">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />

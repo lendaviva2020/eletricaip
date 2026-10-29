@@ -29,7 +29,14 @@ import {
   FileSpreadsheet,
   Activity,
   Zap,
+  Play,
+  Pause,
+  Square,
+  RotateCcw,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
+import { computeCircuitEnergization } from "@/lib/diagram/electrical-simulation";
 import {
   Dialog,
   DialogContent,
@@ -206,6 +213,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const effectiveSheet = sheet ?? activeSheet;
   const doc = useDiagramStore((s) => s.doc);
   const selectedNodeIds = useDiagramStore((s) => s.selectedNodeIds);
+  const selectedEdgeIds = useDiagramStore((s) => s.selectedEdgeIds);
   const setSelection = useDiagramStore((s) => s.setSelection);
   const dispatch = useDiagramStore((s) => s.dispatch);
   const moveSelectedTo = useDiagramStore((s) => s.moveSelectedTo);
@@ -219,12 +227,32 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const openContextMenu = useDiagramStore((s) => s.openContextMenu);
   const closeContextMenu = useDiagramStore((s) => s.closeContextMenu);
 
+  const simulationStatus = useEditorStore((s) => s.simulationStatus);
+  const setSimulationStatus = useEditorStore((s) => s.setSimulationStatus);
+  const simulationCycle = useEditorStore((s) => s.simulationCycle);
+  const deviceStates = useEditorStore((s) => s.deviceStates);
+  const toggleDeviceState = useEditorStore((s) => s.toggleDeviceState);
+  const resetSimulationState = useEditorStore((s) => s.resetSimulationState);
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
-  // Cálculos e Diagnósticos em tempo real
+  // Cálculos, Simulação e Diagnósticos em tempo real
   const diagnostics = useMemo(() => runDiagramDiagnostics(doc), [doc]);
   const voltageDrops = useMemo(() => calculateVoltageDropNbr5410(doc), [doc]);
+  const energization = useMemo(
+    () => computeCircuitEnergization(doc, simulationStatus, deviceStates),
+    [doc, simulationStatus, deviceStates],
+  );
+
+  // Loop de simulação ativa (incrementa ciclo)
+  useEffect(() => {
+    if (simulationStatus !== "running") return;
+    const timer = setInterval(() => {
+      useEditorStore.getState().incrementSimulationCycle();
+    }, 100);
+    return () => clearInterval(timer);
+  }, [simulationStatus]);
 
   const bomItems = useMemo(() => {
     const counts: Record<string, { tag: string; kind: string; desc: string; manufacturer: string; model: string; qty: number }> = {};
@@ -257,6 +285,11 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     snapFnRef.current = snapEnabled ? (v: number) => snapToGrid(v) : (v: number) => v;
   }, [snapEnabled]);
 
+  const effectiveSheetRef = useRef<SheetKind>(effectiveSheet);
+  useEffect(() => {
+    effectiveSheetRef.current = effectiveSheet;
+  }, [effectiveSheet]);
+
   // mount / unmount stage
   useEffect(() => {
     const host = hostRef.current;
@@ -267,8 +300,10 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     stage
       .init(host, {
         snap: (v) => snapFnRef.current(v),
-        onSelectNode: (id) => setSelection(id ? [id] : []),
-        onSelectMany: (ids) => setSelection(ids),
+        onSelectNode: (id) => setSelection(id ? [id] : [], []),
+        onSelectEdge: (id) => setSelection([], id ? [id] : []),
+        onSelectMany: (ids) => setSelection(ids, []),
+        onToggleDevice: (nodeId) => toggleDeviceState(nodeId),
         onMoveNodes: (deltas: MoveDelta[]) => {
           const map: Record<
             string,
@@ -280,7 +315,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         onCommitEdge: (e: EdgeDraftCommit) => {
           dispatch(
             cmd.addEdge({
-              sheet: effectiveSheet,
+              sheet: effectiveSheetRef.current,
               source: e.source,
               sourcePort: e.sourcePort,
               target: e.target,
@@ -289,10 +324,11 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             }),
           );
         },
-        onContextMenu: ({ nodeId, clientX, clientY }) => {
+        onContextMenu: ({ nodeId, edgeId, clientX, clientY }) => {
           const hostRect = host.getBoundingClientRect();
           openContextMenu({
-            nodeId,
+            nodeId: nodeId ?? null,
+            edgeId: edgeId ?? null,
             x: clientX - hostRect.left,
             y: clientY - hostRect.top,
           });
@@ -300,25 +336,60 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       })
       .then(() => {
         if (disposed) return;
-        stage.fitView();
+        const currentSheet = effectiveSheetRef.current;
+        const currentDoc = useDiagramStore.getState().doc;
         stage.sync(
-          useDiagramStore.getState().doc,
-          effectiveSheet,
+          currentDoc,
+          currentSheet,
           useDiagramStore.getState().selectedNodeIds,
+          useDiagramStore.getState().selectedEdgeIds,
+          energization,
+        );
+        stage.fitView(
+          Object.values(currentDoc.nodes).filter((n) => n.sheet === currentSheet),
         );
       });
     return () => {
       disposed = true;
       stage.destroy();
-      stageRef.current = null;
+      if (stageRef.current === stage) {
+        stageRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sincronização automática ao alternar entre Unifilar e Multifilar (inclusive pelas ModeTabs do topo)
+  useEffect(() => {
+    if (effectiveSheet === "multifilar") {
+      const currentDoc = useDiagramStore.getState().doc;
+      const hasUnifilar = Object.values(currentDoc.nodes).some((n) => n.sheet === "unifilar");
+      const hasMultifilar = Object.values(currentDoc.nodes).some((n) => n.sheet === "multifilar");
+      if (hasUnifilar && !hasMultifilar) {
+        const commands = buildMultifilarCommands(currentDoc);
+        if (commands.length > 0) {
+          dispatch({ type: "Batch", commands });
+        }
+      }
+    }
+    const latestDoc = useDiagramStore.getState().doc;
+    stageRef.current?.sync(
+      latestDoc,
+      effectiveSheet,
+      useDiagramStore.getState().selectedNodeIds,
+      useDiagramStore.getState().selectedEdgeIds,
+      energization,
+    );
+    stageRef.current?.fitView(
+      Object.values(latestDoc.nodes).filter((n) => n.sheet === effectiveSheet),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSheet]);
+
   // sync em qualquer mudança relevante
   useEffect(() => {
-    stageRef.current?.sync(doc, effectiveSheet, selectedNodeIds);
-  }, [doc, effectiveSheet, selectedNodeIds]);
+    stageRef.current?.sync(doc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization);
+  }, [doc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization]);
 
   // atalhos
   useEffect(() => {
@@ -346,7 +417,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         return;
       }
       if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedNodeIds.length === 0) return;
+        if (selectedNodeIds.length === 0 && selectedEdgeIds.length === 0) return;
         e.preventDefault();
         deleteSelected();
         return;
@@ -358,7 +429,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, deleteSelected, rotateNode, selectedNodeIds]);
+  }, [undo, redo, deleteSelected, rotateNode, selectedNodeIds, selectedEdgeIds]);
 
   // fechar context menu ao clicar fora
   useEffect(() => {
@@ -441,6 +512,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           dispatch({ type: "Batch", commands });
         }
         setActiveSheet("multifilar");
+        useEditorStore.getState().setActiveMode("multifilar");
         toast.success(
           hasMultifilar
             ? "Diagrama multifilar sincronizado com o modelo unifilar."
@@ -456,6 +528,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           }
         }
         setActiveSheet("unifilar");
+        useEditorStore.getState().setActiveMode("unifilar");
         toast.success("Visualizando Diagrama Unifilar.");
       }
     },
@@ -480,7 +553,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     toast.success(`Projeto "${doc.metadata.title || "MCC-01_REFORCO"}" salvo no documento ativo.`);
   }, [doc.metadata.title]);
 
-  const hasSelection = selectedNodeIds.length > 0;
+  const hasSelection = selectedNodeIds.length > 0 || selectedEdgeIds.length > 0;
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -527,12 +600,12 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       onDrop={handleDrop}
     >
       {/* 1. CABEÇALHO DE ENGENHARIA INDUSTRIAL E BARRA DE ABAS */}
-      <div className="z-20 shrink-0 flex items-center justify-between px-3 h-11 bg-[#0e1626] border-b border-border/80 shadow-md">
-        {/* Abas Unifilar / Multifilar como na imagem de referência */}
-        <div className="flex items-center gap-1.5 h-full">
+      <div className="z-20 shrink-0 flex items-center justify-between gap-2 px-3 h-11 bg-[#0e1626] border-b border-border/80 shadow-md overflow-x-auto scrollbar-none">
+        {/* Abas Unifilar / Multifilar */}
+        <div className="flex items-center gap-1.5 h-full shrink-0">
           <button
             onClick={() => handleSwitchTab("unifilar")}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-t text-xs font-semibold tracking-wide transition-all ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-t text-xs font-semibold tracking-wide transition-all whitespace-nowrap ${
               effectiveSheet === "unifilar"
                 ? "bg-[#162136] text-[#38bdf8] border-b-2 border-[#38bdf8] shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-[#162136]/50"
@@ -540,12 +613,11 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           >
             <Zap className="h-3.5 w-3.5 text-[#38bdf8]" />
             <span>Canvas Unifilar</span>
-            <span className="text-[10px] opacity-60 ml-0.5">✕</span>
           </button>
 
           <button
             onClick={() => handleSwitchTab("multifilar")}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-t text-xs font-semibold tracking-wide transition-all ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-t text-xs font-semibold tracking-wide transition-all whitespace-nowrap ${
               effectiveSheet === "multifilar"
                 ? "bg-[#162136] text-[#f97316] border-b-2 border-[#f97316] shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-[#162136]/50"
@@ -553,35 +625,37 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           >
             <Activity className="h-3.5 w-3.5 text-[#f97316]" />
             <span>Canvas Multifilar</span>
-            <span className="text-[10px] opacity-60 ml-0.5">✕</span>
           </button>
         </div>
 
         {/* Informações Técnicas do Projeto */}
-        <div className="hidden lg:flex items-center gap-3 text-xs font-mono">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#131d2e] border border-border/60 text-foreground">
-            <span className="text-muted-foreground font-semibold">PROJETO:</span>
-            <span className="font-bold text-[#38bdf8]">{doc.metadata.title || "MCC-01_REFORCO"}</span>
+        <div className="hidden 2xl:flex items-center gap-2.5 text-xs font-mono shrink-0">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#131d2e] border border-border/60 text-foreground max-w-[220px]">
+            <span className="text-muted-foreground font-semibold shrink-0">PROJETO:</span>
+            <span className="font-bold text-[#38bdf8] truncate">
+              {doc.metadata.title && !/^[=\-_*\s]+$/.test(doc.metadata.title)
+                ? doc.metadata.title
+                : "MCC-01_REFORCO"}
+            </span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#131d2e] border border-border/60 text-foreground">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#131d2e] border border-border/60 text-foreground">
             <span className="text-muted-foreground font-semibold">FOLHA:</span>
             <span className="font-bold">{effectiveSheet === "unifilar" ? "01/03" : "02/03"}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#131d2e] border border-border/60 text-[#38bdf8]">
-            <span>📶</span>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#131d2e] border border-border/60 text-[#38bdf8]">
             <span>380V / 60Hz</span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#064e3b]/40 border border-[#059669]/60 text-[#34d399] font-medium animate-pulse">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#064e3b]/40 border border-[#059669]/60 text-[#34d399] font-medium">
             <span className="h-2 w-2 rounded-full bg-[#10b981]" />
             <span>DOCUMENTO ATIVO</span>
           </div>
         </div>
 
         {/* Botões de Ação de Engenharia */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Button
             size="sm"
             variant="outline"
@@ -644,6 +718,113 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             )}
           </div>
 
+          {/* Controles Reais de Simulação Elétrica do Circuito */}
+          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#131d2e] border border-border/60">
+            {simulationStatus === "stopped" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSimulationStatus("running");
+                  toast.success("Simulação elétrica iniciada. Condutores energizados calculados.");
+                }}
+                className="h-7 px-2 gap-1.5 text-xs bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-500/40 text-emerald-400 font-semibold"
+                title="Iniciar Simulação Elétrica"
+                data-testid="start-simulation-btn"
+              >
+                <Play className="h-3 w-3 fill-current" />
+                <span>Simular</span>
+              </Button>
+            ) : simulationStatus === "running" ? (
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSimulationStatus("paused");
+                    toast.info("Simulação pausada.");
+                  }}
+                  className="h-7 px-2 gap-1 text-xs bg-amber-950/60 hover:bg-amber-900/60 border-amber-500/40 text-amber-300 font-semibold"
+                  title="Pausar Simulação"
+                >
+                  <Pause className="h-3 w-3 fill-current" />
+                  <span>Pausar</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSimulationStatus("stopped");
+                    toast.info("Simulação encerrada.");
+                  }}
+                  className="h-7 px-2 gap-1 text-xs bg-rose-950/60 hover:bg-rose-900/60 border-rose-500/40 text-rose-400 font-semibold"
+                  title="Parar Simulação"
+                >
+                  <Square className="h-3 w-3 fill-current" />
+                  <span>Parar</span>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSimulationStatus("running");
+                    toast.success("Simulação retomada.");
+                  }}
+                  className="h-7 px-2 gap-1 text-xs bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-500/40 text-emerald-400 font-semibold"
+                  title="Retomar Simulação"
+                >
+                  <Play className="h-3 w-3 fill-current" />
+                  <span>Retomar</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSimulationStatus("stopped");
+                    toast.info("Simulação encerrada.");
+                  }}
+                  className="h-7 px-2 gap-1 text-xs bg-rose-950/60 hover:bg-rose-900/60 border-rose-500/40 text-rose-400 font-semibold"
+                  title="Parar Simulação"
+                >
+                  <Square className="h-3 w-3 fill-current" />
+                  <span>Parar</span>
+                </Button>
+              </div>
+            )}
+
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => {
+                resetSimulationState();
+                toast.success("Dispositivos e estados de simulação redefinidos.");
+              }}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              title="Redefinir Estado (Reset de Dispositivos)"
+            >
+              <RotateCcw className="h-3 w-3" />
+            </Button>
+          </div>
+
+          {/* Indicador de Status da Simulação */}
+          {simulationStatus === "running" && (
+            <div className="hidden xl:flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/50 border border-emerald-500/40 text-[10px] font-mono font-semibold text-emerald-400 animate-pulse">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span>
+                ENERGIZADO ({energization.metrics.energizedCircuits}/{energization.metrics.totalEdges})
+              </span>
+            </div>
+          )}
+          {simulationStatus === "paused" && (
+            <div className="hidden xl:flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-950/50 border border-amber-500/40 text-[10px] font-mono font-semibold text-amber-300">
+              <span className="h-2 w-2 rounded-full bg-amber-400" />
+              <span>PAUSADA (Ciclo #{simulationCycle})</span>
+            </div>
+          )}
+
           <Button
             size="sm"
             variant="outline"
@@ -666,7 +847,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
 
           <div className="h-4 w-px bg-border/60 mx-1" />
 
-          {/* Ações de navegação rápida */}
+          {/* Ações de navegação rápida e Zoom */}
           <Button size="icon" variant="ghost" onClick={undo} className="h-8 w-8" title="Desfazer (Ctrl+Z)">
             <Undo2 className="size-3.5" />
           </Button>
@@ -682,20 +863,51 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           >
             <Magnet className="size-3.5 text-[#38bdf8]" />
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => stageRef.current?.fitView()}
-            className="h-8 w-8"
-            title="Ajustar Visualização à Tela"
-          >
-            <Maximize2 className="size-3.5" />
-          </Button>
+
+          {/* Controles de Zoom Dedicados */}
+          <div className="flex items-center gap-0.5 border-l border-border/60 pl-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => stageRef.current?.zoomIn()}
+              className="h-8 w-8"
+              title="Aproximar (+15%)"
+            >
+              <ZoomIn className="size-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => stageRef.current?.zoomOut()}
+              className="h-8 w-8"
+              title="Afastar (-15%)"
+            >
+              <ZoomOut className="size-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => stageRef.current?.resetZoom()}
+              className="h-8 w-8 text-[10px] font-mono"
+              title="Redefinir Zoom para 100%"
+            >
+              1:1
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => stageRef.current?.fitView()}
+              className="h-8 w-8"
+              title="Ajustar Visualização ao Diagrama (Fit View)"
+            >
+              <Maximize2 className="size-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* 2. ÁREA CENTRAL DO CANVAS PIXI.JS */}
-      <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-[#0b0f17]">
+      {/* 2. ÁREA CENTRAL DO CANVAS PIXI.JS (Fundo Cinza Técnico #F0F2F3) */}
+      <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-[#F0F2F3]">
         <div ref={hostRef} className="absolute inset-0" />
 
         {/* Toolbar flutuante de apoio à direita */}
@@ -703,9 +915,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           <Button
             size="icon"
             variant="ghost"
-            disabled={!hasSelection}
+            disabled={selectedNodeIds.length === 0}
             onClick={() => selectedNodeIds.forEach((id) => rotateNode(id, 90))}
-            className="h-7 w-7"
+            className="h-7 w-7 text-white"
             title="Rotacionar 90° (R)"
           >
             <RotateCw className="size-3.5" />
@@ -716,7 +928,8 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             disabled={!hasSelection}
             onClick={deleteSelected}
             className="h-7 w-7 text-destructive hover:bg-destructive/20"
-            title="Excluir seleção (Del)"
+            title="Excluir seleção (Del / Backspace)"
+            data-testid="canvas-delete-selected"
           >
             <Trash2 className="size-3.5" />
           </Button>
@@ -809,10 +1022,12 @@ function ContextMenu({
   const rotateNode = useDiagramStore((s) => s.rotateNode);
   const setSelection = useDiagramStore((s) => s.setSelection);
   const selectedIds = useDiagramStore((s) => s.selectedNodeIds);
+  const selectedEdgeIds = useDiagramStore((s) => s.selectedEdgeIds);
 
   const items = useMemo(() => {
     if (!ctx) return [];
     const onNode = ctx.nodeId != null;
+    const onEdge = ctx.edgeId != null;
     return [
       onNode && {
         label: "Rotacionar 90°",
@@ -823,20 +1038,30 @@ function ContextMenu({
         },
       },
       onNode && {
-        label: "Excluir",
+        label: "Excluir componente",
         destructive: true,
         run: () => {
           const id = ctx.nodeId!;
-          if (!selectedIds.includes(id)) setSelection([id]);
+          if (!selectedIds.includes(id)) setSelection([id], []);
           queueMicrotask(() => deleteSelected());
         },
       },
-      !onNode && {
-        label: "Limpar seleção",
-        run: () => setSelection([]),
+      onEdge && {
+        label: "Excluir conexão",
+        destructive: true,
+        run: () => {
+          const eid = ctx.edgeId!;
+          if (!selectedEdgeIds.includes(eid)) setSelection([], [eid]);
+          queueMicrotask(() => deleteSelected());
+        },
       },
+      !onNode &&
+        !onEdge && {
+          label: "Limpar seleção",
+          run: () => setSelection([], []),
+        },
     ].filter(Boolean) as Array<{ label: string; run: () => void; destructive?: boolean }>;
-  }, [ctx, selectedIds, deleteSelected, rotateNode, setSelection]);
+  }, [ctx, selectedIds, selectedEdgeIds, deleteSelected, rotateNode, setSelection]);
 
   if (!ctx) return null;
   void hostRef;

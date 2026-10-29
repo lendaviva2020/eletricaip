@@ -74,8 +74,14 @@ interface EditorState {
   // === UI Layout State ===
   leftCollapsed: boolean;
   rightCollapsed: boolean;
+  appSidebarCollapsed: boolean;
   consoleTab: ConsoleTab;
   consoleOpen: boolean;
+
+  // === Simulação de Circuito Unificado ===
+  simulationStatus: "stopped" | "running" | "paused";
+  simulationCycle: number;
+  deviceStates: Record<string, boolean>; // nodeId -> closed boolean (default true)
 
   // === Drag validation (elimina prop drilling) ===
   dragValidation: string;
@@ -109,8 +115,17 @@ interface EditorState {
   toggleLeftPanel: () => void;
   setPanelsCollapsed: (left: boolean, right: boolean) => void;
   toggleRightPanel: () => void;
+  toggleAppSidebar: () => void;
+  setAppSidebarCollapsed: (collapsed: boolean) => void;
   setConsoleTab: (tab: ConsoleTab) => void;
   setConsoleOpen: (open: boolean) => void;
+
+  // === Simulação Actions ===
+  setSimulationStatus: (status: "stopped" | "running" | "paused") => void;
+  incrementSimulationCycle: () => void;
+  toggleDeviceState: (nodeId: string) => void;
+  setDeviceState: (nodeId: string, closed: boolean) => void;
+  resetSimulationState: () => void;
 
   // === Drag validation actions ===
   setDragValidation: (msg: string) => void;
@@ -132,8 +147,12 @@ export const useEditorStore = create<EditorState>()(
     dirty: false,
     leftCollapsed: false,
     rightCollapsed: false,
+    appSidebarCollapsed: false,
     consoleTab: "Logs",
     consoleOpen: true,
+    simulationStatus: "stopped",
+    simulationCycle: 0,
+    deviceStates: {},
     dragValidation: "Arraste componentes IEC 60617 para o canvas.",
     validateComponent: null,
 
@@ -206,6 +225,8 @@ export const useEditorStore = create<EditorState>()(
 
     toggleLeftPanel: () => set((s) => ({ leftCollapsed: !s.leftCollapsed })),
     toggleRightPanel: () => set((s) => ({ rightCollapsed: !s.rightCollapsed })),
+    toggleAppSidebar: () => set((s) => ({ appSidebarCollapsed: !s.appSidebarCollapsed })),
+    setAppSidebarCollapsed: (collapsed) => set({ appSidebarCollapsed: collapsed }),
     setPanelsCollapsed: (left, right) =>
       set((s) =>
         s.leftCollapsed === left && s.rightCollapsed === right
@@ -214,6 +235,33 @@ export const useEditorStore = create<EditorState>()(
       ),
     setConsoleTab: (tab) => set({ consoleTab: tab }),
     setConsoleOpen: (open) => set({ consoleOpen: open }),
+
+    setSimulationStatus: (status) =>
+      set((s) => ({
+        simulationStatus: status,
+        simulationCycle: status === "stopped" ? 0 : s.simulationCycle,
+      })),
+    incrementSimulationCycle: () => set((s) => ({ simulationCycle: s.simulationCycle + 1 })),
+    toggleDeviceState: (nodeId) =>
+      set((s) => ({
+        deviceStates: {
+          ...s.deviceStates,
+          [nodeId]: !(s.deviceStates[nodeId] ?? true),
+        },
+      })),
+    setDeviceState: (nodeId, closed) =>
+      set((s) => ({
+        deviceStates: {
+          ...s.deviceStates,
+          [nodeId]: closed,
+        },
+      })),
+    resetSimulationState: () =>
+      set({
+        simulationStatus: "stopped",
+        simulationCycle: 0,
+        deviceStates: {},
+      }),
 
     setDragValidation: (msg) => set({ dragValidation: msg }),
     setValidateComponent: (fn) => set({ validateComponent: fn }),

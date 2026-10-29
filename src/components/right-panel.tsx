@@ -15,15 +15,15 @@ const TABS = [
   { id: "maint", key: "rightPanel.maint" as const, icon: Wrench },
 ] as const;
 
-const STRUCTURED_MODES = new Set(["unifilar", "ladder", "fbd"]);
+const STRUCTURED_MODES = new Set(["unifilar", "multifilar", "ladder", "fbd"]);
 
 export function RightPanel() {
   const { t } = useI18n();
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("ai");
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("props");
 
   return (
-    <aside className="flex w-[340px] shrink-0 flex-col border-l border-border bg-panel">
-      <div className="h-9 flex items-center px-2 border-b border-border">
+    <aside className="flex w-[300px] sm:w-[340px] max-w-[88vw] h-full shrink-0 flex-col border-l border-border bg-panel">
+      <div className="h-9 flex items-center px-2 border-b border-border overflow-x-auto scrollbar-none gap-0.5">
         {TABS.map((tabItem) => {
           const Icon = tabItem.icon;
           return (

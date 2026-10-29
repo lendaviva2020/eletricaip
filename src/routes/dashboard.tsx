@@ -229,7 +229,7 @@ function Dashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 min-w-[300px]">
+            <div className="grid grid-cols-2 gap-3 w-full sm:min-w-[280px]">
               <Kpi
                 icon={FolderKanban}
                 label="Projetos ativos"

@@ -12,6 +12,7 @@ export const GRID_SIZE = 25;
 
 export interface ContextMenuState {
   nodeId: string | null;
+  edgeId?: string | null;
   /** Coordenadas em CSS pixels relativas ao host do canvas. */
   x: number;
   y: number;

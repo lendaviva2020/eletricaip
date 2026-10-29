@@ -79,13 +79,13 @@ const REGISTRY: Partial<Record<NodeKind, ReadonlyArray<PortDef>>> = {
   // referências de terra/neutro: porta única no topo
   ground: referenceTop,
   neutral: referenceTop,
-  // instrumentação e segurança: porta central única
-  terminal: singleCenter,
-  pt100: singleCenter,
-  pressure: singleCenter,
-  flow: singleCenter,
-  level: singleCenter,
-  encoder: singleCenter,
+  // instrumentação e bornes: duas portas verticais para liberar o centro do símbolo para seleção/arraste
+  terminal: twoTerminalV,
+  pt100: twoTerminalV,
+  pressure: twoTerminalV,
+  flow: twoTerminalV,
+  level: twoTerminalV,
+  encoder: twoTerminalV,
   estop: twoTerminalH,
   lightcurtain: twoTerminalH,
 };

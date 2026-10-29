@@ -14,6 +14,7 @@ interface Props {
 export function LeftSidebarHost({ mode }: Props) {
   switch (mode) {
     case "unifilar":
+    case "multifilar":
       return <EditorUnifilarSidebar />;
     case "ladder":
       return <EditorLadderSidebar />;

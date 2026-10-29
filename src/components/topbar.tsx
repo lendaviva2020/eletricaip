@@ -46,8 +46,8 @@ export function Topbar() {
   return (
     <header className="h-14 shrink-0 flex items-center gap-2 px-3 sm:px-4 border-b border-border glass-strong">
       <MobileMenu />
-      <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-        <GitBranch className="h-3.5 w-3.5" />
+      <div className="hidden lg:flex items-center gap-2 text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+        <GitBranch className="h-3.5 w-3.5 shrink-0" />
         <span className="font-mono">main</span>
         <span className="text-border">/</span>
         <span className="text-foreground font-medium">Planta - Linha 03</span>

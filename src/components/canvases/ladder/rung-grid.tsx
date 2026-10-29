@@ -34,7 +34,9 @@ import { toast } from "sonner";
 import {
   Plus,
   Play,
+  Pause,
   Square,
+  RotateCcw,
   StepForward,
   Code2,
   Rows3,
@@ -73,20 +75,20 @@ function createReferenceIndustrialProject(): LadderRung[] {
     cols: 6,
     cells: [
       [
-        { id: "c-0-0", kind: "XIC", operand: "B_PARTIDA" },
-        { id: "c-0-1", kind: "XIC", operand: "B_STATUS_RUN" },
-        { id: "c-0-2", kind: "XIO", operand: "E_PARADA_EMERG" },
-        { id: "c-0-3", kind: "XIO", operand: "FALHA_SOBRECARGA" },
+        { id: "inst-b-partida", kind: "XIC", operand: "B_PARTIDA" },
+        { id: "inst-b-selo", kind: "XIC", operand: "B_STATUS_RUN" },
+        { id: "inst-e-stop", kind: "XIO", operand: "E_PARADA_EMERG" },
+        { id: "inst-falha", kind: "XIO", operand: "FALHA_SOBRECARGA" },
         emptyCell(),
-        { id: "c-0-5", kind: "OTE", operand: "BOMBA_MAIN" },
+        { id: "out-bomba-main", kind: "OTE", operand: "BOMBA_MAIN" },
       ],
       [
-        { id: "c-1-0", kind: "XIC", operand: "B_STATUS_RUN" },
+        { id: "inst-b-selo", kind: "XIC", operand: "B_STATUS_RUN" },
         emptyCell(),
         emptyCell(),
         emptyCell(),
         emptyCell(),
-        { id: "c-1-5", kind: "OTE", operand: "SINALIZ_RUN" },
+        { id: "out-sinaliz-run", kind: "OTE", operand: "SINALIZ_RUN" },
       ],
     ],
     topology: {
@@ -149,12 +151,12 @@ function createReferenceIndustrialProject(): LadderRung[] {
     cols: 6,
     cells: [
       [
-        { id: "c2-0", kind: "XIC", operand: "BOMBA_MAIN" },
-        { id: "c2-1", kind: "TON", operand: "TON_01", preset: 10000, params: { PT: 10000 } },
+        { id: "inst-r2-bomba", kind: "XIC", operand: "BOMBA_MAIN" },
+        { id: "inst-r2-ton", kind: "TON", operand: "TON_01", preset: 10000, params: { PT: 10000 } },
         emptyCell(),
         emptyCell(),
         emptyCell(),
-        { id: "c2-out", kind: "OTE", operand: "BOMBA_RESERVA_HAB" },
+        { id: "out-r2-bomba-reserva", kind: "OTE", operand: "BOMBA_RESERVA_HAB" },
       ],
     ],
     topology: {
@@ -195,7 +197,7 @@ function createReferenceIndustrialProject(): LadderRung[] {
     cells: [
       [
         {
-          id: "c3-0",
+          id: "inst-r3-cmp",
           kind: "CMP_GE",
           operand: "COMP_01",
           params: { IN1: "NIVEL_AGUA", IN2: "NIVEL_CRITICO" },
@@ -204,7 +206,7 @@ function createReferenceIndustrialProject(): LadderRung[] {
         emptyCell(),
         emptyCell(),
         emptyCell(),
-        { id: "c3-out", kind: "OTE", operand: "ALM_NIVEL_ALTO" },
+        { id: "out-r3-alm", kind: "OTE", operand: "ALM_NIVEL_ALTO" },
       ],
     ],
     topology: {
@@ -247,10 +249,11 @@ export function RungGrid() {
   const setProfile = useEditorStore((s) => s.setLadderProfile);
   const setSelectedTarget = useEditorStore((s) => s.setSelectedLadderTarget);
   const selectedTarget = useEditorStore((s) => s.selectedLadderTarget);
+  const simulationStatus = useEditorStore((s) => s.simulationStatus);
+  const setSimulationStatus = useEditorStore((s) => s.setSimulationStatus);
 
-  const [running, setRunning] = useState(true);
+  const running = simulationStatus === "running";
   const [zoom, setZoom] = useState(100);
-  const [activeBottomTab, setActiveBottomTab] = useState<"diagnostics" | "simulator">("diagnostics");
   const [tScan, setTScan] = useState(12);
   const [showST, setShowST] = useState(false);
   const [compileFormat, setCompileFormat] = useState<"ST" | "IL">("ST");
@@ -258,9 +261,11 @@ export function RungGrid() {
   // Ponto e cursor de inserção previsível
   const [insertionPoint, setInsertionPoint] = useState<{ rungId: string; index: number } | null>(null);
 
-  // Pilha de histórico para Undo / Redo
+  // Pilha de histórico para Undo / Redo (com refs para evitar mutação in-place e dupla invocação do StrictMode)
   const [undoStack, setUndoStack] = useState<LadderRung[][]>([]);
   const [redoStack, setRedoStack] = useState<LadderRung[][]>([]);
+  const undoStackRef = useRef<LadderRung[][]>([]);
+  const redoStackRef = useRef<LadderRung[][]>([]);
 
   // Área de transferência local (Copy / Paste)
   const [clipboard, setClipboard] = useState<{
@@ -277,44 +282,51 @@ export function RungGrid() {
   const intervalRef = useRef<number | null>(null);
   const scanCountRef = useRef(0);
 
-  // Aplica mutação com registro atômico no histórico de Undo
+  // Aplica mutação com registro atômico no histórico de Undo (com cópia profunda imutável)
   const applyRungsWithHistory = useCallback(
     (updater: (prev: LadderRung[]) => LadderRung[]) => {
-      setRungs((current) => {
-        const next = updater(current);
-        if (next !== current) {
-          setUndoStack((past) => [...past.slice(-30), current]);
-          setRedoStack([]);
-        }
-        return next;
-      });
+      const current = useEditorStore.getState().rungs;
+      const snapshot: LadderRung[] = JSON.parse(JSON.stringify(current));
+      const workingCopy: LadderRung[] = JSON.parse(JSON.stringify(current));
+      const next = updater(workingCopy);
+      undoStackRef.current = [...undoStackRef.current.slice(-30), snapshot];
+      redoStackRef.current = [];
+      setUndoStack(undoStackRef.current);
+      setRedoStack([]);
+      setRungs(next);
     },
     [setRungs],
   );
 
   // Desfazer (Undo)
   const undo = useCallback(() => {
-    setUndoStack((past) => {
-      if (past.length === 0) return past;
-      const previous = past[past.length - 1];
-      setRedoStack((fut) => [...fut, rungs]);
-      setRungs(previous);
-      toast.info("Desfazer (Undo) aplicado");
-      return past.slice(0, -1);
-    });
-  }, [rungs, setRungs]);
+    if (undoStackRef.current.length === 0) return;
+    const currentSnapshot: LadderRung[] = JSON.parse(
+      JSON.stringify(useEditorStore.getState().rungs),
+    );
+    const previous = undoStackRef.current[undoStackRef.current.length - 1];
+    undoStackRef.current = undoStackRef.current.slice(0, -1);
+    redoStackRef.current = [...redoStackRef.current, currentSnapshot];
+    setUndoStack(undoStackRef.current);
+    setRedoStack(redoStackRef.current);
+    setRungs(JSON.parse(JSON.stringify(previous)));
+    toast.info("Desfazer (Undo) aplicado");
+  }, [setRungs]);
 
   // Refazer (Redo)
   const redo = useCallback(() => {
-    setRedoStack((future) => {
-      if (future.length === 0) return future;
-      const next = future[future.length - 1];
-      setUndoStack((past) => [...past, rungs]);
-      setRungs(next);
-      toast.info("Refazer (Redo) aplicado");
-      return future.slice(0, -1);
-    });
-  }, [rungs, setRungs]);
+    if (redoStackRef.current.length === 0) return;
+    const currentSnapshot: LadderRung[] = JSON.parse(
+      JSON.stringify(useEditorStore.getState().rungs),
+    );
+    const next = redoStackRef.current[redoStackRef.current.length - 1];
+    redoStackRef.current = redoStackRef.current.slice(0, -1);
+    undoStackRef.current = [...undoStackRef.current, currentSnapshot];
+    setRedoStack(redoStackRef.current);
+    setUndoStack(undoStackRef.current);
+    setRungs(JSON.parse(JSON.stringify(next)));
+    toast.info("Refazer (Redo) aplicado");
+  }, [setRungs]);
 
   // Copiar elemento ou rede selecionada
   const copySelected = useCallback(() => {
@@ -551,12 +563,17 @@ export function RungGrid() {
           deleteElement(selectedTarget.rungId, selectedTarget.elementId);
           return;
         }
+        if (selected) {
+          e.preventDefault();
+          removeRung(selected);
+          return;
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo, copySelected, paste, selectedTarget]);
+  }, [undo, redo, copySelected, paste, selectedTarget, selected, rungs]);
 
   // Loop de Simulação Contínua do CLP (100ms)
   useEffect(() => {
@@ -570,6 +587,7 @@ export function RungGrid() {
       try {
         const results = scanRungs(rungs);
         scanCountRef.current += 1;
+        useEditorStore.getState().incrementSimulationCycle();
         setScanState(Object.fromEntries(results.map((r) => [r.rungId, r])));
         setTScan(getLastScanDuration());
 
@@ -582,7 +600,7 @@ export function RungGrid() {
       } catch (err) {
         if (err instanceof LadderScanTimeoutError) {
           console.warn("[Ladder] Ciclo abortado por estouro de orçamento:", err.message);
-          setRunning(false);
+          setSimulationStatus("paused");
         }
       }
     };
@@ -591,7 +609,7 @@ export function RungGrid() {
     return () => {
       if (intervalRef.current) window.clearInterval(intervalRef.current);
     };
-  }, [running, rungs, setRungsRuntime]);
+  }, [running, rungs, setRungsRuntime, setSimulationStatus]);
 
   // Validação Estática Contínua
   const issues = useMemo(() => {
@@ -789,9 +807,7 @@ export function RungGrid() {
         }
         topology.outputs = topology.outputs.filter((o) => o.id !== elementId);
         const cells = r.cells.map((row) =>
-          row.map((c) =>
-            c.id === elementId || c.operand === selectedTarget?.operand ? emptyCell() : c,
-          ),
+          row.map((c) => (c.id === elementId ? emptyCell() : c)),
         );
         return { ...r, cells, topology };
       }),
@@ -833,21 +849,20 @@ export function RungGrid() {
       {/* ─────────────────────────────────────────────────────────────────────────────
           1. BARRA SUPERIOR (TOPBAR PROFISSIONAL LADDER) - IDÊNTICA À IMAGEM 1
          ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="h-10 border-b border-border bg-card/60 px-3 flex items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="font-display text-xs font-bold tracking-wider text-foreground uppercase flex items-center gap-1.5">
+      <div className="h-10 border-b border-border bg-card/60 px-3 flex items-center justify-between gap-3 shrink-0 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="font-display text-xs font-bold tracking-wider text-foreground uppercase flex items-center gap-1.5 whitespace-nowrap">
             <span className="text-primary font-black text-sm">ELÉTRICAI</span> — LADDER PROFISSIONAL
           </span>
 
           {/* Abas de Projeto e Ações de Histórico */}
-          <div className="hidden md:flex items-center gap-2 ml-4 border-l border-border/60 pl-3">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-background border border-border text-[11px] font-mono text-foreground font-medium shadow-xs">
+          <div className="flex items-center gap-2 ml-2 border-l border-border/60 pl-2">
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded bg-background border border-border text-[11px] font-mono text-foreground font-medium shadow-xs">
               <span>PROJETO_BOMBAS_E_ESTACAO_TRATAMENTO.ladder</span>
-              <X className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-pointer" />
             </div>
 
-            {/* Ações de Desfazer, Refazer, Copiar e Colar */}
-            <div className="flex items-center gap-0.5 border-l border-border/40 pl-2">
+            {/* Ações de Desfazer, Refazer, Copiar, Colar e Excluir */}
+            <div className="flex items-center gap-0.5">
               <Button
                 size="sm"
                 variant="ghost"
@@ -855,6 +870,7 @@ export function RungGrid() {
                 disabled={undoStack.length === 0}
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-20"
                 title="Desfazer (Ctrl+Z)"
+                data-testid="ladder-undo-btn"
               >
                 <Undo2 className="h-3.5 w-3.5" />
               </Button>
@@ -865,6 +881,7 @@ export function RungGrid() {
                 disabled={redoStack.length === 0}
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-20"
                 title="Refazer (Ctrl+Y)"
+                data-testid="ladder-redo-btn"
               >
                 <Redo2 className="h-3.5 w-3.5" />
               </Button>
@@ -887,34 +904,109 @@ export function RungGrid() {
               >
                 <ClipboardPaste className="h-3.5 w-3.5" />
               </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={!selectedTarget?.elementId && !selected}
+                onClick={() => {
+                  if (selectedTarget?.elementId && selectedTarget.rungId) {
+                    deleteElement(selectedTarget.rungId, selectedTarget.elementId);
+                  } else if (selected) {
+                    removeRung(selected);
+                  }
+                }}
+                className="h-7 w-7 p-0 text-destructive hover:bg-destructive/20 disabled:opacity-20"
+                title="Excluir Instrução ou Rede Selecionada (Del / Backspace)"
+                data-testid="ladder-delete-btn"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Controles de Simulação ao Vivo */}
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[10px] font-mono font-semibold text-emerald-400">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{running ? "Simulação Ativa" : "Simulação Pausada"}</span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div
+            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-mono font-semibold ${
+              simulationStatus === "running"
+                ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-400"
+                : simulationStatus === "paused"
+                  ? "bg-amber-950/40 border-amber-500/30 text-amber-300"
+                  : "bg-muted/40 border-border text-muted-foreground"
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                simulationStatus === "running"
+                  ? "bg-emerald-400 animate-pulse"
+                  : simulationStatus === "paused"
+                    ? "bg-amber-400"
+                    : "bg-muted-foreground/50"
+              }`}
+            />
+            <span>
+              {simulationStatus === "running"
+                ? "Simulação Ativa"
+                : simulationStatus === "paused"
+                  ? "Simulação Pausada"
+                  : "Simulação Parada"}
+            </span>
           </div>
+
+          {!running ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSimulationStatus("running");
+              }}
+              className="h-7 px-2.5 text-xs font-semibold gap-1 bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-500/40 text-emerald-400"
+              title="Iniciar / Retomar Ciclos Ladder"
+            >
+              <Play className="h-3 w-3 fill-current" />
+              <span>RUN</span>
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSimulationStatus("paused");
+              }}
+              className="h-7 px-2.5 text-xs font-semibold gap-1 bg-amber-950/60 hover:bg-amber-900/60 border-amber-500/40 text-amber-300"
+              title="Pausar Ciclos Ladder"
+            >
+              <Pause className="h-3 w-3 fill-current" />
+              <span>PAUSA</span>
+            </Button>
+          )}
 
           <Button
             size="sm"
-            variant={running ? "default" : "outline"}
+            variant="ghost"
             onClick={() => {
-              if (running) {
-                setRunning(false);
-              } else {
-                resetRuntimeState();
-                setRunning(true);
-              }
+              setSimulationStatus("stopped");
             }}
-            className={`h-7 px-2.5 text-xs font-semibold gap-1 ${
-              running ? "bg-emerald-600 hover:bg-emerald-500 text-white" : ""
-            }`}
+            className="h-7 px-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30"
+            title="Parar Execução"
           >
-            {running ? <Square className="h-3 w-3 fill-current" /> : <Play className="h-3 w-3 fill-current" />}
-            <span>{running ? "RUN" : "STOP"}</span>
+            <Square className="h-3 w-3 fill-current" />
+            <span className="hidden sm:inline">STOP</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              resetRuntimeState();
+              useEditorStore.getState().resetSimulationState();
+              toast.success("Estado das variáveis e temporizadores redefinido.");
+            }}
+            className="h-7 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+            title="Redefinir Estado (Reset de Temporizadores/Contadores)"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
           </Button>
 
           <Button
@@ -1148,6 +1240,10 @@ export function RungGrid() {
                                     isOutputCol={false}
                                     energized={Boolean(item.instruction.energized)}
                                     diagnostic={res?.diagnostics?.[`inst:${item.instruction.id}`]}
+                                    onDelete={() =>
+                                      item.instruction?.id &&
+                                      deleteElement(rung.id, item.instruction.id)
+                                    }
                                     onChange={(n) => {
                                       const targetInst = item.instruction;
                                       if (!targetInst) return;
@@ -1196,6 +1292,10 @@ export function RungGrid() {
                                                   isOutputCol={false}
                                                   energized={Boolean(bi.instruction.energized)}
                                                   diagnostic={res?.diagnostics?.[`inst:${bi.instruction.id}`]}
+                                                  onDelete={() =>
+                                                    bi.instruction?.id &&
+                                                    deleteElement(rung.id, bi.instruction.id)
+                                                  }
                                                   onChange={(n) => {
                                                     const subInst = bi.instruction;
                                                     if (!subInst) return;
@@ -1288,6 +1388,7 @@ export function RungGrid() {
                                 isOutputCol={true}
                                 energized={isEnergized}
                                 diagnostic={res?.diagnostics?.[`out:${out.id}`]}
+                                onDelete={() => out.id && deleteElement(rung.id, out.id)}
                                 onChange={(n) => {
                                   topology.outputs[outIdx] = {
                                     id: out.id,
@@ -1396,7 +1497,7 @@ export function RungGrid() {
         </div>
 
         {/* Controles Flutuantes de Zoom e Pan no Canto Inferior Direito */}
-        <div className="fixed bottom-36 right-8 flex items-center gap-1 bg-card/90 border border-border p-1 rounded-md shadow-lg backdrop-blur-md z-30">
+        <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-card/90 border border-border p-1 rounded-md shadow-lg backdrop-blur-md z-20">
           <button
             onClick={() => setZoom((z) => Math.max(50, z - 10))}
             className="p-1 rounded text-muted-foreground hover:text-foreground"
@@ -1420,148 +1521,6 @@ export function RungGrid() {
           >
             <Hand className="h-3.5 w-3.5" />
           </button>
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          3. DOCK INFERIOR (DIAGNÓSTICO E VALIDAÇÃO / SIMULADOR) - IDÊNTICO À IMAGEM 1
-         ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="h-32 border-t border-border bg-card/70 flex flex-col shrink-0 z-20">
-        {/* Barra de Abas do Dock */}
-        <div className="h-8 border-b border-border/60 bg-muted/30 px-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveBottomTab("diagnostics")}
-              className={`px-3 py-1 text-xs font-semibold rounded-t-md transition-colors flex items-center gap-1.5 ${
-                activeBottomTab === "diagnostics"
-                  ? "bg-background text-foreground border-b-2 border-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span>Diagnóstico e Validação</span>
-              <span
-                className={`font-mono text-[10px] px-1.5 py-0.2 rounded ${
-                  errorCount > 0
-                    ? "bg-destructive/20 text-destructive font-bold"
-                    : warningCount > 0
-                      ? "bg-amber-500/20 text-amber-500 font-bold"
-                      : "bg-emerald-500/20 text-emerald-400"
-                }`}
-              >
-                {errorCount} erros, {warningCount} avisos
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveBottomTab("simulator")}
-              className={`px-3 py-1 text-xs font-semibold rounded-t-md transition-colors flex items-center gap-1.5 ${
-                activeBottomTab === "simulator"
-                  ? "bg-background text-foreground border-b-2 border-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Activity className="h-3 w-3 text-primary" />
-              <span>Simulador de Variáveis</span>
-              <span className="font-mono text-[10px] text-muted-foreground">
-                ({Object.keys(editorTags).length} tags)
-              </span>
-            </button>
-          </div>
-
-          <div className="text-[10px] font-mono text-muted-foreground">
-            Scan Cycle: 100ms · Determinístico IEC 61131-3
-          </div>
-        </div>
-
-        {/* Conteúdo da Aba Selecionada */}
-        <div className="flex-1 overflow-auto p-2 scrollbar-thin">
-          {activeBottomTab === "diagnostics" ? (
-            <div className="space-y-1">
-              {issues.length === 0 ? (
-                <div className="flex items-center gap-2 text-emerald-400 text-xs py-2 px-1">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>Nenhum erro ou aviso encontrado. Todas as redes Ladder estão válidas para execução.</span>
-                </div>
-              ) : (
-                issues.map((issue, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => select(issue.rungId)}
-                    className="flex items-center justify-between px-2.5 py-1 rounded bg-muted/40 hover:bg-muted/70 text-xs border border-border/40 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      {issue.level === "error" ? (
-                        <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                      ) : (
-                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                      )}
-                      <span className="font-mono text-[11px] text-foreground">{issue.message}</span>
-                    </div>
-                    {issue.fixHint && (
-                      <span className="text-[10px] text-muted-foreground italic truncate max-w-sm">
-                        Dica: {issue.fixHint}
-                      </span>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          ) : (
-            /* Tabela de Monitoramento e Forçamento de Variáveis ao Vivo */
-            <table className="w-full text-left text-xs font-mono">
-              <thead>
-                <tr className="border-b border-border text-[10px] uppercase text-muted-foreground">
-                  <th className="py-1 px-2">Variável</th>
-                  <th className="py-1 px-2">Tipo</th>
-                  <th className="py-1 px-2">Force</th>
-                  <th className="py-1 px-2">Status</th>
-                  <th className="py-1 px-2">Valor Atual</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.values(editorTags).map((t) => {
-                  const isBool = t.type === "BOOL";
-                  const valStr = String(t.value);
-                  const isTrue = t.value === true || t.value === 1 || valStr.toLowerCase() === "true";
-
-                  return (
-                    <tr key={t.id} className="border-b border-border/30 hover:bg-muted/20">
-                      <td className="py-1 px-2 font-bold text-foreground">{t.name}</td>
-                      <td className="py-1 px-2 text-muted-foreground text-[10px]">{t.type}</td>
-                      <td className="py-1 px-2">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(t.forced)}
-                          onChange={(e) => {
-                            if (e.target.checked) forceTagValue(t.id, t.value);
-                            else releaseTag(t.id);
-                          }}
-                          className="h-3.5 w-3.5 accent-primary cursor-pointer"
-                        />
-                      </td>
-                      <td className="py-1 px-2">
-                        {isBool ? (
-                          <button
-                            onClick={() => forceTagValue(t.id, !isTrue)}
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer transition-colors ${
-                              isTrue
-                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                                : "bg-muted/60 text-muted-foreground border border-border"
-                            }`}
-                          >
-                            {isTrue ? "TRUE" : "FALSE"}
-                          </button>
-                        ) : (
-                          <span className="font-semibold text-primary">{valStr}</span>
-                        )}
-                      </td>
-                      <td className="py-1 px-2 text-muted-foreground">{valStr}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
         </div>
       </div>
 

@@ -11,6 +11,7 @@ import {
   Cpu,
   Power,
   RotateCcw,
+  PanelLeftClose,
 } from "lucide-react";
 import {
   VOLTAI_COMPONENT_DEFINITIONS,
@@ -385,15 +386,27 @@ export function EditorUnifilarSidebar() {
               Biblioteca Elétrica
             </span>
           </div>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-[#162136] text-[#38bdf8] border border-[#38bdf8]/30">
-            {VOLTAI_COMPONENT_DEFINITIONS.length} itens
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-[#162136] text-[#38bdf8] border border-[#38bdf8]/30">
+              {VOLTAI_COMPONENT_DEFINITIONS.length} itens
+            </span>
+            <button
+              onClick={() => useEditorStore.getState().toggleLeftPanel()}
+              className="h-6 w-6 rounded hover:bg-muted/40 text-muted-foreground hover:text-foreground grid place-items-center transition-colors"
+              title="Recolher biblioteca elétrica"
+              aria-label="Recolher biblioteca elétrica"
+            >
+              <PanelLeftClose className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Campo de Busca Inteligente com botão para limpar */}
         <div className="relative">
           <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <input
+            id="unifilar-library-search"
+            name="unifilarLibrarySearch"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

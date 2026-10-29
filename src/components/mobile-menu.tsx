@@ -12,6 +12,7 @@ import {
   Sparkles,
   Settings,
   FolderOpen,
+  Box,
 } from "lucide-react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Projetos", url: "/projects", icon: FolderKanban },
   { title: "Workspace", url: "/workspace", icon: Cpu, accent: true },
+  { title: "Digital Twin", url: "/digital-twin", icon: Box },
   { title: "IA Industrial", url: "/ai", icon: Sparkles, core: true },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Clientes", url: "/clients", icon: Users },
