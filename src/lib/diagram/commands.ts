@@ -15,6 +15,7 @@ export type Command =
   | { type: "UpdateNodeParams"; nodeId: string; from: NodeParams; to: NodeParams }
   | { type: "AddEdge"; edge: DiagramEdge }
   | { type: "RemoveEdge"; edgeId: string }
+  | { type: "UpdateEdgeCable"; edgeId: string; from?: DiagramEdge["cable"]; to: DiagramEdge["cable"] }
   | { type: "ApplyAiPatch"; patch: AiDiagramPatch; inverse: Command[] }
   | { type: "Batch"; commands: Command[] };
 
@@ -60,6 +61,11 @@ export function applyCommand(doc: DiagramDoc, cmd: Command): DiagramDoc {
     case "RemoveEdge":
       return applyDraft(doc, (d) => {
         delete d.edges[cmd.edgeId];
+      });
+    case "UpdateEdgeCable":
+      return applyDraft(doc, (d) => {
+        const e = d.edges[cmd.edgeId];
+        if (e) e.cable = cmd.to;
       });
     case "ApplyAiPatch": {
       const p = cmd.patch;
@@ -123,6 +129,8 @@ export function invertCommand(doc: DiagramDoc, cmd: Command): Command | null {
       const edge = doc.edges[cmd.edgeId];
       return edge ? { type: "AddEdge", edge } : null;
     }
+    case "UpdateEdgeCable":
+      return { type: "UpdateEdgeCable", edgeId: cmd.edgeId, from: cmd.to, to: cmd.from };
     case "ApplyAiPatch":
       return { type: "Batch", commands: cmd.inverse };
     case "Batch": {
@@ -180,6 +188,11 @@ export const cmd = {
   }),
   removeNode: (nodeId: string): Command => ({ type: "RemoveNode", nodeId }),
   removeEdge: (edgeId: string): Command => ({ type: "RemoveEdge", edgeId }),
+  updateEdgeCable: (
+    edgeId: string,
+    from: DiagramEdge["cable"] | undefined,
+    to: DiagramEdge["cable"],
+  ): Command => ({ type: "UpdateEdgeCable", edgeId, from, to }),
   move: (nodeId: string, from: Position, to: Position): Command => ({
     type: "MoveNode",
     nodeId,
