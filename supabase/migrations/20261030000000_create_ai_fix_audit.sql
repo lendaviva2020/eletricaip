@@ -62,9 +62,9 @@ create policy "ai_fix_audit_select_policy"
         and (
           p.created_by = auth.uid()
           or exists (
-            select 1 from public.tenants t
-            where t.id = p.tenant_id
-              and (t.owner_id = auth.uid() or t.created_by = auth.uid())
+            select 1 from public.tenant_memberships tm
+            where tm.tenant_id = p.tenant_id
+              and tm.user_id = auth.uid()
           )
         )
     )
