@@ -31,36 +31,8 @@ import { LadderCellView } from "./ladder-cell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import {
-  Plus,
-  Play,
-  Pause,
-  Square,
-  RotateCcw,
-  StepForward,
-  Code2,
-  Rows3,
-  X,
-  Copy,
-  ArrowUp,
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  Trash2,
-  Edit2,
-  Undo2,
-  Redo2,
-  ClipboardPaste,
-  GitFork,
-  AlertTriangle,
-  AlertCircle,
-  ZoomIn,
-  ZoomOut,
-  Hand,
-  CheckCircle2,
-  Activity,
-  Layers,
-} from "lucide-react";
+import { Plus, Play, Pause, Square, ArrowCounterClockwise, SkipForward, CodeBlock, Rows, X, Copy, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Trash, PencilSimple, ArrowUUpLeft, ArrowUUpRight, ClipboardText, GitFork, Warning, WarningCircle, MagnifyingGlassPlus, MagnifyingGlassMinus, Hand, CheckCircle, Pulse, Stack, Octagon } from "@phosphor-icons/react";
+import { useSafetyStore } from "@/lib/simulation/safety-core";
 
 /**
  * Cria o projeto industrial de referência oficial (Imagem 1).
@@ -251,6 +223,10 @@ export function RungGrid() {
   const selectedTarget = useEditorStore((s) => s.selectedLadderTarget);
   const simulationStatus = useEditorStore((s) => s.simulationStatus);
   const setSimulationStatus = useEditorStore((s) => s.setSimulationStatus);
+  const emergencyLatched = useSafetyStore((s) => s.emergencyLatched);
+  const triggerEmergency = useSafetyStore((s) => s.triggerEmergency);
+  const rearmEmergency = useSafetyStore((s) => s.rearmEmergency);
+  const canStartSimulation = useSafetyStore((s) => s.canStartSimulation);
 
   const running = simulationStatus === "running";
   const [zoom, setZoom] = useState(100);
@@ -584,6 +560,10 @@ export function RungGrid() {
     }
 
     const tick = () => {
+      if (useSafetyStore.getState().emergencyLatched) {
+        setSimulationStatus("stopped");
+        return;
+      }
       try {
         const results = scanRungs(rungs);
         scanCountRef.current += 1;
@@ -872,7 +852,7 @@ export function RungGrid() {
                 title="Desfazer (Ctrl+Z)"
                 data-testid="ladder-undo-btn"
               >
-                <Undo2 className="h-3.5 w-3.5" />
+                <ArrowUUpLeft className="h-3.5 w-3.5" />
               </Button>
               <Button
                 size="sm"
@@ -883,7 +863,7 @@ export function RungGrid() {
                 title="Refazer (Ctrl+Y)"
                 data-testid="ladder-redo-btn"
               >
-                <Redo2 className="h-3.5 w-3.5" />
+                <ArrowUUpRight className="h-3.5 w-3.5" />
               </Button>
               <Button
                 size="sm"
@@ -902,7 +882,7 @@ export function RungGrid() {
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-20"
                 title="Colar (Ctrl+V)"
               >
-                <ClipboardPaste className="h-3.5 w-3.5" />
+                <ClipboardText className="h-3.5 w-3.5" />
               </Button>
               <Button
                 size="sm"
@@ -919,7 +899,7 @@ export function RungGrid() {
                 title="Excluir Instrução ou Rede Selecionada (Del / Backspace)"
                 data-testid="ladder-delete-btn"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -954,11 +934,53 @@ export function RungGrid() {
             </span>
           </div>
 
+          {emergencyLatched ? (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-mono font-semibold bg-rose-950/60 border-rose-500/50 text-rose-300 animate-pulse">
+              <Octagon className="h-3 w-3 text-rose-400" />
+              <span>E-STOP ATUADO</span>
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="ladder-estop-rearm-btn"
+                onClick={() => {
+                  rearmEmergency();
+                  toast.info("Emergência desarmada. Pressione RUN para iniciar.");
+                }}
+                className="h-5 px-1.5 text-[10px] bg-rose-900/80 hover:bg-rose-800 text-rose-100 border-rose-600 ml-1"
+                title="Rearmar Parada de Emergência"
+              >
+                Rearmar
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              data-testid="ladder-estop-trigger-btn"
+              onClick={() => {
+                triggerEmergency({
+                  source: "ladder_canvas",
+                  reason: "Parada de Emergência acionada pelo operador no editor Ladder",
+                });
+                toast.error("PARADA DE EMERGÊNCIA ACIONADA! Execução interrompida.");
+              }}
+              className="h-7 px-2 text-xs font-semibold gap-1 bg-rose-950/60 hover:bg-rose-900/60 border-rose-500/40 text-rose-400"
+              title="Acionar Parada de Emergência (E-STOP)"
+            >
+              <Octagon className="h-3.5 w-3.5 text-rose-400" />
+              <span>E-STOP</span>
+            </Button>
+          )}
+
           {!running ? (
             <Button
               size="sm"
               variant="outline"
               onClick={() => {
+                if (!canStartSimulation()) {
+                  toast.error("Intertravamento de Segurança Ativo! Destrave e rearme o botão de emergência antes de iniciar.");
+                  return;
+                }
                 setSimulationStatus("running");
               }}
               className="h-7 px-2.5 text-xs font-semibold gap-1 bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-500/40 text-emerald-400"
@@ -1006,7 +1028,7 @@ export function RungGrid() {
             className="h-7 px-1.5 text-xs text-muted-foreground hover:text-foreground"
             title="Redefinir Estado (Reset de Temporizadores/Contadores)"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <ArrowCounterClockwise className="h-3.5 w-3.5" />
           </Button>
 
           <Button
@@ -1017,7 +1039,7 @@ export function RungGrid() {
             className="h-7 px-2 text-xs"
             title="Avançar 1 Ciclo (Step)"
           >
-            <StepForward className="h-3.5 w-3.5" />
+            <SkipForward className="h-3.5 w-3.5" />
           </Button>
 
           <div className="font-mono text-[10px] px-2 py-0.5 rounded bg-muted/60 border border-border/40 text-muted-foreground">
@@ -1051,7 +1073,7 @@ export function RungGrid() {
             className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
             title="Ver Código Structured Text / IL"
           >
-            <Code2 className="h-3.5 w-3.5" />
+            <CodeBlock className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
@@ -1079,7 +1101,7 @@ export function RungGrid() {
                     select(rung.id);
                     setSelectedTarget({ rungId: rung.id, elementId: undefined });
                   }}
-                  className={`rounded-lg border transition-all bg-card/50 backdrop-blur-sm shadow-sm ${
+                  className={`rounded-md border transition-all bg-card shadow-sm ${
                     isSel
                       ? "border-primary/80 ring-1 ring-primary/40 shadow-glow"
                       : "border-border/60 hover:border-border"
@@ -1118,7 +1140,7 @@ export function RungGrid() {
                           <span className="text-xs font-semibold text-foreground/90 font-mono">
                             {rung.comment || rung.label}
                           </span>
-                          <Edit2 className="h-3 w-3 text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:text-foreground transition-opacity" />
+                          <PencilSimple className="h-3 w-3 text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:text-foreground transition-opacity" />
                         </div>
                       )}
 
@@ -1446,7 +1468,7 @@ export function RungGrid() {
                         className="px-2 py-1 rounded text-[10px] text-muted-foreground hover:text-foreground border border-border/40 hover:bg-muted/30 transition-colors font-medium flex items-center gap-1 cursor-pointer"
                         title="Adicionar novo nível ao ramo paralelo"
                       >
-                        <Rows3 className="h-3 w-3" /> + nível de ramo
+                        <Rows className="h-3 w-3" /> + nível de ramo
                       </button>
                     </div>
 
@@ -1474,7 +1496,7 @@ export function RungGrid() {
                           className="p-1 hover:text-destructive text-muted-foreground"
                           title="Excluir elemento selecionado (Del)"
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash className="h-3 w-3" />
                         </button>
                       </div>
                     )}
@@ -1497,13 +1519,13 @@ export function RungGrid() {
         </div>
 
         {/* Controles Flutuantes de Zoom e Pan no Canto Inferior Direito */}
-        <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-card/90 border border-border p-1 rounded-md shadow-lg backdrop-blur-md z-20">
+        <div className="absolute bottom-4 right-4 flex items-center gap-1 bg-card border border-border p-1 rounded-md shadow-md z-20">
           <button
             onClick={() => setZoom((z) => Math.max(50, z - 10))}
             className="p-1 rounded text-muted-foreground hover:text-foreground"
             title="Reduzir Zoom"
           >
-            <ZoomOut className="h-3.5 w-3.5" />
+            <MagnifyingGlassMinus className="h-3.5 w-3.5" />
           </button>
           <span className="font-mono text-[11px] px-1 text-foreground font-semibold">{zoom}%</span>
           <button
@@ -1511,7 +1533,7 @@ export function RungGrid() {
             className="p-1 rounded text-muted-foreground hover:text-foreground"
             title="Aumentar Zoom"
           >
-            <ZoomIn className="h-3.5 w-3.5" />
+            <MagnifyingGlassPlus className="h-3.5 w-3.5" />
           </button>
           <div className="w-px h-3.5 bg-border mx-0.5" />
           <button
@@ -1526,8 +1548,8 @@ export function RungGrid() {
 
       {/* Modal / Gaveta de Código Exportado (Structured Text / IL) */}
       {showST && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-card border border-border rounded-lg shadow-lg w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30">
               <div className="flex items-center gap-3">
                 <span className="font-bold text-xs uppercase tracking-wider text-foreground">

@@ -2,7 +2,7 @@
 // Lê `telemetryHealth` do store Zustand: cada flush/retentativa atualiza as
 // métricas e o componente re-renderiza em tempo real.
 import { useEffect, useState } from "react";
-import { Activity, AlertTriangle, CheckCircle2, Layers, Radio, X } from "lucide-react";
+import { Pulse, Warning, CheckCircle, Stack, Radio, X } from "@phosphor-icons/react";
 import { useDigitalTwinStore } from "@/lib/digital-twin-store";
 import { Badge } from "@/components/ui/badge";
 
@@ -61,7 +61,7 @@ export function TelemetryHealthPanel({ onClose }: { onClose?: () => void }) {
     <aside className="w-72 shrink-0 border-l border-border bg-card/40 flex flex-col">
       <div className="h-10 px-3 flex items-center justify-between border-b border-border">
         <span className="text-xs font-semibold flex items-center gap-2">
-          <Activity className="h-3.5 w-3.5 text-primary" /> Telemetria
+          <Pulse className="h-3.5 w-3.5 text-primary" /> Telemetria
         </span>
         <div className="flex items-center gap-1.5">
           <Badge variant={realtimeConnected ? "default" : "secondary"} className="text-[9px]">
@@ -119,7 +119,7 @@ export function TelemetryHealthPanel({ onClose }: { onClose?: () => void }) {
             Última gravação
           </div>
           <div className="font-mono text-xs flex items-center gap-2">
-            <Layers className="h-3 w-3 text-muted-foreground" />
+            <Stack className="h-3 w-3 text-muted-foreground" />
             {formatTime(health.lastFlush)}
             <span className="text-muted-foreground">({relative(health.lastFlush, now)})</span>
           </div>
@@ -141,12 +141,12 @@ export function TelemetryHealthPanel({ onClose }: { onClose?: () => void }) {
           </div>
           {hasError ? (
             <div className="flex items-start gap-2 text-[11px] text-destructive break-words">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <Warning className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span className="font-mono">{health.lastError}</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-[11px] text-success">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Nenhum erro registrado
+              <CheckCircle className="h-3.5 w-3.5" /> Nenhum erro registrado
             </div>
           )}
         </div>

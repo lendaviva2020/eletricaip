@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertTriangle, RotateCcw } from "lucide-react";
+import { Warning, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -22,24 +22,24 @@ export function ErrorState({
     <div
       role="alert"
       className={cn(
-        "flex flex-col items-center justify-center p-6 sm:p-8 text-center rounded-xl border border-destructive/20 bg-destructive/5 max-w-md mx-auto",
+        "flex flex-col items-center justify-center p-6 text-center rounded-md border border-destructive/30 bg-destructive/5 max-w-md mx-auto",
         className,
       )}
       {...props}
     >
-      <div className="p-2.5 rounded-full bg-destructive/15 text-destructive mb-3 ring-1 ring-destructive/30">
-        <AlertTriangle className="h-5 w-5" />
+      <div className="p-2 rounded-md bg-destructive/15 text-destructive mb-2.5 border border-destructive/30">
+        <Warning className="h-4 w-4" />
       </div>
-      <h3 className="font-display text-base font-bold text-foreground">{title}</h3>
-      <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">{message}</p>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <p className="text-xs sm:text-[13px] text-muted-foreground mt-1 leading-relaxed">{message}</p>
       {onRetry && (
         <Button
           size="sm"
           variant="outline"
           onClick={onRetry}
-          className="mt-4 gap-1.5 border-destructive/30 hover:bg-destructive/10 text-xs"
+          className="mt-3.5 gap-1.5 border-destructive/30 hover:bg-destructive/10 text-xs"
         >
-          <RotateCcw className="h-3.5 w-3.5" />
+          <ArrowCounterClockwise className="h-3.5 w-3.5" />
           {retryLabel}
         </Button>
       )}

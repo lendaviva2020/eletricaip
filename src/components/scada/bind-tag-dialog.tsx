@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tag as TagIcon, Plus } from "lucide-react";
+import { Tag as TagIcon, Plus } from "@phosphor-icons/react";
 import { useEditorStore } from "@/lib/editor/store";
 import { useProjectStore } from "@/lib/project-store";
 

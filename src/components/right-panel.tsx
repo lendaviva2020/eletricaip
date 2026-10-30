@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Sparkles, ShieldCheck, Wrench, Settings2, Send, GitBranch } from "lucide-react";
+import {
+  Sparkle,
+  ShieldCheck,
+  Wrench,
+  SlidersHorizontal,
+  PaperPlaneRight,
+  GitBranch,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
@@ -8,8 +15,8 @@ import { RevisionHistory } from "@/components/revision-history";
 import { useI18n } from "@/lib/i18n";
 
 const TABS = [
-  { id: "props", key: "rightPanel.props" as const, icon: Settings2 },
-  { id: "ai", key: "rightPanel.ai" as const, icon: Sparkles },
+  { id: "props", key: "rightPanel.props" as const, icon: SlidersHorizontal },
+  { id: "ai", key: "rightPanel.ai" as const, icon: Sparkle },
   { id: "norms", key: "rightPanel.norms" as const, icon: ShieldCheck },
   { id: "versions", key: "rightPanel.versions" as const, icon: GitBranch },
   { id: "maint", key: "rightPanel.maint" as const, icon: Wrench },
@@ -22,7 +29,7 @@ export function RightPanel() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("props");
 
   return (
-    <aside className="flex w-[300px] sm:w-[340px] max-w-[88vw] h-full shrink-0 flex-col border-l border-border bg-panel">
+    <aside className="flex w-[300px] sm:w-[340px] lg:w-full max-w-[88vw] h-full shrink-0 flex-col border-l border-border bg-panel">
       <div className="h-9 flex items-center px-2 border-b border-border overflow-x-auto scrollbar-none gap-0.5">
         {TABS.map((tabItem) => {
           const Icon = tabItem.icon;
@@ -112,9 +119,9 @@ function AiPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto p-4 space-y-3">
-        <div className="rounded-md p-3 glass border border-primary/30">
+        <div className="rounded-md p-3 bg-card border border-primary/30">
           <div className="flex items-center gap-2 text-[11px] font-medium text-primary mb-1">
-            <Sparkles className="h-3.5 w-3.5" /> {t("rightPanel.copilotTitle")}
+            <Sparkle className="h-3.5 w-3.5" /> {t("rightPanel.copilotTitle")}
           </div>
           <p className="text-[12px] text-foreground/90 leading-relaxed">
             {t("rightPanel.copilotGreeting")}
@@ -162,7 +169,7 @@ function AiPanel() {
             title={t("rightPanel.sendAria")}
             aria-label={t("rightPanel.sendAria")}
           >
-            <Send className="h-3.5 w-3.5" />
+            <PaperPlaneRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
@@ -237,10 +244,10 @@ function MaintPanel() {
       </Section>
       <Section title="Alertas">
         <div className="rounded-md p-2 bg-warning/10 border border-warning/30 text-[11px]">
-          🔧 Rolamento M-03 com vibração acima do baseline. Substituir em ~120h.
+          Rolamento M-03 com vibração acima do baseline. Substituir em ~120h.
         </div>
         <div className="rounded-md p-2 bg-info/10 border border-info/30 text-[11px] mt-2">
-          🛢️ Lubrificação P-201 prevista em 14 dias.
+          Lubrificação P-201 prevista em 14 dias.
         </div>
       </Section>
     </div>

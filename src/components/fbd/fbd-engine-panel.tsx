@@ -1,11 +1,21 @@
 // Painel do motor IEC: diagnósticos do compilador, simulação (entradas, EN/ENO,
 // saídas ao vivo) e visualização do AST e do IR gerados.
-import { AlertCircle, CheckCircle2, Pause, Play, RotateCcw, StepForward, X } from "lucide-react";
+import {
+  WarningCircle,
+  CheckCircle,
+  Octagon,
+  Pause,
+  Play,
+  ArrowCounterClockwise,
+  SkipForward,
+  X,
+} from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { FbdEngineApi } from "@/hooks/use-fbd-engine";
 import type { FbdValue } from "@/lib/fbd/engine";
+import { useSafetyStore } from "@/lib/simulation/safety-core";
 
 function fmt(v: FbdValue | undefined): string {
   if (v === undefined) return "—";
@@ -41,17 +51,23 @@ function CtrlButton({
 
 export function FbdEnginePanel({ engine, onClose }: { engine: FbdEngineApi; onClose: () => void }) {
   const { result, live, status, inputBindings } = engine;
+  const emergencyLatched = useSafetyStore((s) => s.emergencyLatched);
   const errors = result.diagnostics.filter((d) => d.severity === "error");
-  const runnable = result.ok && live !== null;
+  const runnable = result.ok && live !== null && !emergencyLatched;
   const instructions = (result.ir?.instructions ?? []).filter((i) => i.blockType !== "VAR_IN");
 
   return (
-    <div className="absolute right-6 top-16 bottom-14 z-20 w-[380px] rounded-lg border border-primary/30 flex flex-col shadow-2xl overflow-hidden glass-strong bg-background/95">
+    <div className="absolute right-6 top-16 bottom-14 z-20 w-[380px] rounded-lg border border-border flex flex-col shadow-lg overflow-hidden bg-card">
       <div className="h-10 shrink-0 flex items-center justify-between px-3 border-b border-border bg-card/40">
         <span className="text-[10px] font-display font-bold tracking-wider text-primary">
           MOTOR IEC 61131-3
         </span>
         <div className="flex items-center gap-1.5">
+          {emergencyLatched && (
+            <Badge variant="destructive" className="text-[9px] gap-1 animate-pulse">
+              <Octagon className="h-2.5 w-2.5" /> E-STOP
+            </Badge>
+          )}
           {result.ok ? (
             <Badge className="text-[9px]">Compilado</Badge>
           ) : (
@@ -85,10 +101,10 @@ export function FbdEnginePanel({ engine, onClose }: { engine: FbdEngineApi; onCl
           label="Um ciclo"
           disabled={!runnable || status === "running"}
         >
-          <StepForward className="h-3 w-3" /> Ciclo
+          <SkipForward className="h-3 w-3" /> Ciclo
         </CtrlButton>
         <CtrlButton onClick={engine.reset} label="Reiniciar" disabled={!runnable}>
-          <RotateCcw className="h-3 w-3" />
+          <ArrowCounterClockwise className="h-3 w-3" />
         </CtrlButton>
         <span className="ml-auto font-mono text-[10px] text-muted-foreground">
           {live ? `ciclo ${live.scans} · ${(live.elapsedMs / 1000).toFixed(1)}s` : "—"}
@@ -200,7 +216,7 @@ export function FbdEnginePanel({ engine, onClose }: { engine: FbdEngineApi; onCl
         <TabsContent value="diag" className="flex-1 min-h-0 overflow-auto px-3 pb-3 space-y-1.5">
           {result.diagnostics.length === 0 ? (
             <div className="flex items-center gap-2 text-[11px] text-success">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Sem diagnósticos
+              <CheckCircle className="h-3.5 w-3.5" /> Sem diagnósticos
             </div>
           ) : (
             result.diagnostics.map((d, i) => (
@@ -209,7 +225,7 @@ export function FbdEnginePanel({ engine, onClose }: { engine: FbdEngineApi; onCl
                 className="rounded border border-border bg-card/60 px-2 py-1.5 text-[10px] space-y-0.5"
               >
                 <div className="flex items-center gap-1.5 text-destructive font-mono">
-                  <AlertCircle className="h-3 w-3" /> {d.code}
+                  <WarningCircle className="h-3 w-3" /> {d.code}
                 </div>
                 <div>{d.message}</div>
                 {d.suggestion && <div className="text-muted-foreground">{d.suggestion}</div>}

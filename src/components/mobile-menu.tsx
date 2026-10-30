@@ -2,31 +2,31 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Menu,
+  List,
   X,
-  LayoutDashboard,
-  FolderKanban,
+  SquaresFour,
+  FolderOpen as FolderOpenIcon,
   Cpu,
-  BarChart3,
+  ChartBar,
   Users,
-  Sparkles,
-  Settings,
+  Sparkle,
+  Gear,
   FolderOpen,
-  Box,
-} from "lucide-react";
+  Cube,
+} from "@phosphor-icons/react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { cn } from "@/lib/utils";
 import { useCurrentProject } from "@/lib/current-project";
 
 const items = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Projetos", url: "/projects", icon: FolderKanban },
+  { title: "Dashboard", url: "/dashboard", icon: SquaresFour },
+  { title: "Projetos", url: "/projects", icon: FolderOpenIcon },
   { title: "Workspace", url: "/workspace", icon: Cpu, accent: true },
-  { title: "Digital Twin", url: "/digital-twin", icon: Box },
-  { title: "IA Industrial", url: "/ai", icon: Sparkles, core: true },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Digital Twin", url: "/digital-twin", icon: Cube },
+  { title: "IA Industrial", url: "/ai", icon: Sparkle, core: true },
+  { title: "Analytics", url: "/analytics", icon: ChartBar },
   { title: "Clientes", url: "/clients", icon: Users },
-  { title: "Configurações", url: "/settings", icon: Settings },
+  { title: "Configurações", url: "/settings", icon: Gear },
 ];
 
 export function MobileMenu() {
@@ -49,24 +49,18 @@ export function MobileMenu() {
         className="md:hidden h-9 w-9 grid place-items-center rounded-md hover:bg-accent/40 text-foreground"
         aria-label="Abrir menu"
       >
-        <Menu className="h-5 w-5" />
+        <List className="h-5 w-5" />
       </button>
 
       {open &&
         typeof document !== "undefined" &&
         createPortal(
           <div className="md:hidden fixed inset-0 z-1000">
-            <div
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-              onClick={() => setOpen(false)}
-            />
+            <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
             <aside className="absolute left-0 top-0 bottom-0 w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col animate-in slide-in-from-left">
-              <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border">
-                <div
-                  className="h-8 w-8 rounded-md flex items-center justify-center"
-                  style={{ background: "var(--gradient-primary)" }}
-                >
-                  <BrandBolt className="h-4 w-4 text-primary-foreground" />
+              <div className="flex items-center gap-2 px-4 h-10 border-b border-sidebar-border">
+                <div className="h-6 w-6 rounded-sm bg-primary flex items-center justify-center">
+                  <BrandBolt className="h-3.5 w-3.5 text-primary-foreground" />
                 </div>
                 <div className="leading-tight flex-1">
                   <div className="text-[13px] font-semibold tracking-tight text-sidebar-foreground">
@@ -78,7 +72,8 @@ export function MobileMenu() {
                 </div>
                 <button
                   onClick={() => setOpen(false)}
-                  className="h-8 w-8 grid place-items-center rounded hover:bg-accent/40"
+                  aria-label="Fechar menu"
+                  className="h-7 w-7 grid place-items-center rounded-sm hover:bg-accent/40"
                 >
                   <X className="h-4 w-4" />
                 </button>

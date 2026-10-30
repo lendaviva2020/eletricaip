@@ -6,35 +6,35 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   UserPlus,
-  Trash2,
+  Trash,
   Check,
   Copy,
   Users,
-  Building2,
+  Buildings,
   ShieldCheck,
-  UserCog,
+  UserGear,
   User,
   Eye,
-  Mail,
+  EnvelopeSimple,
   Clock,
-  Loader2,
-  RefreshCw,
-  MoreHorizontal,
-  Wifi,
-  WifiOff,
-  Bot,
-  Activity,
-  ChevronRight,
-  LogOut,
-  Search,
-  Filter,
-  FolderTree,
+  CircleNotch,
+  ArrowsClockwise,
+  DotsThree,
+  WifiHigh,
+  WifiSlash,
+  Robot,
+  Pulse,
+  CaretRight,
+  SignOut,
+  MagnifyingGlass,
+  Funnel,
+  Folders,
   Gauge,
-  AlertCircle,
-  CheckCircle2,
+  WarningCircle,
+  CheckCircle,
   X,
   Cpu,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import {
   listTenantMembers,
   listTenantInvites,
@@ -77,7 +77,7 @@ type Role = (typeof ROLES)[number];
 
 const ROLE_CONFIG: Record<Role, { icon: typeof ShieldCheck; label: string; desc: string }> = {
   admin: { icon: ShieldCheck, label: "Admin", desc: "Acesso total à configuração do workspace" },
-  engineer: { icon: UserCog, label: "Engenheiro", desc: "Pode editar projetos e normas" },
+  engineer: { icon: UserGear, label: "Engenheiro", desc: "Pode editar projetos e normas" },
   operator: { icon: User, label: "Operador", desc: "Visualização e operação do SCADA" },
   viewer: { icon: Eye, label: "Visualizador", desc: "Acesso somente leitura" },
 };
@@ -227,9 +227,9 @@ function TeamPage() {
     {
       id: "empresa",
       label: "EletricAI Industrial",
-      icon: Building2,
+      icon: Buildings,
       children: [
-        { id: "engenharia", label: "Engenharia", icon: UserCog, count: 3 },
+        { id: "engenharia", label: "Engenharia", icon: UserGear, count: 3 },
         { id: "automacao", label: "Automação", icon: Cpu, count: 2 },
         { id: "manutencao", label: "Manutenção", icon: Gauge, count: 1 },
         { id: "supervisao", label: "Supervisão", icon: Eye, count: 1 },
@@ -257,12 +257,13 @@ function TeamPage() {
   return (
     <div className="flex-1 flex flex-col">
       {/* ─── Header ─── */}
-      <header className="h-[72px] shrink-0 border-b border-border/40 bg-background/80 backdrop-blur-md flex items-center px-6 z-20">
+      <header className="h-12 shrink-0 border-b border-border bg-panel flex items-center px-6 z-20">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             type="button"
+            aria-label="Voltar para configurações"
             onClick={() => navigate({ to: "/settings" })}
-            className="flex items-center justify-center h-8 w-8 rounded-lg border border-border/40 hover:bg-muted/40 transition-colors"
+            className="flex items-center justify-center h-8 w-8 rounded-md border border-border hover:bg-muted/40 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 text-muted-foreground" />
           </button>
@@ -305,7 +306,7 @@ function TeamPage() {
           {(membersError || invitesError) && (
             <div className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs flex items-center justify-between text-destructive">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
+                <WarningCircle className="h-4 w-4 shrink-0" />
                 <span>
                   Falha ao sincronizar dados da equipe:{" "}
                   {(membersError as Error)?.message || (invitesError as Error)?.message}
@@ -327,7 +328,7 @@ function TeamPage() {
 
           {!active && (
             <div className="mb-6 rounded-xl border border-border/40 bg-muted/10 p-4 text-xs text-muted-foreground flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+              <WarningCircle className="h-4 w-4 shrink-0" />
               <span>
                 Nenhum workspace ativo selecionado. Selecione um workspace na lista ao lado para
                 gerenciar membros e convites.
@@ -337,7 +338,7 @@ function TeamPage() {
 
           {/* ─── Top Stats ─── */}
           <div className="grid grid-cols-4 gap-3 mb-6">
-            <div className="rounded-xl border border-border/40 p-3.5 bg-gradient-to-b from-background/80 to-muted/10">
+            <div className="rounded-md border border-border p-3.5 bg-card">
               <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
                 Membros
               </span>
@@ -346,7 +347,7 @@ function TeamPage() {
                 <span className="text-xs text-muted-foreground/60 font-normal">total</span>
               </p>
             </div>
-            <div className="rounded-xl border border-border/40 p-3.5 bg-gradient-to-b from-background/80 to-muted/10">
+            <div className="rounded-md border border-border p-3.5 bg-card">
               <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
                 Ativos
               </span>
@@ -355,7 +356,7 @@ function TeamPage() {
                 <span className="text-xs text-muted-foreground/60 font-normal">registrados</span>
               </p>
             </div>
-            <div className="rounded-xl border border-border/40 p-3.5 bg-gradient-to-b from-background/80 to-muted/10">
+            <div className="rounded-md border border-border p-3.5 bg-card">
               <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
                 Convites
               </span>
@@ -364,7 +365,7 @@ function TeamPage() {
                 <span className="text-xs text-muted-foreground/60 font-normal">pendentes</span>
               </p>
             </div>
-            <div className="rounded-xl border border-border/40 p-3.5 bg-gradient-to-b from-background/80 to-muted/10">
+            <div className="rounded-md border border-border p-3.5 bg-card">
               <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
                 Workspaces
               </span>
@@ -379,7 +380,7 @@ function TeamPage() {
             {/* ─── Coluna Esquerda: Organograma ─── */}
             <div>
               <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium block mb-3 flex items-center gap-1.5">
-                <FolderTree className="h-3 w-3" /> Organização
+                <Folders className="h-3 w-3" /> Organização
               </span>
               <Card>
                 <CardContent className="p-3 space-y-1">
@@ -412,7 +413,7 @@ function TeamPage() {
 
               {/* Workspaces */}
               <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium block mt-5 mb-3 flex items-center gap-1.5">
-                <Building2 className="h-3 w-3" /> Workspaces
+                <Buildings className="h-3 w-3" /> Workspaces
               </span>
               <div className="space-y-2">
                 {workspaces.map((w: any) => {
@@ -426,7 +427,7 @@ function TeamPage() {
                         <div
                           className={`flex h-7 w-7 items-center justify-center rounded-md ${isActive ? "bg-primary/10" : "bg-muted/30"}`}
                         >
-                          <Building2
+                          <Buildings
                             className={`h-3.5 w-3.5 ${isActive ? "text-primary" : "text-muted-foreground/50"}`}
                           />
                         </div>
@@ -449,7 +450,7 @@ function TeamPage() {
                             className="h-6 w-6 p-0"
                             onClick={() => handleWorkspaceSwitch(w.id)}
                           >
-                            <LogOut className="h-3 w-3 text-muted-foreground/50" />
+                            <SignOut className="h-3 w-3 text-muted-foreground/50" />
                           </Button>
                         )}
                       </div>
@@ -467,7 +468,7 @@ function TeamPage() {
                 </span>
                 <div className="flex items-center gap-2">
                   <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
+                    <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
                     <Input
                       value={memberSearch}
                       onChange={(e) => setMemberSearch(e.target.value)}
@@ -480,7 +481,7 @@ function TeamPage() {
 
               {loadingMembers ? (
                 <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <CircleNotch className="h-4 w-4 animate-spin" />
                   <span className="text-xs">Carregando membros…</span>
                 </div>
               ) : filteredMembers.length === 0 ? (
@@ -502,11 +503,11 @@ function TeamPage() {
                     return (
                       <div
                         key={m.user_id}
-                        className="group relative rounded-xl border border-border/40 bg-gradient-to-r from-background/80 to-muted/5 p-3.5 hover:border-primary/20 transition-all duration-200"
+                        className="group relative rounded-md border border-border bg-card p-3.5 hover:border-primary/40 transition-colors"
                       >
                         <div className="flex items-center gap-3.5">
                           <div className="relative shrink-0">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-muted font-semibold text-xs text-foreground/80">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-secondary border border-border font-mono font-semibold text-xs text-foreground">
                               {initials}
                             </div>
                             <span
@@ -526,7 +527,8 @@ function TeamPage() {
                                 )}
                               </div>
                               <p className="text-[10px] text-muted-foreground/50 truncate mt-0.5">
-                                {m.email || `Membro desde ${m.created_at ? new Date(m.created_at).toLocaleDateString("pt-BR") : "recentemente"}`}
+                                {m.email ||
+                                  `Membro desde ${m.created_at ? new Date(m.created_at).toLocaleDateString("pt-BR") : "recentemente"}`}
                               </p>
                             </div>
                             <div>
@@ -581,9 +583,9 @@ function TeamPage() {
                                 disabled={busy === `kick:${m.user_id}`}
                               >
                                 {busy === `kick:${m.user_id}` ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  <CircleNotch className="h-3 w-3 animate-spin" />
                                 ) : (
-                                  <Trash2 className="h-3 w-3" />
+                                  <Trash className="h-3 w-3" />
                                 )}
                               </Button>
                             )}
@@ -610,7 +612,7 @@ function TeamPage() {
                           className="rounded-lg border border-dashed border-border/40 p-3 flex items-center gap-3"
                         >
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted/30">
-                            <Mail className="h-4 w-4 text-primary/60" />
+                            <EnvelopeSimple className="h-4 w-4 text-primary/60" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">{i.email}</p>
@@ -648,7 +650,7 @@ function TeamPage() {
                               disabled={busy === `revoke:${i.id}`}
                             >
                               {busy === `revoke:${i.id}` ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <CircleNotch className="h-3 w-3 animate-spin" />
                               ) : (
                                 <X className="h-3 w-3" />
                               )}
@@ -665,7 +667,7 @@ function TeamPage() {
             {/* ─── Coluna Direita: Atividade ─── */}
             <div>
               <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium block mb-3 flex items-center gap-1.5">
-                <Activity className="h-3 w-3" /> Atividade recente
+                <Pulse className="h-3 w-3" /> Atividade recente
               </span>
               <Card>
                 <CardContent className="p-3">
@@ -676,9 +678,9 @@ function TeamPage() {
               </Card>
 
               {/* Membros do time */}
-              <div className="mt-4 rounded-xl border border-border/40 p-3.5 bg-gradient-to-br from-primary/[0.02] to-transparent">
+              <div className="mt-4 rounded-md border border-border p-3.5 bg-card">
                 <div className="flex items-center gap-2 mb-2">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
+                  <Robot className="h-3.5 w-3.5 text-primary" />
                   <span className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/50 font-medium">
                     Membros da equipe
                   </span>
@@ -803,22 +805,22 @@ function TeamPage() {
               </span>
               <div className="space-y-1.5 text-[11px]">
                 <div className="flex items-center gap-2 text-emerald-500">
-                  <CheckCircle2 className="h-3 w-3" /> Visualizar projetos
+                  <CheckCircle className="h-3 w-3" /> Visualizar projetos
                 </div>
                 <div
                   className={`flex items-center gap-2 ${role !== "viewer" ? "text-emerald-500" : "text-muted-foreground/30"}`}
                 >
-                  <CheckCircle2 className="h-3 w-3" /> Editar normas
+                  <CheckCircle className="h-3 w-3" /> Editar normas
                 </div>
                 <div
                   className={`flex items-center gap-2 ${role === "admin" || role === "engineer" || role === "operator" ? "text-emerald-500" : "text-muted-foreground/30"}`}
                 >
-                  <CheckCircle2 className="h-3 w-3" /> Executar SCADA
+                  <CheckCircle className="h-3 w-3" /> Executar SCADA
                 </div>
                 <div
                   className={`flex items-center gap-2 ${role === "admin" ? "text-emerald-500" : "text-muted-foreground/30"}`}
                 >
-                  <CheckCircle2 className="h-3 w-3" /> Administrar sistema
+                  <CheckCircle className="h-3 w-3" /> Administrar sistema
                 </div>
               </div>
             </div>
@@ -839,7 +841,7 @@ function TeamPage() {
               className="gap-1.5 text-xs"
             >
               {busy === "invite" ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <CircleNotch className="h-3 w-3 animate-spin" />
               ) : (
                 <UserPlus className="h-3 w-3" />
               )}

@@ -43,15 +43,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  FlaskConical,
-  Loader2,
+  Flask,
+  CircleNotch,
   Play,
   Plus,
-  Trash2,
-  ChevronDown,
-  ChevronRight,
-  RotateCcw,
-} from "lucide-react";
+  Trash,
+  CaretDown,
+  CaretRight,
+  ArrowCounterClockwise,
+} from "@phosphor-icons/react";
 
 // ---------------------------------------------------------------------------
 // Tipos (espelham o retorno das server functions)
@@ -202,7 +202,7 @@ function RunHistory({ scenarioId }: { scenarioId: string }) {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando execuções…
+        <CircleNotch className="h-3.5 w-3.5 animate-spin" /> Carregando execuções…
       </div>
     );
   }
@@ -361,7 +361,7 @@ function CreateDialog({
           </Button>
           <Button onClick={submit} disabled={busy}>
             {busy ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Plus className="mr-2 h-4 w-4" />
             )}
@@ -499,7 +499,7 @@ export function TestScenariosPanel() {
       <Card className="border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FlaskConical className="h-4 w-4" />
+            <Flask className="h-4 w-4" />
             Cenários de Teste
           </CardTitle>
           <CardDescription>
@@ -515,12 +515,12 @@ export function TestScenariosPanel() {
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <FlaskConical className="h-4 w-4" />
+            <Flask className="h-4 w-4" />
             <CardTitle>Cenários de Teste</CardTitle>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RotateCcw className="mr-1 h-3.5 w-3.5" /> Atualizar
+              <ArrowCounterClockwise className="mr-1 h-3.5 w-3.5" /> Atualizar
             </Button>
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Novo
@@ -536,7 +536,7 @@ export function TestScenariosPanel() {
       <CardContent className="space-y-4">
         {isLoading ? (
           <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Carregando cenários…
+            <CircleNotch className="h-4 w-4 animate-spin" /> Carregando cenários…
           </div>
         ) : scenarios.length === 0 ? (
           <div className="py-8 text-center">
@@ -579,9 +579,9 @@ export function TestScenariosPanel() {
                           aria-label="Histórico de execuções"
                         >
                           {expanded === s.id ? (
-                            <ChevronDown className="h-3.5 w-3.5" />
+                            <CaretDown className="h-3.5 w-3.5" />
                           ) : (
-                            <ChevronRight className="h-3.5 w-3.5" />
+                            <CaretRight className="h-3.5 w-3.5" />
                           )}
                         </Button>
                       </TableCell>
@@ -613,7 +613,7 @@ export function TestScenariosPanel() {
                             onClick={() => handleRun(s.id)}
                           >
                             {runningId === s.id ? (
-                              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                              <CircleNotch className="mr-1 h-3.5 w-3.5 animate-spin" />
                             ) : (
                               <Play className="mr-1 h-3.5 w-3.5" />
                             )}
@@ -626,7 +626,7 @@ export function TestScenariosPanel() {
                             onClick={() => handleDelete(s.id)}
                             aria-label="Excluir cenário"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </TableCell>

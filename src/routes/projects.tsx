@@ -1,8 +1,30 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Cpu, Copy, Archive, Trash2, Loader2, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
+import {
+  Plus,
+  Cpu,
+  Copy,
+  Archive,
+  Trash,
+  CircleNotch,
+  MagnifyingGlass,
+  DotsThree,
+  CaretUp,
+  CaretDown,
+  ArrowRight,
+  FileText,
+  Table as TableIcon,
+} from "@phosphor-icons/react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { toast } from "sonner";
 import {
@@ -24,9 +46,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/ui/search-input";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { prefetchRouteQuery } from "@/lib/query-prefetch";
 import { useI18n } from "@/lib/i18n";
-import { formatDate } from "@/lib/i18n/format";
 
 export const Route = createFileRoute("/projects")({
   loader: ({ context }) => {
@@ -44,8 +85,28 @@ export const Route = createFileRoute("/projects")({
   component: Projects,
 });
 
+const rtfPtBr = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
+
+function formatRelativePtBr(dateStr?: string | null): string {
+  if (!dateStr) return "—";
+  const target = new Date(dateStr).getTime();
+  if (Number.isNaN(target)) return "—";
+  const diffSec = Math.round((target - Date.now()) / 1000);
+  const absSec = Math.abs(diffSec);
+  if (absSec < 60) return rtfPtBr.format(diffSec, "second");
+  const diffMin = Math.round(diffSec / 60);
+  if (Math.abs(diffMin) < 60) return rtfPtBr.format(diffMin, "minute");
+  const diffHour = Math.round(diffMin / 60);
+  if (Math.abs(diffHour) < 24) return rtfPtBr.format(diffHour, "hour");
+  const diffDay = Math.round(diffHour / 24);
+  if (Math.abs(diffDay) < 30) return rtfPtBr.format(diffDay, "day");
+  const diffMonth = Math.round(diffDay / 30);
+  if (Math.abs(diffMonth) < 12) return rtfPtBr.format(diffMonth, "month");
+  return rtfPtBr.format(Math.round(diffDay / 365), "year");
+}
+
 function Projects() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const list = useServerFn(listProjects);
   const create = useServerFn(createProject);
   const dup = useServerFn(duplicateProject);
@@ -56,6 +117,23 @@ function Projects() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [sorting, setSorting] = useState<SortingState>([{ id: "updated_at", desc: true }]);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === "/" &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["projects"],
@@ -113,13 +191,165 @@ function Projects() {
     });
   }, [projects, search, status]);
 
+  const columns = useMemo<ColumnDef<any>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Projeto",
+        cell: ({ row }) => {
+          const p = row.original;
+          return (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-6 w-6 rounded-sm grid place-items-center bg-muted border border-border text-primary shrink-0">
+                <Cpu className="h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0">
+                <Link
+                  to="/workspace"
+                  search={{ projectId: p.id }}
+                  className="font-medium text-foreground hover:text-primary transition-colors truncate block"
+                >
+                  {p.name}
+                </Link>
+                {(p.client || p.description) && (
+                  <span className="text-[11px] text-muted-foreground truncate block">
+                    {p.client ?? p.description}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: "mode",
+        header: "Modo / Tipo",
+        cell: () => (
+          <Badge variant="outline" className="font-mono">
+            Unifilar / Ladder
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => {
+          const st = row.original.status ?? "active";
+          return (
+            <Badge variant={st === "archived" ? "secondary" : "success"}>
+              {st === "archived" ? "Arquivado" : "Ativo"}
+            </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: "updated_at",
+        header: "Atualizado em",
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-muted-foreground tabular-nums">
+            {formatRelativePtBr(row.original.updated_at)}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: () => <span className="sr-only">Ações</span>,
+        cell: ({ row }) => {
+          const p = row.original;
+          return (
+            <div className="flex items-center justify-end gap-1">
+              <Link
+                to="/projects/$projectId/export"
+                params={{ projectId: p.id }}
+                className="hidden sm:inline-flex h-7 px-2 items-center rounded-sm text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                Dossiê
+              </Link>
+              <Link
+                to="/projects/$projectId/bom"
+                params={{ projectId: p.id }}
+                className="hidden sm:inline-flex h-7 px-2 items-center rounded-sm text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                {t("projects.actionBOM")}
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Ações para ${p.name}`}
+                    className="h-7 w-7 inline-flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    <DotsThree className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link to="/workspace" search={{ projectId: p.id }}>
+                      <ArrowRight className="h-3.5 w-3.5" /> Abrir no Workspace
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/projects/$projectId/export" params={{ projectId: p.id }}>
+                      <FileText className="h-3.5 w-3.5" /> Dossiê Técnico (
+                      {t("projects.actionExport")})
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/projects/$projectId/bom" params={{ projectId: p.id }}>
+                      <TableIcon className="h-3.5 w-3.5" /> {t("projects.actionBOM")}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => duplicateMut.mutate(p.id)}>
+                    <Copy className="h-3.5 w-3.5" /> {t("projects.actionDuplicate")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (confirm(t("projects.confirmArchive", { name: p.name }))) {
+                        archiveMut.mutate(p.id);
+                      }
+                    }}
+                  >
+                    <Archive className="h-3.5 w-3.5" /> {t("projects.actionArchive")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => {
+                      if (confirm(t("projects.confirmDelete", { name: p.name }))) {
+                        deleteMut.mutate(p.id);
+                      }
+                    }}
+                  >
+                    <Trash className="h-3.5 w-3.5" /> {t("projects.actionDelete")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        },
+      },
+    ],
+    [archiveMut, deleteMut, duplicateMut, t],
+  );
+
+  const table = useReactTable({
+    data: filteredProjects,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   return (
     <div className="flex-1 overflow-auto scrollbar-thin">
-      <div className="max-w-[1400px] mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="max-w-[1400px] mx-auto p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
           <div>
-            <h1 className="text-2xl font-semibold">{t("projects.title")}</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">
+              {t("projects.title")}
+            </h1>
+            <p className="text-xs text-muted-foreground font-mono tabular-nums mt-0.5">
               {isLoading
                 ? t("common.loading")
                 : t("projects.countSummary", {
@@ -134,20 +364,21 @@ function Projects() {
           />
         </div>
 
-        <div className="mb-5 flex flex-col md:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex-1">
+            <SearchInput
+              ref={searchRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onClear={() => setSearch("")}
               placeholder={t("projects.searchPlaceholder")}
-              className="pl-9"
+              shortcut="/"
             />
           </div>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+            className="h-8 [@media(pointer:coarse)]:h-10 rounded-md border border-input bg-card px-2.5 text-[13px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             aria-label={t("projects.filterAria")}
             title={t("projects.filterAria")}
           >
@@ -158,127 +389,86 @@ function Projects() {
         </div>
 
         {isLoading ? (
-          <div className="grid place-items-center h-40 text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
+          <TableSkeleton rows={6} columns={5} />
         ) : isError ? (
-          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-8 text-center">
-            <p className="text-sm text-destructive mb-3">
-              {t("projects.loadError", {
-                error: (error as Error)?.message ?? "unknown error",
-              })}
-            </p>
-            <Button type="button" variant="outline" onClick={() => refetch()}>
-              {t("common.retry")}
-            </Button>
-          </div>
+          <ErrorState
+            message={t("projects.loadError", {
+              error: (error as Error)?.message ?? "unknown error",
+            })}
+            retryLabel={t("common.retry")}
+            onRetry={() => refetch()}
+          />
         ) : projects.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-12 text-center">
-            <Cpu className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mb-4">
-              {t("projects.emptyTitle")}
-            </p>
-            <CreateProjectDialog
-              onCreate={(v) => createMut.mutate(v)}
-              pending={createMut.isPending}
-            />
-          </div>
+          <EmptyState
+            icon={<Cpu className="h-5 w-5" />}
+            title={t("projects.emptyTitle")}
+            description="Crie seu primeiro projeto industrial para acessar o canvas elétrico e de automação."
+            action={
+              <CreateProjectDialog
+                onCreate={(v) => createMut.mutate(v)}
+                pending={createMut.isPending}
+              />
+            }
+          />
         ) : filteredProjects.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-12 text-center">
-            <Search className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              {t("projects.noMatchTitle")}
-            </p>
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProjects.map((p: any) => (
-              <div
-                key={p.id}
-                className="group relative rounded-xl border border-border bg-card p-4 hover:border-primary/50 hover:bg-accent/30 transition-all"
+          <EmptyState
+            icon={<MagnifyingGlass className="h-5 w-5" />}
+            title={t("projects.noMatchTitle")}
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearch("");
+                  setStatus("all");
+                }}
               >
-                <Link to="/workspace" search={{ projectId: p.id }} className="block">
-                  <div className="flex items-start justify-between">
-                    <div className="h-9 w-9 rounded-md grid place-items-center bg-primary/15 text-primary">
-                      <Cpu className="h-4 w-4" />
-                    </div>
-                  </div>
-                  <div className="mt-3 text-sm font-semibold group-hover:text-primary transition-colors">
-                    {p.name}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {p.client ?? p.description ?? "-"}
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-border flex justify-between text-[11px] font-mono text-muted-foreground">
-                    <span>{p.status ?? "active"}</span>
-                    <span>{formatDate(new Date(p.updated_at), locale)}</span>
-                  </div>
-                </Link>
-                <div className="mt-2 flex gap-2 text-[11px]">
-                  <Link
-                    to="/projects/$projectId/export"
-                    params={{ projectId: p.id }}
-                    className="text-primary font-semibold hover:underline"
-                  >
-                    Dossiê Técnico
-                  </Link>
-                  <span className="text-muted-foreground/40">·</span>
-                  <Link
-                    to="/projects/$projectId/bom"
-                    params={{ projectId: p.id }}
-                    className="text-muted-foreground hover:text-primary hover:underline"
-                  >
-                    {t("projects.actionBOM")}
-                  </Link>
-                  <span className="text-muted-foreground/40">·</span>
-                  <Link
-                    to="/projects/$projectId/export"
-                    params={{ projectId: p.id }}
-                    className="text-muted-foreground hover:text-primary hover:underline"
-                  >
-                    {t("projects.actionExport")}
-                  </Link>
-                </div>
-                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <button
-                    type="button"
-                    onClick={() => duplicateMut.mutate(p.id)}
-                    className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition"
-                    aria-label={t("projects.actionDuplicate")}
-                    title={t("projects.actionDuplicate")}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm(t("projects.confirmArchive", { name: p.name }))) archiveMut.mutate(p.id);
-                    }}
-                    className="p-1 rounded hover:bg-warning/10 text-muted-foreground hover:text-warning transition"
-                    aria-label={t("projects.actionArchive")}
-                    title={t("projects.actionArchive")}
-                  >
-                    <Archive className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          t("projects.confirmDelete", { name: p.name }),
-                        )
-                      )
-                        deleteMut.mutate(p.id);
-                    }}
-                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
-                    aria-label={t("projects.actionDelete")}
-                    title={t("projects.actionDelete")}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
+                Limpar filtros
+              </Button>
+            }
+          />
+        ) : (
+          <div className="rounded-md border border-border bg-card overflow-hidden">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="bg-muted/30 hover:bg-muted/30">
+                    {headerGroup.headers.map((header) => {
+                      const canSort = header.column.getCanSort();
+                      const sorted = header.column.getIsSorted();
+                      return (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder ? null : canSort ? (
+                            <button
+                              type="button"
+                              onClick={header.column.getToggleSortingHandler()}
+                              className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer select-none uppercase"
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {sorted === "asc" && <CaretUp className="h-3 w-3 text-primary" />}
+                              {sorted === "desc" && <CaretDown className="h-3 w-3 text-primary" />}
+                            </button>
+                          ) : (
+                            flexRender(header.column.columnDef.header, header.getContext())
+                          )}
+                        </TableHead>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>
@@ -316,19 +506,16 @@ function CreateProjectDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button
-          className="h-10 px-4 rounded-md text-sm font-semibold text-primary-foreground inline-flex items-center gap-2 glow-primary"
-          style={{ background: "var(--gradient-primary)" }}
-        >
-          <Plus className="h-4 w-4" /> {t("projects.newProject")}
-        </button>
+        <Button size="default">
+          <Plus className="h-3.5 w-3.5" /> {t("projects.newProject")}
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("projects.newProjectTitle")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="np-name">{t("projects.nameLabel")}</Label>
             <Input
               id="np-name"
@@ -339,7 +526,7 @@ function CreateProjectDialog({
               maxLength={200}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="np-client">{t("projects.clientLabel")}</Label>
             <Input
               id="np-client"
@@ -349,7 +536,7 @@ function CreateProjectDialog({
               maxLength={200}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="np-desc">{t("projects.descriptionLabel")}</Label>
             <Textarea
               id="np-desc"
@@ -361,7 +548,7 @@ function CreateProjectDialog({
           </div>
           <DialogFooter>
             <Button type="submit" disabled={pending || !name.trim()}>
-              {pending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {pending ? <CircleNotch className="h-4 w-4 animate-spin mr-2" /> : null}
               {t("projects.createAndOpen")}
             </Button>
           </DialogFooter>

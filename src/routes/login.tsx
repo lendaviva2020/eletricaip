@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { CircleNotch, Eye, EyeSlash } from "@phosphor-icons/react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -72,10 +72,11 @@ function LoginPage() {
   };
 
   return (
-    <AuthShell title="Entrar no EletricAI" subtitle="Bem-vindo de volta, engenheiro.">
+    <AuthShell title="Entrar no EletricAI" subtitle="Acesso ao ambiente de engenharia industrial.">
       <button
+        type="button"
         onClick={handleGoogle}
-        className="h-11 w-full rounded-md border border-border bg-card hover:bg-accent transition flex items-center justify-center gap-2 text-sm font-medium"
+        className="h-9 w-full rounded-md border border-border bg-background hover:bg-accent transition-colors flex items-center justify-center gap-2 text-[13px] font-medium"
       >
         <GoogleIcon /> Continuar com Google
       </button>
@@ -91,10 +92,9 @@ function LoginPage() {
         <button
           disabled={loading}
           type="submit"
-          className="h-11 w-full rounded-md text-sm font-semibold text-primary-foreground glow-primary inline-flex items-center justify-center gap-2 disabled:opacity-50"
-          style={{ background: "var(--gradient-primary)" }}
+          className="h-9 w-full rounded-md bg-primary hover:bg-primary/90 text-[13px] font-medium text-primary-foreground inline-flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />} Entrar
+          {loading && <CircleNotch className="h-4 w-4 animate-spin" />} Entrar
         </button>
       </form>
       <div className="mt-4 text-center">
@@ -102,9 +102,9 @@ function LoginPage() {
           Esqueci minha senha
         </Link>
       </div>
-      <p className="text-xs text-center text-muted-foreground mt-6">
+      <p className="text-xs text-center text-muted-foreground mt-5">
         Não tem conta?{" "}
-        <Link to="/signup" className="text-primary hover:underline">
+        <Link to="/signup" className="text-primary font-medium hover:underline">
           Criar conta
         </Link>
       </p>
@@ -122,62 +122,22 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      <div className="hidden lg:flex relative items-center justify-center p-12 border-r border-border overflow-hidden">
-        <div className="absolute inset-0 industrial-grid opacity-30" />
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[420px] w-[420px] rounded-full opacity-30 blur-3xl"
-          style={{ background: "var(--gradient-primary)" }}
-        />
-        <div className="relative max-w-md">
-          <Link to="/" className="flex items-center gap-2 mb-8">
-            <div
-              className="h-9 w-9 rounded-md flex items-center justify-center"
-              style={{ background: "var(--gradient-primary)" }}
-            >
-              <BrandBolt className="h-4 w-4 text-primary-foreground" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm rounded-md border border-border bg-card p-6">
+        <Link to="/" className="inline-flex items-center gap-2 mb-6">
+          <div className="h-7 w-7 rounded-sm bg-primary flex items-center justify-center">
+            <BrandBolt className="h-3.5 w-3.5 text-primary-foreground" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold leading-none text-foreground">EletricAI</div>
+            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-0.5">
+              Industrial OS
             </div>
-            <div>
-              <div className="font-semibold">EletricAI</div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Industrial OS
-              </div>
-            </div>
-          </Link>
-          <h2 className="text-3xl font-semibold tracking-tight">
-            O sistema operacional da engenharia industrial.
-          </h2>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Unifique unifilar, Ladder, FBD, SCADA, PLC e Digital Twin com IA copiloto nativa.
-          </p>
-          <ul className="mt-8 space-y-2 text-sm text-muted-foreground">
-            <li className="flex gap-2">
-              <span className="text-primary">•</span> Runtime determinístico em tempo real
-            </li>
-            <li className="flex gap-2">
-              <span className="text-primary">•</span> IA contextual + manutenção preditiva
-            </li>
-            <li className="flex gap-2">
-              <span className="text-primary">•</span> Conformidade NBR 5410 / IEC 61131
-            </li>
-          </ul>
-        </div>
-      </div>
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
-          <Link to="/" className="lg:hidden flex items-center gap-2 mb-8">
-            <div
-              className="h-8 w-8 rounded-md flex items-center justify-center"
-              style={{ background: "var(--gradient-primary)" }}
-            >
-              <BrandBolt className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-semibold">EletricAI</span>
-          </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground mt-1 mb-8">{subtitle}</p>
-          {children}
-        </div>
+          </div>
+        </Link>
+        <h1 className="text-lg font-semibold tracking-tight text-foreground">{title}</h1>
+        <p className="text-xs text-muted-foreground mt-1 mb-5">{subtitle}</p>
+        {children}
       </div>
     </div>
   );
@@ -201,7 +161,7 @@ export function Input({
   const inputType = isPassword ? (show ? "text" : "password") : type;
   return (
     <label className="block">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium text-foreground">{label}</span>
       <div className="relative mt-1">
         <input
           type={inputType}
@@ -210,16 +170,16 @@ export function Input({
           value={value}
           required={required}
           onChange={(e) => onChange(e.target.value)}
-          className={`h-11 w-full rounded-md bg-input/60 border border-border px-3 ${isPassword ? "pr-10" : ""} text-sm outline-none focus:ring-2 focus:ring-ring focus:bg-input`}
+          className={`h-8 [@media(pointer:coarse)]:h-10 w-full rounded-md bg-transparent border border-input px-2.5 ${isPassword ? "pr-9" : ""} text-[13px] outline-none focus:ring-2 focus:ring-ring`}
         />
         {isPassword && (
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
             aria-label={show ? "Ocultar senha" : "Mostrar senha"}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
-            {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {show ? <EyeSlash className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
           </button>
         )}
       </div>

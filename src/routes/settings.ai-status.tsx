@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  Sparkles,
-  RefreshCw,
-  CheckCircle2,
-  AlertCircle,
+  Sparkle,
+  ArrowsClockwise,
+  CheckCircle,
+  WarningCircle,
   Key,
-  ShieldAlert,
-  ExternalLink,
-} from "lucide-react";
+  ShieldWarning,
+  ArrowSquareOut,
+} from "@phosphor-icons/react";
 import {
   pingArchitectHealth,
   getStatusEvents,
@@ -21,7 +21,8 @@ export const Route = createFileRoute("/settings/ai-status")({
       { title: "Status da IA · EletricAI Industrial OS" },
       {
         name: "description",
-        content: "Diagnóstico da integração com o motor de IA (Google Gemini 3.1 Pro): chave, ping e histórico.",
+        content:
+          "Diagnóstico da integração com o motor de IA (Google Gemini 3.1 Pro): chave, ping e histórico.",
       },
     ],
   }),
@@ -60,12 +61,14 @@ function AiStatusPage() {
         <header className="flex items-center justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-primary mb-1 flex items-center gap-2">
-              <Sparkles className="h-3 w-3" /> Integração de IA
+              <Sparkle className="h-3 w-3" /> Integração de IA
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Status da IA Industrial</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Provedor: <span className="font-mono text-foreground">Google Gemini</span> · modelo{" "}
-              <span className="font-mono text-foreground">{health?.model ?? "gemini-3.1-pro-preview"}</span>
+              <span className="font-mono text-foreground">
+                {health?.model ?? "gemini-3.1-pro-preview"}
+              </span>
             </p>
           </div>
           <button
@@ -73,7 +76,8 @@ function AiStatusPage() {
             disabled={busy}
             className="inline-flex items-center gap-2 h-9 px-3 rounded-md text-sm font-medium border border-border hover:bg-accent disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Revalidar agora
+            <ArrowsClockwise className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Revalidar
+            agora
           </button>
         </header>
 
@@ -92,7 +96,7 @@ function AiStatusPage() {
             hint={health?.keyFormatReason}
           />
           <Card
-            icon={CheckCircle2}
+            icon={CheckCircle}
             label="Último ping ao Google Gemini"
             tone={health?.pingOk ? "ok" : health == null ? "warn" : "err"}
             value={
@@ -101,7 +105,7 @@ function AiStatusPage() {
             hint={health?.pingError?.slice(0, 80)}
           />
           <Card
-            icon={ShieldAlert}
+            icon={ShieldWarning}
             label="Erros 401 (24h)"
             tone={auth401Count === 0 ? "ok" : "err"}
             value={String(auth401Count)}
@@ -112,7 +116,7 @@ function AiStatusPage() {
         {(!health?.ok || auth401Count > 0) && (
           <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-5">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <WarningCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h2 className="text-sm font-semibold text-destructive">
                   Ação necessária para reativar a IA
@@ -126,15 +130,13 @@ function AiStatusPage() {
                       rel="noreferrer"
                       className="underline inline-flex items-center gap-1 text-primary"
                     >
-                      aistudio.google.com/app/apikey <ExternalLink className="h-3 w-3" />
+                      aistudio.google.com/app/apikey <ArrowSquareOut className="h-3 w-3" />
                     </a>{" "}
                     e confirme que sua API do Google Gemini está ativa.
                   </li>
                   <li>
                     No painel da Vercel ou do Supabase Secrets, configure a variável de ambiente{" "}
-                    <code className="px-1 py-0.5 rounded bg-muted text-[12px]">
-                      GEMINI_API_KEY
-                    </code>
+                    <code className="px-1 py-0.5 rounded bg-muted text-[12px]">GEMINI_API_KEY</code>
                     .
                   </li>
                   <li>

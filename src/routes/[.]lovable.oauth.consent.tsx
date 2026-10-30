@@ -3,7 +3,7 @@
 // aprovar/negar, devolvemos o controle ao cliente MCP (ChatGPT, Claude, etc.).
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { CircleNotch, ShieldCheck } from "@phosphor-icons/react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -152,7 +152,7 @@ function ConsentPage() {
             onClick={() => decide(true)}
             className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors"
           >
-            {busy === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {busy === "approve" ? <CircleNotch className="h-4 w-4 animate-spin" /> : null}
             Autorizar
           </button>
           <button

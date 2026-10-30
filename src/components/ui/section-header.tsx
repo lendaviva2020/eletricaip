@@ -17,10 +17,16 @@ export function SectionHeader({
   ...props
 }: SectionHeaderProps) {
   return (
-    <div className={cn("flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2", className)} {...props}>
+    <div
+      className={cn(
+        "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2",
+        className,
+      )}
+      {...props}
+    >
       <div className="space-y-0.5">
         <div className="flex items-center gap-2">
-          <h2 className="font-display text-base sm:text-lg font-bold text-foreground tracking-tight">
+          <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight">
             {title}
           </h2>
           {badge}

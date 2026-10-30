@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bell } from "lucide-react";
+import { Bell } from "@phosphor-icons/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useTenantSetting } from "@/hooks/use-tenant-setting";

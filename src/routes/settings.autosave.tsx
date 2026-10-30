@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
-  HardDriveDownload,
-  CheckCircle2,
-  AlertCircle,
+  HardDrives,
+  CheckCircle,
+  WarningCircle,
   Clock,
-  Loader2,
-  Trash2,
-  Activity,
-} from "lucide-react";
+  CircleNotch,
+  Trash,
+  Pulse,
+} from "@phosphor-icons/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +51,7 @@ function AutosavePanel() {
         <header className="flex items-start justify-between gap-4">
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-primary mb-1 flex items-center gap-2">
-              <HardDriveDownload className="h-3 w-3" /> Persistência
+              <HardDrives className="h-3 w-3" /> Persistência
             </div>
             <h1 className="text-2xl font-semibold">Autosave & Canvas</h1>
             <p className="text-sm text-muted-foreground">
@@ -59,7 +59,7 @@ function AutosavePanel() {
             </p>
           </div>
           <Button size="sm" variant="ghost" onClick={clear}>
-            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Limpar log
+            <Trash className="h-3.5 w-3.5 mr-1.5" /> Limpar log
           </Button>
         </header>
 
@@ -113,9 +113,9 @@ function AutosavePanel() {
               </div>
               <div className="flex items-center gap-2">
                 {lastSaveError ? (
-                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <WarningCircle className="h-4 w-4 text-destructive" />
                 ) : (
-                  <CheckCircle2 className="h-4 w-4 text-success" />
+                  <CheckCircle className="h-4 w-4 text-success" />
                 )}
                 {lastSavedAt ? new Date(lastSavedAt).toLocaleString() : "—"}
               </div>
@@ -130,7 +130,7 @@ function AutosavePanel() {
 
         <section>
           <h2 className="text-sm font-medium mb-2 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Log de eventos ({events.length})
+            <Pulse className="h-4 w-4 text-primary" /> Log de eventos ({events.length})
           </h2>
           <Card>
             <CardContent className="p-0 divide-y divide-border">
@@ -161,11 +161,11 @@ function EventRow({ ev }: { ev: AutosaveEvent }) {
           : "muted";
   const icon =
     ev.kind === "save:start" ? (
-      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+      <CircleNotch className="h-3.5 w-3.5 animate-spin text-primary" />
     ) : tone === "destructive" ? (
-      <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+      <WarningCircle className="h-3.5 w-3.5 text-destructive" />
     ) : tone === "success" ? (
-      <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+      <CheckCircle className="h-3.5 w-3.5 text-success" />
     ) : (
       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
     );

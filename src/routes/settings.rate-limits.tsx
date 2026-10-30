@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Save, Trash2, ShieldAlert, RefreshCw } from "lucide-react";
+import { Plus, FloppyDisk, Trash, ShieldWarning, ArrowsClockwise } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,7 +104,7 @@ function RateLimitsPage() {
       <div className="p-6">
         <Card>
           <CardContent className="flex items-center gap-3 p-6">
-            <ShieldAlert className="h-5 w-5 text-destructive" />
+            <ShieldWarning className="h-5 w-5 text-destructive" />
             <div>
               <div className="font-medium">Acesso restrito</div>
               <div className="text-sm text-muted-foreground">
@@ -134,7 +134,7 @@ function RateLimitsPage() {
           size="sm"
           onClick={() => qc.invalidateQueries({ queryKey: ["ai-rate-limit-configs"] })}
         >
-          <RefreshCw className="mr-2 h-4 w-4" /> Recarregar
+          <ArrowsClockwise className="mr-2 h-4 w-4" /> Recarregar
         </Button>
       </header>
 
@@ -202,7 +202,7 @@ function RateLimitsPage() {
               </Button>
             )}
             <Button size="sm" disabled={upsertM.isPending} onClick={() => upsertM.mutate(draft)}>
-              <Save className="mr-2 h-4 w-4" /> Salvar
+              <FloppyDisk className="mr-2 h-4 w-4" /> Salvar
             </Button>
           </div>
         </CardContent>
@@ -259,7 +259,7 @@ function RateLimitsPage() {
                         disabled={deleteM.isPending}
                         onClick={() => r.id && deleteM.mutate(r.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash className="h-4 w-4" />
                       </Button>
                     </td>
                   </tr>

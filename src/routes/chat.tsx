@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Send, Plus, Loader2, Trash2, Sparkles } from "lucide-react";
+import { PaperPlaneRight, Plus, CircleNotch, Trash, Sparkle } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import {
@@ -156,7 +156,7 @@ function ChatPage() {
                 className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                 aria-label="Excluir"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}
@@ -165,7 +165,7 @@ function ChatPage() {
 
       <main className="flex-1 flex flex-col">
         <header className="border-b border-border px-6 py-3 flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
+          <Sparkle className="w-5 h-5 text-primary" />
           <h1 className="text-base font-semibold">EletricAI Copilot</h1>
           <div className="ml-auto">
             <CreditsBadge credits={credits} />
@@ -202,7 +202,11 @@ function ChatPage() {
               disabled={busy}
             />
             <Button onClick={handleSend} disabled={busy || !draft.trim()}>
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {busy ? (
+                <CircleNotch className="w-4 h-4 animate-spin" />
+              ) : (
+                <PaperPlaneRight className="w-4 h-4" />
+              )}
             </Button>
           </div>
         </footer>

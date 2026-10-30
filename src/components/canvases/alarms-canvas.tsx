@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { AlertTriangle, AlertCircle, Info, CheckCircle2, BellRing } from "lucide-react";
+import { Warning, WarningCircle, Info, CheckCircle, BellRinging } from "@phosphor-icons/react";
 import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useAlarmStore, type LiveAlarm } from "@/lib/alarm-store";
 import { toast } from "sonner";
@@ -9,21 +9,21 @@ import { formatDate } from "@/lib/i18n/format";
 
 const SEV_CONF = {
   critical: {
-    icon: AlertCircle,
+    icon: WarningCircle,
     color: "text-destructive",
     dot: "bg-destructive",
     bg: "bg-destructive/10",
     label: "CRIT",
   },
   high: {
-    icon: AlertCircle,
+    icon: WarningCircle,
     color: "text-orange-500",
     dot: "bg-orange-500",
     bg: "bg-orange-500/10",
     label: "HIGH",
   },
   medium: {
-    icon: AlertTriangle,
+    icon: Warning,
     color: "text-amber-500",
     dot: "bg-amber-500",
     bg: "bg-amber-500/10",
@@ -37,7 +37,7 @@ const SEV_CONF = {
     label: "LOW",
   },
   info: {
-    icon: CheckCircle2,
+    icon: CheckCircle,
     color: "text-success",
     dot: "bg-success",
     bg: "bg-success/10",
@@ -100,7 +100,7 @@ export function AlarmsCanvas() {
             onClick={ackAll}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary/40 bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 transition-colors cursor-pointer"
           >
-            <BellRing className="h-3.5 w-3.5" />
+            <BellRinging className="h-3.5 w-3.5" />
             {t("canvases.alarms.acknowledgeAll", { count: unackedCount })}
           </button>
         </div>
@@ -109,11 +109,9 @@ export function AlarmsCanvas() {
       {alarms.length === 0 ? (
         <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
           <div className="text-center space-y-2">
-            <CheckCircle2 className="h-8 w-8 mx-auto opacity-30" />
+            <CheckCircle className="h-8 w-8 mx-auto opacity-30" />
             <p>{t("canvases.alarms.noneActive")}</p>
-            <p className="text-[11px] text-muted-foreground/60">
-              {t("canvases.alarms.emptyHint")}
-            </p>
+            <p className="text-[11px] text-muted-foreground/60">{t("canvases.alarms.emptyHint")}</p>
           </div>
         </div>
       ) : (

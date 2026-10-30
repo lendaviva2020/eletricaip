@@ -5,40 +5,40 @@ import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  CheckCircle2,
-  ExternalLink,
-  AlertTriangle,
-  AlertCircle,
+  CheckCircle,
+  ArrowSquareOut,
+  Warning,
+  WarningCircle,
   CreditCard,
-  Sparkles,
+  Sparkle,
   Shield,
-  Zap,
+  Lightning,
   Clock,
   FileText,
-  RefreshCw,
+  ArrowsClockwise,
   Crown,
-  Loader2,
-  Ban,
+  CircleNotch,
+  Prohibit,
   Users,
-  Bot,
+  Robot,
   Cpu,
-  HardDrive,
+  HardDrives,
   PiggyBank,
   Timer,
-  ChevronRight,
+  CaretRight,
   Plus,
-  Building2,
-  Wifi,
-  Search,
-  Download,
+  Buildings,
+  WifiHigh,
+  MagnifyingGlass,
+  DownloadSimple,
   Lock,
   Hexagon,
-  BarChart3,
-  TrendingUp,
+  ChartBar,
+  TrendUp,
   Wallet,
   Receipt,
-  CircleDollarSign,
-} from "lucide-react";
+  CurrencyDollar,
+} from "@phosphor-icons/react";
 import {
   getBillingOverview,
   createStripeCheckout,
@@ -201,7 +201,7 @@ function BillingPage() {
 
   const planIcons: Record<string, typeof Shield> = {
     free: Shield,
-    basic: Sparkles,
+    basic: Sparkle,
     pro: Hexagon,
     premium: Crown,
   };
@@ -216,18 +216,19 @@ function BillingPage() {
   return (
     <div className="flex-1 flex flex-col">
       {/* ─── Fixed Top Header ─── */}
-      <header className="h-[72px] shrink-0 border-b border-border/40 bg-background/80 backdrop-blur-md flex items-center px-6 z-20">
+      <header className="h-12 shrink-0 border-b border-border bg-panel flex items-center px-6 z-20">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             type="button"
+            aria-label="Voltar para configurações"
             onClick={() => navigate({ to: "/settings" })}
-            className="flex items-center justify-center h-8 w-8 rounded-lg border border-border/40 hover:bg-muted/40 transition-colors"
+            className="flex items-center justify-center h-8 w-8 rounded-md border border-border hover:bg-muted/40 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 text-muted-foreground" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-              <CurrentIcon className="h-5 w-5 text-primary" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+              <CurrentIcon className="h-4 w-4 text-primary" />
             </div>
             <div>
               <p className="text-sm font-semibold leading-tight">{plan.name}</p>
@@ -278,7 +279,7 @@ function BillingPage() {
             className="h-8 gap-1.5 text-xs"
             onClick={() => window.dispatchEvent(new Event("trigger-upgrade-modal"))}
           >
-            <TrendingUp className="h-3.5 w-3.5" /> Upgrade
+            <TrendUp className="h-3.5 w-3.5" /> Upgrade
           </Button>
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
             EA
@@ -289,7 +290,7 @@ function BillingPage() {
       {error ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-            <AlertCircle className="h-6 w-6" />
+            <WarningCircle className="h-6 w-6" />
           </div>
           <h2 className="text-lg font-semibold">Falha ao carregar dados financeiros</h2>
           <p className="text-xs text-muted-foreground max-w-md">
@@ -297,21 +298,21 @@ function BillingPage() {
             {error instanceof Error ? ` Detalhes: ${error.message}` : ""}
           </p>
           <Button onClick={handleRefresh} variant="outline" className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Tentar novamente
+            <ArrowsClockwise className="h-4 w-4" /> Tentar novamente
           </Button>
         </div>
       ) : isLoading ? (
         <div className="flex-1 overflow-auto scrollbar-thin">
           <div className="max-w-6xl mx-auto p-6 space-y-8">
-            <Skeleton className="h-[280px] w-full rounded-2xl" />
+            <Skeleton className="h-[280px] w-full rounded-md" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-[88px] rounded-xl" />
+                <Skeleton key={i} className="h-[88px] rounded-md" />
               ))}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-[320px] rounded-xl" />
+                <Skeleton key={i} className="h-[320px] rounded-md" />
               ))}
             </div>
           </div>
@@ -320,9 +321,8 @@ function BillingPage() {
         <div className="flex-1 overflow-auto scrollbar-thin">
           <div className="max-w-6xl mx-auto p-6 space-y-8">
             {/* ─── Hero Section ─── */}
-            <section className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-background via-muted/20 to-background">
-              <NeuralBg />
-              <div className="relative z-10 p-6 lg:p-8">
+            <section className="relative overflow-hidden rounded-md border border-border bg-card">
+              <div className="relative z-10 p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                   {/* Status Card */}
                   <div className="lg:col-span-3 space-y-5">
@@ -340,7 +340,7 @@ function BillingPage() {
                           onClick={handleRefresh}
                           className="h-7 text-xs gap-1"
                         >
-                          <RefreshCw
+                          <ArrowsClockwise
                             className={`h-3 w-3 ${busy === "refresh" ? "animate-spin" : ""}`}
                           />{" "}
                           Sincronizar
@@ -348,22 +348,22 @@ function BillingPage() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
+                      <div className="bg-background rounded-md border border-border p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
-                          <HardDrive className="h-3 w-3" /> Armazenamento
+                          <HardDrives className="h-3 w-3" /> Armazenamento
                         </span>
                         <p className="text-lg font-semibold mt-1">
                           {data?.usage?.storage_used_mb ?? 0}{" "}
                           <span className="text-xs text-muted-foreground/60 font-normal">MB</span>
                         </p>
                       </div>
-                      <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
+                      <div className="bg-background rounded-md border border-border p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
-                          <Bot className="h-3 w-3" /> Uso de IA
+                          <Robot className="h-3 w-3" /> Uso de IA
                         </span>
                         <p className="text-lg font-semibold mt-1">{usagePct}%</p>
                       </div>
-                      <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
+                      <div className="bg-background rounded-md border border-border p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
                           <Cpu className="h-3 w-3" /> Automações
                         </span>
@@ -374,9 +374,9 @@ function BillingPage() {
                           </span>
                         </p>
                       </div>
-                      <div className="bg-background/60 backdrop-blur rounded-lg border border-border/30 p-3">
+                      <div className="bg-background rounded-md border border-border p-3">
                         <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
-                          <HardDrive className="h-3 w-3" /> Armazenamento
+                          <HardDrives className="h-3 w-3" /> Armazenamento
                         </span>
                         <p className="text-lg font-semibold mt-1">
                           {data?.usage?.storage_used_mb ?? 0}{" "}
@@ -389,18 +389,18 @@ function BillingPage() {
                         <Timer className="h-3 w-3" /> {daysLeft} dias restantes no ciclo
                       </span>
                       <span className="flex items-center gap-1">
-                        <Wifi className="h-3 w-3" /> {usagePct}% da cota utilizada
+                        <WifiHigh className="h-3 w-3" /> {usagePct}% da cota utilizada
                       </span>
                     </div>
                   </div>
                   {/* Chart */}
-                  <div className="lg:col-span-2 bg-background/40 backdrop-blur rounded-xl border border-border/30 p-4">
+                  <div className="lg:col-span-2 bg-background rounded-md border border-border p-4">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-medium">
                         Consumo (7 dias)
                       </span>
                       <span className="text-[10px] text-muted-foreground/40 flex items-center gap-1">
-                        <BarChart3 className="h-3 w-3" /> Chamadas
+                        <ChartBar className="h-3 w-3" /> Chamadas
                       </span>
                     </div>
                     <ResponsiveContainer width="100%" height={120}>
@@ -436,7 +436,6 @@ function BillingPage() {
                           type="monotone"
                           dataKey="calls"
                           stroke="#3fb6d6"
-                          strokeWidth={2}
                           fill="url(#usageGrad)"
                           dot={false}
                           activeDot={{ r: 3, fill: "#3fb6d6" }}
@@ -445,7 +444,6 @@ function BillingPage() {
                           type="monotone"
                           dataKey="automations"
                           stroke="#22c55e"
-                          strokeWidth={1.5}
                           fill="none"
                           dot={false}
                           strokeDasharray="4 2"
@@ -466,11 +464,13 @@ function BillingPage() {
                   (data?.invoices ?? [])
                     .filter((inv) => inv.status === "paid")
                     .reduce((acc, inv) => acc + (inv.amount ?? 0), 0) / 100
-                ).toFixed(2).replace(".", ",")}`}
+                )
+                  .toFixed(2)
+                  .replace(".", ",")}`}
                 sub="Total faturado"
               />
               <MetricCard
-                icon={<TrendingUp className="h-4 w-4" />}
+                icon={<TrendUp className="h-4 w-4" />}
                 label="Plano atual"
                 value={plan.name}
                 sub={plan.features[0] ?? "Assinatura ativa"}
@@ -482,7 +482,7 @@ function BillingPage() {
                 sub="Neste ciclo mensal"
               />
               <MetricCard
-                icon={<CircleDollarSign className="h-4 w-4" />}
+                icon={<CurrencyDollar className="h-4 w-4" />}
                 label="Tokens IA utilizados"
                 value={String(data?.usage?.ai_tokens_used ?? 0)}
                 sub={aiCredits ? `Cota: ${aiCredits.toLocaleString()}` : "Sem cota"}
@@ -504,14 +504,12 @@ function BillingPage() {
                   return (
                     <div
                       key={p.id}
-                      className={`group relative overflow-hidden rounded-xl border transition-all duration-300 ${
-                        isCurrent
-                          ? "border-primary/40 shadow-[0_0_30px_-8px] shadow-primary/15"
-                          : "border-border/50 hover:border-primary/20 hover:shadow-[0_0_20px_-10px] hover:shadow-primary/10"
+                      className={`group relative overflow-hidden rounded-md border bg-card transition-colors ${
+                        isCurrent ? "border-primary" : "border-border hover:border-primary/40"
                       }`}
                     >
                       {isCurrent && (
-                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-primary" />
                       )}
                       <div className={`p-5 ${isCurrent ? "pt-6" : ""}`}>
                         <div className="flex items-center justify-between mb-4">
@@ -534,7 +532,7 @@ function BillingPage() {
                           </div>
                           {isCurrent && (
                             <Badge className="text-[9px] h-5 gap-1 whitespace-nowrap">
-                              <CheckCircle2 className="h-2.5 w-2.5" /> Atual
+                              <CheckCircle className="h-2.5 w-2.5" /> Atual
                             </Badge>
                           )}
                         </div>
@@ -544,26 +542,26 @@ function BillingPage() {
                         </div>
                         <ul className="text-xs text-muted-foreground/80 space-y-1.5 mb-5">
                           <li className="flex items-center gap-2">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                            <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
                             {p.maxProjects < 0
                               ? "Projetos ilimitados"
                               : `Até ${p.maxProjects} projetos`}
                           </li>
                           <li className="flex items-center gap-2">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                            <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
                             {p.aiCreditsPerMonth === null
                               ? "Créditos IA ilimitados"
                               : `${p.aiCreditsPerMonth} créditos IA/mês`}
                           </li>
                           {p.realtime && (
                             <li className="flex items-center gap-2">
-                              <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                              <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
                               Realtime OPC-UA / Modbus
                             </li>
                           )}
                           {p.features.slice(0, 3).map((f) => (
                             <li key={f} className="flex items-center gap-2">
-                              <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                              <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
                               {f}
                             </li>
                           ))}
@@ -582,7 +580,7 @@ function BillingPage() {
                               onClick={() => handleCheckout("stripe", p.id as PaidPlan)}
                             >
                               {busy === `stripe:${p.id}` ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <CircleNotch className="h-3 w-3 animate-spin" />
                               ) : (
                                 <CreditCard className="h-3 w-3" />
                               )}
@@ -596,9 +594,9 @@ function BillingPage() {
                               onClick={() => handleCheckout("mp", p.id as PaidPlan)}
                             >
                               {busy === `mp:${p.id}` ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <CircleNotch className="h-3 w-3 animate-spin" />
                               ) : (
-                                <Zap className="h-3 w-3" />
+                                <Lightning className="h-3 w-3" />
                               )}
                               Mercado Pago
                             </Button>
@@ -611,7 +609,7 @@ function BillingPage() {
                             className="w-full gap-1.5 text-xs h-9 text-destructive border-destructive/30 hover:bg-destructive/10"
                             onClick={handleCancel}
                           >
-                            <Ban className="h-3 w-3" /> Cancelar
+                            <Prohibit className="h-3 w-3" /> Cancelar
                           </Button>
                         )}
                         {isCurrent && currentPlan === "free" && (
@@ -627,7 +625,7 @@ function BillingPage() {
               {isPlatformAdmin && (
                 <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <Warning className="h-4 w-4 text-amber-500" />
                     <span className="text-xs font-semibold">Override de administrador</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -640,7 +638,9 @@ function BillingPage() {
                         disabled={!!busy}
                         className="text-xs h-8 gap-1"
                       >
-                        {busy === `manual:${pl}` && <Loader2 className="h-3 w-3 animate-spin" />}
+                        {busy === `manual:${pl}` && (
+                          <CircleNotch className="h-3 w-3 animate-spin" />
+                        )}
                         {pl.toUpperCase()}
                       </Button>
                     ))}
@@ -663,7 +663,7 @@ function BillingPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50" />
+                        <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50" />
                         <Input
                           value={invoiceSearch}
                           onChange={(e) => setInvoiceSearch(e.target.value)}
@@ -672,7 +672,7 @@ function BillingPage() {
                         />
                       </div>
                       <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                        <Download className="h-3.5 w-3.5" />
+                        <DownloadSimple className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -810,7 +810,7 @@ function BillingPage() {
                   </div>
                   <Card>
                     <CardContent className="p-4 space-y-3">
-                      <div className="rounded-lg border border-border/40 bg-gradient-to-r from-primary/5 to-transparent p-3.5">
+                      <div className="rounded-md border border-border bg-secondary/40 p-3.5">
                         <div className="flex items-center gap-3 mb-2">
                           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
                             <CreditCard className="h-4 w-4 text-primary" />
@@ -831,7 +831,7 @@ function BillingPage() {
                       </div>
                       <div className="rounded-lg border border-border/30 p-3.5 flex items-center gap-3 hover:border-border/60 transition-colors cursor-pointer">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                          <Zap className="h-4 w-4 text-emerald-500" />
+                          <Lightning className="h-4 w-4 text-emerald-500" />
                         </div>
                         <div className="flex-1">
                           <p className="text-xs font-semibold">PIX</p>
@@ -839,11 +839,11 @@ function BillingPage() {
                             Pagamento instantâneo
                           </p>
                         </div>
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />
+                        <CaretRight className="h-3.5 w-3.5 text-muted-foreground/30" />
                       </div>
                       <div className="rounded-lg border border-border/30 p-3.5 flex items-center gap-3 hover:border-border/60 transition-colors cursor-pointer">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                          <Building2 className="h-4 w-4 text-muted-foreground/60" />
+                          <Buildings className="h-4 w-4 text-muted-foreground/60" />
                         </div>
                         <div className="flex-1">
                           <p className="text-xs font-semibold">Boleto bancário</p>
@@ -851,7 +851,7 @@ function BillingPage() {
                             Vencimento em 5 dias úteis
                           </p>
                         </div>
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />
+                        <CaretRight className="h-3.5 w-3.5 text-muted-foreground/30" />
                       </div>
                       <div className="rounded-lg border border-border/30 p-3.5 flex items-center gap-3 hover:border-border/60 transition-colors cursor-pointer opacity-60">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
@@ -878,10 +878,10 @@ function BillingPage() {
             </div>
 
             {/* ─── Central de Consumo Neural IA ─── */}
-            <section className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-background via-primary/[0.02] to-background">
+            <section className="relative overflow-hidden rounded-md border border-border bg-card">
               <div className="p-6">
                 <div className="flex items-center gap-2 mb-6">
-                  <Bot className="h-4 w-4 text-primary" />
+                  <Robot className="h-4 w-4 text-primary" />
                   <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium">
                     Central de consumo neural
                   </span>
@@ -889,7 +889,13 @@ function BillingPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="text-center">
                     <CircularProgress
-                      value={Math.min(100, Math.round(((data?.usage?.ai_tokens_used ?? 0) / (plan.aiCreditsPerMonth || 100)) * 100))}
+                      value={Math.min(
+                        100,
+                        Math.round(
+                          ((data?.usage?.ai_tokens_used ?? 0) / (plan.aiCreditsPerMonth || 100)) *
+                            100,
+                        ),
+                      )}
                       max={100}
                       size={64}
                       label="Tokens utilizados"

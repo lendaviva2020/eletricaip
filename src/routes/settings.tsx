@@ -2,24 +2,24 @@ import { createFileRoute, useNavigate, Outlet, useMatches } from "@tanstack/reac
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Settings2,
+  SlidersHorizontal,
   CreditCard,
   Users,
-  Sparkles,
-  ChevronRight,
-  Wifi,
-  Zap,
-  BookText,
+  Sparkle,
+  CaretRight,
+  WifiHigh,
+  Lightning,
+  BookOpenText,
   Ruler,
   ToggleLeft,
-  Box,
+  Cube,
   User,
   Bell,
   Shield,
   Palette,
   Plug,
-  LogOut,
-} from "lucide-react";
+  SignOut,
+} from "@phosphor-icons/react";
 import { LogoutButton } from "@/components/auth/logout-dialog";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -80,7 +80,7 @@ function SettingsPage() {
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-primary" />
+            <SlidersHorizontal className="h-5 w-5 text-primary" />
             Configurações
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Preferências do Industrial OS</p>
@@ -130,7 +130,7 @@ function SettingsPage() {
               badge={null}
             />
             <SettingsLinkCard
-              icon={Sparkles}
+              icon={Sparkle}
               title="Status da IA"
               desc="Diagnóstico da chave Google Gemini, ping e histórico de chamadas"
               to="/settings/ai-status"
@@ -144,14 +144,14 @@ function SettingsPage() {
               badge="Novo"
             />
             <SettingsLinkCard
-              icon={Settings2}
+              icon={SlidersHorizontal}
               title="Diagnósticos"
               desc="Status do Supabase, permissões (RLS/GRANT) e contadores de 500/503 em tempo real"
               to="/settings/diagnostics"
               badge="Novo"
             />
             <SettingsLinkCard
-              icon={Settings2}
+              icon={SlidersHorizontal}
               title="Autosave & Canvas"
               desc="Logs do autosave, status de persistência do diagrama e diagnóstico de falhas"
               to="/settings/autosave"
@@ -159,7 +159,7 @@ function SettingsPage() {
             />
 
             <SettingsLinkCard
-              icon={Box}
+              icon={Cube}
               title="Importar catálogo"
               desc="Importe componentes reais via CSV/XLSX com dedup por fabricante e part number"
               to="/settings/catalog-import"
@@ -167,7 +167,7 @@ function SettingsPage() {
             />
 
             <SettingsLinkCard
-              icon={Box}
+              icon={Cube}
               title="Digital Twin 3D"
               desc="Gêmeo Digital interativo com visualização 3D e telemetria ao vivo"
               to="/digital-twin"
@@ -204,7 +204,7 @@ function SettingsPage() {
         </section>
 
         <section>
-          <SectionLabel icon={Wifi} title="Protocolos industriais" />
+          <SectionLabel icon={WifiHigh} title="Protocolos industriais" />
           <div className="grid gap-3">
             <SettingsLinkCard
               icon={Plug}
@@ -223,7 +223,7 @@ function SettingsPage() {
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
                         {on ? (
-                          <Zap className="h-4 w-4 text-primary" />
+                          <Lightning className="h-4 w-4 text-primary" />
                         ) : (
                           <ToggleLeft className="h-4 w-4 text-muted-foreground" />
                         )}
@@ -242,7 +242,7 @@ function SettingsPage() {
         </section>
 
         <section>
-          <SectionLabel icon={BookText} title="Normas aplicadas" />
+          <SectionLabel icon={BookOpenText} title="Normas aplicadas" />
           <Card>
             <CardContent className="p-0 divide-y divide-border">
               {NORMAS.map((n) => {
@@ -272,11 +272,12 @@ function SettingsPage() {
             <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <LogOut className="h-4 w-4 text-muted-foreground" />
+                  <SignOut className="h-4 w-4 text-muted-foreground" />
                   <span>Sair da conta</span>
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Encerre sua sessão com segurança neste dispositivo. Seus projetos e configurações salvos permanecerão preservados na nuvem.
+                  Encerre sua sessão com segurança neste dispositivo. Seus projetos e configurações
+                  salvos permanecerão preservados na nuvem.
                 </p>
               </div>
               <LogoutButton
@@ -341,7 +342,7 @@ function SettingsLinkCard({
             </div>
             <CardDescription className="text-xs mt-0.5">{desc}</CardDescription>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          <CaretRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
         </CardContent>
       </Card>
     </button>

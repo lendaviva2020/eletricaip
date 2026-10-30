@@ -1,15 +1,15 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import {
-  Sparkles,
-  Send,
-  Loader2,
+  Sparkle,
+  PaperPlaneRight,
+  CircleNotch,
   Cpu,
-  CheckCircle2,
-  AlertCircle,
-  ShieldAlert,
+  CheckCircle,
+  WarningCircle,
+  ShieldWarning,
   ShieldCheck,
   Info,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { useState } from "react";
 import {
   callArchitect,
@@ -93,7 +93,7 @@ function AiPage() {
       <div className="flex-1 flex flex-col">
         <div className="px-6 py-4 border-b border-border">
           <h1 className="text-lg font-semibold flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" /> EletricAI Copilot
+            <Sparkle className="h-4 w-4 text-primary" /> EletricAI Copilot
             <span className="text-[9px] font-mono uppercase tracking-wider text-primary/80 ml-2 px-1.5 py-0.5 rounded bg-primary/10">
               CORE ENGINE
             </span>
@@ -115,7 +115,7 @@ function AiPage() {
               <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.text}</div>
               {m.error && (
                 <div className="mt-2 flex items-start gap-2 text-xs text-destructive">
-                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" /> {m.error}
+                  <WarningCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" /> {m.error}
                 </div>
               )}
               {m.result && <ResultCard result={m.result} onApply={apply} />}
@@ -130,7 +130,7 @@ function AiPage() {
                   onClick={() => send(s)}
                   className="text-left text-[12px] p-3 rounded-md border border-border hover:border-primary/40 hover:bg-accent/40 transition-colors"
                 >
-                  <Sparkles className="h-3 w-3 text-primary inline mr-1.5" />
+                  <Sparkle className="h-3 w-3 text-primary inline mr-1.5" />
                   {s}
                 </button>
               ))}
@@ -158,7 +158,11 @@ function AiPage() {
               className="absolute right-2 bottom-2 h-8 w-8 grid place-items-center rounded-md text-primary-foreground glow-primary disabled:opacity-50"
               style={{ background: "var(--gradient-primary)" }}
             >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {busy ? (
+                <CircleNotch className="h-4 w-4 animate-spin" />
+              ) : (
+                <PaperPlaneRight className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
@@ -282,7 +286,7 @@ function ResultCard({
           className="text-[12px] px-3 h-9 rounded-md text-primary-foreground glow-primary inline-flex items-center gap-1.5"
           style={{ background: "var(--gradient-primary)" }}
         >
-          <CheckCircle2 className="h-3.5 w-3.5" /> Aplicar como Unifilar
+          <CheckCircle className="h-3.5 w-3.5" /> Aplicar como Unifilar
         </button>
         <button
           onClick={() => onApply(result, "ladder")}
@@ -325,7 +329,7 @@ function NormPanel({
   return (
     <div className={`rounded-md border ${tone} p-3 space-y-2`}>
       <div className="flex items-center gap-2 text-xs font-semibold">
-        <ShieldAlert className="h-4 w-4 text-warning" />
+        <ShieldWarning className="h-4 w-4 text-warning" />
         Validação normativa
         <span className="ml-auto flex gap-2 font-mono text-[10px] text-muted-foreground">
           {summary.errors > 0 && (
@@ -339,9 +343,9 @@ function NormPanel({
         {findings.map((f) => (
           <li key={f.id} className="flex items-start gap-2 text-[11px] leading-relaxed">
             {f.severity === "error" ? (
-              <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+              <WarningCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
             ) : f.severity === "warn" ? (
-              <ShieldAlert className="h-3.5 w-3.5 text-warning mt-0.5 shrink-0" />
+              <ShieldWarning className="h-3.5 w-3.5 text-warning mt-0.5 shrink-0" />
             ) : (
               <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
             )}

@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
-  RotateCw,
-  RotateCcw,
-  ZoomIn,
-  ZoomOut,
+  ArrowClockwise,
+  ArrowCounterClockwise,
+  MagnifyingGlassPlus,
+  MagnifyingGlassMinus,
   Sliders,
-  TrendingUp,
-  Activity,
-  FlaskConical,
+  TrendUp,
+  Pulse,
+  Flask,
   Play,
-  RotateCcw as ResetIcon,
+  ArrowCounterClockwise as ResetIcon,
   X,
-  Box,
+  Cube,
   Monitor,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
@@ -83,10 +83,7 @@ export function TwinCanvas() {
       const rawVal = runtimeTagValues[b.tagId];
       if (rawVal === undefined) continue;
       const eq = canonicalEquipments[b.equipmentId];
-      if (
-        upper === "SPEED" &&
-        (b.role === "vfd_speed_ref" || b.role === "vfd_run_feedback")
-      ) {
+      if (upper === "SPEED" && (b.role === "vfd_speed_ref" || b.role === "vfd_run_feedback")) {
         return Number(rawVal);
       }
       if (
@@ -420,7 +417,7 @@ export function TwinCanvas() {
               : "border-border bg-card/75 text-muted-foreground hover:bg-accent hover:text-foreground"
           }`}
         >
-          {view3d ? <Box className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
+          {view3d ? <Cube className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
           {view3d ? "3D" : "2D"}
         </button>
         <div className="w-px h-6 bg-border mx-0.5 align-middle self-center" />
@@ -429,14 +426,14 @@ export function TwinCanvas() {
           title="Girar p/ Esquerda"
           className="h-8 w-8 rounded bg-card/75 border border-border flex items-center justify-center cursor-pointer hover:bg-accent text-muted-foreground hover:text-foreground"
         >
-          <RotateCcw className="h-4 w-4" />
+          <ArrowCounterClockwise className="h-4 w-4" />
         </button>
         <button
           onClick={() => setAngle((a) => a + 10)}
           title="Girar p/ Direita"
           className="h-8 w-8 rounded bg-card/75 border border-border flex items-center justify-center cursor-pointer hover:bg-accent text-muted-foreground hover:text-foreground"
         >
-          <RotateCw className="h-4 w-4" />
+          <ArrowClockwise className="h-4 w-4" />
         </button>
         <div className="w-px h-6 bg-border mx-1.5 align-middle self-center" />
         <button
@@ -444,14 +441,14 @@ export function TwinCanvas() {
           title="Aumentar Zoom"
           className="h-8 w-8 rounded bg-card/75 border border-border flex items-center justify-center cursor-pointer hover:bg-accent text-muted-foreground hover:text-foreground"
         >
-          <ZoomIn className="h-4 w-4" />
+          <MagnifyingGlassPlus className="h-4 w-4" />
         </button>
         <button
           onClick={() => setZoom((z) => Math.max(0.6, z - 0.1))}
           title="Diminuir Zoom"
           className="h-8 w-8 rounded bg-card/75 border border-border flex items-center justify-center cursor-pointer hover:bg-accent text-muted-foreground hover:text-foreground"
         >
-          <ZoomOut className="h-4 w-4" />
+          <MagnifyingGlassMinus className="h-4 w-4" />
         </button>
         <div className="w-px h-6 bg-border mx-1.5 align-middle self-center" />
         <button
@@ -463,7 +460,7 @@ export function TwinCanvas() {
               : "border-border bg-card/75 text-muted-foreground hover:bg-accent hover:text-foreground"
           }`}
         >
-          <FlaskConical className="h-3.5 w-3.5" />E se?
+          <Flask className="h-3.5 w-3.5" />E se?
           {whatIfActive && <span className="h-1.5 w-1.5 rounded-full bg-primary energized" />}
         </button>
       </div>
@@ -573,7 +570,7 @@ export function TwinCanvas() {
           }}
         >
           <div className="relative">
-            <Activity className="h-5 w-5 text-warning animate-pulse" />
+            <Pulse className="h-5 w-5 text-warning animate-pulse" />
             <div className="absolute left-6 top-0 hidden group-hover:block w-32 p-2 bg-background/95 border border-border rounded text-[9px] font-mono shadow-xl">
               <span className="text-warning font-bold">ALERTA PREDITIVO:</span>
               <br />
@@ -587,10 +584,10 @@ export function TwinCanvas() {
 
       {/* POPUP HISTORY TREND SPARKLINE */}
       {selectedSensor && (
-        <div className="absolute right-6 top-16 z-20 w-[240px] rounded-lg border border-primary/20 bg-background/95 p-3 flex flex-col gap-2 shadow-2xl glass-strong">
+        <div className="absolute right-6 top-16 z-20 w-[240px] rounded-lg border border-border bg-card p-3 flex flex-col gap-2 shadow-lg">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase flex items-center gap-1">
-              <TrendingUp className="h-3.5 w-3.5 text-primary" />
+              <TrendUp className="h-3.5 w-3.5 text-primary" />
               Histórico de Telemetria
             </span>
             <button
@@ -716,10 +713,10 @@ function WhatIfPanel(props: {
 }) {
   const { whatIf, baseline, active } = props;
   return (
-    <div className="absolute left-6 top-28 z-30 w-[320px] rounded-lg border border-primary/30 bg-background/95 shadow-2xl glass-strong flex flex-col gap-3 p-3">
+    <div className="absolute left-6 top-28 z-30 w-[320px] rounded-lg border border-border bg-card shadow-lg flex flex-col gap-3 p-3">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-mono font-bold text-primary uppercase flex items-center gap-1.5">
-          <FlaskConical className="h-3.5 w-3.5" />
+          <Flask className="h-3.5 w-3.5" />
           Cenário · E se?
         </span>
         <button

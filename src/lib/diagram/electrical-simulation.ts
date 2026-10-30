@@ -10,6 +10,7 @@
 
 import type { DiagramDoc, DiagramEdge, DiagramNode } from "./schema";
 import { detectMultifilarPhaseMismatches, calculateVoltageDropNbr5410 } from "./multifilar";
+import { useSafetyStore } from "@/lib/simulation/safety-core";
 
 export type SimulationStatus = "stopped" | "running" | "paused";
 
@@ -99,7 +100,17 @@ export function computeCircuitEnergization(
     },
   };
 
-  if (status === "stopped" || nodes.length === 0) {
+  const isEmergencyActive = useSafetyStore.getState().emergencyLatched;
+
+  if (status === "stopped" || isEmergencyActive || nodes.length === 0) {
+    // Se a emergência estiver atuada, registra todos os dispositivos como abertos no estado seguro
+    if (isEmergencyActive) {
+      for (const n of nodes) {
+        if (isSwitchingDevice(n.params.kind)) {
+          emptyResult.openDeviceIds.add(n.id);
+        }
+      }
+    }
     return emptyResult;
   }
 

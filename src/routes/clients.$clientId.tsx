@@ -2,7 +2,16 @@ import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Edit2, Mail, Phone, Globe, MapPin, Briefcase, FileText } from "lucide-react";
+import {
+  ArrowLeft,
+  PencilSimple,
+  EnvelopeSimple,
+  Phone,
+  Globe,
+  MapPin,
+  Briefcase,
+  FileText,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -57,7 +66,7 @@ function ClientDetailPage() {
             </Link>
           </Button>
           <Button onClick={() => setEditOpen(true)}>
-            <Edit2 className="h-4 w-4" /> Editar
+            <PencilSimple className="h-4 w-4" /> Editar
           </Button>
         </div>
 
@@ -96,7 +105,7 @@ function ClientDetailPage() {
           </TabsList>
 
           <TabsContent value="info" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <InfoRow icon={Mail} label="Email" value={c.email} />
+            <InfoRow icon={EnvelopeSimple} label="Email" value={c.email} />
             <InfoRow icon={Phone} label="Telefone" value={c.phone} />
             <InfoRow icon={Globe} label="Website" value={c.website} link />
             <InfoRow icon={MapPin} label="Endereço" value={c.address} />

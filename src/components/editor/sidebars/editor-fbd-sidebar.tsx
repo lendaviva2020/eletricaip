@@ -1,4 +1,4 @@
-import { Gauge } from "lucide-react";
+import { Gauge } from "@phosphor-icons/react";
 import { PaletteGroup, SidebarSearch, SidebarShell } from "./sidebar-primitives";
 import { paletteDefinitions } from "@/lib/fbd/editor-bridge";
 import { effectiveInputs, effectiveOutputs } from "@/lib/fbd/engine";

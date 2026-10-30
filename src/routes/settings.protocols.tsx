@@ -2,16 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Loader2,
-  CheckCircle2,
+  CircleNotch,
+  CheckCircle,
   XCircle,
-  Cable,
+  Plug as PlugIcon,
   Plug,
   ShieldCheck,
   Info,
-  Activity,
-  Server,
-} from "lucide-react";
+  Pulse,
+  HardDrives,
+} from "@phosphor-icons/react";
 import { testOpcuaConnection } from "@/lib/opcua-server.functions";
 import { testModbusHost } from "@/lib/modbus-server.functions";
 
@@ -47,11 +47,11 @@ function PageHeader() {
       >
         <p className="font-semibold">Ambiente de Simulação / Mock de Nuvem</p>
         <p>
-          Esta plataforma roda na nuvem pública e <strong>não se comunica diretamente com CLPs de
-          fábrica</strong>. As conexões abaixo operam em modo de simulação (host{" "}
-          <code>simulation</code>). Para comunicar com equipamentos reais é necessário um{" "}
-          <strong>Edge Gateway</strong> local (ex.: node-opcua / gateway Modbus na rede OT) que
-          encaminhe os dados de forma segura para a plataforma.
+          Esta plataforma roda na nuvem pública e{" "}
+          <strong>não se comunica diretamente com CLPs de fábrica</strong>. As conexões abaixo
+          operam em modo de simulação (host <code>simulation</code>). Para comunicar com
+          equipamentos reais é necessário um <strong>Edge Gateway</strong> local (ex.: node-opcua /
+          gateway Modbus na rede OT) que encaminhe os dados de forma segura para a plataforma.
         </p>
       </div>
     </div>
@@ -97,7 +97,7 @@ function OpcUaSection() {
 
   return (
     <ProtocolSection
-      icon={<Cable className="h-5 w-5" />}
+      icon={<PlugIcon className="h-5 w-5" />}
       title="OPC-UA (Simulação)"
       description="Servidor OPC-UA simulado na nuvem. Conexão física com CLPs requer Edge Gateway local."
     >
@@ -151,11 +151,11 @@ function OpcUaSection() {
           >
             {testing ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Testando...
+                <CircleNotch className="h-4 w-4 animate-spin" /> Testando...
               </>
             ) : (
               <>
-                <Activity className="h-4 w-4" /> Testar conexão
+                <Pulse className="h-4 w-4" /> Testar conexão
               </>
             )}
           </button>
@@ -167,7 +167,7 @@ function OpcUaSection() {
             >
               {testResult.ok ? (
                 <>
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle className="h-4 w-4" />
                   Conectado (simulação) — {testResult.tags} tags encontradas
                 </>
               ) : (
@@ -261,11 +261,11 @@ function ModbusSection() {
           >
             {testing ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Testando...
+                <CircleNotch className="h-4 w-4 animate-spin" /> Testando...
               </>
             ) : (
               <>
-                <Activity className="h-4 w-4" /> Testar conexão
+                <Pulse className="h-4 w-4" /> Testar conexão
               </>
             )}
           </button>
@@ -277,7 +277,7 @@ function ModbusSection() {
             >
               {testResult.ok ? (
                 <>
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle className="h-4 w-4" />
                   Conexão estabelecida
                 </>
               ) : (

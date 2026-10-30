@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Wand2, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash, MagicWand, MagnifyingGlass } from "@phosphor-icons/react";
 import {
   listBom,
   addBomItem,
@@ -153,15 +153,18 @@ function BomPage() {
             <Plus className="w-4 h-4 mr-1" /> {t("bom.addManual")}
           </Button>
           <Button size="sm" onClick={handleGenerate} disabled={busy}>
-            <Wand2 className="w-4 h-4 mr-1" /> {busy ? t("bom.generating") : t("bom.generateFromCanvas")}
+            <MagicWand className="w-4 h-4 mr-1" />{" "}
+            {busy ? t("bom.generating") : t("bom.generateFromCanvas")}
           </Button>
         </div>
       </div>
 
       <div className="mb-6 border border-border rounded-lg p-4">
-        <label className="text-xs text-muted-foreground mb-2 block">{t("bom.addFromCatalog")}</label>
+        <label className="text-xs text-muted-foreground mb-2 block">
+          {t("bom.addFromCatalog")}
+        </label>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -253,7 +256,7 @@ function BomPage() {
                         onClick={() => handleDelete(it.id)}
                         className="text-destructive hover:text-destructive/80"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Palette } from "lucide-react";
+import { Palette } from "@phosphor-icons/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -57,7 +57,9 @@ function AppearancePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="comfortable">{t("settings.appearanceDensityComfortable")}</SelectItem>
+                  <SelectItem value="comfortable">
+                    {t("settings.appearanceDensityComfortable")}
+                  </SelectItem>
                   <SelectItem value="compact">{t("settings.appearanceDensityCompact")}</SelectItem>
                 </SelectContent>
               </Select>

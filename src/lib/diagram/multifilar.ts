@@ -453,7 +453,12 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
   const RHO_COPPER_70C = 0.0215; // Ω·mm²/m para cobre a 70°C (isolamento PVC)
   const REACTANCE_X_PER_M = 0.00008; // 0.08 Ω/km = 0.00008 Ω/m
 
-  for (const e of Object.values(doc.edges)) {
+  // Avalia conexões canônicas (evita duplicar cálculos entre unifilar e multifilar)
+  const canonicalEdges = Object.values(doc.edges).filter(
+    (e) => e.sheet === "unifilar" || !e.id.startsWith("mf_"),
+  );
+
+  for (const e of canonicalEdges) {
     const src = doc.nodes[e.source];
     const tgt = doc.nodes[e.target];
     if (!src || !tgt) continue;
@@ -530,8 +535,13 @@ export interface DiagnosticAlert {
  */
 export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
   const alerts: DiagnosticAlert[] = [];
-  const nodes = Object.values(doc.nodes);
-  const edges = Object.values(doc.edges);
+  // Avalia equipamentos canônicos (evita duplicar alertas entre representação unifilar e espelho multifilar)
+  const nodes = Object.values(doc.nodes).filter(
+    (n) => n.sheet === "unifilar" || !n.id.startsWith("mf_"),
+  );
+  const edges = Object.values(doc.edges).filter(
+    (e) => e.sheet === "unifilar" || !e.id.startsWith("mf_"),
+  );
 
   if (nodes.length === 0) {
     return [{ id: "empty", type: "AVISO", message: "Diagrama elétrico vazio." }];

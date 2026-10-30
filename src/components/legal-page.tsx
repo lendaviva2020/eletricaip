@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, CircleNotch } from "@phosphor-icons/react";
 import { BrandBolt } from "@/components/brand-bolt";
 
 export function LegalPage({
@@ -72,7 +72,7 @@ export function LegalPage({
             </div>
           ) : md === null ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Carregando documento…
+              <CircleNotch className="h-4 w-4 animate-spin" /> Carregando documento…
             </div>
           ) : (
             <article className="prose-legal">

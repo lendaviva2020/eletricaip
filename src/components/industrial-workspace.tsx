@@ -4,15 +4,17 @@ import { ModeTabs } from "@/components/mode-tabs";
 import { UnifiedBottomDock } from "@/components/editor/unified-bottom-dock";
 import { RightPanel } from "@/components/right-panel";
 import {
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
+  CircleNotch,
+  CheckCircle,
+  WarningCircle,
+  CaretLeft,
+  CaretRight,
   FolderOpen,
   PlusCircle,
   FileText,
-} from "lucide-react";
+  DownloadSimple,
+  Robot,
+} from "@phosphor-icons/react";
 import { CanvasAiChat } from "@/components/canvas-ai-chat";
 import { useProjectPersistence } from "@/lib/use-project-persistence";
 import { isBreakerComponent, type VoltaiComponentType } from "@/lib/palette/component-catalog";
@@ -24,7 +26,7 @@ import { EditorAiConfigBanner } from "@/components/editor-ai-config-banner";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { EngineeringDossierModal } from "@/components/dossier/engineering-dossier-modal";
 import { UniversalImportModal } from "@/components/importer/universal-import-modal";
-import { Download, Bot } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -33,6 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 const UnifilarCanvas = lazy(() =>
   import("@/components/canvases/webgl-canvas").then((m) => ({ default: m.WebglCanvas })),
@@ -101,7 +104,9 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
   const [dossierOpen, setDossierOpen] = useState(false);
   const [importerOpen, setImporterOpen] = useState(false);
   const [importerPayload, setImporterPayload] = useState<string>("");
-  const [importerTab, setImporterTab] = useState<"input" | "preview" | "render" | "export">("input");
+  const [importerTab, setImporterTab] = useState<"input" | "preview" | "render" | "export">(
+    "input",
+  );
 
   // Interceptador e ouvinte global para pacotes colados no chat ou acionados na interface
   useEffect(() => {
@@ -125,118 +130,188 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
   }
 
   return (
-    <div className="flex-1 flex min-h-0 h-full w-full relative overflow-hidden">
+    <div className="flex-1 flex min-h-0 min-w-0 h-full w-full relative overflow-hidden">
       {/* Backdrop para gavetas móveis/tablet (< 1024px) quando algum painel lateral estiver aberto */}
       {(!leftCollapsed || !rightCollapsed) && (
         <div
           onClick={() => setPanelsCollapsed(true, true)}
-          className="lg:hidden absolute inset-0 z-30 bg-black/50 backdrop-blur-[1px]"
+          className="lg:hidden absolute inset-0 z-30 bg-black/50"
           aria-hidden="true"
         />
       )}
 
-      {/* Painel Esquerdo (fixo em >= 1024px, gaveta sobreposta em < 1024px) */}
-      {!leftCollapsed ? (
-        <div className="flex max-lg:absolute max-lg:left-0 max-lg:inset-y-0 max-lg:z-40 max-lg:shadow-2xl relative shrink-0 z-10 h-full overflow-hidden">
+      {/* Gaveta esquerda em mobile/tablet (< 1024px) */}
+      {!leftCollapsed && (
+        <div className="lg:hidden flex absolute left-0 inset-y-0 z-40 border-r border-border bg-panel h-full overflow-hidden">
           <LeftSidebarHost mode={mode} />
-          {/* Botão para recolher o painel esquerdo */}
           <button
             onClick={toggleLeftPanel}
-            className="flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 [@media(pointer:coarse)]:-right-7 bg-panel border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all touch-manipulation"
+            className="flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 [@media(pointer:coarse)]:-right-7 bg-panel border border-border border-l-0 rounded-r-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors touch-manipulation"
             title="Recolher painel esquerdo"
             aria-label="Recolher painel esquerdo"
           >
-            <ChevronLeft className="h-3 w-3" />
+            <CaretLeft className="h-3 w-3" />
           </button>
         </div>
-      ) : (
-        /* Alça elegante para expandir o painel esquerdo (visível em todas as resoluções) */
+      )}
+
+      {/* Alça para expandir o painel esquerdo quando recolhido */}
+      {leftCollapsed && (
         <button
           onClick={toggleLeftPanel}
-          className="flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-6 bg-panel/90 backdrop-blur border border-border border-l-0 rounded-r items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all touch-manipulation"
+          className="flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-6 bg-panel border border-border border-l-0 rounded-r-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors touch-manipulation"
           title="Expandir biblioteca de componentes"
           aria-label="Expandir painel esquerdo"
         >
-          <ChevronRight className="h-3.5 w-3.5" />
+          <CaretRight className="h-3.5 w-3.5" />
         </button>
       )}
 
-      {/* Área Central (Canvas + Controles) */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <ModeTabs />
-        <ErrorBoundary fallback={null}>
-          <EditorAiConfigBanner />
-        </ErrorBoundary>
-        <SaveBadge
-          projectId={projectId}
-          loading={loading}
-          state={saveState}
-          onOpenDossier={() => setDossierOpen(true)}
-          onOpenPrompt={() => {
-            setImporterPayload("");
-            setImporterTab("export");
-            setImporterOpen(true);
-          }}
-          onOpenImporter={() => {
-            setImporterPayload("");
-            setImporterTab("input");
-            setImporterOpen(true);
-          }}
-        />
-        <div className="flex-1 min-h-0 relative bg-background overflow-hidden h-full w-full flex flex-col">
-          {/* ErrorBoundary keyed por `mode`: isola crashes (ex.: React #185)
-              ao canvas ativo e cria um boundary fresco ao trocar de aba. */}
-          <ErrorBoundary key={mode}>
-            {/* ClientOnly é obrigatório: sem ele o SSR resolve os React.lazy abaixo
-                e avalia Pixi/Three/Konva no servidor (Worker), o que derruba a
-                renderização inteira da rota. */}
-            <ClientOnly fallback={<CanvasFallback />}>
-              <Suspense fallback={<CanvasFallback />}>
-                {mode === "unifilar" && <UnifilarCanvas projectId={projectId} sheet="unifilar" />}
-                {mode === "multifilar" && <UnifilarCanvas projectId={projectId} sheet="multifilar" />}
-                {mode === "ladder" && <LadderCanvas />}
-                {mode === "fbd" && <FbdCanvas />}
-                {mode === "scada" && <ScadaCanvas />}
-                {mode === "twin" && <TwinCanvas />}
-                {mode === "plc" && <PlcCanvas />}
-                {mode === "sim" && <SimCanvas />}
-                {mode === "alarms" && <AlarmsCanvas />}
-              </Suspense>
-            </ClientOnly>
-          </ErrorBoundary>
+      {/* Layout Redimensionável de 3 Colunas (Biblioteca | Canvas | Propriedades) */}
+      <ResizablePanelGroup
+        orientation="horizontal"
+        className="flex-1 min-h-0 min-w-0 h-full w-full"
+      >
+        {!leftCollapsed && (
+          <>
+            <ResizablePanel
+              id="workspace-left-panel"
+              defaultSize={280}
+              minSize={220}
+              maxSize={420}
+              groupResizeBehavior="preserve-pixel-size"
+              className="hidden lg:flex relative h-full min-h-0 min-w-0 overflow-hidden"
+            >
+              <div className="flex relative w-full h-full min-h-0 min-w-0 overflow-hidden">
+                <LeftSidebarHost mode={mode} />
+                <button
+                  onClick={toggleLeftPanel}
+                  className="flex absolute right-0 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-r-0 rounded-l-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                  title="Recolher painel esquerdo"
+                  aria-label="Recolher painel esquerdo"
+                >
+                  <CaretLeft className="h-3 w-3" />
+                </button>
+              </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle className="hidden lg:flex" />
+          </>
+        )}
 
-          <ErrorBoundary fallback={null}>
-            <CanvasAiChat />
-          </ErrorBoundary>
-        </div>
-        <ErrorBoundary fallback={null}>
-          <UnifiedBottomDock />
-        </ErrorBoundary>
-      </div>
+        {/* Área Central (Canvas + Controles) */}
+        <ResizablePanel
+          id="workspace-center-panel"
+          minSize="30%"
+          className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden"
+        >
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
+            <ModeTabs />
+            <ErrorBoundary fallback={null}>
+              <EditorAiConfigBanner />
+            </ErrorBoundary>
+            <SaveBadge
+              projectId={projectId}
+              loading={loading}
+              state={saveState}
+              onOpenDossier={() => setDossierOpen(true)}
+              onOpenPrompt={() => {
+                setImporterPayload("");
+                setImporterTab("export");
+                setImporterOpen(true);
+              }}
+              onOpenImporter={() => {
+                setImporterPayload("");
+                setImporterTab("input");
+                setImporterOpen(true);
+              }}
+            />
+            <div className="flex-1 min-h-0 min-w-0 relative bg-background overflow-hidden h-full w-full flex flex-col">
+              {/* ErrorBoundary keyed por `mode`: isola crashes (ex.: React #185)
+                  ao canvas ativo e cria um boundary fresco ao trocar de aba. */}
+              <ErrorBoundary key={mode}>
+                {/* ClientOnly é obrigatório: sem ele o SSR resolve os React.lazy abaixo
+                    e avalia Pixi/Three/Konva no servidor (Worker), o que derruba a
+                    renderização inteira da rota. */}
+                <ClientOnly fallback={<CanvasFallback />}>
+                  <Suspense fallback={<CanvasFallback />}>
+                    {mode === "unifilar" && (
+                      <UnifilarCanvas projectId={projectId} sheet="unifilar" />
+                    )}
+                    {mode === "multifilar" && (
+                      <UnifilarCanvas projectId={projectId} sheet="multifilar" />
+                    )}
+                    {mode === "ladder" && <LadderCanvas />}
+                    {mode === "fbd" && <FbdCanvas />}
+                    {mode === "scada" && <ScadaCanvas />}
+                    {mode === "twin" && <TwinCanvas />}
+                    {mode === "plc" && <PlcCanvas />}
+                    {mode === "sim" && <SimCanvas />}
+                    {mode === "alarms" && <AlarmsCanvas />}
+                  </Suspense>
+                </ClientOnly>
+              </ErrorBoundary>
 
-      {/* Painel Direito (fixo em >= 1024px, gaveta sobreposta em < 1024px) */}
-      {!rightCollapsed ? (
-        <div className="flex max-lg:absolute max-lg:right-0 max-lg:inset-y-0 max-lg:z-40 max-lg:shadow-2xl relative shrink-0 z-10 h-full">
-          {/* Botão para recolher o painel direito */}
+              <ErrorBoundary fallback={null}>
+                <CanvasAiChat />
+              </ErrorBoundary>
+            </div>
+            <ErrorBoundary fallback={null}>
+              <UnifiedBottomDock />
+            </ErrorBoundary>
+          </div>
+        </ResizablePanel>
+
+        {!rightCollapsed && (
+          <>
+            <ResizableHandle withHandle className="hidden lg:flex" />
+            <ResizablePanel
+              id="workspace-right-panel"
+              defaultSize={320}
+              minSize={260}
+              maxSize={480}
+              groupResizeBehavior="preserve-pixel-size"
+              className="hidden lg:flex relative h-full min-h-0 min-w-0 overflow-hidden"
+            >
+              <div className="flex relative w-full h-full min-h-0 min-w-0 overflow-hidden">
+                <button
+                  onClick={toggleRightPanel}
+                  className="flex absolute left-0 top-1/2 -translate-y-1/2 z-20 h-10 w-3 bg-panel border border-border border-l-0 rounded-r-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                  title="Recolher painel direito"
+                  aria-label="Recolher painel direito"
+                >
+                  <CaretRight className="h-3 w-3" />
+                </button>
+                <RightPanel />
+              </div>
+            </ResizablePanel>
+          </>
+        )}
+      </ResizablePanelGroup>
+
+      {/* Gaveta direita em mobile/tablet (< 1024px) */}
+      {!rightCollapsed && (
+        <div className="lg:hidden flex absolute right-0 inset-y-0 z-40 border-l border-border bg-panel h-full">
           <button
             onClick={toggleRightPanel}
-            className="flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 [@media(pointer:coarse)]:-left-7 bg-panel border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-14 hover:w-3.5 transition-all touch-manipulation"
+            className="flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 [@media(pointer:coarse)]:-left-7 bg-panel border border-border border-r-0 rounded-l-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors touch-manipulation"
             title="Recolher painel direito"
             aria-label="Recolher painel direito"
           >
-            <ChevronRight className="h-3 w-3" />
+            <CaretRight className="h-3 w-3" />
           </button>
           <RightPanel />
         </div>
-      ) : (
-        /* Alça elegante para expandir o painel direito (visível em todas as resoluções) */
+      )}
+
+      {/* Alça para expandir o painel direito quando recolhido */}
+      {rightCollapsed && (
         <button
           onClick={toggleRightPanel}
-          className="flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-6 bg-panel/90 backdrop-blur border border-border border-r-0 rounded-l items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all touch-manipulation"
+          className="flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-6 bg-panel border border-border border-r-0 rounded-l-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors touch-manipulation"
           title="Expandir painel de propriedades e IA"
           aria-label="Expandir painel direito"
         >
-          <ChevronLeft className="h-3.5 w-3.5" />
+          <CaretLeft className="h-3.5 w-3.5" />
         </button>
       )}
 
@@ -252,7 +327,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
+              <WarningCircle className="h-5 w-5" />
               Conflito de Versão Detectado
             </DialogTitle>
             <DialogDescription className="pt-2 text-sm text-foreground/80 space-y-2">
@@ -315,7 +390,7 @@ function WorkspaceLoading() {
   return (
     <div className="flex-1 flex items-center justify-center bg-background">
       <div className="text-center space-y-3">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+        <CircleNotch className="h-8 w-8 animate-spin text-primary mx-auto" />
         <p className="text-sm text-muted-foreground">Carregando projeto...</p>
       </div>
     </div>
@@ -326,30 +401,29 @@ function WorkspaceEmptyState() {
   const router = useRouter();
   return (
     <div className="flex-1 flex items-center justify-center bg-background">
-      <div className="max-w-md text-center space-y-5 px-6">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
-          <FolderOpen className="h-8 w-8 text-primary" />
+      <div className="max-w-md text-center space-y-4 px-6 py-8 rounded-md border border-border bg-card">
+        <div className="w-10 h-10 mx-auto rounded-md border border-border bg-secondary flex items-center justify-center">
+          <FolderOpen className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold">Nenhum projeto aberto</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Abra um projeto existente ou crie um novo para começar a trabalhar no workspace
-            industrial.
+          <h2 className="text-sm font-semibold">Nenhum projeto aberto</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Abra um projeto existente ou crie um novo para trabalhar no workspace industrial.
           </p>
         </div>
-        <div className="flex gap-3 justify-center">
+        <div className="flex gap-2 justify-center">
           <button
             onClick={() => router.navigate({ to: "/projects" })}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
           >
-            <FolderOpen className="h-4 w-4" />
+            <FolderOpen className="h-3.5 w-3.5" />
             Abrir projeto
           </button>
           <button
             onClick={() => router.navigate({ to: "/onboarding" })}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-accent transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-background text-xs font-medium hover:bg-accent transition-colors"
           >
-            <PlusCircle className="h-4 w-4" />
+            <PlusCircle className="h-3.5 w-3.5" />
             Novo projeto
           </button>
         </div>
@@ -379,19 +453,19 @@ function SaveBadge({
       <div className="flex items-center gap-1.5 text-[10px] shrink-0">
         {loading ? (
           <>
-            <Loader2 className="h-3 w-3 animate-spin" /> Carregando projeto...
+            <CircleNotch className="h-3 w-3 animate-spin" /> Carregando projeto...
           </>
         ) : state === "saving" ? (
           <>
-            <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
+            <CircleNotch className="h-3 w-3 animate-spin" /> Salvando...
           </>
         ) : state === "saved" ? (
           <>
-            <CheckCircle2 className="h-3 w-3 text-success" /> Salvo
+            <CheckCircle className="h-3 w-3 text-success" /> Salvo
           </>
         ) : state === "error" ? (
           <>
-            <AlertCircle className="h-3 w-3 text-destructive" /> Erro ao salvar
+            <WarningCircle className="h-3 w-3 text-destructive" /> Erro ao salvar
           </>
         ) : (
           <>Auto-save ativo (2s)</>
@@ -404,7 +478,7 @@ function SaveBadge({
           className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition-all cursor-pointer shadow-xs whitespace-nowrap"
           title="Copiar prompt padronizado para ChatGPT, Claude ou DeepSeek (0 créditos)"
         >
-          <Bot className="h-3.5 w-3.5" />
+          <Robot className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Prompt IA Externa</span>
           <span className="sm:hidden">Prompt IA</span>
         </button>
@@ -414,7 +488,7 @@ function SaveBadge({
           className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all cursor-pointer shadow-xs whitespace-nowrap"
           title="Importar projetos criados por IAs externas sem consumir créditos"
         >
-          <Download className="h-3.5 w-3.5" />
+          <DownloadSimple className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Importar IA Externa</span>
           <span className="sm:hidden">Importar</span>
         </button>

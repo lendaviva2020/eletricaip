@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogOut, Loader2 } from "lucide-react";
+import { SignOut, CircleNotch } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, type SignOutResult } from "@/hooks/use-auth";
@@ -124,14 +124,14 @@ export function LogoutButton({
           type="button"
           aria-label={label}
         >
-          <LogOut className="h-4 w-4" />
+          <SignOut className="h-4 w-4" />
           <span>{label}</span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent className="bg-card border-border max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-base font-semibold">
-            <LogOut className="h-4 w-4 text-destructive" />
+            <SignOut className="h-4 w-4 text-destructive" />
             <span>
               {scope === "global" ? "Encerrar todas as sessões?" : "Deseja sair da sua conta?"}
             </span>
@@ -155,12 +155,12 @@ export function LogoutButton({
           >
             {loading ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <CircleNotch className="h-3.5 w-3.5 animate-spin" />
                 <span>Saindo…</span>
               </>
             ) : (
               <>
-                <LogOut className="h-3.5 w-3.5" />
+                <SignOut className="h-3.5 w-3.5" />
                 <span>{scope === "global" ? "Encerrar todas" : "Sim, sair da conta"}</span>
               </>
             )}

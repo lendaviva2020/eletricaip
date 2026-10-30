@@ -4,24 +4,24 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Download,
-  Upload,
+  DownloadSimple,
+  UploadSimple,
   ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
-  AlertOctagon,
+  CheckCircle,
+  Warning,
+  WarningOctagon,
   Copy,
   FileCode,
-  FileSpreadsheet,
+  FileXls,
   FileText,
   Cpu,
-  Layers,
+  Stack,
   ArrowRight,
   Info,
-  RefreshCw,
-  Trash2,
-  ExternalLink,
-} from "lucide-react";
+  ArrowsClockwise,
+  Trash,
+  ArrowSquareOut,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -198,7 +198,9 @@ export function UniversalImportModal({
       const report = validateAndParseExternalPayload(text);
       setValidationReport(report);
       if (report.canImport) {
-        toast.success(`Projeto validado com sucesso! (${report.stats.recognizedNodes} nós reconhecidos)`);
+        toast.success(
+          `Projeto validado com sucesso! (${report.stats.recognizedNodes} nós reconhecidos)`,
+        );
         setActiveTab("preview");
       } else {
         toast.error("O pacote possui erros críticos ou formato não reconhecido.");
@@ -313,7 +315,7 @@ export function UniversalImportModal({
     a.download = `eletricai-bundle-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Download do arquivo de projeto iniciado!");
+    toast.success("DownloadSimple do arquivo de projeto iniciado!");
   };
 
   return (
@@ -323,7 +325,7 @@ export function UniversalImportModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Download className="h-5 w-5" />
+                <DownloadSimple className="h-5 w-5" />
               </div>
               <div>
                 <DialogTitle className="text-base font-bold flex items-center gap-2">
@@ -333,14 +335,19 @@ export function UniversalImportModal({
                   </span>
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Projetos gerados no ChatGPT, Claude, DeepSeek ou exportados em JSON/YAML/CSV/PLCopen XML renderizados diretamente no Canvas.
+                  Projetos gerados no ChatGPT, Claude, DeepSeek ou exportados em
+                  JSON/YAML/CSV/PLCopen XML renderizados diretamente no Canvas.
                 </DialogDescription>
               </div>
             </div>
           </div>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex-1 flex flex-col min-h-0"
+        >
           <div className="border-b px-4 bg-muted/10">
             <TabsList className="h-10 bg-transparent p-0 gap-4">
               <TabsTrigger
@@ -386,9 +393,13 @@ export function UniversalImportModal({
             <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-muted-foreground flex items-start gap-2.5">
               <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-foreground">Processamento 100% Determinístico e Local</p>
+                <p className="font-semibold text-foreground">
+                  Processamento 100% Determinístico e Local
+                </p>
                 <p className="mt-0.5 leading-relaxed">
-                  Os dados são analisados e convertidos diretamente no seu navegador, sem fazer requisições a provedores de IA ou consumir os seus créditos de geração. Protegido contra injeção de scripts e prototype pollution.
+                  Os dados são analisados e convertidos diretamente no seu navegador, sem fazer
+                  requisições a provedores de IA ou consumir os seus créditos de geração. Protegido
+                  contra injeção de scripts e prototype pollution.
                 </p>
               </div>
             </div>
@@ -416,7 +427,7 @@ export function UniversalImportModal({
                     className="h-7 text-xs"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    <Upload className="h-3.5 w-3.5 mr-1" />
+                    <UploadSimple className="h-3.5 w-3.5 mr-1" />
                     Importar Arquivo
                   </Button>
                   <input
@@ -445,8 +456,13 @@ export function UniversalImportModal({
                   <strong className="text-foreground uppercase">{inputStats.detected}</strong>
                 </span>
                 <div className="flex items-center gap-3">
-                  <span>Linhas: <strong className="text-foreground">{inputStats.lines.toLocaleString()}</strong></span>
-                  <span>Tamanho: <strong className="text-foreground">{inputStats.kb} KB</strong></span>
+                  <span>
+                    Linhas:{" "}
+                    <strong className="text-foreground">{inputStats.lines.toLocaleString()}</strong>
+                  </span>
+                  <span>
+                    Tamanho: <strong className="text-foreground">{inputStats.kb} KB</strong>
+                  </span>
                   <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                     <ShieldCheck className="h-3.5 w-3.5" /> 0 Créditos de IA
                   </span>
@@ -465,7 +481,7 @@ export function UniversalImportModal({
                   setValidationReport(null);
                 }}
               >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                <Trash className="h-3.5 w-3.5 mr-1" />
                 Limpar
               </Button>
 
@@ -486,7 +502,9 @@ export function UniversalImportModal({
               <div className="py-12 text-center text-muted-foreground">
                 <FileCode className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
                 <p className="text-sm font-semibold">Nenhum pacote validado ainda.</p>
-                <p className="text-xs mt-1">Cole seu código na aba 1 e clique em "Validar e Inspecionar Pacote".</p>
+                <p className="text-xs mt-1">
+                  Cole seu código na aba 1 e clique em "Validar e Inspecionar Pacote".
+                </p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -508,9 +526,9 @@ export function UniversalImportModal({
                 >
                   <div className="flex items-center gap-2.5">
                     {validationReport.canImport ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                     ) : (
-                      <AlertOctagon className="h-5 w-5 text-destructive" />
+                      <WarningOctagon className="h-5 w-5 text-destructive" />
                     )}
                     <div>
                       <p className="text-sm font-bold">
@@ -519,7 +537,8 @@ export function UniversalImportModal({
                           : "Pacote Rejeitado / Incompatível"}
                       </p>
                       <p className="text-xs opacity-80">
-                        Formato detectado: <strong className="uppercase">{validationReport.detectedFormat}</strong>
+                        Formato detectado:{" "}
+                        <strong className="uppercase">{validationReport.detectedFormat}</strong>
                       </p>
                     </div>
                   </div>
@@ -546,7 +565,8 @@ export function UniversalImportModal({
                       {validationReport.stats.totalNodes}
                     </p>
                     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                      {validationReport.stats.recognizedNodes} reconhecidos ({validationReport.stats.rejectedNodes} não suportados)
+                      {validationReport.stats.recognizedNodes} reconhecidos (
+                      {validationReport.stats.rejectedNodes} não suportados)
                     </p>
                   </div>
 
@@ -631,14 +651,14 @@ export function UniversalImportModal({
                             issue.severity === "critical"
                               ? "bg-destructive/10 border-destructive/20 text-destructive"
                               : issue.severity === "warning"
-                              ? "bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300"
-                              : "bg-blue-500/10 border-blue-500/20 text-blue-800 dark:text-blue-300"
+                                ? "bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300"
+                                : "bg-blue-500/10 border-blue-500/20 text-blue-800 dark:text-blue-300"
                           }`}
                         >
                           {issue.severity === "critical" ? (
-                            <AlertOctagon className="h-4 w-4 shrink-0 mt-0.5" />
+                            <WarningOctagon className="h-4 w-4 shrink-0 mt-0.5" />
                           ) : (
-                            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                            <Warning className="h-4 w-4 shrink-0 mt-0.5" />
                           )}
                           <div className="flex-1">
                             <span className="font-semibold uppercase tracking-wider text-[10px] mr-1.5 opacity-80">
@@ -673,7 +693,9 @@ export function UniversalImportModal({
                           {validationReport.bundle.nodes.map((node) => (
                             <tr key={node.id} className="hover:bg-muted/20">
                               <td className="p-2 font-mono font-medium">{node.id}</td>
-                              <td className="p-2 font-mono text-[11px] text-primary">{node.type}</td>
+                              <td className="p-2 font-mono text-[11px] text-primary">
+                                {node.type}
+                              </td>
                               <td className="p-2">{node.label || "-"}</td>
                               <td className="p-2 font-mono text-muted-foreground">
                                 ({node.position.x}, {node.position.y})
@@ -700,14 +722,18 @@ export function UniversalImportModal({
           <TabsContent value="render" className="flex-1 overflow-y-auto p-4 space-y-4 m-0">
             {!validationReport?.canImport ? (
               <div className="py-12 text-center text-muted-foreground">
-                <AlertTriangle className="h-10 w-10 mx-auto text-amber-500 mb-2" />
+                <Warning className="h-10 w-10 mx-auto text-amber-500 mb-2" />
                 <p className="text-sm font-semibold">Nenhum projeto pronto para ser aplicado.</p>
-                <p className="text-xs mt-1">Valide um pacote compatível na aba 1 para prosseguir.</p>
+                <p className="text-xs mt-1">
+                  Valide um pacote compatível na aba 1 para prosseguir.
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-bold text-foreground">Escolha o Modo de Aplicação no Canvas</h4>
+                  <h4 className="text-sm font-bold text-foreground">
+                    Escolha o Modo de Aplicação no Canvas
+                  </h4>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Defina como os novos componentes elétricos serão inseridos no seu projeto atual.
                   </p>
@@ -726,7 +752,7 @@ export function UniversalImportModal({
                     <div>
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                          <Layers className="h-4 w-4 text-primary" />
+                          <Stack className="h-4 w-4 text-primary" />
                           Mesclar com Projeto Atual
                         </span>
                         <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">
@@ -734,7 +760,9 @@ export function UniversalImportModal({
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                        Preserva todos os componentes, fios e cálculos existentes no seu Canvas. Os novos elementos serão posicionados à direita com novos IDs para evitar sobreposições.
+                        Preserva todos os componentes, fios e cálculos existentes no seu Canvas. Os
+                        novos elementos serão posicionados à direita com novos IDs para evitar
+                        sobreposições.
                       </p>
                     </div>
                     <div className="mt-3 text-xs font-semibold text-primary">
@@ -754,7 +782,7 @@ export function UniversalImportModal({
                     <div>
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                          <RefreshCw className="h-4 w-4 text-destructive" />
+                          <ArrowsClockwise className="h-4 w-4 text-destructive" />
                           Substituir Projeto Completo
                         </span>
                         <span className="text-[10px] font-semibold bg-destructive/10 text-destructive px-2 py-0.5 rounded-full">
@@ -762,7 +790,8 @@ export function UniversalImportModal({
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                        Substitui completamente o circuito atual do Canvas pelo projeto importado. Requer confirmação explícita para evitar perda de dados.
+                        Substitui completamente o circuito atual do Canvas pelo projeto importado.
+                        Requer confirmação explícita para evitar perda de dados.
                       </p>
                     </div>
                     <div className="mt-3 text-xs font-semibold text-destructive">
@@ -774,11 +803,14 @@ export function UniversalImportModal({
                 {importMode === "replace" && (
                   <div className="p-3 rounded-lg border border-destructive/20 bg-destructive/5 space-y-2">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                      <Warning className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                       <div className="text-xs">
-                        <p className="font-bold text-destructive">Confirmação de Substituição Obrigatória</p>
+                        <p className="font-bold text-destructive">
+                          Confirmação de Substituição Obrigatória
+                        </p>
                         <p className="text-muted-foreground mt-0.5">
-                          Todos os {Object.keys(currentDiagramDoc.nodes).length} nós e conexões do canvas ativo serão descartados e substituídos pelos dados do pacote.
+                          Todos os {Object.keys(currentDiagramDoc.nodes).length} nós e conexões do
+                          canvas ativo serão descartados e substituídos pelos dados do pacote.
                         </p>
                       </div>
                     </div>
@@ -806,7 +838,7 @@ export function UniversalImportModal({
                     disabled={importMode === "replace" && !replaceConfirmed}
                     className="gap-1.5 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
-                    <Download className="h-4 w-4" />
+                    <DownloadSimple className="h-4 w-4" />
                     Renderizar no Canvas (0 Créditos)
                   </Button>
                 </div>
@@ -818,9 +850,12 @@ export function UniversalImportModal({
           <TabsContent value="export" className="flex-1 overflow-y-auto p-4 space-y-4 m-0">
             <div className="space-y-4">
               <div>
-                <h4 className="text-sm font-bold text-foreground">Como Usar IAs Externas Gratuitamente</h4>
+                <h4 className="text-sm font-bold text-foreground">
+                  Como Usar IAs Externas Gratuitamente
+                </h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Copie o prompt estruturado abaixo e cole no ChatGPT, Claude, DeepSeek ou na IA de sua preferência. Depois, copie a resposta e cole na aba 1 deste importador.
+                  Copie o prompt estruturado abaixo e cole no ChatGPT, Claude, DeepSeek ou na IA de
+                  sua preferência. Depois, copie a resposta e cole na aba 1 deste importador.
                 </p>
               </div>
 
@@ -844,7 +879,8 @@ export function UniversalImportModal({
                     className="rounded text-primary focus:ring-primary"
                   />
                   <span className="text-xs font-medium text-foreground">
-                    Incluir o circuito atualmente aberto no Canvas como contexto base para a IA externa modificar ou expandir
+                    Incluir o circuito atualmente aberto no Canvas como contexto base para a IA
+                    externa modificar ou expandir
                   </span>
                 </label>
 
@@ -863,7 +899,8 @@ export function UniversalImportModal({
                   Exportar Canvas Atual como Pacote Intercambiável
                 </h4>
                 <p className="text-xs text-muted-foreground">
-                  Gere o JSON padronizado do projeto atual para arquivar, compartilhar ou enviar a outras ferramentas.
+                  Gere o JSON padronizado do projeto atual para arquivar, compartilhar ou enviar a
+                  outras ferramentas.
                 </p>
 
                 <div className="flex items-center gap-2 pt-1">
@@ -882,7 +919,7 @@ export function UniversalImportModal({
                     onClick={handleDownloadBundleJson}
                     className="text-xs"
                   >
-                    <Download className="h-3.5 w-3.5 mr-1" />
+                    <DownloadSimple className="h-3.5 w-3.5 mr-1" />
                     Baixar Arquivo JSON (.json)
                   </Button>
                 </div>

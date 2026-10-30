@@ -7,36 +7,9 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { listBom } from "@/lib/bom.functions";
 import { Button } from "@/components/ui/button";
-import {
-  FileBox,
-  FileText,
-  Magnet,
-  Maximize2,
-  Redo2,
-  RotateCw,
-  Trash2,
-  Undo2,
-  Save,
-  Download,
-  CheckCircle2,
-  AlertTriangle,
-  AlertCircle,
-  Settings,
-  ChevronDown,
-  ChevronUp,
-  Menu,
-  X,
-  FileSpreadsheet,
-  Activity,
-  Zap,
-  Play,
-  Pause,
-  Square,
-  RotateCcw,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
+import { FileArchive, FileText, Magnet, ArrowsOutSimple, ArrowUUpRight, ArrowClockwise, Trash, ArrowUUpLeft, FloppyDisk, DownloadSimple, CheckCircle, Warning, WarningCircle, Gear, CaretDown, CaretUp, List, X, FileXls, Pulse, Lightning, Play, Pause, Square, ArrowCounterClockwise, MagnifyingGlassPlus, MagnifyingGlassMinus, Octagon } from "@phosphor-icons/react";
 import { computeCircuitEnergization } from "@/lib/diagram/electrical-simulation";
+import { useSafetyStore } from "@/lib/simulation/safety-core";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +22,7 @@ import { DiagramStage, type EdgeDraftCommit, type MoveDelta } from "@/lib/diagra
 import { cmd } from "@/lib/diagram/commands";
 import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { useEditorStore } from "@/lib/editor/store";
+import { useI18n } from "@/lib/i18n";
 import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
 import { exportDiagramSvg } from "@/lib/diagram/export-svg";
 import {
@@ -204,6 +178,7 @@ interface Props {
 }
 
 export function WebglCanvas({ sheet, projectId }: Props) {
+  const { t } = useI18n();
   const listBomFn = useServerFn(listBom);
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<DiagramStage | null>(null);
@@ -233,6 +208,10 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const deviceStates = useEditorStore((s) => s.deviceStates);
   const toggleDeviceState = useEditorStore((s) => s.toggleDeviceState);
   const resetSimulationState = useEditorStore((s) => s.resetSimulationState);
+  const emergencyLatched = useSafetyStore((s) => s.emergencyLatched);
+  const triggerEmergency = useSafetyStore((s) => s.triggerEmergency);
+  const rearmEmergency = useSafetyStore((s) => s.rearmEmergency);
+  const canStartSimulation = useSafetyStore((s) => s.canStartSimulation);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -303,7 +282,21 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         onSelectNode: (id) => setSelection(id ? [id] : [], []),
         onSelectEdge: (id) => setSelection([], id ? [id] : []),
         onSelectMany: (ids) => setSelection(ids, []),
-        onToggleDevice: (nodeId) => toggleDeviceState(nodeId),
+        onToggleDevice: (nodeId) => {
+          const currentDoc = useDiagramStore.getState().doc;
+          const node = currentDoc.nodes[nodeId];
+          if (node?.params?.kind === "estop") {
+            useSafetyStore.getState().triggerEmergency(
+              "canvas_estop",
+              `Parada de emergência acionada pelo componente ${node.label || node.id}`,
+            );
+            toast.error(
+              `Parada de emergência atuada por ${node.label || node.id}. Circuito desenergizado.`,
+            );
+          } else {
+            toggleDeviceState(nodeId);
+          }
+        },
         onMoveNodes: (deltas: MoveDelta[]) => {
           const map: Record<
             string,
@@ -611,8 +604,8 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                 : "text-muted-foreground hover:text-foreground hover:bg-[#162136]/50"
             }`}
           >
-            <Zap className="h-3.5 w-3.5 text-[#38bdf8]" />
-            <span>Canvas Unifilar</span>
+            <Lightning className="h-3.5 w-3.5 text-[#38bdf8]" />
+            <span>{t("canvasToolbar.canvasUnifilar") || "Canvas Unifilar"}</span>
           </button>
 
           <button
@@ -623,15 +616,15 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                 : "text-muted-foreground hover:text-foreground hover:bg-[#162136]/50"
             }`}
           >
-            <Activity className="h-3.5 w-3.5 text-[#f97316]" />
-            <span>Canvas Multifilar</span>
+            <Pulse className="h-3.5 w-3.5 text-[#f97316]" />
+            <span>{t("canvasToolbar.canvasMultifilar") || "Canvas Multifilar"}</span>
           </button>
         </div>
 
         {/* Informações Técnicas do Projeto */}
         <div className="hidden 2xl:flex items-center gap-2.5 text-xs font-mono shrink-0">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#131d2e] border border-border/60 text-foreground max-w-[220px]">
-            <span className="text-muted-foreground font-semibold shrink-0">PROJETO:</span>
+            <span className="text-muted-foreground font-semibold shrink-0">{t("canvasToolbar.project") || "PROJETO:"}</span>
             <span className="font-bold text-[#38bdf8] truncate">
               {doc.metadata.title && !/^[=\-_*\s]+$/.test(doc.metadata.title)
                 ? doc.metadata.title
@@ -640,7 +633,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           </div>
 
           <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#131d2e] border border-border/60 text-foreground">
-            <span className="text-muted-foreground font-semibold">FOLHA:</span>
+            <span className="text-muted-foreground font-semibold">{t("canvasToolbar.sheet") || "FOLHA:"}</span>
             <span className="font-bold">{effectiveSheet === "unifilar" ? "01/03" : "02/03"}</span>
           </div>
 
@@ -650,7 +643,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
 
           <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#064e3b]/40 border border-[#059669]/60 text-[#34d399] font-medium">
             <span className="h-2 w-2 rounded-full bg-[#10b981]" />
-            <span>DOCUMENTO ATIVO</span>
+            <span>{t("canvasToolbar.activeDoc") || "DOCUMENTO ATIVO"}</span>
           </div>
         </div>
 
@@ -662,11 +655,11 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             onClick={handleSave}
             className="h-8 gap-1.5 text-xs bg-[#131d2e] hover:bg-[#1c2b44] border-border/60 text-foreground"
           >
-            <Save className="h-3.5 w-3.5 text-[#38bdf8]" />
-            <span className="hidden sm:inline">Salvar</span>
+            <FloppyDisk className="h-3.5 w-3.5 text-[#38bdf8]" />
+            <span className="hidden sm:inline">{t("common.save") || "Salvar"}</span>
           </Button>
 
-          {/* Menu de Exportação */}
+          {/* List de Exportação */}
           <div className="relative">
             <Button
               size="sm"
@@ -674,14 +667,14 @@ export function WebglCanvas({ sheet, projectId }: Props) {
               onClick={() => setExportMenuOpen((v) => !v)}
               className="h-8 gap-1.5 text-xs bg-[#131d2e] hover:bg-[#1c2b44] border-border/60 text-foreground"
             >
-              <Download className="h-3.5 w-3.5 text-[#38bdf8]" />
-              <span className="hidden sm:inline">Exportar</span>
-              <ChevronDown className="h-3 w-3 opacity-60" />
+              <DownloadSimple className="h-3.5 w-3.5 text-[#38bdf8]" />
+              <span className="hidden sm:inline">{t("common.export") || "Exportar"}</span>
+              <CaretDown className="h-3 w-3 opacity-60" />
             </Button>
 
             {exportMenuOpen && (
               <div
-                className="absolute right-0 top-9 z-50 w-52 rounded-md border border-border/80 bg-[#101929] p-1 shadow-xl backdrop-blur text-xs"
+                className="absolute right-0 top-9 z-50 w-52 rounded-md border border-border/80 bg-[#101929] p-1 shadow-lg text-xs"
                 onPointerLeave={() => setExportMenuOpen(false)}
               >
                 <button
@@ -698,7 +691,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   onClick={handleExportSvg}
                   className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left hover:bg-[#1c2b44] text-foreground"
                 >
-                  <Activity className="h-4 w-4 text-[#f97316]" />
+                  <Pulse className="h-4 w-4 text-[#f97316]" />
                   <div>
                     <div className="font-semibold">Diagrama Vetorial SVG</div>
                     <div className="text-[10px] text-muted-foreground">Padrão IEC 60617 em alta resolução</div>
@@ -708,7 +701,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   onClick={handleExportDxf}
                   className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left hover:bg-[#1c2b44] text-foreground"
                 >
-                  <FileBox className="h-4 w-4 text-[#38bdf8]" />
+                  <FileArchive className="h-4 w-4 text-[#38bdf8]" />
                   <div>
                     <div className="font-semibold">Arquivo CAD DXF</div>
                     <div className="text-[10px] text-muted-foreground">AutoCAD com camadas elétricas</div>
@@ -720,11 +713,34 @@ export function WebglCanvas({ sheet, projectId }: Props) {
 
           {/* Controles Reais de Simulação Elétrica do Circuito */}
           <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#131d2e] border border-border/60">
-            {simulationStatus === "stopped" ? (
+            {emergencyLatched ? (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-950/80 border border-rose-500/70 text-[11px] font-mono font-bold text-rose-300 animate-pulse">
+                <Octagon className="h-3.5 w-3.5 text-rose-400 fill-current" />
+                <span>E-STOP ATUADO</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const res = rearmEmergency("Operador");
+                    if (res.success) toast.success(res.message);
+                  }}
+                  className="h-6 px-2 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/50 font-bold ml-1 cursor-pointer"
+                  data-testid="canvas-rearm-btn"
+                >
+                  <ArrowCounterClockwise className="h-3 w-3 mr-1" />
+                  {t("safety.rearm") || "Rearmar"}
+                </Button>
+              </div>
+            ) : simulationStatus === "stopped" ? (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => {
+                  const check = canStartSimulation();
+                  if (!check.allowed) {
+                    toast.error(check.reason);
+                    return;
+                  }
                   setSimulationStatus("running");
                   toast.success("Simulação elétrica iniciada. Condutores energizados calculados.");
                 }}
@@ -733,7 +749,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                 data-testid="start-simulation-btn"
               >
                 <Play className="h-3 w-3 fill-current" />
-                <span>Simular</span>
+                <span>{t("canvasToolbar.simulate") || "Simular"}</span>
               </Button>
             ) : simulationStatus === "running" ? (
               <div className="flex items-center gap-1">
@@ -748,7 +764,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   title="Pausar Simulação"
                 >
                   <Pause className="h-3 w-3 fill-current" />
-                  <span>Pausar</span>
+                  <span>{t("canvasToolbar.pause") || "Pausar"}</span>
                 </Button>
                 <Button
                   size="sm"
@@ -761,7 +777,21 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   title="Parar Simulação"
                 >
                   <Square className="h-3 w-3 fill-current" />
-                  <span>Parar</span>
+                  <span>{t("canvasToolbar.stop") || "Parar"}</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    triggerEmergency("canvas_toolbar", "Parada de emergência acionada na barra do canvas");
+                    toast.error("PARADA DE EMERGÊNCIA ATUADA. Todos os circuitos foram desenergizados.");
+                  }}
+                  className="h-7 px-2 gap-1 text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold tracking-wide"
+                  title="PARADA DE EMERGÊNCIA (Corte imediato de atuadores)"
+                  data-testid="canvas-estop-btn"
+                >
+                  <Octagon className="h-3.5 w-3.5 fill-current" />
+                  <span>{t("safety.emergencyStop") || "E-STOP"}</span>
                 </Button>
               </div>
             ) : (
@@ -770,6 +800,11 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   size="sm"
                   variant="outline"
                   onClick={() => {
+                    const check = canStartSimulation();
+                    if (!check.allowed) {
+                      toast.error(check.reason);
+                      return;
+                    }
                     setSimulationStatus("running");
                     toast.success("Simulação retomada.");
                   }}
@@ -777,7 +812,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   title="Retomar Simulação"
                 >
                   <Play className="h-3 w-3 fill-current" />
-                  <span>Retomar</span>
+                  <span>{t("canvasToolbar.resume") || "Retomar"}</span>
                 </Button>
                 <Button
                   size="sm"
@@ -790,7 +825,21 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   title="Parar Simulação"
                 >
                   <Square className="h-3 w-3 fill-current" />
-                  <span>Parar</span>
+                  <span>{t("canvasToolbar.stop") || "Parar"}</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    triggerEmergency("canvas_toolbar", "Parada de emergência acionada na barra do canvas");
+                    toast.error("PARADA DE EMERGÊNCIA ATUADA. Todos os circuitos foram desenergizados.");
+                  }}
+                  className="h-7 px-2 gap-1 text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold tracking-wide"
+                  title="PARADA DE EMERGÊNCIA (Corte imediato de atuadores)"
+                  data-testid="canvas-estop-btn"
+                >
+                  <Octagon className="h-3.5 w-3.5 fill-current" />
+                  <span>{t("safety.emergencyStop") || "E-STOP"}</span>
                 </Button>
               </div>
             )}
@@ -805,7 +854,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
               className="h-7 w-7 text-muted-foreground hover:text-foreground"
               title="Redefinir Estado (Reset de Dispositivos)"
             >
-              <RotateCcw className="h-3 w-3" />
+              <ArrowCounterClockwise className="h-3 w-3" />
             </Button>
           </div>
 
@@ -831,7 +880,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             onClick={handleValidate}
             className="h-8 gap-1.5 text-xs bg-[#064e3b]/30 hover:bg-[#064e3b]/50 border-[#059669]/60 text-[#34d399]"
           >
-            <CheckCircle2 className="h-3.5 w-3.5" />
+            <CheckCircle className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Validar</span>
           </Button>
 
@@ -842,17 +891,17 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             title="Configurações do Diagrama"
           >
-            <Settings className="h-4 w-4" />
+            <Gear className="h-4 w-4" />
           </Button>
 
           <div className="h-4 w-px bg-border/60 mx-1" />
 
           {/* Ações de navegação rápida e Zoom */}
           <Button size="icon" variant="ghost" onClick={undo} className="h-8 w-8" title="Desfazer (Ctrl+Z)">
-            <Undo2 className="size-3.5" />
+            <ArrowUUpLeft className="size-3.5" />
           </Button>
           <Button size="icon" variant="ghost" onClick={redo} className="h-8 w-8" title="Refazer (Ctrl+Y)">
-            <Redo2 className="size-3.5" />
+            <ArrowUUpRight className="size-3.5" />
           </Button>
           <Button
             size="icon"
@@ -873,7 +922,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
               className="h-8 w-8"
               title="Aproximar (+15%)"
             >
-              <ZoomIn className="size-3.5" />
+              <MagnifyingGlassPlus className="size-3.5" />
             </Button>
             <Button
               size="icon"
@@ -882,7 +931,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
               className="h-8 w-8"
               title="Afastar (-15%)"
             >
-              <ZoomOut className="size-3.5" />
+              <MagnifyingGlassMinus className="size-3.5" />
             </Button>
             <Button
               size="icon"
@@ -900,7 +949,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
               className="h-8 w-8"
               title="Ajustar Visualização ao Diagrama (Fit View)"
             >
-              <Maximize2 className="size-3.5" />
+              <ArrowsOutSimple className="size-3.5" />
             </Button>
           </div>
         </div>
@@ -911,7 +960,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         <div ref={hostRef} className="absolute inset-0" />
 
         {/* Toolbar flutuante de apoio à direita */}
-        <div className="absolute right-3 top-3 z-10 flex gap-1 rounded-md border border-border/50 bg-[#101929]/80 p-1 backdrop-blur shadow-md">
+        <div className="absolute right-3 top-3 z-10 flex gap-1 rounded-md border border-border/50 bg-[#101929]/95 p-1 shadow-md">
           <Button
             size="icon"
             variant="ghost"
@@ -920,7 +969,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             className="h-7 w-7 text-white"
             title="Rotacionar 90° (R)"
           >
-            <RotateCw className="size-3.5" />
+            <ArrowClockwise className="size-3.5" />
           </Button>
           <Button
             size="icon"
@@ -931,12 +980,12 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             title="Excluir seleção (Del / Backspace)"
             data-testid="canvas-delete-selected"
           >
-            <Trash2 className="size-3.5" />
+            <Trash className="size-3.5" />
           </Button>
         </div>
 
         {/* Legenda de atalhos rápidos industrial */}
-        <div className="absolute bottom-3 right-3 z-10 rounded-md border border-border/40 bg-[#0e1626]/85 px-3 py-1 text-[11px] font-mono text-muted-foreground backdrop-blur shadow-sm">
+        <div className="absolute bottom-3 right-3 z-10 rounded-md border border-border/40 bg-[#0e1626]/95 px-3 py-1 text-[11px] font-mono text-muted-foreground shadow-sm">
           <span className="text-[#38bdf8]">Shift+arraste:</span> seleção em área ·{" "}
           <span className="text-[#38bdf8]">Porta:</span> ligação ·{" "}
           <span className="text-[#38bdf8]">R:</span> rotaciona ·{" "}
@@ -951,7 +1000,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         <DialogContent className="max-w-md bg-[#0e1626] border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[#38bdf8]">
-              <Settings className="h-5 w-5" />
+              <Gear className="h-5 w-5" />
               Configurações Técnicas do Projeto
             </DialogTitle>
             <DialogDescription className="text-muted-foreground text-xs">
@@ -1070,7 +1119,7 @@ function ContextMenu({
       role="menu"
       onPointerDown={(e) => e.stopPropagation()}
       style={{ left: ctx.x, top: ctx.y }}
-      className="absolute z-30 min-w-[180px] rounded-md border border-border/60 bg-[#101929]/95 p-1 text-sm shadow-lg backdrop-blur"
+      className="absolute z-30 min-w-[180px] rounded-md border border-border/60 bg-[#101929] p-1 text-sm shadow-lg"
     >
       {items.map((it) => (
         <button

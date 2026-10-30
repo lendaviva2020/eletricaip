@@ -1,4 +1,4 @@
-import { Globe } from "lucide-react";
+import { Globe } from "@phosphor-icons/react";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 

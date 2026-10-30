@@ -35,7 +35,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, Calculator, Loader2, Play, RefreshCw, Trash2, Zap } from "lucide-react";
+import {
+  Warning,
+  Calculator,
+  CircleNotch,
+  Play,
+  ArrowsClockwise,
+  Trash,
+  Lightning,
+} from "@phosphor-icons/react";
 
 export type StudyKind = "short_circuit" | "selectivity" | "arc_flash" | "thermal" | "voltage_drop";
 
@@ -178,8 +186,7 @@ export function deriveStudyDefaultsFromModel(
         ? Number(((load.specs.powerKw * 1000) / (Math.sqrt(3) * v * pf * eff)).toFixed(1))
         : 11.6);
     const conn = connections.find(
-      (c) =>
-        c.kind === "power" && (c.toEquipmentId === load.id || c.fromEquipmentId === load.id),
+      (c) => c.kind === "power" && (c.toEquipmentId === load.id || c.fromEquipmentId === load.id),
     );
     return {
       values: {
@@ -450,14 +457,14 @@ export function ElectricalStudyPanel() {
             {canonicalStudy?.status === "stale" && (
               <div className="rounded border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-400 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <Warning className="h-4 w-4 shrink-0" />
                   <span>
                     Parâmetros dos equipamentos vinculados foram alterados no diagrama. Sincronize e
                     recalcule o estudo para atualizar os resultados.
                   </span>
                 </div>
                 <Button size="sm" variant="outline" onClick={syncFromDiagram}>
-                  <RefreshCw className="mr-1 h-3 w-3" />
+                  <ArrowsClockwise className="mr-1 h-3 w-3" />
                   Sincronizar
                 </Button>
               </div>
@@ -486,7 +493,7 @@ export function ElectricalStudyPanel() {
                 onClick={syncFromDiagram}
                 title="Carregar parâmetros dos equipamentos do diagrama"
               >
-                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                <ArrowsClockwise className="mr-1.5 h-3.5 w-3.5" />
                 Do Diagrama
               </Button>
             </div>
@@ -672,7 +679,7 @@ export function ElectricalStudyPanel() {
             <Button onClick={handleRun} disabled={busy} className="w-full">
               {busy ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Calculando…
+                  <CircleNotch className="mr-2 h-4 w-4 animate-spin" /> Calculando…
                 </>
               ) : (
                 <>
@@ -685,7 +692,7 @@ export function ElectricalStudyPanel() {
               <div className="space-y-3 rounded-lg border border-border/50 p-4">
                 <div className="flex items-center justify-between">
                   <p className="flex items-center gap-2 font-medium">
-                    <Zap className="h-4 w-4 text-primary" />
+                    <Lightning className="h-4 w-4 text-primary" />
                     Resultado
                   </p>
                   <Badge variant="outline" className="text-[10px]">
@@ -749,7 +756,7 @@ export function ElectricalStudyPanel() {
                             onClick={() => handleDelete(String(row.id))}
                             aria-label="Remover registro"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash className="h-3.5 w-3.5" />
                           </Button>
                         </TableCell>
                       </TableRow>

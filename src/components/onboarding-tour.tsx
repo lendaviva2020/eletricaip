@@ -8,7 +8,7 @@
 // - Renderiza um card de instrução no rodapé com um anel pulsante no alvo.
 // - Todo o estado é local; nada persiste além dos flags acima.
 import { useEffect, useLayoutEffect, useState } from "react";
-import { X, ArrowRight, ArrowLeft } from "lucide-react";
+import { X, ArrowRight, ArrowLeft } from "@phosphor-icons/react";
 import { useEditorStore } from "@/lib/editor/store";
 import type { WorkspaceMode } from "@/lib/workspace-data";
 
@@ -150,13 +150,13 @@ export function OnboardingTour() {
         type="button"
         aria-label="Fechar tour"
         onClick={() => close(true)}
-        className="absolute inset-0 bg-background/60 backdrop-blur-[1px] pointer-events-auto cursor-default"
+        className="absolute inset-0 bg-black/50 pointer-events-auto cursor-default"
       />
 
       {/* Anel de destaque no alvo */}
       {rect && (
         <div
-          className="absolute rounded-md ring-2 ring-primary shadow-glow animate-pulse pointer-events-none"
+          className="absolute rounded-md ring-2 ring-primary pointer-events-none"
           style={{
             top: rect.top - 6,
             left: rect.left - 6,
@@ -168,7 +168,7 @@ export function OnboardingTour() {
 
       {/* Card de instrução (rodapé, mobile-first) */}
       <div className="absolute inset-x-3 bottom-4 sm:inset-x-auto sm:right-6 sm:left-auto sm:bottom-6 sm:w-96 pointer-events-auto">
-        <div className="rounded-xl border border-border bg-card shadow-2xl p-4">
+        <div className="rounded-lg border border-border bg-card shadow-lg p-4">
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
               <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-primary">
@@ -213,8 +213,7 @@ export function OnboardingTour() {
                     setStep((s) => Math.min(STEPS.length - 1, s + 1));
                   }
                 }}
-                className="h-8 px-3 rounded-md text-xs font-semibold text-primary-foreground inline-flex items-center gap-1 glow-primary"
-                style={{ background: "var(--gradient-primary)" }}
+                className="h-8 px-3 rounded-md bg-primary hover:bg-primary/90 text-xs font-semibold text-primary-foreground inline-flex items-center gap-1"
               >
                 {isLast ? "Concluir" : "Próximo"}
                 {!isLast && <ArrowRight className="h-3 w-3" />}

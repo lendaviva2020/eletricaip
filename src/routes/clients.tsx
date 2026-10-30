@@ -3,9 +3,20 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Search, Edit2, Trash2, ExternalLink, Users } from "lucide-react";
+import {
+  Plus,
+  MagnifyingGlass,
+  PencilSimple,
+  Trash,
+  ArrowSquareOut,
+  Users,
+  DotsThree,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import {
   Select,
   SelectContent,
@@ -70,7 +81,7 @@ function ClientsPage() {
   const deleteFn = useServerFn(deleteClient);
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["clients", { search, status, sector }],
     queryFn: () =>
       listFn({
@@ -122,7 +133,7 @@ function ClientsPage() {
 
         <div className="flex gap-2 flex-wrap items-center">
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <MagnifyingGlass className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome, contato, email, CNPJ…"
               value={search}
@@ -157,40 +168,44 @@ function ClientsPage() {
         </div>
 
         {isLoading ? (
-          <div className="text-sm text-muted-foreground py-12 text-center">Carregando…</div>
+          <TableSkeleton rows={5} columns={4} />
+        ) : isError ? (
+          <ErrorState
+            message={(error as Error)?.message ?? "Não foi possível carregar os clientes."}
+            onRetry={() => refetch()}
+          />
         ) : clients.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border py-16 text-center">
-            <Users className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-            <p className="text-sm font-medium">Nenhum cliente cadastrado</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Comece cadastrando seu primeiro cliente industrial.
-            </p>
-            <Button
-              className="mt-4"
-              onClick={() => {
-                setEditing(null);
-                setOpenForm(true);
-              }}
-            >
-              <Plus className="h-4 w-4" /> Cadastrar cliente
-            </Button>
-          </div>
+          <EmptyState
+            icon={<Users className="h-5 w-5" />}
+            title="Nenhum cliente cadastrado"
+            description="Comece cadastrando seu primeiro cliente industrial."
+            action={
+              <Button
+                onClick={() => {
+                  setEditing(null);
+                  setOpenForm(true);
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" /> Cadastrar cliente
+              </Button>
+            }
+          />
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {clients.map((c) => (
               <div
                 key={c.id}
-                className="rounded-xl border border-border bg-card p-5 hover:border-primary/50 transition-colors group"
+                className="rounded-md border border-border bg-card p-4 hover:border-primary/50 transition-colors group"
               >
                 <div className="flex items-start gap-3">
                   {c.logo_url ? (
                     <img
                       src={c.logo_url}
                       alt={c.name}
-                      className="h-10 w-10 rounded-full object-cover"
+                      className="h-9 w-9 rounded-sm object-cover border border-border"
                     />
                   ) : (
-                    <div className="h-10 w-10 rounded-full grid place-items-center font-semibold text-primary bg-primary/15 shrink-0">
+                    <div className="h-9 w-9 rounded-sm grid place-items-center font-mono font-semibold text-primary bg-primary/10 border border-border shrink-0">
                       {c.name[0]?.toUpperCase()}
                     </div>
                   )}
@@ -203,14 +218,19 @@ function ClientsPage() {
                   <StatusBadge status={c.status} />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="ghost" className="h-8 w-8">
-                        ⋯
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Ações para ${c.name}`}
+                        className="h-7 w-7"
+                      >
+                        <DotsThree className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
                         <Link to="/clients/$clientId" params={{ clientId: c.id }}>
-                          <ExternalLink className="h-3.5 w-3.5" /> Abrir
+                          <ArrowSquareOut className="h-3.5 w-3.5" /> Abrir
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem
@@ -219,13 +239,13 @@ function ClientsPage() {
                           setOpenForm(true);
                         }}
                       >
-                        <Edit2 className="h-3.5 w-3.5" /> Editar
+                        <PencilSimple className="h-3.5 w-3.5" /> Editar
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => setConfirmDelete(c)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" /> Excluir
+                        <Trash className="h-3.5 w-3.5" /> Excluir
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

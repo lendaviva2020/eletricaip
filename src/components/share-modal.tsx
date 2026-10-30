@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Share2, Copy, Users, Link2, Check, X } from "lucide-react";
+import { ShareNetwork, Copy, Users, LinkSimple, Check, X } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,10 +34,10 @@ export function ShareModal() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-lg p-6 bg-card/95 border-border backdrop-blur-md shadow-glow rounded-xl">
+      <DialogContent className="max-w-lg p-6 bg-card border-border rounded-lg">
         <DialogHeader className="mb-4">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold tracking-tight">
-            <Share2 className="h-5 w-5 text-primary" />
+            <ShareNetwork className="h-5 w-5 text-primary" />
             Compartilhar Workspace
           </DialogTitle>
           <p className="text-xs text-muted-foreground">
@@ -74,7 +74,7 @@ export function ShareModal() {
                 </Button>
               </div>
               <p className="text-[9px] text-muted-foreground mt-1.5">
-                <Link2 className="inline h-3 w-3 mr-0.5 align-text-bottom" />
+                <LinkSimple className="inline h-3 w-3 mr-0.5 align-text-bottom" />
                 Qualquer membro do tenant com este link pode acessar e editar o canvas em tempo
                 real.
               </p>

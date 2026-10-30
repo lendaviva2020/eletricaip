@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore, type FbdSimSnapshot } from "@/lib/editor/store";
+import { useSafetyStore } from "@/lib/simulation/safety-core";
 import { useRuntimeStore } from "@/lib/model/runtime-store";
 import { editorToFbdDocument, getFbdRegistry, type SimInputBinding } from "@/lib/fbd/editor-bridge";
 import { publishFbdToScada } from "@/lib/fbd/scada-bridge";
@@ -154,7 +155,19 @@ export function useFbdEngine(): FbdEngineApi {
     [],
   );
 
+  useEffect(() => {
+    return useSafetyStore.subscribe((state) => {
+      if (state.emergencyLatched && simRef.current?.status === "running") {
+        simRef.current.stop();
+        setStatus("stopped");
+      }
+    });
+  }, []);
+
   const start = useCallback(() => {
+    if (!useSafetyStore.getState().canStartSimulation()) {
+      return;
+    }
     simRef.current?.start();
     setStatus(simRef.current?.status ?? "stopped");
   }, []);

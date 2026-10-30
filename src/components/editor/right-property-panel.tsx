@@ -1,10 +1,25 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Lock, Unlock, Zap, Shield, CheckSquare, Square, ExternalLink } from "lucide-react";
+import {
+  Plus,
+  Trash,
+  Lock,
+  LockOpen,
+  Lightning,
+  Shield,
+  CheckSquare,
+  Square,
+  ArrowSquareOut,
+} from "@phosphor-icons/react";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { cmd } from "@/lib/diagram/commands";
 import { getParamSpecs } from "@/lib/diagram/param-specs";
-import { NodeParamsSchema, type NodeParams, type DiagramNode, type DiagramEdge } from "@/lib/diagram/schema";
+import {
+  NodeParamsSchema,
+  type NodeParams,
+  type DiagramNode,
+  type DiagramEdge,
+} from "@/lib/diagram/schema";
 import { useEditorStore, type EditorTag, type EditorTagType } from "@/lib/editor/store";
 import { validateTagName } from "@/lib/editor/property-schemas";
 import { ValidatedParamField } from "./property-fields/validated-param-field";
@@ -29,7 +44,11 @@ function findRelatedCircuitNode(
     for (const e of Object.values(edges)) {
       if (e.source === nodeId && nodes[e.target]) {
         const tgt = nodes[e.target];
-        if (tgt.params.kind === "motor" || tgt.params.kind === "vfd" || tgt.params.kind === "capacitor_bank") {
+        if (
+          tgt.params.kind === "motor" ||
+          tgt.params.kind === "vfd" ||
+          tgt.params.kind === "capacitor_bank"
+        ) {
           return tgt;
         }
       }
@@ -65,7 +84,9 @@ function findRelatedCircuitNode(
   }
 
   // Fallback: se houver outro disjuntor de proteção no diagrama, associe como referência
-  const fallbackBreaker = Object.values(nodes).find((n) => n.params.kind === "breaker" && n.id !== nodeId);
+  const fallbackBreaker = Object.values(nodes).find(
+    (n) => n.params.kind === "breaker" && n.id !== nodeId,
+  );
   if (fallbackBreaker) {
     return fallbackBreaker;
   }
@@ -85,7 +106,9 @@ export function RightPropertyPanel() {
   const deleteSelected = useDiagramStore((s) => s.deleteSelected);
   const doc = useDiagramStore((s) => s.doc);
   const node = useDiagramStore((s) => (selectedId ? s.doc.nodes[selectedId] : null));
-  const selectedEdge = useDiagramStore((s) => (selectedEdgeId ? s.doc.edges[selectedEdgeId] : null));
+  const selectedEdge = useDiagramStore((s) =>
+    selectedEdgeId ? s.doc.edges[selectedEdgeId] : null,
+  );
   const dispatch = useDiagramStore((s) => s.dispatch);
   const setSelection = useDiagramStore((s) => s.setSelection);
 
@@ -133,7 +156,7 @@ export function RightPropertyPanel() {
             data-testid="property-delete-edge"
             className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash className="h-3.5 w-3.5" />
             Excluir conexão
           </button>
         </div>
@@ -144,10 +167,11 @@ export function RightPropertyPanel() {
   if (!node) {
     return (
       <div className="p-4 text-[12px] text-muted-foreground flex flex-col items-center justify-center text-center py-12 gap-2">
-        <Zap className="h-6 w-6 text-muted-foreground/50 mb-1" />
+        <Lightning className="h-6 w-6 text-muted-foreground/50 mb-1" />
         <p className="font-semibold text-foreground/80">Nenhum componente selecionado</p>
         <p className="text-[11px] text-muted-foreground">
-          Clique em um motor, disjuntor, contator ou condutor no canvas para inspecionar seus parâmetros elétricos ou excluí-lo.
+          Clique em um motor, disjuntor, contator ou condutor no canvas para inspecionar seus
+          parâmetros elétricos ou excluí-lo.
         </p>
       </div>
     );
@@ -156,9 +180,15 @@ export function RightPropertyPanel() {
   const kind = node.params.kind;
   const paramSpecs = getParamSpecs(kind);
   const tag = (node.params as any).tag || node.label || node.id;
-  const kindTitle = kind === "motor" ? "MOTOR" : kind === "breaker" ? "DISJUNTOR" : kind.toUpperCase();
+  const kindTitle =
+    kind === "motor" ? "MOTOR" : kind === "breaker" ? "DISJUNTOR" : kind.toUpperCase();
 
-  const commitParam = (targetNodeId: string, currentParams: any, key: string, value: string | number | boolean) => {
+  const commitParam = (
+    targetNodeId: string,
+    currentParams: any,
+    key: string,
+    value: string | number | boolean,
+  ) => {
     const nextRaw = { ...currentParams, [key]: value } as unknown;
     const parsed = NodeParamsSchema.safeParse(nextRaw);
     if (!parsed.success) {
@@ -203,7 +233,7 @@ export function RightPropertyPanel() {
       <div className="rounded-md border border-[#38bdf8]/40 bg-[#0e1626] overflow-hidden shadow-sm">
         <div className="bg-[#131d2e] px-3 py-2 border-b border-border/70 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-[#38bdf8]" />
+            <Lightning className="h-4 w-4 text-[#38bdf8]" />
             <span className="font-bold text-xs tracking-wider text-[#38bdf8]">
               PROPRIEDADES - {kindTitle} {tag}
             </span>
@@ -237,11 +267,15 @@ export function RightPropertyPanel() {
               <>
                 <div>
                   <span className="text-muted-foreground block text-[10px]">POTÊNCIA</span>
-                  <span className="font-medium text-amber-300">{(node.params as any).power_kW ?? 7.5} kW</span>
+                  <span className="font-medium text-amber-300">
+                    {(node.params as any).power_kW ?? 7.5} kW
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-[10px]">CORRENTE In</span>
-                  <span className="font-medium text-amber-300">{(node.params as any).current_A ?? 15.2} A</span>
+                  <span className="font-medium text-amber-300">
+                    {(node.params as any).current_A ?? 15.2} A
+                  </span>
                 </div>
               </>
             )}
@@ -261,7 +295,9 @@ export function RightPropertyPanel() {
               Parâmetros Técnicos
             </div>
             {Object.keys(paramSpecs).length === 0 ? (
-              <div className="text-[11px] text-muted-foreground italic">Sem parâmetros adicionais.</div>
+              <div className="text-[11px] text-muted-foreground italic">
+                Sem parâmetros adicionais.
+              </div>
             ) : (
               Object.entries(paramSpecs).map(([key, spec]) => (
                 <ValidatedParamField
@@ -286,7 +322,7 @@ export function RightPropertyPanel() {
               data-testid="property-delete-node"
               className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash className="h-3.5 w-3.5" />
               Excluir componente ({tag})
             </button>
           </div>
@@ -300,7 +336,10 @@ export function RightPropertyPanel() {
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-[#f97316]" />
               <span className="font-bold text-xs tracking-wider text-[#f97316]">
-                PROPRIEDADES - {relatedNode.params.kind === "breaker" ? "DISJUNTOR" : relatedNode.params.kind.toUpperCase()}{" "}
+                PROPRIEDADES -{" "}
+                {relatedNode.params.kind === "breaker"
+                  ? "DISJUNTOR"
+                  : relatedNode.params.kind.toUpperCase()}{" "}
                 {(relatedNode.params as any).tag || relatedNode.label || relatedNode.id}
               </span>
             </div>
@@ -310,7 +349,7 @@ export function RightPropertyPanel() {
               title="Focar este componente no canvas"
             >
               <span>Ver</span>
-              <ExternalLink className="h-3 w-3" />
+              <ArrowSquareOut className="h-3 w-3" />
             </button>
           </div>
 
@@ -454,7 +493,7 @@ function TagsSection({ nodeId }: { nodeId: string }) {
               title={t.forced ? "Liberar (release)" : "Forçar valor"}
             >
               {t.forced ? (
-                <Unlock className="h-3 w-3 text-amber-400" />
+                <LockOpen className="h-3 w-3 text-amber-400" />
               ) : (
                 <Lock className="h-3 w-3 text-muted-foreground" />
               )}
@@ -464,7 +503,7 @@ function TagsSection({ nodeId }: { nodeId: string }) {
               className="h-5 w-5 grid place-items-center rounded hover:bg-destructive/10 text-destructive"
               title="Remover tag"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash className="h-3 w-3" />
             </button>
           </div>
         ))}
@@ -519,7 +558,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-1.5 font-bold">
         {title}
       </div>
-      <div className="rounded-md border border-border/70 bg-[#0e1626] p-2.5 space-y-1">{children}</div>
+      <div className="rounded-md border border-border/70 bg-[#0e1626] p-2.5 space-y-1">
+        {children}
+      </div>
     </div>
   );
 }

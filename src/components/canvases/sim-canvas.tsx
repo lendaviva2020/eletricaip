@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
-import { Pause, Play, RefreshCw, Activity, Layers, Disc, Table2, Bell } from "lucide-react";
+import {
+  Pause,
+  Play,
+  ArrowsClockwise,
+  Pulse,
+  Stack,
+  Disc,
+  Table,
+  Bell,
+} from "@phosphor-icons/react";
 import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
@@ -152,8 +161,7 @@ export function SimCanvas() {
         const tag = unifiedDoc.engineering.tags[binding.tagId];
         const eq = unifiedDoc.engineering.equipments[binding.equipmentId];
         const rawVal =
-          runtimeTagValues[binding.tagId] ??
-          (tag ? merged[tag.name]?.value : undefined);
+          runtimeTagValues[binding.tagId] ?? (tag ? merged[tag.name]?.value : undefined);
         if (rawVal === undefined) continue;
 
         if (binding.role === "vfd_speed_ref" || binding.role === "vfd_run_feedback") {
@@ -261,7 +269,7 @@ export function SimCanvas() {
           onClick={clearBuffer}
           className="h-8 px-3 rounded border border-border bg-card/60 hover:bg-accent text-[10px] uppercase font-bold tracking-wider inline-flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
         >
-          <RefreshCw className="h-3.5 w-3.5" />
+          <ArrowsClockwise className="h-3.5 w-3.5" />
           <span>Limpar</span>
         </button>
 
@@ -316,7 +324,7 @@ export function SimCanvas() {
               : "border border-border bg-card/40 text-muted-foreground hover:bg-accent",
           )}
         >
-          <Table2 className="h-3.5 w-3.5" />
+          <Table className="h-3.5 w-3.5" />
           Watch
         </button>
 
@@ -530,7 +538,7 @@ function ChartCard({
     <div className="rounded-md border border-border/80 bg-card/60 p-4 shadow-lg hover:border-border transition-colors">
       <div className="flex items-center justify-between text-[11px] mb-2 font-mono">
         <span className="text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5">
-          <Activity className="h-3.5 w-3.5 animate-pulse" style={{ color }} />
+          <Pulse className="h-3.5 w-3.5 animate-pulse" style={{ color }} />
           {label}
         </span>
         <span className="font-display font-bold text-sm tracking-wide" style={{ color }}>
@@ -568,7 +576,6 @@ function ChartCard({
                 type="monotone"
                 dataKey={dataKey}
                 stroke={color}
-                strokeWidth={2}
                 fill={`url(#${label})`}
                 animationDuration={0} // real-time immediate plotting
               />

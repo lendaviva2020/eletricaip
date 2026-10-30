@@ -1,14 +1,23 @@
 import { useEffect, useRef } from "react";
-import { Bell, CheckCheck, X, AlertTriangle, Info, Users, Zap, Download } from "lucide-react";
+import {
+  Bell,
+  Checks,
+  X,
+  Warning,
+  Info,
+  Users,
+  Lightning,
+  DownloadSimple,
+} from "@phosphor-icons/react";
 import { useNotificationStore, type AppNotification } from "@/lib/notification-store";
 import { supabase } from "@/integrations/supabase/client";
 
 const ICONS: Record<string, typeof Bell> = {
-  simulation_complete: Zap,
-  credits_low: AlertTriangle,
+  simulation_complete: Lightning,
+  credits_low: Warning,
   team_invite: Users,
-  alarm: AlertTriangle,
-  export_ready: Download,
+  alarm: Warning,
+  export_ready: DownloadSimple,
   info: Info,
 };
 
@@ -108,22 +117,23 @@ export function NotificationDropdown() {
     <div ref={ref} className="relative">
       <button
         onClick={toggleDropdown}
-        className="relative h-8 w-8 rounded flex items-center justify-center hover:bg-accent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Notificações"
+        className="relative h-8 w-8 rounded-md flex items-center justify-center hover:bg-accent cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
         title="Notificações"
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[14px] px-1 flex items-center justify-center rounded-full bg-warning text-[9px] font-bold text-warning-foreground leading-none">
+          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[14px] px-1 flex items-center justify-center rounded-sm bg-warning text-[9px] font-bold text-warning-foreground tabular-nums leading-none">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {dropdownOpen && (
-        <div className="absolute right-0 top-full mt-1.5 w-[320px] max-h-[420px] rounded-lg border border-border bg-background/95 backdrop-blur-lg shadow-2xl flex flex-col z-50">
+        <div className="absolute right-0 top-full mt-1.5 w-[320px] max-h-[420px] rounded-md border border-border bg-popover shadow-sm flex flex-col z-50">
           {/* Header */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-            <span className="text-[11px] font-mono font-bold text-foreground uppercase tracking-wider">
+            <span className="text-[11px] font-mono font-semibold text-foreground uppercase tracking-wider">
               Notificações
             </span>
             {unreadCount > 0 && (
@@ -131,7 +141,7 @@ export function NotificationDropdown() {
                 onClick={handleMarkAllRead}
                 className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <CheckCheck className="h-3 w-3" />
+                <Checks className="h-3 w-3" />
                 Marcar tudo
               </button>
             )}

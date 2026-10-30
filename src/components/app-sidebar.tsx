@@ -1,19 +1,19 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard,
-  FolderKanban,
+  SquaresFour,
+  FolderOpen as FolderOpenIcon,
   Cpu,
-  BarChart3,
+  ChartBar,
   Users,
-  Sparkles,
-  Settings,
+  Sparkle,
+  Gear,
   FolderOpen,
-  Box,
-  ChevronLeft,
-  ChevronRight,
-  Wifi,
-  WifiOff,
-} from "lucide-react";
+  Cube,
+  CaretLeft,
+  CaretRight,
+  WifiHigh,
+  WifiSlash,
+} from "@phosphor-icons/react";
 import { useEffect } from "react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { cn } from "@/lib/utils";
@@ -26,20 +26,26 @@ type NavItem = {
   key: string;
   defaultTitle: string;
   url: string;
-  icon: typeof LayoutDashboard;
+  icon: typeof SquaresFour;
   accent?: boolean;
   core?: boolean;
 };
 
 const items: NavItem[] = [
-  { key: "dashboard", defaultTitle: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { key: "projects", defaultTitle: "Projetos", url: "/projects", icon: FolderKanban },
-  { key: "workspace", defaultTitle: "Industrial Workspace", url: "/workspace", icon: Cpu, accent: true },
-  { key: "twin", defaultTitle: "Digital Twin", url: "/digital-twin", icon: Box, accent: true },
-  { key: "ai", defaultTitle: "IA Industrial", url: "/ai", icon: Sparkles, core: true },
-  { key: "analytics", defaultTitle: "Analytics", url: "/analytics", icon: BarChart3 },
+  { key: "dashboard", defaultTitle: "Dashboard", url: "/dashboard", icon: SquaresFour },
+  { key: "projects", defaultTitle: "Projetos", url: "/projects", icon: FolderOpenIcon },
+  {
+    key: "workspace",
+    defaultTitle: "Industrial Workspace",
+    url: "/workspace",
+    icon: Cpu,
+    accent: true,
+  },
+  { key: "twin", defaultTitle: "Digital Twin", url: "/digital-twin", icon: Cube, accent: true },
+  { key: "ai", defaultTitle: "IA Industrial", url: "/ai", icon: Sparkle, core: true },
+  { key: "analytics", defaultTitle: "Analytics", url: "/analytics", icon: ChartBar },
   { key: "clients", defaultTitle: "Clientes", url: "/clients", icon: Users },
-  { key: "settings", defaultTitle: "Configurações", url: "/settings", icon: Settings },
+  { key: "settings", defaultTitle: "Configurações", url: "/settings", icon: Gear },
 ];
 
 export function AppSidebar() {
@@ -68,24 +74,22 @@ export function AppSidebar() {
       data-testid="app-sidebar"
     >
       {/* 1. Brand Header */}
-      <div className="flex items-center justify-between px-3 h-14 border-b border-sidebar-border">
+      <div className="flex items-center justify-between px-3 h-10 border-b border-sidebar-border">
         <div className="flex items-center gap-2 overflow-hidden">
           <div
-            className="relative h-8 w-8 rounded-md flex items-center justify-center shrink-0"
-            style={{ background: "var(--gradient-primary)" }}
+            className="relative h-6 w-6 rounded-sm bg-primary flex items-center justify-center shrink-0"
             title="EletricAI Industrial OS"
           >
-            <BrandBolt className="h-4 w-4 text-primary-foreground" />
-            <span className="absolute -inset-px rounded-md ring-1 ring-primary/40 glow-primary" />
+            <BrandBolt className="h-3.5 w-3.5 text-primary-foreground" />
           </div>
           {!collapsed && (
-            <div className="leading-tight truncate">
-              <div className="text-[13px] font-semibold tracking-tight text-sidebar-foreground truncate">
+            <div className="leading-tight truncate flex items-baseline gap-1.5">
+              <span className="text-[13px] font-semibold tracking-tight text-sidebar-foreground truncate">
                 EletricAI
-              </div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground truncate">
-                {t("nav.industrialOs")}
-              </div>
+              </span>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground truncate">
+                OS
+              </span>
             </div>
           )}
         </div>
@@ -94,14 +98,18 @@ export function AppSidebar() {
         <button
           onClick={toggleCollapsed}
           className={cn(
-            "h-7 w-7 rounded-md border border-border/60 bg-muted/30 hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0",
-            collapsed && "mx-auto mt-1",
+            "h-6 w-6 rounded-sm border border-border bg-background hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0",
+            collapsed && "mx-auto",
           )}
           title={collapsed ? "Expandir menu principal" : "Recolher menu principal"}
           aria-label={collapsed ? "Expandir menu principal" : "Recolher menu principal"}
           data-testid="toggle-app-sidebar"
         >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {collapsed ? (
+            <CaretRight className="h-3.5 w-3.5" />
+          ) : (
+            <CaretLeft className="h-3.5 w-3.5" />
+          )}
         </button>
       </div>
 
@@ -175,7 +183,12 @@ export function AppSidebar() {
 
       {/* 4. Rodapé do Sidebar com Estado Real do Runtime */}
       <div className="p-2 border-t border-sidebar-border">
-        <div className={cn("rounded-md glass", collapsed ? "p-2 flex justify-center" : "p-2.5")}>
+        <div
+          className={cn(
+            "rounded-md border border-border bg-card",
+            collapsed ? "p-2 flex justify-center" : "p-2.5",
+          )}
+        >
           {collapsed ? (
             <div
               className="flex items-center justify-center"
@@ -191,9 +204,9 @@ export function AppSidebar() {
                 className={cn(
                   "h-2 w-2 rounded-full",
                   isSimActive
-                    ? "bg-emerald-400 energized"
+                    ? "bg-success"
                     : isSimPaused
-                      ? "bg-amber-400"
+                      ? "bg-warning"
                       : "bg-muted-foreground/40",
                 )}
               />
@@ -205,18 +218,18 @@ export function AppSidebar() {
                   className={cn(
                     "h-1.5 w-1.5 rounded-full shrink-0",
                     isSimActive
-                      ? "bg-emerald-400 energized"
+                      ? "bg-success"
                       : isSimPaused
-                        ? "bg-amber-400"
+                        ? "bg-warning"
                         : "bg-muted-foreground/40",
                   )}
                 />
                 <span
                   className={
                     isSimActive
-                      ? "text-emerald-400 font-semibold"
+                      ? "text-success font-semibold"
                       : isSimPaused
-                        ? "text-amber-300 font-semibold"
+                        ? "text-warning font-semibold"
                         : ""
                   }
                 >
@@ -227,7 +240,7 @@ export function AppSidebar() {
                       : "Simulação Parada"}
                 </span>
               </div>
-              <div className="mt-1 text-[10px] font-mono text-muted-foreground/80 flex items-center justify-between">
+              <div className="mt-1 text-[10px] font-mono text-muted-foreground flex items-center justify-between">
                 <span>v0.1.0</span>
                 <span>IEC / NBR</span>
               </div>

@@ -1,4 +1,4 @@
-import { MousePointer2 } from "lucide-react";
+import { Cursor } from "@phosphor-icons/react";
 import type { CollabCursor } from "@/hooks/use-collab";
 
 export function MultiplayerCursors({ cursors }: { cursors: CollabCursor[] }) {
@@ -15,7 +15,7 @@ export function MultiplayerCursors({ cursors }: { cursors: CollabCursor[] }) {
             top: c.y,
           }}
         >
-          <MousePointer2
+          <Cursor
             className="h-4 w-4 fill-current drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]"
             style={{ color: c.color }}
           />

@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import { useEditorStore, type EditorTag } from "@/lib/editor/store";
 import { useProjectStore } from "@/lib/project-store";
-import { Eye, Lock, Unlock, Search, XCircle, RefreshCw } from "lucide-react";
+import {
+  Eye,
+  Lock,
+  LockOpen,
+  MagnifyingGlass,
+  XCircle,
+  ArrowsClockwise,
+} from "@phosphor-icons/react";
 
 export function WatchTable() {
   const editorTags = useEditorStore((s) => s.editorTags);
@@ -73,7 +80,7 @@ export function WatchTable() {
             className={`h-6 w-6 grid place-items-center rounded ${autoRefresh ? "text-primary" : "text-muted-foreground"} hover:bg-accent cursor-pointer`}
             title={autoRefresh ? "Auto-refresh on" : "Auto-refresh off"}
           >
-            <RefreshCw className={`h-3 w-3 ${autoRefresh ? "animate-spin" : ""}`} />
+            <ArrowsClockwise className={`h-3 w-3 ${autoRefresh ? "animate-spin" : ""}`} />
           </button>
           <button
             onClick={() => {
@@ -89,7 +96,7 @@ export function WatchTable() {
       </div>
       <div className="px-2 py-1.5 border-b border-border">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <MagnifyingGlass className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -182,7 +189,7 @@ function WatchRow({
         {tag.forced ? (
           <Lock className="h-3 w-3 text-warning" />
         ) : (
-          <Unlock className="h-3 w-3 text-muted-foreground/40" />
+          <LockOpen className="h-3 w-3 text-muted-foreground/40" />
         )}
       </td>
       <td className="px-2 py-1 font-mono text-[11px]">{tag.name}</td>

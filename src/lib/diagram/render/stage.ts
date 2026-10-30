@@ -160,11 +160,15 @@ export class DiagramStage {
     this.host = host;
     this.events = events;
 
-    // Fundo cinza técnico claro (#F0F2F3) conforme norma e preferência industrial
+    // Fundo cinza técnico claro (#F0F2F3) conforme norma e preferência industrial.
+    // Resolução técnica para alta nitidez: mínimo 2x no framebuffer para sub-pixels nítidos.
+    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const targetResolution = Math.max(dpr, 2);
+
     await this.app.init({
       background: 0xf0f2f3,
       antialias: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
+      resolution: targetResolution,
       autoDensity: true,
       resizeTo: host,
     });
@@ -439,14 +443,15 @@ export class DiagramStage {
       const label = new Text({
         text: n.label || n.params.kind,
         style: {
-          fill: 0x1e293b,
-          fontSize: 10,
+          fill: 0x0f172a,
+          fontSize: 11.5,
           fontFamily: "system-ui, -apple-system, sans-serif",
           fontWeight: "600",
         },
+        resolution: 2,
       });
       label.anchor.set(0.5, 0);
-      label.position.set(0, 22);
+      label.position.set(0, 24);
 
       const deviceStatusBadge = new Graphics();
       const portsLayer = new Container();
@@ -629,9 +634,10 @@ export class DiagramStage {
       strokeColor = 0xf97316;
     }
 
-    // Multifilar: N condutores paralelos
+    // Multifilar: N condutores paralelos (renderizado EXCLUSIVAMENTE na folha multifilar)
+    const isMultifilarSheet = this.lastSheet === "multifilar";
     const conductors = e.circuitConfig ? CONDUCTOR_LABELS[e.circuitConfig] : null;
-    if (conductors && conductors.length > 1) {
+    if (isMultifilarSheet && conductors && conductors.length > 1) {
       const spacing = 6;
       const total = conductors.length;
       const container = new Container();
@@ -658,10 +664,11 @@ export class DiagramStage {
           text: label,
           style: {
             fill: cColor,
-            fontSize: 9,
+            fontSize: 10.5,
             fontFamily: "monospace",
             fontWeight: "bold",
           },
+          resolution: 2,
         });
         text.position.set(midX + offset + 3, (from.y + to.y) / 2 + offset - 10);
         container.addChild(text);

@@ -21,23 +21,23 @@ export function EmptyState({
       role="region"
       aria-label={title}
       className={cn(
-        "flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-xl border border-dashed border-border bg-card/40 max-w-lg mx-auto",
+        "flex flex-col items-center justify-center text-center p-6 sm:p-8 rounded-md border border-border bg-card max-w-lg mx-auto",
         className,
       )}
       {...props}
     >
       {icon && (
-        <div className="p-3 rounded-full bg-muted/60 text-muted-foreground mb-3 ring-1 ring-border">
+        <div className="p-2.5 rounded-md bg-muted text-muted-foreground mb-3 border border-border">
           {icon}
         </div>
       )}
-      <h3 className="font-display text-base sm:text-lg font-bold text-foreground">{title}</h3>
+      <h3 className="text-sm sm:text-base font-semibold text-foreground">{title}</h3>
       {description && (
-        <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 max-w-sm leading-relaxed">
+        <p className="text-xs sm:text-[13px] text-muted-foreground mt-1 max-w-sm leading-relaxed">
           {description}
         </p>
       )}
-      {action && <div className="mt-5 flex items-center gap-2">{action}</div>}
+      {action && <div className="mt-4 flex items-center gap-2">{action}</div>}
     </div>
   );
 }

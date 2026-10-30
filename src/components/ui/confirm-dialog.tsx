@@ -39,10 +39,10 @@ export function ConfirmDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-md bg-card border-border">
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-display text-lg font-bold text-foreground">
+          <AlertDialogTitle className="text-base font-semibold text-foreground">
             {title}
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+          <AlertDialogDescription className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed">
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>

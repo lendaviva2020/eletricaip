@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthShell, Input, Divider, GoogleIcon } from "./login";
@@ -61,10 +61,11 @@ function SignupPage() {
   };
 
   return (
-    <AuthShell title="Criar conta" subtitle="Comece grátis em menos de 60 segundos.">
+    <AuthShell title="Criar conta" subtitle="Acesso imediato ao ambiente de engenharia.">
       <button
+        type="button"
         onClick={handleGoogle}
-        className="h-11 w-full rounded-md border border-border bg-card hover:bg-accent transition flex items-center justify-center gap-2 text-sm font-medium"
+        className="h-9 w-full rounded-md border border-border bg-background hover:bg-accent transition-colors flex items-center justify-center gap-2 text-[13px] font-medium"
       >
         <GoogleIcon /> Continuar com Google
       </button>
@@ -85,7 +86,7 @@ function SignupPage() {
             aria-label="Confirmo que tenho 18 anos ou mais"
             checked={adult}
             onChange={(e) => setAdult(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+            className="mt-0.5 h-4 w-4 rounded-sm border-border accent-primary"
           />
           <span>Confirmo que tenho 18 anos ou mais e uso profissional (B2B).</span>
         </label>
@@ -102,10 +103,9 @@ function SignupPage() {
         <button
           disabled={loading}
           type="submit"
-          className="h-11 w-full rounded-md text-sm font-semibold text-primary-foreground glow-primary inline-flex items-center justify-center gap-2 disabled:opacity-50"
-          style={{ background: "var(--gradient-primary)" }}
+          className="h-9 w-full rounded-md bg-primary hover:bg-primary/90 text-[13px] font-medium text-primary-foreground inline-flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />} Criar conta grátis
+          {loading && <CircleNotch className="h-4 w-4 animate-spin" />} Criar conta grátis
         </button>
       </form>
       <p className="text-[10px] text-muted-foreground mt-3 text-center">

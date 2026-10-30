@@ -7,6 +7,7 @@ import type { WorkspaceMode, ConsoleTab } from "@/lib/workspace-data";
 import { type LadderRung, normalizeLadderRungs } from "@/lib/ladder/types";
 import type { Node, Edge } from "reactflow";
 import type { VoltaiComponentType } from "@/lib/palette/component-catalog";
+import { useSafetyStore, registerSafeStateCallback } from "@/lib/simulation/safety-core";
 
 export type EditorTagType = "BOOL" | "INT" | "REAL" | "STRING";
 
@@ -237,10 +238,21 @@ export const useEditorStore = create<EditorState>()(
     setConsoleOpen: (open) => set({ consoleOpen: open }),
 
     setSimulationStatus: (status) =>
-      set((s) => ({
-        simulationStatus: status,
-        simulationCycle: status === "stopped" ? 0 : s.simulationCycle,
-      })),
+      set((s) => {
+        if (status === "running") {
+          const check = useSafetyStore.getState().canStartSimulation();
+          if (!check.allowed) {
+            return {
+              simulationStatus: "stopped",
+              simulationCycle: 0,
+            };
+          }
+        }
+        return {
+          simulationStatus: status,
+          simulationCycle: status === "stopped" ? 0 : s.simulationCycle,
+        };
+      }),
     incrementSimulationCycle: () => set((s) => ({ simulationCycle: s.simulationCycle + 1 })),
     toggleDeviceState: (nodeId) =>
       set((s) => ({
@@ -267,6 +279,33 @@ export const useEditorStore = create<EditorState>()(
     setValidateComponent: (fn) => set({ validateComponent: fn }),
   })),
 );
+
+// Intertravamento autoritativo de segurança: quando a parada de emergência é acionada,
+// todas as saídas de controle e atuadores assumem imediatamente o estado seguro (desenergizado).
+registerSafeStateCallback(() => {
+  useEditorStore.setState((s) => {
+    const nextTags = { ...s.editorTags };
+    for (const [id, t] of Object.entries(nextTags)) {
+      const nameUpper = (t.name || "").toUpperCase();
+      if (
+        nameUpper.startsWith("%Q") ||
+        nameUpper.includes("MOTOR") ||
+        nameUpper.includes("CMD") ||
+        nameUpper.includes("BOBINA") ||
+        nameUpper.includes("K1") ||
+        nameUpper.includes("KM")
+      ) {
+        nextTags[id] = { ...t, value: false };
+      }
+    }
+    return {
+      simulationStatus: "stopped",
+      simulationCycle: 0,
+      deviceStates: {},
+      editorTags: nextTags,
+    };
+  });
+});
 
 // ── Stable composite selectors (use with useShallow for multi-field reads) ──
 export const editorUiSelector = (s: EditorState) => ({

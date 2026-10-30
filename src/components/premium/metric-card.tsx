@@ -17,9 +17,8 @@ export function MetricCard({
 }) {
   return (
     <div
-      className={`group relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-b from-background/80 to-muted/20 p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_30px_-8px] hover:shadow-primary/10 ${className}`}
+      className={`group relative overflow-hidden rounded-md border border-border bg-card p-4 transition-colors hover:border-primary/40 ${className}`}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70 font-medium">

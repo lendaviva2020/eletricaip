@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { CheckCircle2, Sparkles } from "lucide-react";
+import { CheckCircle, Sparkle } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { createStripeCheckout, createMpPreference } from "@/lib/billing.functions";
@@ -36,10 +36,10 @@ export function UpgradeModal() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-4xl p-6 bg-card/95 border-border backdrop-blur-md shadow-glow rounded-xl overflow-y-auto max-h-[90vh]">
+      <DialogContent className="max-w-4xl p-5 bg-card border-border rounded-md overflow-y-auto max-h-[90vh]">
         <DialogHeader className="mb-4">
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
-            <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold tracking-tight">
+            <Sparkle className="h-4 w-4 text-primary" />
             <span>Fazer Upgrade do seu Plano</span>
           </DialogTitle>
           <p className="text-xs text-muted-foreground">
@@ -56,24 +56,24 @@ export function UpgradeModal() {
               return (
                 <div
                   key={p.id}
-                  className={`relative flex flex-col rounded-xl border p-5 transition-all duration-300 bg-background/50 hover:bg-background/80 ${
-                    isPremium ? "border-primary/60 shadow-glow bg-primary/5" : "border-border"
+                  className={`relative flex flex-col rounded-md border p-4 transition-colors bg-background ${
+                    isPremium ? "border-primary bg-primary/5" : "border-border"
                   }`}
                 >
                   {isPremium && (
-                    <span className="absolute -top-2.5 right-4 rounded-full bg-primary/20 border border-primary/30 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary">
+                    <span className="absolute -top-2.5 right-3 rounded-sm bg-primary px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-primary-foreground">
                       Recomendado
                     </span>
                   )}
-                  <h3 className="font-semibold text-base mb-1">{p.name}</h3>
-                  <div className="mb-4">
-                    <span className="text-2xl font-bold">R$ {p.priceBRL}</span>
-                    <span className="text-[10px] text-muted-foreground">/mês</span>
+                  <h3 className="font-semibold text-sm mb-1">{p.name}</h3>
+                  <div className="mb-3 font-mono tabular-nums">
+                    <span className="text-xl font-semibold">R$ {p.priceBRL}</span>
+                    <span className="text-xs text-muted-foreground">/mês</span>
                   </div>
 
                   <ul className="text-[10px] text-muted-foreground space-y-2 mb-6 flex-1">
                     <li className="flex items-start gap-1.5">
-                      <CheckCircle2 className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                      <CheckCircle className="h-3 w-3 text-primary shrink-0 mt-0.5" />
                       <span>
                         {p.aiCreditsPerMonth === null
                           ? "Créditos IA ilimitados"
@@ -81,7 +81,7 @@ export function UpgradeModal() {
                       </span>
                     </li>
                     <li className="flex items-start gap-1.5">
-                      <CheckCircle2 className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                      <CheckCircle className="h-3 w-3 text-primary shrink-0 mt-0.5" />
                       <span>
                         {p.maxProjects < 0
                           ? "Projetos ilimitados"
@@ -90,13 +90,13 @@ export function UpgradeModal() {
                     </li>
                     {p.realtime && (
                       <li className="flex items-start gap-1.5">
-                        <CheckCircle2 className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                        <CheckCircle className="h-3 w-3 text-primary shrink-0 mt-0.5" />
                         <span>OPC-UA / Modbus em tempo real</span>
                       </li>
                     )}
                     {p.features.map((feat) => (
                       <li key={feat} className="flex items-start gap-1.5">
-                        <CheckCircle2 className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                        <CheckCircle className="h-3 w-3 text-primary shrink-0 mt-0.5" />
                         <span>{feat}</span>
                       </li>
                     ))}

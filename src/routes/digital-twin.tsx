@@ -3,25 +3,24 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { getDigitalTwinDemoMappings } from "@/lib/seed-digital-twin";
 import {
   ArrowLeft,
-  Box,
-  Upload,
+  Cube,
+  UploadSimple,
   Bell,
-  Activity,
-  FlaskConical,
-  Wifi,
-  WifiOff,
-  Search,
+  Pulse,
+  Flask,
+  WifiHigh,
+  WifiSlash,
+  MagnifyingGlass,
   X,
-  AlertTriangle,
+  Warning,
   Radio,
-  EyeOff,
-  PanelRightOpen,
-  PanelRightClose,
+  EyeSlash,
+  SidebarSimple,
   Plus,
-  Pencil,
-  Trash2,
-  Sparkles,
-} from "lucide-react";
+  PencilSimple,
+  Trash,
+  Sparkle,
+} from "@phosphor-icons/react";
 import { LazyTwin3DViewer as Twin3DViewer } from "@/components/canvases/lazy";
 import {
   useDigitalTwinStore,
@@ -367,9 +366,9 @@ function DigitalTwinPage() {
             className="h-7 w-7 rounded flex items-center justify-center hover:bg-accent text-muted-foreground"
           >
             {sidebarOpen ? (
-              <PanelRightClose className="h-4 w-4" />
+              <SidebarSimple className="h-4 w-4" />
             ) : (
-              <PanelRightOpen className="h-4 w-4" />
+              <SidebarSimple className="h-4 w-4" />
             )}
           </button>
           <button
@@ -381,7 +380,7 @@ function DigitalTwinPage() {
           </button>
           <div className="w-px h-5 bg-border" />
           <span className="text-sm font-semibold flex items-center gap-2">
-            <Box className="h-4 w-4 text-primary" /> Digital Twin
+            <Cube className="h-4 w-4 text-primary" /> Digital Twin
           </span>
           <Badge
             variant={realtimeConnected ? "default" : "secondary"}
@@ -393,9 +392,9 @@ function DigitalTwinPage() {
             }
           >
             {realtimeConnected ? (
-              <Wifi className="h-3 w-3 text-success" />
+              <WifiHigh className="h-3 w-3 text-success" />
             ) : (
-              <WifiOff className="h-3 w-3" />
+              <WifiSlash className="h-3 w-3" />
             )}
             {realtimeConnected ? "Live" : "Offline"}
           </Badge>
@@ -405,12 +404,12 @@ function DigitalTwinPage() {
               className="gap-1 text-[10px] border-warning text-warning"
               title="Estes dados são só uma demonstração — não estão salvos no banco"
             >
-              <Sparkles className="h-3 w-3" /> Demonstração
+              <Sparkle className="h-3 w-3" /> Demonstração
             </Badge>
           )}
           {whatIfEnabled && (
             <Badge variant="outline" className="gap-1 text-[10px] border-warning text-warning">
-              <FlaskConical className="h-3 w-3" /> E-se?
+              <Flask className="h-3 w-3" /> E-se?
             </Badge>
           )}
         </div>
@@ -441,7 +440,11 @@ function DigitalTwinPage() {
             } hover:bg-accent`}
             title="Linhas de fluxo"
           >
-            {showFlowLines ? <Radio className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            {showFlowLines ? (
+              <Radio className="h-3.5 w-3.5" />
+            ) : (
+              <EyeSlash className="h-3.5 w-3.5" />
+            )}
           </button>
           <input
             ref={fileInputRef}
@@ -457,7 +460,7 @@ function DigitalTwinPage() {
             className="h-7 px-2 rounded border border-border hover:bg-accent text-[10px] font-mono text-muted-foreground flex items-center gap-1 disabled:opacity-50"
             title={project?.id ? "Importar modelo GLB/GLTF" : "Selecione um projeto"}
           >
-            <Upload className="h-3 w-3" /> {uploading ? "Enviando..." : "Importar"}
+            <UploadSimple className="h-3 w-3" /> {uploading ? "Enviando..." : "Importar"}
           </button>
           <button
             type="button"
@@ -469,7 +472,7 @@ function DigitalTwinPage() {
             }`}
             title="Modo E-se? (simulação hipotética)"
           >
-            <FlaskConical className="h-3 w-3" /> E-se?
+            <Flask className="h-3 w-3" /> E-se?
           </button>
           <button
             type="button"
@@ -479,17 +482,17 @@ function DigitalTwinPage() {
             }`}
             title="Saúde da telemetria"
           >
-            <Activity className="h-3 w-3" /> Telemetria
+            <Pulse className="h-3 w-3" /> Telemetria
           </button>
         </div>
       </header>
 
       <div className="flex-1 flex relative overflow-hidden">
         {sidebarOpen && (
-          <aside className="w-64 shrink-0 border-r border-border flex flex-col bg-card/30 max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:bg-card max-md:shadow-2xl">
+          <aside className="w-64 shrink-0 border-r border-border flex flex-col bg-card/30 max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:bg-card max-md:shadow-lg">
             <div className="p-3 border-b border-border space-y-2">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Buscar tag..."
                   value={searchQuery}
@@ -516,7 +519,7 @@ function DigitalTwinPage() {
                 </div>
               ) : filteredMappings.length === 0 ? (
                 <div className="text-center py-8 space-y-3">
-                  <Box className="h-8 w-8 mx-auto text-muted-foreground/40" />
+                  <Cube className="h-8 w-8 mx-auto text-muted-foreground/40" />
                   <div>
                     <p className="text-xs text-muted-foreground">Nenhum equipamento real ainda</p>
                     <p className="text-[10px] text-muted-foreground/60 mt-1">
@@ -538,7 +541,7 @@ function DigitalTwinPage() {
                       className="h-7 text-[10px] gap-1 text-muted-foreground"
                       onClick={handleLoadDemo}
                     >
-                      <Sparkles className="h-3 w-3" /> Ver exemplo de demonstração
+                      <Sparkle className="h-3 w-3" /> Ver exemplo de demonstração
                     </Button>
                   </div>
                 </div>
@@ -574,7 +577,7 @@ function DigitalTwinPage() {
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <Box className="h-3.5 w-3.5 shrink-0" />
+                            <Cube className="h-3.5 w-3.5 shrink-0" />
                             <span className="truncate">{mapping.equipmentLabel}</span>
                             <Badge variant="secondary" className="ml-auto text-[9px] h-4">
                               {mapping.hotspots.length}
@@ -627,7 +630,7 @@ function DigitalTwinPage() {
                                 }
                                 className="h-6 w-6 shrink-0 rounded hidden group-hover:flex items-center justify-center hover:bg-accent text-muted-foreground"
                               >
-                                <Pencil className="h-3 w-3" />
+                                <PencilSimple className="h-3 w-3" />
                               </button>
                               <button
                                 type="button"
@@ -637,7 +640,7 @@ function DigitalTwinPage() {
                                 }
                                 className="h-6 w-6 shrink-0 rounded hidden group-hover:flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <Trash className="h-3 w-3" />
                               </button>
                             </div>
                           ))}
@@ -735,7 +738,7 @@ function DigitalTwinPage() {
 
               <div>
                 <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
-                  <Activity className="h-3 w-3" /> Últimas leituras
+                  <Pulse className="h-3 w-3" /> Últimas leituras
                 </p>
                 <div className="h-24 bg-card/50 border border-border rounded-md p-2">
                   <TelemetrySparkline
@@ -783,7 +786,7 @@ function AlarmBanner({
       } animate-in slide-in-from-right`}
     >
       <CardContent className="p-2.5 flex items-start gap-2">
-        <AlertTriangle
+        <Warning
           className={`h-4 w-4 mt-0.5 shrink-0 ${
             alarm.severity === "critical" ? "text-destructive" : "text-warning"
           }`}

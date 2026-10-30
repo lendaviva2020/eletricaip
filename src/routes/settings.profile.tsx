@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { User, Copy, Check, Camera, Loader2, Mail, Globe, Briefcase } from "lucide-react";
+import {
+  User,
+  Copy,
+  Check,
+  Camera,
+  CircleNotch,
+  EnvelopeSimple,
+  Globe,
+  Briefcase,
+} from "@phosphor-icons/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -134,7 +143,7 @@ function ProfilePage() {
   if (loading) {
     return (
       <div className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Carregando perfil…
+        <CircleNotch className="h-4 w-4 animate-spin" /> Carregando perfil…
       </div>
     );
   }
@@ -190,7 +199,7 @@ function ProfilePage() {
                 className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 title="Copiar email"
               >
-                <Mail className="h-3.5 w-3.5" />
+                <EnvelopeSimple className="h-3.5 w-3.5" />
                 <span className="truncate">{email}</span>
                 {copied ? (
                   <Check className="h-3.5 w-3.5 text-primary" />
@@ -286,7 +295,7 @@ function ProfilePage() {
               <Button onClick={save} disabled={saving || !dirty}>
                 {saving ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Salvando…
+                    <CircleNotch className="h-4 w-4 animate-spin" /> Salvando…
                   </>
                 ) : (
                   "Salvar alterações"

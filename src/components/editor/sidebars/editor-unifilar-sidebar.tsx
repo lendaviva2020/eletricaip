@@ -1,18 +1,18 @@
 import { useState, useMemo } from "react";
 import {
-  Boxes,
-  ChevronDown,
-  ChevronRight,
-  Search,
+  Cube,
+  CaretDown,
+  CaretRight,
+  MagnifyingGlass,
   X,
-  Zap,
+  Lightning,
   Shield,
-  Activity,
+  Pulse,
   Cpu,
   Power,
-  RotateCcw,
-  PanelLeftClose,
-} from "lucide-react";
+  ArrowCounterClockwise,
+  SidebarSimple,
+} from "@phosphor-icons/react";
 import {
   VOLTAI_COMPONENT_DEFINITIONS,
   type VoltaiComponentDefinition,
@@ -359,10 +359,7 @@ export function EditorUnifilarSidebar() {
     [search],
   );
 
-  const todos = useMemo(
-    () => filterBySearch(VOLTAI_COMPONENT_DEFINITIONS),
-    [search],
-  );
+  const todos = useMemo(() => filterBySearch(VOLTAI_COMPONENT_DEFINITIONS), [search]);
 
   const totalResults =
     alimentacao.length +
@@ -374,20 +371,20 @@ export function EditorUnifilarSidebar() {
 
   return (
     <div
-      className="flex flex-col h-full w-[300px] bg-[#0c121e] border-r border-border/70 select-none overflow-hidden"
+      className="flex flex-col h-full w-[300px] lg:w-full bg-panel border-r border-border select-none overflow-hidden"
       data-testid="editor-unifilar-sidebar"
     >
       {/* Cabeçalho da Biblioteca Elétrica (sem a coluna vertical redundante de 40px) */}
-      <div className="px-3 pt-2.5 pb-2 border-b border-border/60 bg-[#0a0f1c] shrink-0">
+      <div className="px-3 pt-2.5 pb-2 border-b border-border bg-panel shrink-0">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <Boxes className="h-4 w-4 text-[#38bdf8]" />
+            <Cube className="h-4 w-4 text-primary" />
             <span className="text-xs font-bold tracking-wider text-foreground uppercase">
               Biblioteca Elétrica
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-[#162136] text-[#38bdf8] border border-[#38bdf8]/30">
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20">
               {VOLTAI_COMPONENT_DEFINITIONS.length} itens
             </span>
             <button
@@ -396,14 +393,14 @@ export function EditorUnifilarSidebar() {
               title="Recolher biblioteca elétrica"
               aria-label="Recolher biblioteca elétrica"
             >
-              <PanelLeftClose className="h-3.5 w-3.5" />
+              <SidebarSimple className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
         {/* Campo de Busca Inteligente com botão para limpar */}
         <div className="relative">
-          <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <MagnifyingGlass className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <input
             id="unifilar-library-search"
             name="unifilarLibrarySearch"
@@ -411,7 +408,7 @@ export function EditorUnifilarSidebar() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Disjuntor, motor, QF, KM, NBR..."
-            className="w-full h-7 pl-8 pr-7 rounded bg-[#131b2c] border border-border/60 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary/80 transition-colors"
+            className="w-full h-7 pl-8 pr-7 rounded bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
           />
           {search && (
             <button
@@ -424,11 +421,9 @@ export function EditorUnifilarSidebar() {
           )}
         </div>
 
-        <div className="mt-1 text-[10px] text-muted-foreground/70 flex items-center justify-between">
+        <div className="mt-1 text-[10px] text-muted-foreground flex items-center justify-between">
           <span>Arraste o componente para o diagrama</span>
-          {search && (
-            <span className="font-mono text-[#38bdf8]">{totalResults} encontrado(s)</span>
-          )}
+          {search && <span className="font-mono text-primary">{totalResults} encontrado(s)</span>}
         </div>
       </div>
 
@@ -466,7 +461,7 @@ export function EditorUnifilarSidebar() {
 
         {/* Categoria 3: Manobra & Potência */}
         <LibraryAccordion
-          icon={Zap}
+          icon={Lightning}
           title="Manobra & Potência"
           count={manobra.length}
           open={openSections.manobra}
@@ -481,7 +476,7 @@ export function EditorUnifilarSidebar() {
 
         {/* Categoria 4: Motores & Cargas */}
         <LibraryAccordion
-          icon={Activity}
+          icon={Pulse}
           title="Motores & Cargas"
           count={cargas.length}
           open={openSections.cargas}
@@ -511,7 +506,7 @@ export function EditorUnifilarSidebar() {
 
         {/* Categoria 6: Medição & Instrumentação */}
         <LibraryAccordion
-          icon={RotateCcw}
+          icon={ArrowCounterClockwise}
           title="Medição & Instrumentação"
           count={instrumentacao.length}
           open={openSections.instrumentacao}
@@ -526,7 +521,7 @@ export function EditorUnifilarSidebar() {
 
         {/* Categoria 7: Todos os Símbolos IEC 60617 / NBR 5410 */}
         <LibraryAccordion
-          icon={Boxes}
+          icon={Cube}
           title="Catálogo Geral IEC 60617"
           count={todos.length}
           open={openSections.todos}
@@ -541,7 +536,7 @@ export function EditorUnifilarSidebar() {
       </div>
 
       {/* Rodapé informativo de validação e atalhos úteis */}
-      <div className="px-2.5 py-1.5 border-t border-border/50 bg-[#080d17] text-[10px] text-muted-foreground font-mono flex items-center justify-between">
+      <div className="px-2.5 py-1.5 border-t border-border bg-panel text-[10px] text-muted-foreground font-mono flex items-center justify-between">
         <span className="truncate">{dragValidation || "Arraste componentes para o canvas."}</span>
       </div>
     </div>
@@ -556,7 +551,7 @@ function LibraryAccordion({
   onToggle,
   children,
 }: {
-  icon?: typeof Boxes;
+  icon?: typeof Cube;
   title: string;
   count: number;
   open: boolean;
@@ -564,20 +559,20 @@ function LibraryAccordion({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border border-border/40 rounded bg-[#0f1624] overflow-hidden">
+    <div className="border border-border rounded-md bg-card overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold text-foreground/90 hover:bg-muted/30 transition-colors"
+        className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold text-foreground hover:bg-accent/40 transition-colors"
       >
         <div className="flex items-center gap-1.5 truncate">
-          {Icon && <Icon className="h-3.5 w-3.5 text-[#38bdf8] shrink-0" />}
+          {Icon && <Icon className="h-3.5 w-3.5 text-primary shrink-0" />}
           <span className="truncate">{title}</span>
         </div>
         <div className="flex items-center gap-1 text-muted-foreground shrink-0">
-          <span className="text-[10px] font-mono px-1 rounded bg-[#162136] text-muted-foreground">
+          <span className="text-[10px] font-mono px-1 rounded bg-secondary text-muted-foreground">
             {count}
           </span>
-          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          {open ? <CaretDown className="h-3.5 w-3.5" /> : <CaretRight className="h-3.5 w-3.5" />}
         </div>
       </button>
       {open && <div className="px-1.5 pb-2">{children}</div>}
@@ -609,30 +604,28 @@ function SymbolCard({ component }: { component: VoltaiComponentDefinition }) {
         event.dataTransfer.effectAllowed = "move";
       }}
       title={`${component.name} [${tagLabel}] — ${meta.desc} (${meta.norm})`}
-      className="group relative flex items-center gap-2.5 p-2 rounded border border-border/60 bg-[#111927] hover:bg-[#182337] hover:border-[#38bdf8]/70 transition-all cursor-grab active:cursor-grabbing shadow-xs select-none"
+      className="group relative flex items-center gap-2.5 p-2 rounded-md border border-border bg-card hover:bg-accent/40 hover:border-primary/40 transition-colors cursor-grab active:cursor-grabbing select-none"
       data-testid={`library-item-${component.type}`}
     >
       {/* Símbolo elétrico SVG distintivo em contêiner de alto contraste */}
-      <div className="w-10 h-10 shrink-0 rounded bg-[#090e18] border border-border/50 flex items-center justify-center text-foreground group-hover:text-[#38bdf8] group-hover:border-[#38bdf8]/40 transition-colors">
+      <div className="w-10 h-10 shrink-0 rounded-sm bg-secondary/50 border border-border flex items-center justify-center text-foreground group-hover:text-primary transition-colors">
         <SymbolThumbnail type={component.type} />
       </div>
 
       {/* Informações técnicas: Nome completo, descrição e badge de identificação */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-1">
-          <span className="text-xs font-semibold text-foreground/90 group-hover:text-foreground truncate">
+          <span className="text-xs font-semibold text-foreground group-hover:text-foreground truncate">
             {component.name}
           </span>
-          <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/30 shrink-0">
+          <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-primary/10 text-primary border border-primary/20 shrink-0">
             {tagLabel}
           </span>
         </div>
-        <p className="text-[10px] text-muted-foreground/80 truncate mt-0.5" title={meta.desc}>
+        <p className="text-[10px] text-muted-foreground truncate mt-0.5" title={meta.desc}>
           {meta.desc}
         </p>
-        <span className="text-[9px] font-mono text-muted-foreground/50">
-          {meta.norm}
-        </span>
+        <span className="text-[9px] font-mono text-muted-foreground/50">{meta.norm}</span>
       </div>
     </div>
   );
@@ -865,7 +858,10 @@ export function SymbolThumbnail({ type }: { type: string }) {
           <line x1="16" y1="2" x2="16" y2="7" />
           <line x1="16" y1="25" x2="16" y2="30" />
           {/* Display 123 */}
-          <path d="M 9 13 L 11 11 L 11 17 M 15 11 H 19 L 15 15 H 19 M 22 11 H 25 L 23 14 L 25 17 H 22" strokeWidth="1.2" />
+          <path
+            d="M 9 13 L 11 11 L 11 17 M 15 11 H 19 L 15 15 H 19 M 22 11 H 25 L 23 14 L 25 17 H 22"
+            strokeWidth="1.2"
+          />
         </svg>
       );
 
@@ -893,7 +889,10 @@ export function SymbolThumbnail({ type }: { type: string }) {
         <svg viewBox="0 0 32 32" className="w-7 h-7 stroke-current fill-none stroke-[1.5]">
           <circle cx="16" cy="16" r="11" strokeWidth="1.8" />
           <line x1="16" y1="2" x2="16" y2="5" />
-          <path d="M 20 13 C 19 11 14 11 13 15 C 12 19 17 20 19 18 L 19 16 L 16 16" strokeWidth="1.6" />
+          <path
+            d="M 20 13 C 19 11 14 11 13 15 C 12 19 17 20 19 18 L 19 16 L 16 16"
+            strokeWidth="1.6"
+          />
         </svg>
       );
 
@@ -969,7 +968,15 @@ export function SymbolThumbnail({ type }: { type: string }) {
         <svg viewBox="0 0 32 32" className="w-7 h-7 stroke-current fill-none stroke-[1.5]">
           <circle cx="16" cy="16" r="11" strokeWidth="1.6" />
           <rect x="10" y="12" width="12" height="7" strokeWidth="1.2" fill="#131b2c" />
-          <text x="16" y="17" fontSize="5" textAnchor="middle" fill="currentColor" stroke="none" fontWeight="bold">
+          <text
+            x="16"
+            y="17"
+            fontSize="5"
+            textAnchor="middle"
+            fill="currentColor"
+            stroke="none"
+            fontWeight="bold"
+          >
             kWh
           </text>
         </svg>
@@ -981,7 +988,15 @@ export function SymbolThumbnail({ type }: { type: string }) {
       return (
         <svg viewBox="0 0 32 32" className="w-7 h-7 stroke-current fill-none stroke-[1.5]">
           <rect x="5" y="6" width="22" height="20" rx="1.5" strokeWidth="1.6" />
-          <text x="16" y="15" fontSize="6" textAnchor="middle" fill="currentColor" stroke="none" fontWeight="bold">
+          <text
+            x="16"
+            y="15"
+            fontSize="6"
+            textAnchor="middle"
+            fill="currentColor"
+            stroke="none"
+            fontWeight="bold"
+          >
             50/51
           </text>
           <line x1="8" y1="20" x2="24" y2="20" strokeWidth="1" />
@@ -1005,7 +1020,12 @@ export function SymbolThumbnail({ type }: { type: string }) {
       return (
         <svg viewBox="0 0 32 32" className="w-7 h-7 stroke-current fill-none stroke-[1.5]">
           {/* Cabeça do cogumelo */}
-          <path d="M 8 13 C 8 7 24 7 24 13 Z" fill="currentColor" fillOpacity="0.3" strokeWidth="1.8" />
+          <path
+            d="M 8 13 C 8 7 24 7 24 13 Z"
+            fill="currentColor"
+            fillOpacity="0.3"
+            strokeWidth="1.8"
+          />
           <rect x="14" y="13" width="4" height="6" fill="currentColor" />
           <rect x="10" y="19" width="12" height="6" strokeWidth="1.4" />
           {/* Setas de destravamento */}
@@ -1030,7 +1050,12 @@ export function SymbolThumbnail({ type }: { type: string }) {
       // Sinalizador sonoro / buzina
       return (
         <svg viewBox="0 0 32 32" className="w-7 h-7 stroke-current fill-none stroke-[1.5]">
-          <path d="M 12 11 L 18 7 L 18 25 L 12 21 H 8 V 11 Z" fill="currentColor" fillOpacity="0.2" strokeWidth="1.6" />
+          <path
+            d="M 12 11 L 18 7 L 18 25 L 12 21 H 8 V 11 Z"
+            fill="currentColor"
+            fillOpacity="0.2"
+            strokeWidth="1.6"
+          />
           <path d="M 21 12 C 23 14 23 18 21 20" strokeWidth="1.5" />
           <path d="M 24 9 C 27 13 27 19 24 23" strokeWidth="1.5" />
         </svg>
@@ -1053,7 +1078,10 @@ export function SymbolThumbnail({ type }: { type: string }) {
       return (
         <svg viewBox="0 0 32 32" className="w-7 h-7 stroke-current fill-none stroke-[1.5]">
           <line x1="16" y1="2" x2="16" y2="6" />
-          <path d="M 16 6 C 22 6 22 12 16 12 C 22 12 22 18 16 18 C 22 18 22 24 16 24" strokeWidth="1.8" />
+          <path
+            d="M 16 6 C 22 6 22 12 16 12 C 22 12 22 18 16 18 C 22 18 22 24 16 24"
+            strokeWidth="1.8"
+          />
           <line x1="16" y1="24" x2="16" y2="30" />
         </svg>
       );
@@ -1076,7 +1104,15 @@ export function SymbolThumbnail({ type }: { type: string }) {
       return (
         <svg viewBox="0 0 32 32" className="w-7 h-7 stroke-current fill-none stroke-[1.5]">
           <rect x="5" y="6" width="22" height="20" rx="1.5" strokeWidth="1.6" />
-          <text x="16" y="14" fontSize="5" textAnchor="middle" fill="currentColor" stroke="none" fontWeight="bold">
+          <text
+            x="16"
+            y="14"
+            fontSize="5"
+            textAnchor="middle"
+            fill="currentColor"
+            stroke="none"
+            fontWeight="bold"
+          >
             SAFETY
           </text>
           <line x1="9" y1="18" x2="13" y2="18" strokeWidth="2" />

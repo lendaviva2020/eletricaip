@@ -419,7 +419,7 @@ export function Twin3DViewer({
         />
       </Canvas>
       {renderState === "recovering" ? (
-        <div className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-sm">
+        <div className="absolute inset-0 grid place-items-center bg-background/85">
           <div className="text-center px-6">
             <p className="text-sm font-medium">Recuperando visualização 3D…</p>
             <p className="mt-1 text-xs text-muted-foreground">

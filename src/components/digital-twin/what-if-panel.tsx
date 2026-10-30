@@ -1,6 +1,6 @@
 // #TWIN-04 — Painel "E-se?" para overrides locais de tags do Digital Twin.
 import { useMemo, useState } from "react";
-import { FlaskConical, Save, Trash2, RotateCcw, X } from "lucide-react";
+import { Flask, FloppyDisk, Trash, ArrowCounterClockwise, X } from "@phosphor-icons/react";
 import { useDigitalTwinStore, type WhatIfValue } from "@/lib/digital-twin-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +44,7 @@ export function WhatIfPanel({ onClose }: { onClose?: () => void }) {
     <aside className="w-80 shrink-0 border-l border-border flex flex-col bg-card/30">
       <div className="flex items-center justify-between p-3 border-b border-border">
         <span className="text-xs font-semibold flex items-center gap-2">
-          <FlaskConical className="h-3.5 w-3.5 text-warning" /> Modo "E-se?"
+          <Flask className="h-3.5 w-3.5 text-warning" /> Modo "E-se?"
         </span>
         {onClose && (
           <button
@@ -163,7 +163,7 @@ export function WhatIfPanel({ onClose }: { onClose?: () => void }) {
             }}
             title="Salvar cenário"
           >
-            <Save className="h-3 w-3" />
+            <FloppyDisk className="h-3 w-3" />
           </Button>
           <Button
             size="sm"
@@ -172,7 +172,7 @@ export function WhatIfPanel({ onClose }: { onClose?: () => void }) {
             onClick={reset}
             title="Resetar tudo"
           >
-            <RotateCcw className="h-3 w-3" />
+            <ArrowCounterClockwise className="h-3 w-3" />
           </Button>
         </div>
         {scenarios.length > 0 && (
@@ -198,7 +198,7 @@ export function WhatIfPanel({ onClose }: { onClose?: () => void }) {
                   className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-accent"
                   title="Excluir cenário"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash className="h-3 w-3" />
                 </button>
               </div>
             ))}

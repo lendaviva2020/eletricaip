@@ -3,14 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
-  Activity,
-  RefreshCw,
-  CheckCircle2,
-  AlertCircle,
-  ShieldAlert,
-  TimerReset,
-  Sparkles,
-} from "lucide-react";
+  Pulse,
+  ArrowsClockwise,
+  CheckCircle,
+  WarningCircle,
+  ShieldWarning,
+  ClockCounterClockwise,
+  Sparkle,
+} from "@phosphor-icons/react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -141,7 +141,7 @@ function DiagnosticsPage() {
         <header className="flex items-center justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-primary mb-1 flex items-center gap-2">
-              <Activity className="h-3 w-3" /> Plataforma
+              <Pulse className="h-3 w-3" /> Plataforma
             </div>
             <h1 className="text-2xl font-semibold">Diagnósticos</h1>
             <p className="text-sm text-muted-foreground">
@@ -149,7 +149,9 @@ function DiagnosticsPage() {
             </p>
           </div>
           <Button size="sm" variant="outline" onClick={() => q.refetch()} disabled={q.isFetching}>
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${q.isFetching ? "animate-spin" : ""}`} />
+            <ArrowsClockwise
+              className={`h-3.5 w-3.5 mr-1.5 ${q.isFetching ? "animate-spin" : ""}`}
+            />
             Recarregar
           </Button>
         </header>
@@ -183,14 +185,14 @@ function DiagnosticsPage() {
             </span>
           </span>
           <Button size="sm" variant="ghost" onClick={counter.reset}>
-            <TimerReset className="h-3.5 w-3.5 mr-1.5" /> Zerar contadores
+            <ClockCounterClockwise className="h-3.5 w-3.5 mr-1.5" /> Zerar contadores
           </Button>
         </div>
 
         {/* Server-side checks */}
         <section>
           <h2 className="text-sm font-medium mb-2 flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-primary" /> Checagens Supabase / RLS / RPC
+            <ShieldWarning className="h-4 w-4 text-primary" /> Checagens Supabase / RLS / RPC
           </h2>
           <Card>
             <CardContent className="p-0 divide-y divide-border">
@@ -209,9 +211,9 @@ function DiagnosticsPage() {
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     {c.ok ? (
-                      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-success shrink-0" />
                     ) : (
-                      <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                      <WarningCircle className="h-4 w-4 text-destructive shrink-0" />
                     )}
                     <span className="font-mono text-xs truncate">{c.name}</span>
                   </div>
@@ -237,7 +239,7 @@ function DiagnosticsPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" /> AI Credits (consumo)
+                  <Sparkle className="h-4 w-4 text-primary" /> AI Credits (consumo)
                 </h3>
                 <span className="text-[10px] text-muted-foreground font-mono">
                   {qCredits.data?.ok
@@ -296,7 +298,7 @@ function DiagnosticsPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-primary" /> Burst limits (req / 5s)
+                  <Pulse className="h-4 w-4 text-primary" /> Burst limits (req / 5s)
                 </h3>
                 <span className="text-[10px] text-muted-foreground font-mono">
                   fonte: {qAi.data?.topUsers[0]?.lastSource ?? "—"}
@@ -373,7 +375,7 @@ function DiagnosticsPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-primary" /> Top usuários — eventos por janela
+                  <Pulse className="h-4 w-4 text-primary" /> Top usuários — eventos por janela
                 </h3>
                 <span className="text-[10px] text-muted-foreground font-mono">
                   {qAi.data?.topUsers.length ?? 0} usuário(s)
@@ -440,7 +442,7 @@ function DiagnosticsPage() {
         {/* AI Rate-limit metrics */}
         <section>
           <h2 className="text-sm font-medium mb-2 flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-primary" /> AI Rate-limit · Upstash / Fallback
+            <ShieldWarning className="h-4 w-4 text-primary" /> AI Rate-limit · Upstash / Fallback
           </h2>
           <Card>
             <CardContent className="p-4 space-y-3">
@@ -531,7 +533,7 @@ function DiagnosticsPage() {
         {/* Recent client errors */}
         <section>
           <h2 className="text-sm font-medium mb-2 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-destructive" /> Últimos erros (cliente)
+            <WarningCircle className="h-4 w-4 text-destructive" /> Últimos erros (cliente)
           </h2>
           <Card>
             <CardContent className="p-0 divide-y divide-border">

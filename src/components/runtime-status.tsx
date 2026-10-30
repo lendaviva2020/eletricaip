@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { Radio, Wifi, WifiOff, Plug, Square, Loader2 } from "lucide-react";
+import {
+  Radio,
+  WifiHigh,
+  WifiSlash,
+  Plug,
+  Square,
+  CircleNotch,
+  Octagon,
+  ArrowCounterClockwise,
+} from "@phosphor-icons/react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BrandBolt } from "@/components/brand-bolt";
 import {
@@ -15,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
+import { useSafetyStore } from "@/lib/simulation/safety-core";
 import {
   connectSupabase,
   disconnect,
@@ -28,6 +39,11 @@ export function RuntimeStatus() {
   const runtime = useProjectStore((s) => s.runtime);
   const simulationStatus = useEditorStore((s) => s.simulationStatus);
   const setSimulationStatus = useEditorStore((s) => s.setSimulationStatus);
+  const emergencyLatched = useSafetyStore((s) => s.emergencyLatched);
+  const triggerEmergency = useSafetyStore((s) => s.triggerEmergency);
+  const rearmEmergency = useSafetyStore((s) => s.rearmEmergency);
+  const canStartSimulation = useSafetyStore((s) => s.canStartSimulation);
+
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState("");
@@ -64,65 +80,119 @@ export function RuntimeStatus() {
   };
 
   const handleStartSim = () => {
+    const check = canStartSimulation();
+    if (!check.allowed) {
+      toast.error(check.reason);
+      return;
+    }
     setSimulationStatus("running");
     startLocalSimulation();
+  };
+
+  const handleTriggerEmergency = () => {
+    triggerEmergency("header_topbar", "Parada de emergência acionada pelo operador no cabeçalho");
+    toast.error("PARADA DE EMERGÊNCIA ATUADA. Todos os circuitos foram desenergizados.");
+  };
+
+  const handleRearm = () => {
+    const res = rearmEmergency("Operador");
+    if (res.success) {
+      toast.success(res.message);
+    }
   };
 
   const isSimActive = runtime.connected || simulationStatus === "running";
   const isSimPaused = !isSimActive && simulationStatus === "paused";
 
-  const dot = isSimActive
-    ? runtime.source === "supabase"
-      ? "bg-success"
-      : "bg-emerald-400"
-    : isSimPaused
-      ? "bg-amber-400"
-      : "bg-muted-foreground/40";
-  const label = isSimActive
-    ? runtime.source === "supabase"
-      ? "Realtime · LIVE"
-      : "Simulação Ativa"
-    : isSimPaused
-      ? "Simulação Pausada"
-      : "Simulação Parada";
+  const dot = emergencyLatched
+    ? "bg-rose-500 animate-ping"
+    : isSimActive
+      ? runtime.source === "supabase"
+        ? "bg-success"
+        : "bg-emerald-400"
+      : isSimPaused
+        ? "bg-amber-400"
+        : "bg-muted-foreground/40";
+
+  const label = emergencyLatched
+    ? "E-STOP ATUADO"
+    : isSimActive
+      ? runtime.source === "supabase"
+        ? "Realtime · LIVE"
+        : "Simulação Ativa"
+      : isSimPaused
+        ? "Simulação Pausada"
+        : "Simulação Parada";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <div className="flex items-center gap-1.5">
         <DialogTrigger asChild>
-          <button className="h-8 px-2.5 rounded-md border border-border bg-card/60 hover:bg-accent/50 flex items-center gap-2 text-[11px] font-mono">
-            <span
-              className={cn("h-1.5 w-1.5 rounded-full", dot, isSimActive && "energized")}
-            />
-            {isSimActive ? (
-              <Wifi className="h-3 w-3 text-emerald-400" />
+          <button
+            className={cn(
+              "h-8 px-2.5 rounded-md border flex items-center gap-2 text-[11px] font-mono transition-all",
+              emergencyLatched
+                ? "border-rose-500/60 bg-rose-950/40 text-rose-300 font-bold animate-pulse"
+                : "border-border bg-card/60 hover:bg-accent/50 text-foreground",
+            )}
+          >
+            <span className={cn("h-1.5 w-1.5 rounded-full", dot, isSimActive && "energized")} />
+            {emergencyLatched ? (
+              <Octagon className="h-3 w-3 text-rose-400 fill-current" />
+            ) : isSimActive ? (
+              <WifiHigh className="h-3 w-3 text-emerald-400" />
             ) : (
-              <WifiOff className="h-3 w-3 text-muted-foreground" />
+              <WifiSlash className="h-3 w-3 text-muted-foreground" />
             )}
             <span className="hidden sm:inline">{label}</span>
-            {runtime.cycleMs && isSimActive && (
+            {runtime.cycleMs && isSimActive && !emergencyLatched && (
               <span className="hidden md:inline text-muted-foreground">· {runtime.cycleMs}ms</span>
             )}
           </button>
         </DialogTrigger>
-        {!isSimActive ? (
+
+        {emergencyLatched ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2.5 gap-1.5 text-xs bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-300 font-bold cursor-pointer"
+            onClick={handleRearm}
+            title="Rearmar Parada de Emergência (Requer comando START posterior)"
+            data-testid="runtime-rearm-btn"
+          >
+            <ArrowCounterClockwise className="h-3.5 w-3.5" /> Rearmar
+          </Button>
+        ) : !isSimActive ? (
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 px-2 gap-1.5 text-xs"
+            className="h-8 px-2 gap-1.5 text-xs text-primary font-semibold hover:bg-primary/10"
             onClick={handleStartSim}
+            data-testid="runtime-sim-btn"
           >
             <BrandBolt className="h-3.5 w-3.5 text-primary" /> Sim
           </Button>
         ) : (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 px-2 gap-1.5 text-xs text-destructive"
-            onClick={handleDisconnect}
-          >
-            <Square className="h-3 w-3 fill-current" /> Stop
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 gap-1.5 text-xs text-destructive hover:bg-destructive/10 font-semibold"
+              onClick={handleDisconnect}
+            >
+              <Square className="h-3 w-3 fill-current" /> Stop
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-8 px-2 gap-1 text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold tracking-wide"
+              onClick={handleTriggerEmergency}
+              title="PARADA DE EMERGÊNCIA (Corte imediato de atuadores)"
+              data-testid="runtime-estop-btn"
+            >
+              <Octagon className="h-3.5 w-3.5 fill-current" /> E-STOP
+            </Button>
+          </div>
         )}
       </div>
 
@@ -191,7 +261,7 @@ export function RuntimeStatus() {
             className="text-primary-foreground"
           >
             {busy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              <CircleNotch className="h-3.5 w-3.5 animate-spin mr-1.5" />
             ) : (
               <Plug className="h-3.5 w-3.5 mr-1.5" />
             )}

@@ -6,21 +6,21 @@ import {
   Laptop,
   Check,
   Copy,
-  Zap,
+  Lightning,
   ShieldCheck,
-  AlertTriangle,
+  Warning,
   Info,
-  CheckCircle2,
-  Trash2,
+  CheckCircle,
+  Trash,
   Plus,
-  Search,
+  MagnifyingGlass,
   ArrowRight,
   Terminal,
-  Activity,
-  Layers,
-  Settings,
+  Pulse,
+  Stack,
+  Gear,
   Cpu,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
@@ -202,10 +202,14 @@ function DesignSystemShowcase() {
                     size="icon"
                     variant="ghost"
                     onClick={() => copyToClipboard(hex, key)}
-                    className="absolute top-2 right-2 h-7 w-7 bg-background/60 backdrop-blur-sm text-foreground hover:bg-background/80"
+                    className="absolute top-2 right-2 h-7 w-7 bg-background/80 text-foreground hover:bg-background"
                     aria-label={`Copiar cor ${hex}`}
                   >
-                    {copiedKey === key ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedKey === key ? (
+                      <Check className="h-3.5 w-3.5 text-success" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
                   </Button>
                 </div>
                 <CardContent className="p-3.5 space-y-1">
@@ -254,7 +258,10 @@ function DesignSystemShowcase() {
                       <TableRow key={idx}>
                         <TableCell className="font-medium text-xs">{t.label}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">
-                          <span className="inline-block h-2.5 w-2.5 rounded-full mr-1.5 align-middle border border-border" style={{ backgroundColor: t.fg }} />
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full mr-1.5 align-middle border border-border"
+                            style={{ backgroundColor: t.fg }}
+                          />
                           {t.fg} / {t.bg}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{t.target}</TableCell>
@@ -262,7 +269,10 @@ function DesignSystemShowcase() {
                           {result.ratio}:1
                         </TableCell>
                         <TableCell className="text-right">
-                          <Badge variant={result.passesAaa ? "success" : "brand"} className="text-[10px]">
+                          <Badge
+                            variant={result.passesAaa ? "success" : "brand"}
+                            className="text-[10px]"
+                          >
                             {result.passesAaa ? "AAA PASS" : "AA PASS"}
                           </Badge>
                         </TableCell>
@@ -288,9 +298,12 @@ function DesignSystemShowcase() {
                 <Badge variant="outline" className="w-fit text-[10px] font-mono">
                   Display / Headings
                 </Badge>
-                <CardTitle className="font-display text-2xl font-bold mt-2">Space Grotesk</CardTitle>
+                <CardTitle className="font-display text-2xl font-bold mt-2">
+                  Space Grotesk
+                </CardTitle>
                 <CardDescription className="text-xs">
-                  Geométrica, moderna e assertiva. Utilizada em títulos da landing page, modais e cabeçalhos de seção.
+                  Geométrica, moderna e assertiva. Utilizada em títulos da landing page, modais e
+                  cabeçalhos de seção.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -308,7 +321,8 @@ function DesignSystemShowcase() {
                 </Badge>
                 <CardTitle className="font-sans text-2xl font-bold mt-2">IBM Plex Sans</CardTitle>
                 <CardDescription className="text-xs">
-                  Alta legibilidade para navegação, formulários, tabelas, propriedades e diálogos densos.
+                  Alta legibilidade para navegação, formulários, tabelas, propriedades e diálogos
+                  densos.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -326,7 +340,8 @@ function DesignSystemShowcase() {
                 </Badge>
                 <CardTitle className="font-mono text-2xl font-bold mt-2">IBM Plex Mono</CardTitle>
                 <CardDescription className="text-xs">
-                  Monoespaçada neutra para mnemônicos IEC 61131-3, endereços de CLP (%IX0.0), ST e netlists.
+                  Monoespaçada neutra para mnemônicos IEC 61131-3, endereços de CLP (%IX0.0), ST e
+                  netlists.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -340,34 +355,47 @@ function DesignSystemShowcase() {
 
           {/* Typography Scale */}
           <div className="space-y-4">
-            <h3 className="font-display text-base font-bold text-foreground">Escala Tipográfica Responsiva</h3>
+            <h3 className="font-display text-base font-bold text-foreground">
+              Escala Tipográfica Responsiva
+            </h3>
             <div className="rounded-lg border border-border bg-card divide-y divide-border p-4 space-y-4">
               <div className="flex items-baseline justify-between gap-4 pt-2">
-                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">5xl / 48px</span>
+                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">
+                  5xl / 48px
+                </span>
                 <span className="font-display text-4xl sm:text-5xl font-bold text-foreground truncate">
                   Automação Industrial
                 </span>
               </div>
               <div className="flex items-baseline justify-between gap-4 pt-4">
-                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">3xl / 30px</span>
+                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">
+                  3xl / 30px
+                </span>
                 <span className="font-display text-2xl sm:text-3xl font-bold text-foreground truncate">
                   Diagrama Unifilar Interativo
                 </span>
               </div>
               <div className="flex items-baseline justify-between gap-4 pt-4">
-                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">xl / 20px</span>
+                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">
+                  xl / 20px
+                </span>
                 <span className="font-display text-xl font-semibold text-foreground truncate">
                   Painel de Controle de Motores
                 </span>
               </div>
               <div className="flex items-baseline justify-between gap-4 pt-4">
-                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">base / 16px</span>
+                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">
+                  base / 16px
+                </span>
                 <span className="font-sans text-base text-foreground">
-                  Texto padrão de interface, descrição técnica de equipamentos e parâmetros elétricos.
+                  Texto padrão de interface, descrição técnica de equipamentos e parâmetros
+                  elétricos.
                 </span>
               </div>
               <div className="flex items-baseline justify-between gap-4 pt-4">
-                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">xs / 12px</span>
+                <span className="text-xs font-mono text-muted-foreground shrink-0 w-24">
+                  xs / 12px
+                </span>
                 <span className="font-mono text-xs text-muted-foreground">
                   TAG: QM-01 | IN: 63A | POLOS: 3 | CURVA: C | ENDEREÇO: %IX0.0
                 </span>
@@ -400,9 +428,21 @@ function DesignSystemShowcase() {
               <Button variant="default" disabled>
                 Desabilitado
               </Button>
-              <IconButton icon={<Plus className="h-4 w-4" />} aria-label="Adicionar nó" variant="default" />
-              <IconButton icon={<Trash2 className="h-4 w-4" />} aria-label="Remover seleção" variant="destructive" />
-              <IconButton icon={<Settings className="h-4 w-4" />} aria-label="Configurações do Canvas" variant="outline" />
+              <IconButton
+                icon={<Plus className="h-4 w-4" />}
+                aria-label="Adicionar nó"
+                variant="default"
+              />
+              <IconButton
+                icon={<Trash className="h-4 w-4" />}
+                aria-label="Remover seleção"
+                variant="destructive"
+              />
+              <IconButton
+                icon={<Gear className="h-4 w-4" />}
+                aria-label="Configurações do Canvas"
+                variant="outline"
+              />
             </div>
           </div>
 
@@ -412,7 +452,12 @@ function DesignSystemShowcase() {
               Controles de Formulário e Entrada
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-lg border border-border bg-card">
-              <FormField id="tag-input" label="Tag do Equipamento" required description="Conforme NBR 5410">
+              <FormField
+                id="tag-input"
+                label="Tag do Equipamento"
+                required
+                description="Conforme NBR 5410"
+              >
                 <Input placeholder="Ex: QG-01, MTR-02" />
               </FormField>
 
@@ -426,27 +471,23 @@ function DesignSystemShowcase() {
                 />
               </FormField>
 
-              <FormField id="power-input" label="Potência Nominal (kW)" error="Valor deve ser positivo">
+              <FormField
+                id="power-input"
+                label="Potência Nominal (kW)"
+                error="Valor deve ser positivo"
+              >
                 <Input defaultValue="-5" />
               </FormField>
 
               <div className="flex items-center gap-2 pt-4">
-                <Checkbox
-                  id="chk-sample"
-                  checked={checkState}
-                  onCheckedChange={setCheckState}
-                />
+                <Checkbox id="chk-sample" checked={checkState} onCheckedChange={setCheckState} />
                 <Label htmlFor="chk-sample" className="text-xs cursor-pointer">
                   Habilitar simulação em tempo real
                 </Label>
               </div>
 
               <div className="flex items-center gap-2 pt-4">
-                <Switch
-                  id="sw-sample"
-                  checked={switchChecked}
-                  onCheckedChange={setSwitchChecked}
-                />
+                <Switch id="sw-sample" checked={switchChecked} onCheckedChange={setSwitchChecked} />
                 <Label htmlFor="sw-sample" className="text-xs cursor-pointer">
                   Telemetria IoT ativa (60 Hz)
                 </Label>
@@ -471,18 +512,24 @@ function DesignSystemShowcase() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Alert className="border-warning/30 bg-warning/5 text-foreground">
-                <AlertTriangle className="h-4 w-4 text-warning" />
-                <AlertTitle className="text-xs font-bold text-warning">Aviso Normativo NBR 5410</AlertTitle>
+                <Warning className="h-4 w-4 text-warning" />
+                <AlertTitle className="text-xs font-bold text-warning">
+                  Aviso Normativo NBR 5410
+                </AlertTitle>
                 <AlertDescription className="text-xs text-muted-foreground mt-1">
-                  Corrente de projeto IB (78A) excede a capacidade nominal do condutor de 16mm² no método B1.
+                  Corrente de projeto IB (78A) excede a capacidade nominal do condutor de 16mm² no
+                  método B1.
                 </AlertDescription>
               </Alert>
 
               <Alert className="border-success/30 bg-success/5 text-foreground">
-                <CheckCircle2 className="h-4 w-4 text-success" />
-                <AlertTitle className="text-xs font-bold text-success">Intertravamento Confirmado</AlertTitle>
+                <CheckCircle className="h-4 w-4 text-success" />
+                <AlertTitle className="text-xs font-bold text-success">
+                  Intertravamento Confirmado
+                </AlertTitle>
                 <AlertDescription className="text-xs text-muted-foreground mt-1">
-                  Circuito de parada de emergência categoria 4 validado conforme norma ABNT NBR 14153.
+                  Circuito de parada de emergência categoria 4 validado conforme norma ABNT NBR
+                  14153.
                 </AlertDescription>
               </Alert>
             </div>
@@ -495,7 +542,7 @@ function DesignSystemShowcase() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <EmptyState
-                icon={<Layers className="h-6 w-6" />}
+                icon={<Stack className="h-6 w-6" />}
                 title="Nenhum alimentador adicionado"
                 description="Selecione um disjuntor ou arraste um motor da paleta lateral para começar o diagrama."
                 action={<Button size="sm">Novo Alimentador</Button>}
@@ -517,7 +564,9 @@ function DesignSystemShowcase() {
           <div className="p-4 rounded-lg border border-border bg-card flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-foreground">Diálogo de Confirmação Crítica</p>
-              <p className="text-xs text-muted-foreground">Exibe modal com foco restrito e ações explícitas de confirmação.</p>
+              <p className="text-xs text-muted-foreground">
+                Exibe modal com foco restrito e ações explícitas de confirmação.
+              </p>
             </div>
             <Button variant="destructive" size="sm" onClick={() => setConfirmOpen(true)}>
               Excluir Projeto
@@ -558,14 +607,17 @@ function DesignSystemShowcase() {
                 <p className="font-semibold text-xs text-foreground">Proteção / Terra (PE)</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Verde ou verde-amarelo exclusivo para condutores de proteção. Invariante entre temas.
+                Verde ou verde-amarelo exclusivo para condutores de proteção. Invariante entre
+                temas.
               </p>
             </Card>
 
             <Card className="border-border bg-card p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="h-4 w-4 rounded-full bg-[#DC2626]" />
-                <p className="font-semibold text-xs text-foreground">Condutores de Fase (Fases A, B, C)</p>
+                <p className="font-semibold text-xs text-foreground">
+                  Condutores de Fase (Fases A, B, C)
+                </p>
               </div>
               <p className="text-xs text-muted-foreground">
                 Vermelho, preto, cinza ou branco para fases em conformidade com as normas técnicas.

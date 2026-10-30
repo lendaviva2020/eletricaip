@@ -15,16 +15,16 @@ import {
   Play,
   Pause,
   Terminal,
-  AlertTriangle,
-  Code2,
-  ChevronLeft,
-  ChevronRight,
+  Warning,
+  CodeBlock,
+  CaretLeft,
+  CaretRight,
   Bell,
-  CheckCircle2,
-  RefreshCw,
+  CheckCircle,
+  ArrowsClockwise,
   Tag as TagIcon,
   ShieldCheck,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 
 const DEFAULT_SCRIPT = `// ==========================================
 // SCRIPT DE ANIMAÇÃO HMI / SCADA (EletricAI)
@@ -103,7 +103,7 @@ const AlarmBanner = memo(function AlarmBanner({
   onAcknowledge: () => void;
 }) {
   return (
-    <div className="absolute top-16 left-4 right-4 z-30 p-3 rounded-lg border border-destructive bg-destructive/15 backdrop-blur flex items-center justify-between shadow-lg animate-pulse pointer-events-auto">
+    <div className="absolute top-16 left-4 right-4 z-30 p-3 rounded-md border border-destructive bg-destructive/15 flex items-center justify-between shadow-md pointer-events-auto">
       <div className="flex items-center gap-2">
         <Bell className="h-4 w-4 text-destructive shrink-0" />
         <span className="font-mono text-[11px] font-bold text-destructive">
@@ -132,7 +132,7 @@ const SelectedTagBadge = memo(function SelectedTagBadge({
   onBind: () => void;
 }) {
   return (
-    <div className="absolute top-16 right-4 z-30 flex items-center gap-2 rounded-md border border-border bg-card/90 backdrop-blur px-2 py-1.5 shadow-lg">
+    <div className="absolute top-16 right-4 z-30 flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 shadow-md">
       <TagIcon className="h-3 w-3 text-primary" />
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
       <span className="font-mono text-[11px] text-foreground">{tagValue || "—"}</span>
@@ -170,7 +170,7 @@ const ScriptConsole = memo(function ScriptConsole({
   scanDuration,
 }: ScriptConsoleProps) {
   return (
-    <div className="h-32 bg-card/45 backdrop-blur p-2 font-mono text-[10px] overflow-auto flex flex-col gap-1.5 scrollbar-thin">
+    <div className="h-32 bg-card p-2 font-mono text-[10px] overflow-auto flex flex-col gap-1.5 scrollbar-thin">
       <div className="flex items-center gap-1.5 text-muted-foreground border-b border-border pb-1 mb-1">
         <Terminal className="h-3.5 w-3.5" />
         <span>LOGS E ERROS DE SCRIPT</span>
@@ -193,12 +193,12 @@ const ScriptConsole = memo(function ScriptConsole({
       )}
       {error ? (
         <div className="text-destructive flex items-start gap-1">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <Warning className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>Erro: {error}</span>
         </div>
       ) : running ? (
         <div className="text-success flex items-center gap-1">
-          <CheckCircle2 className="h-3.5 w-3.5 animate-pulse" />
+          <CheckCircle className="h-3.5 w-3.5 animate-pulse" />
           <span>Script em execução... Ticks a 100ms</span>
         </div>
       ) : livePreview && lastLiveResult ? (
@@ -207,7 +207,7 @@ const ScriptConsole = memo(function ScriptConsole({
         </pre>
       ) : livePreview && !error ? (
         <div className="text-success flex items-center gap-1">
-          <CheckCircle2 className="h-3.5 w-3.5" />
+          <CheckCircle className="h-3.5 w-3.5" />
           <span>Preview: sintaxe OK</span>
         </div>
       ) : (
@@ -523,18 +523,19 @@ export function ScadaCanvas() {
 
       {/* SCRIPTER SIDEBAR */}
       <div
-        className={`shrink-0 border-l border-border bg-background/80 backdrop-blur flex flex-col transition-all duration-300 relative ${
+        className={`shrink-0 border-l border-border bg-panel flex flex-col transition-all duration-300 relative ${
           editorOpen ? "w-[400px]" : "w-0 overflow-hidden border-l-0"
         }`}
       >
         <button
           onClick={() => setEditorOpen((o) => !o)}
-          className={`absolute top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel/85 backdrop-blur border border-border rounded-l flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-md hover:h-16 hover:w-5 transition-all ${
+          aria-label={editorOpen ? "Ocultar Editor Script" : "Mostrar Editor Script"}
+          className={`absolute top-1/2 -translate-y-1/2 z-30 h-12 w-4 bg-panel border border-border rounded-l flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:h-16 hover:w-5 transition-all ${
             editorOpen ? "-left-4" : "-left-4 border-r-0"
           }`}
           title={editorOpen ? "Ocultar Editor Script" : "Mostrar Editor Script"}
         >
-          {editorOpen ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+          {editorOpen ? <CaretRight className="h-3 w-3" /> : <CaretLeft className="h-3 w-3" />}
         </button>
 
         {editorOpen && (
@@ -542,14 +543,14 @@ export function ScadaCanvas() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border bg-card/20 px-3 py-2">
               <div className="flex items-center gap-2">
-                <Code2 className="h-4 w-4 text-primary" />
+                <CodeBlock className="h-4 w-4 text-primary" />
                 <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
                   Scripting de Animação
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
-                  <RefreshCw
+                  <ArrowsClockwise
                     className={`h-3 w-3 ${livePreview ? "text-primary" : "text-muted-foreground"}`}
                   />
                   <Switch

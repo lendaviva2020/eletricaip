@@ -1,18 +1,18 @@
 import { useState, useMemo } from "react";
 import {
-  Search,
+  MagnifyingGlass,
   Star,
-  ChevronDown,
-  ChevronRight,
+  CaretDown,
+  CaretRight,
   Gauge,
   Cpu,
   Calculator,
   Timer,
   Hash,
-  ArrowRightLeft,
+  ArrowsLeftRight,
   Binary,
-  Layers,
-} from "lucide-react";
+  Stack,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { LADDER_ELEMENTS, type LadderElement, type LadderCategory } from "@/lib/ladder/definitions";
 import { SidebarShell } from "./sidebar-primitives";
@@ -20,14 +20,14 @@ import { useI18n } from "@/lib/i18n";
 import { useEditorStore } from "@/lib/editor/store";
 
 const CATEGORY_ICONS: Record<LadderCategory, typeof Gauge> = {
-  "Contatos e Bordas": Layers,
+  "Contatos e Bordas": Stack,
   "Bobinas e Retenções": Cpu,
   Temporizadores: Timer,
   Contadores: Hash,
   Comparadores: Binary,
   Matemática: Calculator,
   "Lógica Booleana": Binary,
-  "Transferência e Dados": ArrowRightLeft,
+  "Transferência e Dados": ArrowsLeftRight,
   "Blocos de Fabricantes": Gauge,
 };
 
@@ -102,7 +102,7 @@ export function EditorLadderSidebar() {
 
       <div className="p-2 border-b border-border/60">
         <div className="relative">
-          <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <MagnifyingGlass className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -120,7 +120,10 @@ export function EditorLadderSidebar() {
           const IconComponent = CATEGORY_ICONS[cat] || Gauge;
 
           return (
-            <div key={cat} className="rounded border border-border/40 bg-card/20 overflow-hidden mb-1">
+            <div
+              key={cat}
+              className="rounded border border-border/40 bg-card/20 overflow-hidden mb-1"
+            >
               <button
                 type="button"
                 onClick={() => toggleCategory(cat)}
@@ -129,13 +132,16 @@ export function EditorLadderSidebar() {
                 <div className="flex items-center gap-2">
                   <IconComponent className="h-3.5 w-3.5 text-primary/80" />
                   <span>
-                    {cat} <span className="text-[10px] text-muted-foreground/80 font-mono">({items.length})</span>
+                    {cat}{" "}
+                    <span className="text-[10px] text-muted-foreground/80 font-mono">
+                      ({items.length})
+                    </span>
                   </span>
                 </div>
                 {isOpen ? (
-                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                  <CaretDown className="h-3 w-3 text-muted-foreground" />
                 ) : (
-                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                  <CaretRight className="h-3 w-3 text-muted-foreground" />
                 )}
               </button>
 
@@ -184,7 +190,9 @@ function LadderPaletteItem({
 
   const handleClick = () => {
     if (!isSupported) {
-      toast.info(`"${element.label}" está planejado para o módulo com suporte a ${element.category}.`);
+      toast.info(
+        `"${element.label}" está planejado para o módulo com suporte a ${element.category}.`,
+      );
       return;
     }
     // Dispara evento para o canvas inserir no ponto atualmente selecionado

@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { isSafeRedirect } from "@/lib/safe-redirect";
 
@@ -62,7 +62,7 @@ function AuthCallbackPage() {
           </>
         ) : (
           <>
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+            <CircleNotch className="h-6 w-6 animate-spin mx-auto text-primary" />
             <p className="text-sm text-muted-foreground">Finalizando login...</p>
           </>
         )}

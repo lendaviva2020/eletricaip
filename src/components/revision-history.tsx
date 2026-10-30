@@ -2,7 +2,13 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { History, RotateCcw, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import {
+  ClockCounterClockwise,
+  ArrowCounterClockwise,
+  CaretDown,
+  CaretUp,
+  Clock,
+} from "@phosphor-icons/react";
 import { listProjectVersions, restoreProjectVersion } from "@/lib/projects.functions";
 import { useProjectStore } from "@/lib/project-store";
 import { Button } from "@/components/ui/button";
@@ -51,7 +57,7 @@ export function RevisionHistory() {
   }
 
   return (
-    <div className="border border-border rounded-lg bg-card/90 backdrop-blur overflow-hidden">
+    <div className="border border-border rounded-md bg-card overflow-hidden">
       {/* Toggle header */}
       <button
         onClick={() => {
@@ -60,9 +66,9 @@ export function RevisionHistory() {
         }}
         className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-accent/40 transition-colors cursor-pointer"
       >
-        <History className="h-3.5 w-3.5 text-primary" />
+        <ClockCounterClockwise className="h-3.5 w-3.5 text-primary" />
         <span className="flex-1 text-left">Histórico de Revisões</span>
-        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        {open ? <CaretUp className="h-3 w-3" /> : <CaretDown className="h-3 w-3" />}
       </button>
 
       {open && (
@@ -108,7 +114,7 @@ export function RevisionHistory() {
                 disabled={restoring === v.id}
                 onClick={() => handleRestore(v.id, v.version_number)}
               >
-                <RotateCcw className="h-3 w-3" />
+                <ArrowCounterClockwise className="h-3 w-3" />
                 {restoring === v.id ? "…" : "Restaurar"}
               </Button>
             </div>

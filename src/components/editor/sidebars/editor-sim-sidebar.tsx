@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Play, Square, Eye, Sliders, RefreshCw, ShieldAlert, Sparkles } from "lucide-react";
+import {
+  Play,
+  Square,
+  Eye,
+  Sliders,
+  ArrowsClockwise,
+  ShieldWarning,
+  Sparkle,
+} from "@phosphor-icons/react";
 import { SidebarSearch, SidebarShell } from "./sidebar-primitives";
 import { useEditorStore } from "@/lib/editor/store";
 import { useProjectStore } from "@/lib/project-store";
@@ -284,7 +292,7 @@ export function EditorSimSidebar() {
                           title="Liberar Forçamento (Release)"
                           className="h-6 w-6 rounded bg-warning/20 border border-warning/40 text-warning flex items-center justify-center cursor-pointer hover:bg-warning/35 transition-all"
                         >
-                          <RefreshCw className="h-3 w-3" />
+                          <ArrowsClockwise className="h-3 w-3" />
                         </button>
                       )}
                     </div>

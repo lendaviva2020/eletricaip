@@ -11,9 +11,9 @@ export interface IconButtonProps extends Omit<ButtonProps, "size"> {
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ className, icon, "aria-label": ariaLabel, size = "md", variant = "ghost", ...props }, ref) => {
     const sizeClasses = {
-      sm: "h-8 w-8 p-1.5",
-      md: "h-9 w-9 p-2",
-      lg: "h-10 w-10 p-2.5",
+      sm: "size-7 p-1.5 [@media(pointer:coarse)]:size-9",
+      md: "size-8 p-1.5 [@media(pointer:coarse)]:size-10",
+      lg: "size-10 p-2",
     };
 
     return (
@@ -22,7 +22,11 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         variant={variant}
         aria-label={ariaLabel}
         title={props.title ?? ariaLabel}
-        className={cn("rounded-md shrink-0 inline-flex items-center justify-center", sizeClasses[size], className)}
+        className={cn(
+          "rounded-md shrink-0 inline-flex items-center justify-center",
+          sizeClasses[size],
+          className,
+        )}
         {...props}
       >
         {icon}

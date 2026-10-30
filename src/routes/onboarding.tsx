@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Loader2, FolderKanban, ArrowRight, Sparkles } from "lucide-react";
+import { Plus, CircleNotch, FolderOpen, ArrowRight, Sparkle } from "@phosphor-icons/react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { markTourPending } from "@/components/onboarding-tour";
 import { useAuth } from "@/hooks/use-auth";
@@ -108,7 +108,7 @@ function OnboardingPage() {
       <main className="max-w-3xl mx-auto px-6 py-12">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
-            <Sparkles className="h-3 w-3" /> Bem-vindo ao seu Industrial OS
+            <Sparkle className="h-3 w-3" /> Bem-vindo ao seu Industrial OS
           </div>
           <h1 className="text-3xl font-semibold tracking-tight">
             Vamos configurar seu primeiro projeto
@@ -120,7 +120,7 @@ function OnboardingPage() {
 
         {loading && (
           <div className="grid place-items-center py-16 text-muted-foreground text-sm">
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <CircleNotch className="h-5 w-5 animate-spin" />
           </div>
         )}
 
@@ -149,7 +149,7 @@ function OnboardingPage() {
                 >
                   <div className="flex items-start gap-3">
                     <div className="h-9 w-9 rounded-md grid place-items-center bg-primary/10 text-primary">
-                      <FolderKanban className="h-4 w-4" />
+                      <FolderOpen className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{project.name}</div>
@@ -228,7 +228,7 @@ function OnboardingPage() {
                 className="flex-1 h-11 rounded-md text-sm font-semibold text-primary-foreground glow-primary inline-flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{ background: "var(--gradient-primary)" }}
               >
-                {creating && <Loader2 className="h-4 w-4 animate-spin" />}
+                {creating && <CircleNotch className="h-4 w-4 animate-spin" />}
                 Criar e abrir Workspace
               </button>
             </div>

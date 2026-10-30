@@ -4,8 +4,16 @@
 // Selo SIMULAÇÃO fixo: valores simulados, nunca medição (RISK-028).
 import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { Play, Square, OctagonX, RotateCcw, Flame, TriangleAlert } from "lucide-react";
+import {
+  Play,
+  Square,
+  Octagon,
+  ArrowCounterClockwise,
+  Flame,
+  Warning,
+} from "@phosphor-icons/react";
 import { usePlantStore, PLANT_TICK_MS } from "@/lib/simulation/plant-store";
+import { useSafetyStore } from "@/lib/simulation/safety-core";
 import { cn } from "@/lib/utils";
 
 const MOTOR_IDS = ["M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08"];
@@ -91,7 +99,7 @@ export function PlantSimPanel() {
             onClick={actions.resetAll}
             className="h-8 px-3 rounded border border-border hover:bg-accent text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 cursor-pointer"
           >
-            <RotateCcw className="h-3.5 w-3.5" /> Reset
+            <ArrowCounterClockwise className="h-3.5 w-3.5" /> Reset
           </button>
         </div>
       </div>
@@ -99,7 +107,13 @@ export function PlantSimPanel() {
       {/* Comando do sistema (rung SISTEMA: START sela, STOP quebra, E-STOP trava) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
         <button
-          onClick={actions.pulseStart}
+          onClick={() => {
+            const check = useSafetyStore.getState().canStartSimulation();
+            if (!check.allowed) {
+              return;
+            }
+            actions.pulseStart();
+          }}
           disabled={!ticking || plant.estopLatched}
           className="h-9 rounded bg-success/15 hover:bg-success/25 text-success border border-success/30 text-xs font-bold uppercase tracking-wider disabled:opacity-40 cursor-pointer inline-flex items-center justify-center gap-1.5"
         >
@@ -113,18 +127,26 @@ export function PlantSimPanel() {
           <Square className="h-3.5 w-3.5" /> Desligar
         </button>
         <button
-          onClick={actions.pulseEstop}
+          onClick={() => {
+            actions.pulseEstop();
+            useSafetyStore
+              .getState()
+              .triggerEmergency("plant_panel", "Parada de emergência acionada no painel da planta");
+          }}
           disabled={!ticking}
           className="h-9 rounded bg-destructive/15 hover:bg-destructive/30 text-destructive border border-destructive/40 text-xs font-bold uppercase tracking-wider disabled:opacity-40 cursor-pointer inline-flex items-center justify-center gap-1.5"
         >
-          <OctagonX className="h-3.5 w-3.5" /> E-Stop
+          <Octagon className="h-3.5 w-3.5" /> E-Stop
         </button>
         <button
-          onClick={actions.pulseReset}
+          onClick={() => {
+            actions.pulseReset();
+            useSafetyStore.getState().rearmEmergency("Operador Planta");
+          }}
           disabled={!ticking || !plant.estopLatched}
           className="h-9 rounded bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-bold uppercase tracking-wider disabled:opacity-40 cursor-pointer inline-flex items-center justify-center gap-1.5"
         >
-          <RotateCcw className="h-3.5 w-3.5" /> Reset E-Stop
+          <ArrowCounterClockwise className="h-3.5 w-3.5" /> Reset E-Stop
         </button>
       </div>
 
@@ -140,7 +162,7 @@ export function PlantSimPanel() {
         </span>
         {plant.estopLatched && (
           <span className="text-destructive font-bold inline-flex items-center gap-1">
-            <TriangleAlert className="h-3.5 w-3.5" /> E-STOP ATUADO
+            <Warning className="h-3.5 w-3.5" /> E-STOP ATUADO
           </span>
         )}
         {plant.generalAlarm && !plant.estopLatched && (

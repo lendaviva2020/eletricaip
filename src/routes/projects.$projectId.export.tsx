@@ -3,7 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, FileText, FileBox, ShieldCheck, Sparkles, Download } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  FileArchive,
+  ShieldCheck,
+  Sparkle,
+  DownloadSimple,
+} from "@phosphor-icons/react";
 import { getProjectExportData } from "@/lib/export.functions";
 import { buildDxf, downloadDxf, type DxfNode, type DxfEdge } from "@/lib/dxf-export";
 import { Button } from "@/components/ui/button";
@@ -107,7 +114,9 @@ function ExportPage() {
       >
         <ArrowLeft className="w-4 h-4" /> {t("nav.projects")}
       </Link>
-      <h1 className="text-2xl font-bold mb-1">{t("common.export")} {data?.project.name ?? ""}</h1>
+      <h1 className="text-2xl font-bold mb-1">
+        {t("common.export")} {data?.project.name ?? ""}
+      </h1>
       <p className="text-sm text-muted-foreground mb-6">
         Gere documentação profissional para apresentação, fabricação ou submissão.
       </p>
@@ -139,21 +148,27 @@ function ExportPage() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold text-base">Dossiê Técnico de Engenharia (Completo)</h3>
+                  <h3 className="font-semibold text-base">
+                    Dossiê Técnico de Engenharia (Completo)
+                  </h3>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary text-primary-foreground">
                     NOVO · INDUSTRIAL
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground max-w-2xl">
-                  Geração completa a partir da topologia do Canvas: Capa executiva, memória de cálculo determinística NBR 5410,
-                  BOM em 10 grupos industriais, régua de bornes X1, mapa de I/O do CLP, exportação Excel com 5 abas, PLCopen XML e
-                  validação de conformidade normativa com carimbo formal.
+                  Geração completa a partir da topologia do Canvas: Capa executiva, memória de
+                  cálculo determinística NBR 5410, BOM em 10 grupos industriais, régua de bornes X1,
+                  mapa de I/O do CLP, exportação Excel com 5 abas, PLCopen XML e validação de
+                  conformidade normativa com carimbo formal.
                 </p>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button onClick={() => setDossierOpen(true)} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-9">
-                <Sparkles className="w-3.5 h-3.5" />
+              <Button
+                onClick={() => setDossierOpen(true)}
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-9"
+              >
+                <Sparkle className="w-3.5 h-3.5" />
                 Abrir Dossiê Técnico de Engenharia
               </Button>
               <Button
@@ -161,7 +176,7 @@ function ExportPage() {
                 onClick={() => setImporterOpen(true)}
                 className="gap-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 text-xs h-9"
               >
-                <Download className="w-3.5 h-3.5" />
+                <DownloadSimple className="w-3.5 h-3.5" />
                 Intercâmbio / Importar IA Externa (0 Créditos)
               </Button>
             </div>
@@ -180,7 +195,7 @@ function ExportPage() {
               </Button>
             </div>
             <div className="border border-border rounded-lg p-5 bg-card">
-              <FileBox className="w-6 h-6 text-primary mb-3" />
+              <FileArchive className="w-6 h-6 text-primary mb-3" />
               <h3 className="font-semibold mb-1">Diagrama DXF (AutoCAD)</h3>
               <p className="text-xs text-muted-foreground mb-4">
                 Exporta os nós e conexões do canvas como entidades LINE/TEXT em camadas

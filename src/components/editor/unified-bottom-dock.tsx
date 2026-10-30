@@ -1,28 +1,28 @@
 import { useMemo, useEffect, useState, useCallback } from "react";
 import {
-  AlertTriangle,
-  Activity,
-  FileSpreadsheet,
+  Warning,
+  Pulse,
+  FileXls,
   List,
   Bell,
-  Bot,
+  Robot,
   Terminal as TerminalIcon,
   Radio,
   Cpu,
-  Zap,
+  Lightning,
   Database,
-  ChevronDown,
-  ChevronUp,
-  Trash2,
-  Wifi,
+  CaretDown,
+  CaretUp,
+  Trash,
+  WifiHigh,
   Plug,
-  PlugZap,
-  CheckCircle2,
-  AlertCircle,
+  PlugCharging,
+  CheckCircle,
+  WarningCircle,
   Info,
-  Layers,
+  Stack,
   ArrowRight,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/lib/editor/store";
 import { useProjectStore } from "@/lib/project-store";
@@ -61,37 +61,54 @@ export function getContextualTabsForMode(mode: WorkspaceMode): ConsoleTab[] {
   }
 }
 
-const TAB_METADATA: Record<
-  ConsoleTab,
-  { label: string; icon: typeof List; defaultTitle: string }
-> = {
-  diagnosticos: { label: "Diagnósticos", icon: AlertTriangle, defaultTitle: "Diagnósticos e Alertas" },
-  calculos_nbr: { label: "Cálculos NBR 5410", icon: Activity, defaultTitle: "Cálculos e Queda de Tensão" },
-  bom: { label: "Lista de Materiais (BOM)", icon: FileSpreadsheet, defaultTitle: "Lista de Materiais" },
-  variaveis: { label: "Variáveis & Tags", icon: Database, defaultTitle: "Variáveis e Forçamento de Tags" },
-  simulacao: { label: "Simulação", icon: Zap, defaultTitle: "Sinais de Simulação" },
-  Logs: { label: "Logs", icon: List, defaultTitle: "Logs do Sistema" },
-  Alarmes: { label: "Alarmes", icon: Bell, defaultTitle: "Alarmes Industriais" },
-  IA: { label: "IA", icon: Bot, defaultTitle: "Assistente de Engenharia" },
-  Terminal: { label: "Terminal", icon: TerminalIcon, defaultTitle: "Linha de Comando" },
-  Eventos: { label: "Eventos", icon: Activity, defaultTitle: "Registro de Eventos" },
-  "OPC-UA": { label: "OPC-UA", icon: Radio, defaultTitle: "Ponte OPC-UA Industrial" },
-  Modbus: { label: "Modbus", icon: Cpu, defaultTitle: "Gateway Modbus TCP/RTU" },
-  Runtime: { label: "Runtime", icon: Zap, defaultTitle: "Execução em Tempo Real" },
-};
+const TAB_METADATA: Record<ConsoleTab, { label: string; icon: typeof List; defaultTitle: string }> =
+  {
+    diagnosticos: { label: "Diagnósticos", icon: Warning, defaultTitle: "Diagnósticos e Alertas" },
+    calculos_nbr: {
+      label: "Cálculos NBR 5410",
+      icon: Pulse,
+      defaultTitle: "Cálculos e Queda de Tensão",
+    },
+    bom: { label: "Lista de Materiais (BOM)", icon: FileXls, defaultTitle: "Lista de Materiais" },
+    variaveis: {
+      label: "Variáveis & Tags",
+      icon: Database,
+      defaultTitle: "Variáveis e Forçamento de Tags",
+    },
+    simulacao: { label: "Simulação", icon: Lightning, defaultTitle: "Sinais de Simulação" },
+    Logs: { label: "Logs", icon: List, defaultTitle: "Logs do Sistema" },
+    Alarmes: { label: "Alarmes", icon: Bell, defaultTitle: "Alarmes Industriais" },
+    IA: { label: "IA", icon: Robot, defaultTitle: "Assistente de Engenharia" },
+    Terminal: { label: "Terminal", icon: TerminalIcon, defaultTitle: "Linha de Comando" },
+    Eventos: { label: "Eventos", icon: Pulse, defaultTitle: "Registro de Eventos" },
+    "OPC-UA": { label: "OPC-UA", icon: Radio, defaultTitle: "Ponte OPC-UA Industrial" },
+    Modbus: { label: "Modbus", icon: Cpu, defaultTitle: "Gateway Modbus TCP/RTU" },
+    Runtime: { label: "Runtime", icon: Lightning, defaultTitle: "Execução em Tempo Real" },
+  };
 
 const SEED_LOGS: Record<
   string,
   { t: string; tag: string; msg: string; lvl?: "info" | "warn" | "err" | "ok" }[]
 > = {
-  Logs: [{ t: "—", tag: "SISTEMA", msg: "Ambiente industrial inicializado com sucesso.", lvl: "ok" }],
+  Logs: [
+    { t: "—", tag: "SISTEMA", msg: "Ambiente industrial inicializado com sucesso.", lvl: "ok" },
+  ],
   Alarmes: [{ t: "—", tag: "ALM", msg: "Nenhum alarme crítico pendente.", lvl: "ok" }],
-  IA: [{ t: "—", tag: "IA", msg: "Pronto para auxiliar na especificação e validação normativa.", lvl: "info" }],
+  IA: [
+    {
+      t: "—",
+      tag: "IA",
+      msg: "Pronto para auxiliar na especificação e validação normativa.",
+      lvl: "info",
+    },
+  ],
   Terminal: [{ t: "—", tag: "$", msg: "eletricai engine --ready", lvl: "info" }],
   Eventos: [{ t: "—", tag: "EVT", msg: "Registro de eventos operacionais ativo.", lvl: "info" }],
   "OPC-UA": [{ t: "—", tag: "OPC", msg: "Servidor OPC-UA pronto para conexão.", lvl: "info" }],
   Modbus: [{ t: "—", tag: "MB", msg: "Gateway Modbus pronto: 192.168.1.100:502", lvl: "info" }],
-  Runtime: [{ t: "—", tag: "RT", msg: "Runtime pronto para simulação determinística.", lvl: "info" }],
+  Runtime: [
+    { t: "—", tag: "RT", msg: "Runtime pronto para simulação determinística.", lvl: "info" },
+  ],
 };
 
 const lvlColor = {
@@ -144,34 +161,36 @@ export function UnifiedBottomDock() {
     }
   }, [availableTabs, tab, setTab]);
 
-  // Cálculos em tempo real para Unifilar
+  // Cálculos em tempo real para Unifilar e Multifilar (modelo canônico elétrico compartilhado)
+  const isElectricalMode = activeMode === "unifilar" || activeMode === "multifilar";
+
   const unifilarDiagnostics: DiagnosticAlert[] = useMemo(() => {
-    if (activeMode !== "unifilar") return [];
+    if (!isElectricalMode) return [];
     try {
       return runDiagramDiagnostics(doc);
     } catch {
       return [];
     }
-  }, [activeMode, doc]);
+  }, [isElectricalMode, doc]);
 
   const voltageDrops: VoltageDropResult[] = useMemo(() => {
-    if (activeMode !== "unifilar") return [];
+    if (!isElectricalMode) return [];
     try {
       return calculateVoltageDropNbr5410(doc);
     } catch {
       return [];
     }
-  }, [activeMode, doc]);
+  }, [isElectricalMode, doc]);
 
   const bomItems = useMemo(() => {
-    if (activeMode !== "unifilar") return [];
+    if (!isElectricalMode) return [];
     const counts: Record<
       string,
       { tag: string; kind: string; desc: string; manufacturer: string; model: string; qty: number }
     > = {};
 
-    for (const n of (Object.values(doc?.nodes || {}) as any[])) {
-      if (n.sheet !== activeSheet && n.sheet !== "unifilar") continue;
+    for (const n of Object.values(doc?.nodes || {}) as any[]) {
+      if (n.sheet !== "unifilar") continue; // Conta equipamentos canônicos
       const tag = n.params?.tag || n.label || n.id;
       const kind = n.params?.kind || "componente";
       const mfg = n.params?.manufacturer || "—";
@@ -193,7 +212,7 @@ export function UnifiedBottomDock() {
       }
     }
     return Object.values(counts);
-  }, [activeMode, doc?.nodes, activeSheet]);
+  }, [isElectricalMode, doc?.nodes]);
 
   // Validação em tempo real para Ladder
   const ladderIssues: LadderIssue[] = useMemo(() => {
@@ -224,7 +243,7 @@ export function UnifiedBottomDock() {
   // Linhas do console para a aba selecionada
   const consoleLines = useMemo(() => {
     const live = liveLogs.filter((l) => (l.channel ?? "Logs") === tab);
-    return live.length ? live : SEED_LOGS[tab] ?? [];
+    return live.length ? live : (SEED_LOGS[tab] ?? []);
   }, [liveLogs, tab]);
 
   // Terminal input interativo
@@ -282,16 +301,16 @@ export function UnifiedBottomDock() {
   return (
     <div
       className={cn(
-        "z-30 shrink-0 border-t border-border/80 bg-[#0a0f1c] flex flex-col transition-all duration-200 select-none shadow-2xl",
+        "z-30 shrink-0 border-t border-border bg-panel flex flex-col transition-all duration-200 select-none",
         open ? "h-56" : "h-9",
       )}
       data-testid="unified-bottom-dock"
     >
       {/* 1. Barra de Abas Unificada e Controles */}
-      <div className="h-9 shrink-0 flex items-center justify-between px-2.5 bg-[#070b14] border-b border-border/60">
+      <div className="h-9 shrink-0 flex items-center justify-between px-2.5 bg-panel border-b border-border">
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
-          <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-r border-border/50 mr-1 shrink-0">
-            <CurrentIcon className="h-3.5 w-3.5 text-[#38bdf8]" />
+          <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-r border-border mr-1 shrink-0">
+            <CurrentIcon className="h-3.5 w-3.5 text-primary" />
             <span className="hidden sm:inline">DOCK</span>
           </div>
 
@@ -308,10 +327,10 @@ export function UnifiedBottomDock() {
                   setOpen(true);
                 }}
                 className={cn(
-                  "h-7 px-2.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 shrink-0",
+                  "h-7 px-2.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 shrink-0",
                   isSelected
-                    ? "bg-[#162136] text-[#38bdf8] shadow-xs border border-[#38bdf8]/30"
-                    : "text-muted-foreground hover:text-foreground hover:bg-[#111827]",
+                    ? "bg-card text-foreground border border-border"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/40",
                 )}
                 title={meta.defaultTitle}
                 data-testid={`dock-tab-${tName}`}
@@ -320,26 +339,27 @@ export function UnifiedBottomDock() {
                 <span>{meta.label}</span>
 
                 {/* Badges contextuais com dados REAIS (sem números fictícios) */}
-                {tName === "diagnosticos" && (activeMode === "unifilar" || activeMode === "multifilar") && (
-                  <span
-                    className={cn(
-                      "ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono",
-                      unifilarDiagnostics.length > 0
-                        ? "bg-amber-950/80 text-amber-300 border border-amber-500/40"
-                        : "bg-emerald-950/60 text-emerald-400 border border-emerald-500/30",
-                    )}
-                  >
-                    {unifilarDiagnostics.length}
-                  </span>
-                )}
+                {tName === "diagnosticos" &&
+                  (activeMode === "unifilar" || activeMode === "multifilar") && (
+                    <span
+                      className={cn(
+                        "ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono",
+                        unifilarDiagnostics.length > 0
+                          ? "bg-warning/15 text-warning border border-warning/30"
+                          : "bg-success/15 text-success border border-success/30",
+                      )}
+                    >
+                      {unifilarDiagnostics.length}
+                    </span>
+                  )}
 
                 {tName === "diagnosticos" && activeMode === "ladder" && (
                   <span
                     className={cn(
                       "ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono",
                       ladderIssues.length > 0
-                        ? "bg-amber-950/80 text-amber-300 border border-amber-500/40"
-                        : "bg-emerald-950/60 text-emerald-400 border border-emerald-500/30",
+                        ? "bg-warning/15 text-warning border border-warning/30"
+                        : "bg-success/15 text-success border border-success/30",
                     )}
                   >
                     {ladderIssues.length}
@@ -347,25 +367,25 @@ export function UnifiedBottomDock() {
                 )}
 
                 {tName === "calculos_nbr" && (
-                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#162136] text-emerald-400 border border-emerald-500/30">
+                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-secondary text-success border border-border">
                     NBR 5410
                   </span>
                 )}
 
                 {tName === "bom" && (
-                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#162136] text-[#34d399] border border-[#34d399]/30">
+                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-secondary text-primary border border-border">
                     {bomItems.length}
                   </span>
                 )}
 
                 {tName === "variaveis" && (
-                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#162136] text-[#38bdf8] border border-[#38bdf8]/30">
+                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-secondary text-primary border border-border">
                     {ladderTagsList.length}
                   </span>
                 )}
 
                 {tName === "Alarmes" && activeAlarmsCount > 0 && (
-                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-destructive text-white font-bold animate-pulse">
+                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-destructive text-destructive-foreground font-bold animate-pulse">
                     {activeAlarmsCount}
                   </span>
                 )}
@@ -402,9 +422,9 @@ export function UnifiedBottomDock() {
 
         {/* Controles do Lado Direito: Limpar, Status e Recolher/Expandir */}
         <div className="flex items-center gap-1.5 ml-auto shrink-0">
-          {tab === "Modbus" && <Wifi className="h-3 w-3 text-muted-foreground" />}
+          {tab === "Modbus" && <WifiHigh className="h-3 w-3 text-muted-foreground" />}
 
-          {/* Botão Limpar Console */}
+          {/* Robotão Limpar Console */}
           {(tab === "Logs" || tab === "Terminal" || tab === "Eventos") && (
             <button
               onClick={() => {
@@ -413,11 +433,11 @@ export function UnifiedBottomDock() {
               className="h-7 w-7 grid place-items-center rounded hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors"
               title="Limpar mensagens"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash className="h-3.5 w-3.5" />
             </button>
           )}
 
-          {/* Botão Alternar Recolhido / Expandido */}
+          {/* Robotão Alternar Recolhido / Expandido */}
           <button
             onClick={() => setOpen(!open)}
             className="h-7 w-7 grid place-items-center rounded hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors"
@@ -425,22 +445,23 @@ export function UnifiedBottomDock() {
             aria-label={open ? "Recolher painel inferior" : "Expandir painel inferior"}
             data-testid="dock-toggle-button"
           >
-            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            {open ? <CaretDown className="h-4 w-4" /> : <CaretUp className="h-4 w-4" />}
           </button>
         </div>
       </div>
 
       {/* 2. Conteúdo Expandido do Dock */}
       {open && (
-        <div className="flex-1 min-h-0 overflow-auto bg-[#0a0f1c] p-2.5 font-mono text-xs text-foreground scrollbar-thin">
+        <div className="flex-1 min-h-0 overflow-auto bg-card p-2.5 font-mono text-xs text-foreground scrollbar-thin">
           {/* ABA 1: DIAGNÓSTICOS UNIFILAR / MULTIFILAR */}
           {tab === "diagnosticos" && (activeMode === "unifilar" || activeMode === "multifilar") && (
             <div className="space-y-1.5">
               {unifilarDiagnostics.length === 0 ? (
                 <div className="flex items-center gap-2 text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 p-3 rounded">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <CheckCircle className="h-4 w-4 shrink-0" />
                   <span>
-                    Nenhum problema detectado. Diagrama unifilar e conexões de barramento em conformidade com as regras de conectividade.
+                    Nenhum problema detectado. Diagrama unifilar e conexões de barramento em
+                    conformidade com as regras de conectividade.
                   </span>
                 </div>
               ) : (
@@ -448,7 +469,18 @@ export function UnifiedBottomDock() {
                   <div
                     key={diag.id || idx}
                     onClick={() => {
-                      if (diag.nodeId) setSelection([diag.nodeId]);
+                      if (diag.nodeId) {
+                        const baseId = diag.nodeId.replace(/^mf_/, "");
+                        const targetId =
+                          activeMode === "multifilar"
+                            ? doc.nodes[`mf_${baseId}`]
+                              ? `mf_${baseId}`
+                              : diag.nodeId
+                            : doc.nodes[baseId]
+                              ? baseId
+                              : diag.nodeId;
+                        setSelection([targetId]);
+                      }
                     }}
                     className={cn(
                       "flex items-center gap-2.5 px-3 py-1.5 rounded border transition-colors cursor-pointer",
@@ -488,9 +520,10 @@ export function UnifiedBottomDock() {
             <div className="space-y-1.5">
               {ladderIssues.length === 0 ? (
                 <div className="flex items-center gap-2 text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 p-3 rounded">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <CheckCircle className="h-4 w-4 shrink-0" />
                   <span>
-                    Todas as {rungs.length} rede(s) Ladder estão válidas segundo a IEC 61131-3. Nenhuma inconsistência lógica ou sintática detectada.
+                    Todas as {rungs.length} rede(s) Ladder estão válidas segundo a IEC 61131-3.
+                    Nenhuma inconsistência lógica ou sintática detectada.
                   </span>
                 </div>
               ) : (
@@ -563,7 +596,8 @@ export function UnifiedBottomDock() {
                   {voltageDrops.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="py-4 text-center text-muted-foreground italic">
-                        Nenhum trecho de condutor dimensionado. Adicione conexões elétricas e cargas ao diagrama para cálculo de queda de tensão segundo a NBR 5410.
+                        Nenhum trecho de condutor dimensionado. Adicione conexões elétricas e cargas
+                        ao diagrama para cálculo de queda de tensão segundo a NBR 5410.
                       </td>
                     </tr>
                   ) : (
@@ -588,7 +622,9 @@ export function UnifiedBottomDock() {
                         >
                           {vd.drop_pct}%
                         </td>
-                        <td className="py-1.5 px-2 text-muted-foreground">&lt; {vd.max_allowed_pct.toFixed(1)}%</td>
+                        <td className="py-1.5 px-2 text-muted-foreground">
+                          &lt; {vd.max_allowed_pct.toFixed(1)}%
+                        </td>
                         <td className="py-1.5 px-2">
                           <span
                             className={cn(
@@ -627,7 +663,8 @@ export function UnifiedBottomDock() {
                   {bomItems.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-4 text-center text-muted-foreground italic">
-                        Nenhum componente inserido na folha ativa. Arraste itens da biblioteca elétrica para o diagrama.
+                        Nenhum componente inserido na folha ativa. Arraste itens da biblioteca
+                        elétrica para o diagrama.
                       </td>
                     </tr>
                   ) : (
@@ -668,7 +705,8 @@ export function UnifiedBottomDock() {
                   {ladderTagsList.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-4 text-center text-muted-foreground italic">
-                        Nenhuma variável ou tag declarada. Insira instruções no editor Ladder para registrar variáveis.
+                        Nenhuma variável ou tag declarada. Insira instruções no editor Ladder para
+                        registrar variáveis.
                       </td>
                     </tr>
                   ) : (
@@ -732,12 +770,19 @@ export function UnifiedBottomDock() {
                 {consoleLines.map((l, i) => (
                   <div key={i} className="flex gap-3 items-start">
                     <span className="text-muted-foreground/70 w-16 shrink-0">{l.t}</span>
-                    <span className="text-[#38bdf8] w-20 shrink-0 truncate font-semibold">{l.tag}</span>
-                    <span className={cn("flex-1 break-all", l.lvl && lvlColor[l.lvl])}>{l.msg}</span>
+                    <span className="text-[#38bdf8] w-20 shrink-0 truncate font-semibold">
+                      {l.tag}
+                    </span>
+                    <span className={cn("flex-1 break-all", l.lvl && lvlColor[l.lvl])}>
+                      {l.msg}
+                    </span>
                   </div>
                 ))}
               </div>
-              <form onSubmit={handleTerminalSubmit} className="flex items-center gap-2 pt-1 border-t border-border/50">
+              <form
+                onSubmit={handleTerminalSubmit}
+                className="flex items-center gap-2 pt-1 border-t border-border/50"
+              >
                 <span className="text-[#38bdf8] font-bold">$</span>
                 <input
                   type="text"
@@ -779,7 +824,8 @@ export function UnifiedBottomDock() {
                 </span>
                 {bridge.opcua.tags.length > 0 && (
                   <span className="text-muted-foreground">
-                    Tags Ativas: <span className="text-foreground font-mono">{bridge.opcua.tags.length}</span>
+                    Tags Ativas:{" "}
+                    <span className="text-foreground font-mono">{bridge.opcua.tags.length}</span>
                   </span>
                 )}
                 <button
@@ -794,7 +840,7 @@ export function UnifiedBottomDock() {
                 >
                   {bridge.opcua.status === "connected" ? (
                     <>
-                      <PlugZap className="h-3 w-3 text-emerald-400" />
+                      <PlugCharging className="h-3 w-3 text-emerald-400" />
                       <span>Desconectar OPC-UA</span>
                     </>
                   ) : (
@@ -810,8 +856,12 @@ export function UnifiedBottomDock() {
                 {consoleLines.map((l, i) => (
                   <div key={i} className="flex gap-3 items-start">
                     <span className="text-muted-foreground/70 w-16 shrink-0">{l.t}</span>
-                    <span className="text-[#38bdf8] w-20 shrink-0 truncate font-semibold">{l.tag}</span>
-                    <span className={cn("flex-1 break-all", l.lvl && lvlColor[l.lvl])}>{l.msg}</span>
+                    <span className="text-[#38bdf8] w-20 shrink-0 truncate font-semibold">
+                      {l.tag}
+                    </span>
+                    <span className={cn("flex-1 break-all", l.lvl && lvlColor[l.lvl])}>
+                      {l.msg}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -850,7 +900,8 @@ export function UnifiedBottomDock() {
                 </span>
                 {bridge.modbus.values.length > 0 && (
                   <span className="text-muted-foreground">
-                    Registros: <span className="text-foreground font-mono">{bridge.modbus.values.length}</span>
+                    Registros:{" "}
+                    <span className="text-foreground font-mono">{bridge.modbus.values.length}</span>
                   </span>
                 )}
                 <button
@@ -869,7 +920,7 @@ export function UnifiedBottomDock() {
                 >
                   {bridge.modbus.status === "connected" ? (
                     <>
-                      <PlugZap className="h-3 w-3 text-emerald-400" />
+                      <PlugCharging className="h-3 w-3 text-emerald-400" />
                       <span>Desconectar Modbus</span>
                     </>
                   ) : (
@@ -885,8 +936,12 @@ export function UnifiedBottomDock() {
                 {consoleLines.map((l, i) => (
                   <div key={i} className="flex gap-3 items-start">
                     <span className="text-muted-foreground/70 w-16 shrink-0">{l.t}</span>
-                    <span className="text-[#38bdf8] w-20 shrink-0 truncate font-semibold">{l.tag}</span>
-                    <span className={cn("flex-1 break-all", l.lvl && lvlColor[l.lvl])}>{l.msg}</span>
+                    <span className="text-[#38bdf8] w-20 shrink-0 truncate font-semibold">
+                      {l.tag}
+                    </span>
+                    <span className={cn("flex-1 break-all", l.lvl && lvlColor[l.lvl])}>
+                      {l.msg}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -905,8 +960,12 @@ export function UnifiedBottomDock() {
                 {consoleLines.map((l, i) => (
                   <div key={i} className="flex gap-3 items-start">
                     <span className="text-muted-foreground/70 w-16 shrink-0">{l.t}</span>
-                    <span className="text-[#38bdf8] w-20 shrink-0 truncate font-semibold">{l.tag}</span>
-                    <span className={cn("flex-1 break-all", l.lvl && lvlColor[l.lvl])}>{l.msg}</span>
+                    <span className="text-[#38bdf8] w-20 shrink-0 truncate font-semibold">
+                      {l.tag}
+                    </span>
+                    <span className={cn("flex-1 break-all", l.lvl && lvlColor[l.lvl])}>
+                      {l.msg}
+                    </span>
                   </div>
                 ))}
               </div>

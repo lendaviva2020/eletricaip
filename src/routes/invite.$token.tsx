@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react";
 import { acceptInviteByToken } from "@/lib/tenants.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ function AcceptInvitePage() {
       <div className="max-w-md w-full text-center space-y-4">
         {status === "loading" && (
           <>
-            <Loader2 className="w-8 h-8 animate-spin mx-auto" />
+            <CircleNotch className="w-8 h-8 animate-spin mx-auto" />
             <p>Processando convite...</p>
           </>
         )}

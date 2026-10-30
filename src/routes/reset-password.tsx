@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthShell, Input } from "./login";
 
@@ -62,10 +62,9 @@ function ResetPage() {
         <button
           disabled={loading || !ready}
           type="submit"
-          className="h-11 w-full rounded-md text-sm font-semibold text-primary-foreground glow-primary inline-flex items-center justify-center gap-2 disabled:opacity-50"
-          style={{ background: "var(--gradient-primary)" }}
+          className="h-9 w-full rounded-md bg-primary hover:bg-primary/90 text-[13px] font-medium text-primary-foreground inline-flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />} Atualizar senha
+          {loading && <CircleNotch className="h-4 w-4 animate-spin" />} Atualizar senha
         </button>
       </form>
     </AuthShell>

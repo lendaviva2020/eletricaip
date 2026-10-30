@@ -1,4 +1,4 @@
-import { Plus, Minus, RotateCw, FileEdit } from "lucide-react";
+import { Plus, Minus, ArrowClockwise, FileText } from "@phosphor-icons/react";
 import type { AiDiagramPatch } from "@/lib/diagram/schema";
 
 interface Props {
@@ -25,7 +25,7 @@ export function AiPatchPreview({ patch, onApply, onCancel }: Props) {
     return (
       <div className="rounded-lg border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <FileEdit className="h-4 w-4 text-muted-foreground" />
+          <FileText className="h-4 w-4 text-muted-foreground" />
           Preview da IA
         </div>
         <p className="text-xs text-muted-foreground">Nenhuma alteração a aplicar.</p>
@@ -44,7 +44,7 @@ export function AiPatchPreview({ patch, onApply, onCancel }: Props) {
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3 max-h-[420px] flex flex-col">
       <div className="flex items-center gap-2 text-sm font-medium shrink-0">
-        <FileEdit className="h-4 w-4 text-primary" />
+        <FileText className="h-4 w-4 text-primary" />
         Preview das alterações da IA
         <span className="text-[10px] text-muted-foreground font-normal ml-auto">
           {totalChanges} mudança{totalChanges > 1 ? "s" : ""}
@@ -150,7 +150,7 @@ export function AiPatchPreview({ patch, onApply, onCancel }: Props) {
         {updateNodes.length > 0 && (
           <div>
             <div className="flex items-center gap-1.5 text-amber-500 font-medium mb-1">
-              <RotateCw className="h-3.5 w-3.5" />
+              <ArrowClockwise className="h-3.5 w-3.5" />
               Atualizar ({updateNodes.length})
             </div>
             <div className="space-y-1">

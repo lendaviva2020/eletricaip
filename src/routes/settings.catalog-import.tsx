@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Upload, FileSpreadsheet, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, UploadSimple, FileXls, Warning, CheckCircle } from "@phosphor-icons/react";
 import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -157,7 +157,7 @@ function CatalogImportPage() {
         <div>
           <BackLink />
           <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-primary" />
+            <FileXls className="h-5 w-5 text-primary" />
             Importar catálogo (CSV/XLSX)
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -193,7 +193,7 @@ function CatalogImportPage() {
             )}
             {parseError && (
               <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" /> {parseError}
+                <Warning className="h-3 w-3" /> {parseError}
               </p>
             )}
           </CardContent>
@@ -233,7 +233,7 @@ function CatalogImportPage() {
               </table>
               <div className="mt-4 flex items-center gap-3">
                 <Button onClick={() => importMutation.mutate()} disabled={importMutation.isPending}>
-                  <Upload className="h-4 w-4 mr-2" />
+                  <UploadSimple className="h-4 w-4 mr-2" />
                   {importMutation.isPending ? "Importando…" : `Importar ${rows.length} linha(s)`}
                 </Button>
                 <span className="text-xs text-muted-foreground">
@@ -257,7 +257,7 @@ function CatalogImportPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" /> 3 · Relatório
+                <CheckCircle className="h-4 w-4 text-primary" /> 3 · Relatório
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">

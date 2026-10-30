@@ -27,7 +27,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, RefreshCw, Zap, CheckCircle2, AlertCircle, Save } from "lucide-react";
+import {
+  CircleNotch,
+  ArrowsClockwise,
+  Lightning,
+  CheckCircle,
+  WarningCircle,
+  FloppyDisk,
+} from "@phosphor-icons/react";
 
 function SummaryCard({
   label,
@@ -55,12 +62,12 @@ function AnalyzePrompt({ onAnalyze, busy }: { onAnalyze: () => void; busy: boole
       <Button onClick={onAnalyze} disabled={busy} className="w-full">
         {busy ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
             Analisando...
           </>
         ) : (
           <>
-            <Zap className="mr-2 h-4 w-4" />
+            <Lightning className="mr-2 h-4 w-4" />
             Analisar Unifilar
           </>
         )}
@@ -165,7 +172,7 @@ function ResultView({
                 </TableCell>
                 <TableCell className="text-center">
                   {m.isPrimary ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-success mx-auto" />
+                    <CheckCircle className="h-3.5 w-3.5 text-success mx-auto" />
                   ) : (
                     <span className="text-muted-foreground text-[10px]">Secundário</span>
                   )}
@@ -178,19 +185,19 @@ function ResultView({
 
       <div className="flex flex-wrap gap-3 pt-4 border-t border-border/50">
         <Button onClick={onApply} className="flex-1 min-w-[180px]">
-          <Zap className="mr-2 h-4 w-4" />
+          <Lightning className="mr-2 h-4 w-4" />
           Aplicar no Editor Ladder
         </Button>
         <Button variant="outline" onClick={onSave} disabled={saving}>
           {saving ? (
-            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            <CircleNotch className="mr-1 h-3.5 w-3.5 animate-spin" />
           ) : (
-            <Save className="mr-1 h-3.5 w-3.5" />
+            <FloppyDisk className="mr-1 h-3.5 w-3.5" />
           )}
           Salvar mapeamento
         </Button>
         <Button variant="outline" onClick={onAnalyze} disabled={busy}>
-          <RefreshCw className="mr-1 h-3.5 w-3.5" /> Reanalisar
+          <ArrowsClockwise className="mr-1 h-3.5 w-3.5" /> Reanalisar
         </Button>
       </div>
     </div>
@@ -238,8 +245,7 @@ export function UnifilarLadderBridgePanel() {
     setError(null);
     try {
       const unifiedDoc = useUnifiedProjectStore.getState().doc;
-      const hasCanonicalEquipments =
-        Object.keys(unifiedDoc.engineering.equipments).length > 0;
+      const hasCanonicalEquipments = Object.keys(unifiedDoc.engineering.equipments).length > 0;
 
       if (hasCanonicalEquipments) {
         const analysis = analyzeControlBridge(unifiedDoc);
@@ -300,7 +306,7 @@ export function UnifilarLadderBridgePanel() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4" />
+            <Lightning className="h-4 w-4" />
             <CardTitle>Ponte Unifilar → Ladder</CardTitle>
           </div>
           <Badge variant={result ? "default" : "secondary"}>
@@ -314,7 +320,7 @@ export function UnifilarLadderBridgePanel() {
       <CardContent className="space-y-4">
         {error ? (
           <div className="rounded border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+            <WarningCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         ) : null}

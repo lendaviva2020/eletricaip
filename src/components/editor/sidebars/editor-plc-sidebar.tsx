@@ -1,9 +1,9 @@
-import { Cpu, FileCode, Variable } from "lucide-react";
+import { Cpu, FileCode, Function } from "@phosphor-icons/react";
 import { SidebarSearch, SidebarShell } from "./sidebar-primitives";
 
 const TREE: { icon: typeof Cpu; title: string; children: string[] }[] = [
   { icon: Cpu, title: "Hardware", children: ["CPU", "DI 16x", "DO 16x", "AI 8x"] },
-  { icon: Variable, title: "Tags", children: ["%I0.0 START", "%I0.1 STOP", "%Q0.0 K1_CMD"] },
+  { icon: Function, title: "Tags", children: ["%I0.0 START", "%I0.1 STOP", "%Q0.0 K1_CMD"] },
   { icon: FileCode, title: "Programas", children: ["MAIN (Ladder)", "SUB_MOTOR (FBD)"] },
 ];
 

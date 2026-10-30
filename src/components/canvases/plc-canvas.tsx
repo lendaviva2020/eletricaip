@@ -2,27 +2,27 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { LazyMonacoEditor as Editor } from "./lazy";
 import {
   Cpu,
-  MemoryStick,
-  Network,
-  Activity,
+  Memory,
+  Graph,
+  Pulse,
   Plus,
-  Trash2,
-  GripVertical,
-  Code2,
-  Table2,
-  Settings2,
-  LayoutGrid,
-  ChevronRight,
+  Trash,
+  DotsSixVertical,
+  CodeBlock,
+  Table,
+  SlidersHorizontal,
+  GridFour,
+  CaretRight,
   Play,
   Pause,
-  HardDrive,
-  Zap,
+  HardDrives,
+  Lightning,
   Terminal,
-  Save,
-  Download,
-  ExternalLink,
-  RefreshCw,
-} from "lucide-react";
+  FloppyDisk,
+  DownloadSimple,
+  ArrowSquareOut,
+  ArrowsClockwise,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { usePlcStore } from "@/lib/plc/store";
 import {
@@ -40,7 +40,7 @@ import { compileProgram } from "@/lib/ladder/compiler";
 import { compileFbdNodesToSt } from "@/lib/fbd/editor-bridge";
 import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
 import type { LadderRung } from "@/lib/ladder/types";
-import type { LucideIcon } from "lucide-react";
+import type { Icon } from "@phosphor-icons/react";
 import { FloatingLegend } from "./canvas-chrome";
 
 const LANG_LABELS: Record<ProgramLang, string> = { ladder: "LAD", fbd: "FBD", st: "ST" };
@@ -157,7 +157,7 @@ export function PlcCanvas() {
     const editorState = useEditorStore.getState();
     const prevId = prevBlockIdRef.current;
 
-    // Save outgoing block state
+    // FloppyDisk outgoing block state
     if (prevId && prevId !== activeBlockId) {
       const prev = project.programBlocks.find((b) => b.id === prevId);
       if (prev?.language === "ladder") {
@@ -324,10 +324,10 @@ export function PlcCanvas() {
       {/* Tab bar */}
       <div className="flex items-center gap-0.5 px-3 pt-12 border-b border-border bg-card/20">
         {[
-          { id: "dashboard" as const, icon: Activity, label: "Dashboard" },
-          { id: "hardware" as const, icon: Settings2, label: "Hardware" },
-          { id: "variables" as const, icon: Table2, label: "Variáveis" },
-          { id: "blocks" as const, icon: Code2, label: "Blocos" },
+          { id: "dashboard" as const, icon: Pulse, label: "Dashboard" },
+          { id: "hardware" as const, icon: SlidersHorizontal, label: "Hardware" },
+          { id: "variables" as const, icon: Table, label: "Variáveis" },
+          { id: "blocks" as const, icon: CodeBlock, label: "Blocos" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -347,7 +347,7 @@ export function PlcCanvas() {
           title="Exportar projeto PLCopen XML (.plcproj)"
           className="ml-auto mb-1 flex items-center gap-1.5 px-2.5 py-1 rounded border border-border bg-card/60 text-[10px] font-mono uppercase tracking-wider hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
         >
-          <Download className="h-3 w-3" /> .plcproj
+          <DownloadSimple className="h-3 w-3" /> .plcproj
         </button>
       </div>
 
@@ -363,13 +363,13 @@ export function PlcCanvas() {
                 sub={`Ciclo: ${project.cycleTimeMs}ms`}
               />
               <StatCard
-                icon={MemoryStick}
+                icon={Memory}
                 label="Hardware"
                 value={`${project.rack.modules.length} módulos`}
                 sub={`${totalDI} DI · ${totalDO} DO · ${totalAI} AI`}
               />
               <StatCard
-                icon={Network}
+                icon={Graph}
                 label="Programa"
                 value={`${project.programBlocks.length} blocos`}
                 sub={`${project.variables.length} variáveis`}
@@ -394,7 +394,7 @@ export function PlcCanvas() {
               </div>
               <div className="rounded-md border border-border glass p-4">
                 <div className="text-[11px] font-mono font-bold text-muted-foreground uppercase mb-3 flex items-center gap-2">
-                  <Zap className="h-3.5 w-3.5 text-primary" /> Tags Ativas
+                  <Lightning className="h-3.5 w-3.5 text-primary" /> Tags Ativas
                 </div>
                 <table className="w-full text-[10px] font-mono">
                   <thead>
@@ -451,7 +451,7 @@ export function PlcCanvas() {
             {/* Rack view */}
             <div className="rounded-md border border-border glass p-4">
               <div className="text-[10px] font-mono font-bold uppercase text-muted-foreground mb-3 flex items-center gap-2">
-                <LayoutGrid className="h-3.5 w-3.5 text-primary" /> {project.rack.label}
+                <GridFour className="h-3.5 w-3.5 text-primary" /> {project.rack.label}
               </div>
               {(() => {
                 const issues = validateRack(project.rack);
@@ -484,7 +484,7 @@ export function PlcCanvas() {
                       key={m.id}
                       className="flex items-center gap-2 px-3 py-2 rounded border border-border/60 bg-card/30 text-[11px] font-mono"
                     >
-                      <GripVertical className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <DotsSixVertical className="h-3 w-3 text-muted-foreground shrink-0" />
                       <span className="w-6 text-muted-foreground text-[10px]">S{i + 1}</span>
                       <span
                         className={`w-2 h-2 rounded-full shrink-0 ${
@@ -505,7 +505,7 @@ export function PlcCanvas() {
                         onClick={() => removeModule(m.id)}
                         className="text-muted-foreground hover:text-destructive cursor-pointer"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash className="h-3 w-3" />
                       </button>
                     </div>
                   ))}
@@ -519,7 +519,7 @@ export function PlcCanvas() {
           <div className="rounded-md border border-border glass overflow-hidden">
             <div className="flex items-center justify-between px-3 py-2 border-b border-border">
               <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground flex items-center gap-1.5">
-                <Table2 className="h-3.5 w-3.5 text-primary" /> Variáveis Globais (
+                <Table className="h-3.5 w-3.5 text-primary" /> Variáveis Globais (
                 {project.variables.length})
               </span>
               <div className="flex items-center gap-2">
@@ -528,7 +528,7 @@ export function PlcCanvas() {
                   title="Gerar endereços automáticos baseados nos módulos de hardware"
                   className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer font-mono"
                 >
-                  <RefreshCw className="h-3 w-3" /> Auto Endereçar
+                  <ArrowsClockwise className="h-3 w-3" /> Auto Endereçar
                 </button>
                 <button
                   onClick={() => {
@@ -644,13 +644,13 @@ export function PlcCanvas() {
                               onClick={saveEditVar}
                               className="text-success hover:text-success/80 cursor-pointer"
                             >
-                              <Save className="h-3 w-3" />
+                              <FloppyDisk className="h-3 w-3" />
                             </button>
                             <button
                               onClick={() => setEditingVar(null)}
                               className="text-muted-foreground hover:text-foreground cursor-pointer"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash className="h-3 w-3" />
                             </button>
                           </div>
                         </td>
@@ -685,7 +685,7 @@ export function PlcCanvas() {
                             }}
                             className="text-muted-foreground hover:text-destructive cursor-pointer"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash className="h-3 w-3" />
                           </button>
                         </td>
                       </tr>
@@ -737,7 +737,7 @@ export function PlcCanvas() {
                         : "hover:bg-accent/20 text-foreground"
                     }`}
                   >
-                    <ChevronRight
+                    <CaretRight
                       className={`h-3 w-3 shrink-0 ${activeBlockId === b.id ? "text-primary" : "text-muted-foreground"}`}
                     />
                     <span
@@ -764,7 +764,7 @@ export function PlcCanvas() {
                       }}
                       className="text-muted-foreground hover:text-destructive cursor-pointer"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash className="h-3 w-3" />
                     </button>
                   </button>
                 ))}
@@ -777,7 +777,7 @@ export function PlcCanvas() {
                 <>
                   <div className="flex items-center justify-between px-3 py-2 border-b border-border">
                     <div className="flex items-center gap-2 text-[11px] font-mono">
-                      <Code2 className="h-3.5 w-3.5 text-primary" />
+                      <CodeBlock className="h-3.5 w-3.5 text-primary" />
                       <span className="text-foreground font-bold">{activeBlock.name}</span>
                       <span
                         className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
@@ -810,7 +810,7 @@ export function PlcCanvas() {
                           title={`Abrir no canvas ${LANG_LABELS[activeBlock.language]}`}
                           className="flex items-center gap-1 h-7 px-2 rounded border border-border bg-card/60 text-[10px] font-mono hover:bg-accent cursor-pointer text-muted-foreground hover:text-foreground"
                         >
-                          <ExternalLink className="h-3 w-3" /> Abrir Canvas
+                          <ArrowSquareOut className="h-3 w-3" /> Abrir Canvas
                         </button>
                       )}
                       <button
@@ -842,7 +842,7 @@ export function PlcCanvas() {
                     ) : (
                       <div className="flex items-center justify-center h-full text-muted-foreground text-[11px] font-mono">
                         <div className="text-center space-y-2">
-                          <LayoutGrid className="h-8 w-8 mx-auto opacity-30" />
+                          <GridFour className="h-8 w-8 mx-auto opacity-30" />
                           <p>
                             Editor {LANG_LABELS[activeBlock.language]} será aberto no canvas
                             principal
@@ -858,7 +858,7 @@ export function PlcCanvas() {
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-[11px] font-mono">
                   <div className="text-center space-y-2">
-                    <Code2 className="h-8 w-8 mx-auto opacity-30" />
+                    <CodeBlock className="h-8 w-8 mx-auto opacity-30" />
                     <p>Selecione um bloco de programa para editar</p>
                   </div>
                 </div>
@@ -877,7 +877,7 @@ function StatCard({
   value,
   sub,
 }: {
-  icon: LucideIcon;
+  icon: Icon;
   label: string;
   value: string;
   sub: string;

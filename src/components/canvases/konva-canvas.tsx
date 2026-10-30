@@ -4,7 +4,7 @@ import Konva from "konva";
 import { useProjectStore, type IndustrialNode } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { BottomStrip, FloatingLegend } from "./canvas-chrome";
-import { Maximize2, Minus, Plus } from "lucide-react";
+import { ArrowsOutSimple, Minus, Plus } from "@phosphor-icons/react";
 
 type Variant = "scada" | "twin";
 
@@ -157,7 +157,7 @@ export function KonvaCanvas({ variant }: { variant: Variant }) {
           className="h-7 w-7 grid place-items-center rounded hover:bg-accent cursor-pointer"
           title="Ajustar à Tela"
         >
-          <Maximize2 className="h-3.5 w-3.5" />
+          <ArrowsOutSimple className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -193,17 +193,10 @@ export function KonvaCanvas({ variant }: { variant: Variant }) {
               e.kind === "power" ? "#f3c44b" : e.kind === "pipe" ? "#3fb6d6" : "#5fd699";
             return (
               <Group key={e.id}>
+                <Line points={[ax, ay, bx, by]} stroke={color} opacity={0.35} lineCap="round" />
                 <Line
                   points={[ax, ay, bx, by]}
                   stroke={color}
-                  strokeWidth={6}
-                  opacity={0.35}
-                  lineCap="round"
-                />
-                <Line
-                  points={[ax, ay, bx, by]}
-                  stroke={color}
-                  strokeWidth={2}
                   dash={[10, 8]}
                   dashOffset={-(tick * 1.2) % 18}
                   lineCap="round"
@@ -350,7 +343,6 @@ function NodeShape({
             height={height + 6}
             cornerRadius={6}
             stroke={accent}
-            strokeWidth={1.5}
             dash={[4, 4]}
           />
         )}
@@ -362,7 +354,6 @@ function NodeShape({
           cornerRadius={6}
           fill="rgba(21, 28, 45, 0.85)"
           stroke="#263554"
-          strokeWidth={1}
           shadowColor="black"
           shadowBlur={6}
           shadowOpacity={0.3}
@@ -371,7 +362,7 @@ function NodeShape({
         {/* GAUGE WIDGET */}
         {node.kind === "gauge" && (
           <Group x={width / 2} y={35}>
-            <Ring innerRadius={20} outerRadius={22} fill="#263554" strokeWidth={0} />
+            <Ring innerRadius={20} outerRadius={22} fill="#263554" />
             <Text
               y={-5}
               x={-20}
@@ -399,14 +390,7 @@ function NodeShape({
         {/* NUMERIC DISPLAY WIDGET */}
         {node.kind === "display" && (
           <Group x={10} y={10}>
-            <Rect
-              width={100}
-              height={32}
-              cornerRadius={4}
-              fill="#0b0e14"
-              stroke="#1b2438"
-              strokeWidth={1}
-            />
+            <Rect width={100} height={32} cornerRadius={4} fill="#0b0e14" stroke="#1b2438" />
             <Text
               x={6}
               y={8}
@@ -440,7 +424,7 @@ function NodeShape({
         {node.kind === "level" && (
           <Group x={15} y={8}>
             {/* Level glass tank outline */}
-            <Rect width={22} height={52} cornerRadius={3} stroke="#2a3d66" strokeWidth={1.5} />
+            <Rect width={22} height={52} cornerRadius={3} stroke="#2a3d66" />
             <Rect
               x={2}
               y={50 - Math.min(48, Math.max(0, (Number(tagValue) / 100) * 48))}
@@ -477,7 +461,6 @@ function NodeShape({
               radius={20}
               fill={tagValue === true || tagValue === "true" ? "#22c55e" : "#ef4444"}
               stroke="#fff"
-              strokeWidth={1}
               shadowColor="black"
               shadowBlur={4}
               onClick={(e) => {
@@ -554,7 +537,6 @@ function NodeShape({
               height={30}
               fill={tagValue ? "#22c55e" : "#475569"}
               stroke="#1e293b"
-              strokeWidth={1.5}
               cornerRadius={2}
             />
             {/* Spinning Fan */}
@@ -580,7 +562,7 @@ function NodeShape({
         {node.kind === "tank" && (
           <Group x={width / 2 - 30} y={10}>
             {/* Metal casing */}
-            <Rect width={60} height={50} cornerRadius={4} stroke="#475569" strokeWidth={2} />
+            <Rect width={60} height={50} cornerRadius={4} stroke="#475569" />
             {/* Liquid Level */}
             <Rect
               x={2}
@@ -606,11 +588,11 @@ function NodeShape({
         {/* PUMP WIDGET (SCADA STYLE) */}
         {node.kind === "pump" && (
           <Group x={width / 2} y={height / 2}>
-            <Circle radius={25} fill="#334155" stroke="#475569" strokeWidth={2} />
+            <Circle radius={25} fill="#334155" stroke="#475569" />
             {/* Impeller animation */}
             <Group rotation={tagValue ? (tick * 15) % 360 : 0}>
-              <Line points={[-15, 0, 15, 0]} stroke="#94a3b8" strokeWidth={3} />
-              <Line points={[0, -15, 0, 15]} stroke="#94a3b8" strokeWidth={3} />
+              <Line points={[-15, 0, 15, 0]} stroke="#94a3b8" />
+              <Line points={[0, -15, 0, 15]} stroke="#94a3b8" />
             </Group>
             <Text
               y={28}
@@ -644,21 +626,14 @@ function NodeShape({
 
         {/* PIPE WIDGET */}
         {node.kind === "pipe" && (
-          <Rect
-            width={width}
-            height={10}
-            y={height / 2 - 5}
-            fill="#475569"
-            stroke="#1e293b"
-            strokeWidth={1}
-          />
+          <Rect width={width} height={10} y={height / 2 - 5} fill="#475569" stroke="#1e293b" />
         )}
 
         {/* SLIDER CONTROLLER WIDGET */}
         {node.kind === "slider" && (
           <Group x={15} y={25}>
             {/* Track line */}
-            <Line points={[0, 10, 90, 10]} stroke="#263554" strokeWidth={4} lineCap="round" />
+            <Line points={[0, 10, 90, 10]} stroke="#263554" lineCap="round" />
             <Circle
               x={Math.min(90, Math.max(0, (Number(tagValue) / 100) * 90))}
               y={10}
@@ -717,23 +692,10 @@ function NodeShape({
         {/* TREND WIDGET */}
         {node.kind === "trend" && (
           <Group x={10} y={10}>
-            <Rect
-              width={160}
-              height={80}
-              cornerRadius={4}
-              fill="#0b0e14"
-              stroke="#1b2438"
-              strokeWidth={1}
-            />
+            <Rect width={160} height={80} cornerRadius={4} fill="#0b0e14" stroke="#1b2438" />
             {/* Draw mini graph grid */}
             {[20, 40, 60].map((yVal) => (
-              <Line
-                key={yVal}
-                points={[0, yVal, 160, yVal]}
-                stroke="#151d2a"
-                strokeWidth={0.5}
-                dash={[2, 2]}
-              />
+              <Line key={yVal} points={[0, yVal, 160, yVal]} stroke="#151d2a" dash={[2, 2]} />
             ))}
             {/* Draw a gorgeous neon line representation */}
             <Line
@@ -752,7 +714,6 @@ function NodeShape({
                 40,
               ]}
               stroke="#f3c44b"
-              strokeWidth={1.5}
               tension={0.3}
             />
             <Text
@@ -812,7 +773,6 @@ function NodeShape({
               cornerRadius={3}
               fill="#3fb6d6"
               stroke="#fff"
-              strokeWidth={1}
               opacity={0.9}
               shadowColor="black"
               shadowBlur={4}
@@ -851,7 +811,6 @@ function NodeShape({
           height={68}
           cornerRadius={10}
           stroke={accent}
-          strokeWidth={1.5}
           dash={[4, 4]}
           opacity={0.9}
         />
@@ -862,7 +821,6 @@ function NodeShape({
         cornerRadius={8}
         fill="#1a2030"
         stroke={accent}
-        strokeWidth={1.5}
         shadowColor="black"
         shadowBlur={12}
         shadowOpacity={0.4}
@@ -918,7 +876,7 @@ function Symbol({
     case "motor":
       return (
         <Group>
-          <Circle x={18} y={18} radius={16} stroke={accent} strokeWidth={2} />
+          <Circle x={18} y={18} radius={16} stroke={accent} />
           <Text x={10} y={10} text="M" fontSize={16} fontStyle="bold" fill={accent} />
           {animate && (
             <Ring
@@ -936,17 +894,17 @@ function Symbol({
     case "pump":
       return (
         <Group>
-          <Circle x={18} y={18} radius={16} stroke={accent} strokeWidth={2} />
+          <Circle x={18} y={18} radius={16} stroke={accent} />
           <Group x={18} y={18} rotation={animate ? (tick * 18) % 360 : 0}>
-            <Line points={[-12, 0, 12, 0]} stroke={accent} strokeWidth={2} />
-            <Line points={[0, -12, 0, 12]} stroke={accent} strokeWidth={2} />
+            <Line points={[-12, 0, 12, 0]} stroke={accent} />
+            <Line points={[0, -12, 0, 12]} stroke={accent} />
           </Group>
         </Group>
       );
     case "tank":
       return (
         <Group>
-          <Rect width={36} height={36} cornerRadius={4} stroke={accent} strokeWidth={2} />
+          <Rect width={36} height={36} cornerRadius={4} stroke={accent} />
           <Rect
             x={2}
             y={animate ? 8 + Math.sin(tick / 12) * 3 : 12}
@@ -961,31 +919,15 @@ function Symbol({
     case "valve":
       return (
         <Group y={6}>
-          <RegularPolygon
-            x={10}
-            y={12}
-            sides={3}
-            radius={12}
-            rotation={90}
-            stroke={accent}
-            strokeWidth={2}
-          />
-          <RegularPolygon
-            x={26}
-            y={12}
-            sides={3}
-            radius={12}
-            rotation={-90}
-            stroke={accent}
-            strokeWidth={2}
-          />
+          <RegularPolygon x={10} y={12} sides={3} radius={12} rotation={90} stroke={accent} />
+          <RegularPolygon x={26} y={12} sides={3} radius={12} rotation={-90} stroke={accent} />
         </Group>
       );
     case "transformer":
       return (
         <Group>
-          <Circle x={12} y={18} radius={11} stroke={accent} strokeWidth={2} />
-          <Circle x={24} y={18} radius={11} stroke={accent} strokeWidth={2} />
+          <Circle x={12} y={18} radius={11} stroke={accent} />
+          <Circle x={24} y={18} radius={11} stroke={accent} />
         </Group>
       );
     case "busbar":
@@ -996,31 +938,15 @@ function Symbol({
     case "contactor":
       return (
         <Group>
-          <Rect
-            x={4}
-            y={4}
-            width={28}
-            height={28}
-            cornerRadius={4}
-            stroke={accent}
-            strokeWidth={2}
-          />
-          <Line points={[10, 26, 22, 10]} stroke={accent} strokeWidth={2} />
+          <Rect x={4} y={4} width={28} height={28} cornerRadius={4} stroke={accent} />
+          <Line points={[10, 26, 22, 10]} stroke={accent} />
         </Group>
       );
     case "vfd":
     case "softstarter":
       return (
         <Group>
-          <Rect
-            x={2}
-            y={4}
-            width={32}
-            height={28}
-            cornerRadius={4}
-            stroke={accent}
-            strokeWidth={2}
-          />
+          <Rect x={2} y={4} width={32} height={28} cornerRadius={4} stroke={accent} />
           <Text x={6} y={10} text={kind === "vfd" ? "≋" : "S"} fontSize={16} fill={accent} />
         </Group>
       );
@@ -1030,7 +956,7 @@ function Symbol({
     case "level":
       return (
         <Group>
-          <Circle x={18} y={18} radius={15} stroke={accent} strokeWidth={2} />
+          <Circle x={18} y={18} radius={15} stroke={accent} />
           <Text
             x={6}
             y={11}
@@ -1051,7 +977,7 @@ function Symbol({
     case "conveyor":
       return (
         <Group>
-          <Rect x={0} y={14} width={36} height={10} stroke={accent} strokeWidth={1.5} />
+          <Rect x={0} y={14} width={36} height={10} stroke={accent} />
           {animate &&
             [0, 12, 24].map((x) => (
               <Rect
@@ -1067,11 +993,9 @@ function Symbol({
         </Group>
       );
     case "reactor":
-      return <Circle x={18} y={18} radius={16} stroke={accent} strokeWidth={2} />;
+      return <Circle x={18} y={18} radius={16} stroke={accent} />;
     default:
-      return (
-        <Rect x={4} y={4} width={28} height={28} cornerRadius={4} stroke={accent} strokeWidth={2} />
-      );
+      return <Rect x={4} y={4} width={28} height={28} cornerRadius={4} stroke={accent} />;
   }
 }
 

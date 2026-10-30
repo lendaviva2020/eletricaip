@@ -6,7 +6,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Activity, AlertTriangle, Send, Key, Lock, CheckCircle2, Radio } from "lucide-react";
+import {
+  Pulse,
+  Warning,
+  PaperPlaneRight,
+  Key,
+  Lock,
+  CheckCircle,
+  Radio,
+} from "@phosphor-icons/react";
 import {
   listIotDevices,
   getLatestReadings,
@@ -139,7 +147,7 @@ function RealtimePage() {
       <header className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Activity className="h-6 w-6 text-primary" /> Realtime / IoT
+            <Pulse className="h-6 w-6 text-primary" /> Realtime / IoT
           </h1>
           <p className="text-sm text-muted-foreground">
             Telemetria ao vivo, alarmes e comandos para PLCs/CLPs.
@@ -198,7 +206,7 @@ function RealtimePage() {
           />
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-4 w-4 text-warning" />
+              <Warning className="h-4 w-4 text-warning" />
               <h2 className="font-semibold">Alarmes recentes</h2>
             </div>
             <div className="space-y-1.5 max-h-72 overflow-auto">
@@ -227,7 +235,7 @@ function RealtimePage() {
                         className="h-6 px-2"
                         onClick={() => ackMut.mutate(a.id)}
                       >
-                        <CheckCircle2 className="h-3 w-3" />
+                        <CheckCircle className="h-3 w-3" />
                       </Button>
                     )}
                   </div>
@@ -322,7 +330,7 @@ function CommandPanel({
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Send className="h-4 w-4 text-info" />
+        <PaperPlaneRight className="h-4 w-4 text-info" />
         <h2 className="font-semibold">Enviar comando</h2>
       </div>
       <div className="grid sm:grid-cols-[1fr_140px_auto] gap-2 items-end">

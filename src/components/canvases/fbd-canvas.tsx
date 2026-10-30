@@ -1,4 +1,13 @@
-import { useState, useCallback, useRef, useEffect, memo, createContext, useContext, useMemo } from "react";
+import {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  memo,
+  createContext,
+  useContext,
+  useMemo,
+} from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -23,7 +32,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { toPng, toSvg } from "html-to-image";
-import { Cpu, Download, FileCode, Image, Trash2, Settings, Sparkles } from "lucide-react";
+import { Cpu, DownloadSimple, FileCode, Image, Trash, Gear, Sparkle } from "@phosphor-icons/react";
 import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useEditorStore } from "@/lib/editor/store";
 import { toast } from "sonner";
@@ -101,7 +110,7 @@ const FbdBlockNode = memo(function FbdBlockNode({ data }: { data: FbdNodeData })
             onClick={() => setShowConfig(!showConfig)}
             className="text-muted-foreground hover:text-foreground cursor-pointer"
           >
-            <Settings className="h-3 w-3" />
+            <Gear className="h-3 w-3" />
           </button>
         )}
       </div>
@@ -236,7 +245,9 @@ function FbdCanvasInner() {
     try {
       setStCode(compileFbdNodesToSt(nodes, edges, "FBD_Preview"));
     } catch (err) {
-      setStCode(`(* Diagrama incompleto: ${err instanceof Error ? err.message : "erro de compilação"} *)`);
+      setStCode(
+        `(* Diagrama incompleto: ${err instanceof Error ? err.message : "erro de compilação"} *)`,
+      );
     }
   }, [nodes, edges]);
 
@@ -439,7 +450,7 @@ function FbdCanvasInner() {
           onClick={deleteSelected}
           className="h-8 px-3 rounded border border-border bg-card/60 hover:bg-accent text-[10px] uppercase font-bold tracking-wider inline-flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash className="h-3.5 w-3.5" />
           <span>Apagar</span>
         </button>
       </div>
@@ -497,10 +508,10 @@ function FbdCanvasInner() {
 
       {/* FLOATING STRUCTURED TEXT CODE PANEL */}
       {showStPanel && (
-        <div className="absolute right-6 top-16 z-20 w-[300px] h-[360px] rounded-lg border border-primary/30 flex flex-col shadow-2xl overflow-hidden glass-strong bg-background/95">
+        <div className="absolute right-6 top-16 z-20 w-[300px] h-[360px] rounded-lg border border-border flex flex-col shadow-lg overflow-hidden bg-card">
           <div className="h-10 shrink-0 flex items-center justify-between px-3 border-b border-border bg-card/40">
             <span className="text-[10px] font-display font-bold tracking-wider text-primary flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 animate-spin" />
+              <Sparkle className="h-3.5 w-3.5 animate-spin" />
               COMPILADOR ST NEXUSMIND
             </span>
             <button
@@ -508,7 +519,7 @@ function FbdCanvasInner() {
               title="Exportar Código (.txt)"
               className="h-7 w-7 grid place-items-center rounded hover:bg-accent/50 cursor-pointer text-muted-foreground hover:text-foreground"
             >
-              <Download className="h-4 w-4" />
+              <DownloadSimple className="h-4 w-4" />
             </button>
           </div>
           <div className="flex-1 p-3 overflow-auto">

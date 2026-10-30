@@ -19,18 +19,18 @@ export function PageHeader({
   ...props
 }: PageHeaderProps) {
   return (
-    <div className={cn("space-y-2 pb-4 border-b border-border/80", className)} {...props}>
+    <div className={cn("space-y-1.5 pb-3 border-b border-border", className)} {...props}>
       {breadcrumb && <div className="text-xs text-muted-foreground">{breadcrumb}</div>}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">
               {title}
             </h1>
             {badge}
           </div>
           {description && (
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-2xl">
+            <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed max-w-2xl">
               {description}
             </p>
           )}

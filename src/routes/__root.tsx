@@ -10,6 +10,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, lazy, Suspense } from "react";
+import { MotionConfig } from "framer-motion";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth, getIsExplicitLogoutInProgress } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
@@ -27,6 +28,9 @@ const LazyUpgradeModal = lazy(() =>
 );
 const LazyShareModal = lazy(() =>
   import("@/components/share-modal").then((m) => ({ default: m.ShareModal })),
+);
+const LazyCommandPalette = lazy(() =>
+  import("@/components/command-palette").then((m) => ({ default: m.CommandPalette })),
 );
 
 if (typeof window !== "undefined") installDiagnosticsInterceptor();
@@ -52,7 +56,7 @@ function NotFound() {
   return (
     <div className="min-h-screen grid place-items-center bg-background">
       <div className="text-center">
-        <h1 className="text-7xl font-mono text-primary text-glow">404</h1>
+        <h1 className="text-7xl font-mono text-primary tabular-nums">404</h1>
         <p className="mt-2 text-muted-foreground">Rota industrial não encontrada</p>
         <Link
           to="/"
@@ -124,30 +128,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
-    links: [
-      {
-        rel: "preload",
-        href: "/fonts/ibm-plex-sans-400.woff2",
-        as: "font",
-        type: "font/woff2",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "preload",
-        href: "/fonts/ibm-plex-sans-600.woff2",
-        as: "font",
-        type: "font/woff2",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "preload",
-        href: "/fonts/space-grotesk-600.woff2",
-        as: "font",
-        type: "font/woff2",
-        crossOrigin: "anonymous",
-      },
-      { rel: "stylesheet", href: appCss },
-    ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -214,7 +195,7 @@ function AuthGate() {
         <LazyAppSidebar />
       </Suspense>
       <div className="flex-1 flex flex-col min-w-0">
-        <Suspense fallback={<div className="h-14 border-b border-border glass-strong shrink-0" />}>
+        <Suspense fallback={<div className="h-10 border-b border-border bg-card shrink-0" />}>
           <LazyTopbar />
         </Suspense>
         <Outlet />
@@ -230,6 +211,7 @@ function AuthenticatedModals() {
     <Suspense fallback={null}>
       <LazyUpgradeModal />
       <LazyShareModal />
+      <LazyCommandPalette />
     </Suspense>
   );
 }
@@ -279,12 +261,14 @@ function RootComponent() {
   // entre loaders (router context) e componentes (QueryClientProvider).
   const { queryClient } = Route.useRouteContext();
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AuthGate />
-        <Toaster />
-        <AuthenticatedModals />
-      </AuthProvider>
-    </QueryClientProvider>
+    <MotionConfig reducedMotion="user">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <AuthGate />
+          <Toaster />
+          <AuthenticatedModals />
+        </AuthProvider>
+      </QueryClientProvider>
+    </MotionConfig>
   );
 }

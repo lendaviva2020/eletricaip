@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Infinity as InfinityIcon } from "lucide-react";
+import { Sparkle, Infinity as InfinityIcon } from "@phosphor-icons/react";
 import { getAiCredits } from "@/lib/ai-architect.functions";
 import { pushNotification } from "@/lib/notification-service";
 
@@ -41,7 +41,7 @@ export function AiCreditsBadge() {
   if (!q.data || !q.data.ok) {
     return (
       <div className="hidden lg:flex h-8 items-center gap-1.5 rounded border border-border bg-card px-2 text-[11px] font-mono text-muted-foreground">
-        <Sparkles className="h-3 w-3" /> --
+        <Sparkle className="h-3 w-3" /> --
       </div>
     );
   }
@@ -57,7 +57,7 @@ export function AiCreditsBadge() {
       }`}
       title={`Plano ${plan} · ${unlimited ? "ilimitado" : `${remaining}/${max_credits} créditos restantes`}`}
     >
-      <Sparkles className="h-3 w-3" />
+      <Sparkle className="h-3 w-3" />
       {unlimited ? (
         <>
           <InfinityIcon className="h-3 w-3" /> IA

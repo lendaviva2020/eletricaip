@@ -3,14 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import {
   ShieldCheck,
-  ShieldAlert,
-  AlertTriangle,
-  CheckCircle2,
+  ShieldWarning,
+  Warning,
+  CheckCircle,
   Clock,
-  ChevronLeft,
-  Activity,
-  ExternalLink,
-} from "lucide-react";
+  CaretLeft,
+  Pulse,
+  ArrowSquareOut,
+} from "@phosphor-icons/react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -75,7 +75,7 @@ function SecurityMonitorPage() {
               to="/settings"
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
-              <ChevronLeft className="h-3 w-3" /> Configurações
+              <CaretLeft className="h-3 w-3" /> Configurações
             </Link>
             <h1 className="mt-1 text-2xl font-semibold flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
@@ -98,28 +98,28 @@ function SecurityMonitorPage() {
         {/* KPIs */}
         <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
           <KpiCard
-            icon={ShieldAlert}
+            icon={ShieldWarning}
             label="Issues abertas"
             value={data?.totals.open}
             tone="destructive"
             loading={isLoading}
           />
           <KpiCard
-            icon={AlertTriangle}
+            icon={Warning}
             label="Críticas"
             value={data?.totals.critical}
             tone="destructive"
             loading={isLoading}
           />
           <KpiCard
-            icon={AlertTriangle}
+            icon={Warning}
             label="Altas"
             value={data?.totals.high}
             tone="warning"
             loading={isLoading}
           />
           <KpiCard
-            icon={CheckCircle2}
+            icon={CheckCircle}
             label="Resolvidas"
             value={data?.totals.fixed}
             tone="success"
@@ -139,7 +139,7 @@ function SecurityMonitorPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary" />
+                <Pulse className="h-4 w-4 text-primary" />
                 Alertas industriais por dia (30d)
               </CardTitle>
             </CardHeader>
@@ -200,7 +200,7 @@ function SecurityMonitorPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary" />
+                <Pulse className="h-4 w-4 text-primary" />
                 Eventos de auditoria por dia (30d)
               </CardTitle>
             </CardHeader>
@@ -239,7 +239,7 @@ function SecurityMonitorPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-primary" />
+              <ShieldWarning className="h-4 w-4 text-primary" />
               Findings de scans
             </CardTitle>
           </CardHeader>
@@ -290,7 +290,7 @@ function SecurityMonitorPage() {
                         rel="noreferrer"
                         className="text-xs text-primary hover:underline inline-flex items-center gap-1 shrink-0"
                       >
-                        Abrir <ExternalLink className="h-3 w-3" />
+                        Abrir <ArrowSquareOut className="h-3 w-3" />
                       </a>
                     )}
                   </div>

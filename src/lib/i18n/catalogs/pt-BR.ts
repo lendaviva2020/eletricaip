@@ -77,7 +77,8 @@ export const ptBR = {
     noProjectOpen: "Nenhum projeto aberto",
     openProject: "Abrir projeto",
     createProject: "Novo projeto",
-    emptyWorkspaceDescription: "Abra um projeto existente ou crie um novo para começar a trabalhar no workspace industrial.",
+    emptyWorkspaceDescription:
+      "Abra um projeto existente ou crie um novo para começar a trabalhar no workspace industrial.",
     loadingProject: "Carregando projeto...",
     loadingCanvas: "Carregando canvas...",
     sync60Hz: "Sync · 60Hz",
@@ -86,7 +87,8 @@ export const ptBR = {
     collapseRight: "Recolher painel direito",
     expandRight: "Expandir painel direito",
     conflictTitle: "Conflito de Versão Detectado",
-    conflictDesc: "Este projeto foi modificado no servidor por outra sessão ou usuário. Para evitar perda de dados, escolha como prosseguir:",
+    conflictDesc:
+      "Este projeto foi modificado no servidor por outra sessão ou usuário. Para evitar perda de dados, escolha como prosseguir:",
     conflictReload: "Recarregar do servidor",
     conflictOverwrite: "Sobrescrever servidor",
     modes: {
@@ -255,7 +257,8 @@ export const ptBR = {
   },
   properties: {
     title: "Propriedades Técnicas",
-    selectElementToInspect: "Selecione um elemento no canvas para visualizar e editar suas especificações técnicas.",
+    selectElementToInspect:
+      "Selecione um elemento no canvas para visualizar e editar suas especificações técnicas.",
     parameters: "Parâmetros Elétricos",
     tag: "Identificador (TAG)",
     catalogType: "Tipo de Catálogo",
@@ -306,7 +309,8 @@ export const ptBR = {
     unitPrice: "Preço Unitário",
     totalPrice: "Preço Total",
     conductorsMemorial: "Memorial de Condutores e Circuitos",
-    technicalDisclaimer: "Documento técnico gerado pelo ElétricAi. Cálculos normativos baseados em NBR 5410, IEC 60947 e IEC 60909.",
+    technicalDisclaimer:
+      "Documento técnico gerado pelo ElétricAi. Cálculos normativos baseados em NBR 5410, IEC 60947 e IEC 60909.",
     generatedAt: "Gerado em {date} · {norm}",
     standardApplicable: "Norma Aplicável",
   },
@@ -363,10 +367,13 @@ export const ptBR = {
     maint: "Manutenção",
     selectScadaOrTwin: "Selecione um equipamento no SCADA ou Twin para ver suas propriedades.",
     copilotTitle: "EletricAI Copilot",
-    copilotGreeting: "Olá! Posso gerar unifilar, ladder, FBD, SCADA, alarmes e Digital Twin a partir de uma descrição em linguagem natural. Ex.:",
-    copilotExample: "\"Criar esteira com motor 7.5kW, E-STOP, sensor e inversor com proteção NR-12.\"",
+    copilotGreeting:
+      "Olá! Posso gerar unifilar, ladder, FBD, SCADA, alarmes e Digital Twin a partir de uma descrição em linguagem natural. Ex.:",
+    copilotExample:
+      '"Criar esteira com motor 7.5kW, E-STOP, sensor e inversor com proteção NR-12."',
     contextualSuggestionTitle: "Sugestão contextual",
-    contextualSuggestionDesc: "Detectei que M-03 está com sobrecorrente. Recomendo aumentar o tempo de rampa do VFD para 4s e revisar o cabo (2.5 mm² → 4 mm² conforme NBR 5410).",
+    contextualSuggestionDesc:
+      "Detectei que M-03 está com sobrecorrente. Recomendo aumentar o tempo de rampa do VFD para 4s e revisar o cabo (2.5 mm² → 4 mm² conforme NBR 5410).",
     applyBtn: "Aplicar",
     detailsBtn: "Detalhes",
     autoGenTitle: "Geração automática",
@@ -385,8 +392,10 @@ export const ptBR = {
     ocrActive: "Módulo OCR Ativo",
     ocrExtracting: "Extraindo e validando especificações de engenharia...",
     normAlertsTitle: "Alertas Normativos NexusMind",
-    allCompliant: "✅ Todos os canvas em conformidade com as normas ABNT NBR 5410, NR-10, NR-12 e ISA-18.2!",
-    initialGreeting: "Olá, sou o **NexusMind**, sua IA especialista em automação e normas elétricas (ABNT/IEC).\n\nComo posso ajudar você no projeto hoje? Você pode digitar comandos ou enviar um arquivo CSV/TXT/PDF de briefing!",
+    allCompliant:
+      "✅ Todos os canvas em conformidade com as normas ABNT NBR 5410, NR-10, NR-12 e ISA-18.2!",
+    initialGreeting:
+      "Olá, sou o **NexusMind**, sua IA especialista em automação e normas elétricas (ABNT/IEC).\n\nComo posso ajudar você no projeto hoje? Você pode digitar comandos ou enviar um arquivo CSV/TXT/PDF de briefing!",
     generatingPatch: "Gerando patch validado (Zod + NBR 5410)...",
     processingPrompt: "Processando prompt...",
     patchAppliedTitle: "Patch aplicado ao canvas WebGL.",
@@ -395,16 +404,20 @@ export const ptBR = {
     promptPlaceholder: "Projete um disjuntor de 125A NBR-5410...",
     enterHint: "Enter envia · Shift+Enter quebra linha",
     configAiKey: "Configurar Chave IA",
-    unsupportedFile: "Formato não suportado ({fileName}). Envie um arquivo de briefing em **.csv**, **.txt**, **.json** ou **.pdf**.",
-    pdfNoText: "📄 O PDF **{fileName}** não possui camada de texto selecionável (provável imagem escaneada).\n\nEnvie uma lista de cargas em **.csv**, **.txt** ou um **.pdf** com texto selecionável.",
+    unsupportedFile:
+      "Formato não suportado ({fileName}). Envie um arquivo de briefing em **.csv**, **.txt**, **.json** ou **.pdf**.",
+    pdfNoText:
+      "📄 O PDF **{fileName}** não possui camada de texto selecionável (provável imagem escaneada).\n\nEnvie uma lista de cargas em **.csv**, **.txt** ou um **.pdf** com texto selecionável.",
     aiRole: "🤖 NexusMind",
     userRole: "👤 Você",
     quickDirectOnline: "+ Partida Direta",
     quickSocketRcd: "+ Tomada c/ DR",
     quickSoftStarter: "+ Soft-Starter",
-    quickDirectOnlinePrompt: "Adicionar circuito de partida direta com motor 15kW, contator KM1 e disjuntor-motor",
+    quickDirectOnlinePrompt:
+      "Adicionar circuito de partida direta com motor 15kW, contator KM1 e disjuntor-motor",
     quickSocketRcdPrompt: "Adicionar circuito de tomadas 220V com DR 30mA e disjuntor 20A",
-    quickSoftStarterPrompt: "Adicionar circuito de motor 37kW com soft-starter e contator de bypass",
+    quickSoftStarterPrompt:
+      "Adicionar circuito de motor 37kW com soft-starter e contator de bypass",
   },
   projects: {
     title: "Projetos industriais",
@@ -425,8 +438,8 @@ export const ptBR = {
     emptyTitle: "Você ainda não tem projetos. Crie o primeiro para começar.",
     noMatchTitle: "Nenhum projeto corresponde aos filtros atuais.",
     loadError: "Falha ao carregar projetos: {error}",
-    createdSuccess: "Projeto \"{name}\" criado",
-    duplicatedSuccess: "Projeto duplicado como \"{name}\"",
+    createdSuccess: 'Projeto "{name}" criado',
+    duplicatedSuccess: 'Projeto duplicado como "{name}"',
     archivedSuccess: "Projeto arquivado",
     deletedSuccess: "Projeto excluído permanentemente",
     actionBOM: "BOM",
@@ -434,8 +447,8 @@ export const ptBR = {
     actionDuplicate: "Duplicar projeto",
     actionArchive: "Arquivar projeto",
     actionDelete: "Excluir permanentemente",
-    confirmArchive: "Arquivar \"{name}\"?",
-    confirmDelete: "Excluir permanentemente \"{name}\"?\n\nEsta ação não pode ser desfeita.",
+    confirmArchive: 'Arquivar "{name}"?',
+    confirmDelete: 'Excluir permanentemente "{name}"?\n\nEsta ação não pode ser desfeita.',
   },
   bom: {
     title: "Lista de Materiais (BOM)",
@@ -465,6 +478,47 @@ export const ptBR = {
     allCategories: "Todas as categorias",
     empty: "Nenhum componente encontrado. Catálogo aguardando cadastro pelo administrador.",
     footerHint: "Para adicionar componentes ao seu projeto, abra o BOM em",
+  },
+  safety: {
+    eStopActive: "E-STOP ATUADO",
+    eStopTriggered: "Parada de emergência atuada. Circuito desenergizado.",
+    rearm: "Rearmar",
+    rearmed: "Circuito rearmado. Pressione 'Simular' para reiniciar a operação.",
+    blockedStart:
+      "Comando de partida bloqueado: Parada de Emergência atuada. Efetue o rearme do circuito.",
+    emergencyStop: "PARADA DE EMERGÊNCIA",
+  },
+  canvasToolbar: {
+    canvasUnifilar: "Canvas Unifilar",
+    canvasMultifilar: "Canvas Multifilar",
+    project: "PROJETO:",
+    sheet: "FOLHA:",
+    activeDoc: "DOCUMENTO ATIVO",
+    simulate: "Simular",
+    pause: "Pausar",
+    resume: "Retomar",
+    stop: "Parar",
+    reset: "Redefinir",
+    energized: "ENERGIZADO",
+    paused: "PAUSADA",
+    stopped: "PARADA",
+    simActive: "Simulação Ativa",
+    simPaused: "Simulação Pausada",
+    simStopped: "Simulação Parada",
+  },
+  dockTabs: {
+    diagnostics: "Diagnósticos",
+    voltageDrop: "Cálculos NBR 5410",
+    bom: "Lista de Materiais (BOM)",
+    variables: "Variáveis & Tags",
+    logs: "Logs",
+    alarms: "Alarmes",
+    terminal: "Terminal",
+    events: "Eventos",
+    opcua: "OPC-UA",
+    modbus: "Modbus",
+    runtime: "Runtime",
+    noIssues: "Nenhum problema detectado. Diagrama elétrico em conformidade.",
   },
 } as const;
 

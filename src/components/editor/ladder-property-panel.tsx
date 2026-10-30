@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Edit3, Search, Tag as TagIcon, Plus, Check } from "lucide-react";
+import { PencilLine, MagnifyingGlass, Tag as TagIcon, Plus, Check } from "@phosphor-icons/react";
 import { useEditorStore, type EditorTagType } from "@/lib/editor/store";
 import { ensureRungTopology, type LadderRung } from "@/lib/ladder/types";
 import { Input } from "@/components/ui/input";
@@ -25,9 +25,7 @@ export function LadderPropertyPanel() {
     if (!searchTag.trim()) return list;
     const term = searchTag.toLowerCase();
     return list.filter(
-      (t) =>
-        t.name.toLowerCase().includes(term) ||
-        (t.type && t.type.toLowerCase().includes(term)),
+      (t) => t.name.toLowerCase().includes(term) || (t.type && t.type.toLowerCase().includes(term)),
     );
   }, [editorTags, searchTag]);
 
@@ -39,7 +37,8 @@ export function LadderPropertyPanel() {
           <span>PROPRIEDADES & TAGS</span>
         </div>
         <p className="text-xs">
-          Selecione um contato, bobina, temporizador ou comparador no diagrama Ladder para editar seus parâmetros e vincular tags.
+          Selecione um contato, bobina, temporizador ou comparador no diagrama Ladder para editar
+          seus parâmetros e vincular tags.
         </p>
 
         <div className="pt-4 border-t border-border/40">
@@ -110,9 +109,7 @@ export function LadderPropertyPanel() {
         // Também atualiza matriz de células para sincronia total
         const updatedCells = r.cells.map((row) =>
           row.map((c) =>
-            c.operand === op || c.id === selectedTarget.elementId
-              ? { ...c, operand: newOp }
-              : c,
+            c.operand === op || c.id === selectedTarget.elementId ? { ...c, operand: newOp } : c,
           ),
         );
 
@@ -189,7 +186,7 @@ export function LadderPropertyPanel() {
             [{kind}]
           </span>
         </div>
-        <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
+        <PencilLine className="h-3.5 w-3.5 text-muted-foreground" />
       </div>
 
       {/* Formulário Contextual */}
@@ -353,7 +350,12 @@ export function LadderPropertyPanel() {
                     Entrada (IN):
                   </label>
                   <Input
-                    value={String(selectedTarget.params?.IN ?? selectedTarget.params?.IN1 ?? selectedTarget.operand ?? "")}
+                    value={String(
+                      selectedTarget.params?.IN ??
+                        selectedTarget.params?.IN1 ??
+                        selectedTarget.operand ??
+                        "",
+                    )}
                     onChange={(e) => updateParam("IN", e.target.value)}
                     placeholder="Ex.: SINAL_IN"
                     className="h-7 text-xs font-mono bg-background"
@@ -483,7 +485,7 @@ export function LadderPropertyPanel() {
           Pesquisa de Tags
         </label>
         <div className="relative">
-          <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <MagnifyingGlass className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchTag}
             onChange={(e) => setSearchTag(e.target.value)}

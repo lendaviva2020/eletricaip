@@ -14,7 +14,7 @@ export function IndustrialFlowNode({ data, selected }: NodeProps<IndustrialNode>
   return (
     <div
       className={cn(
-        "min-w-[120px] rounded-md bg-card/90 backdrop-blur border-2 px-2 py-1.5 shadow-panel transition-all",
+        "min-w-[120px] rounded-md bg-card border-2 px-2 py-1.5 shadow-panel transition-all",
         color,
         selected && "ring-2 ring-ring shadow-glow",
         data.energized && "energized",
