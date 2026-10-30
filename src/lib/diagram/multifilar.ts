@@ -3,6 +3,7 @@
 import type { Command } from "./commands";
 import { makeEdge, makeNode } from "./model";
 import type { CircuitConfig, DiagramDoc, DiagramEdge, DiagramNode, NodeKind } from "./schema";
+import { classifyMargin, type Severity } from "../diagnostics/types";
 
 export const CONDUCTOR_LABELS: Record<CircuitConfig, string[]> = {
   F: ["L1"],
@@ -441,6 +442,7 @@ export interface VoltageDropResult {
   max_allowed_pct: number;
   compliant: boolean;
   message: string;
+  assumptions?: readonly string[];
 }
 
 /**
@@ -464,22 +466,35 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
     if (!src || !tgt) continue;
 
     const cable = e.cable;
+    const assumptions: string[] = [];
+    if (!cable?.length_m) assumptions.push("Comprimento adotado como padrão (25 m)");
+    if (!cable?.section_mm2) assumptions.push("Seção adotada como padrão (4 mm²)");
+
     // Se o cabo não estiver explícito na aresta, infere valores nominais da carga ou padrão
     const length_m = cable?.length_m ?? 25;
     const section_mm2 = cable?.section_mm2 ?? 4;
 
     // Determina a corrente do circuito a partir dos parâmetros do nó de carga ou proteção
     let current_A = 20;
-    const loadNode = [tgt, src].find((n) => n.params.kind === "motor" || n.params.kind === "load" || n.params.kind === "breaker");
+    const loadNode = [tgt, src].find(
+      (n) => n.params.kind === "motor" || n.params.kind === "load" || n.params.kind === "breaker",
+    );
     if (loadNode) {
       const p = loadNode.params;
       if (p.kind === "motor") {
-        current_A = (p as any).current_A ?? (p as any).fla_A ?? Math.round(((p as any).power_kW * 1000) / (Math.sqrt(3) * (p as any).voltage_V * 0.85 * 0.88));
+        current_A =
+          (p as any).current_A ??
+          (p as any).fla_A ??
+          Math.round(
+            ((p as any).power_kW * 1000) / (Math.sqrt(3) * (p as any).voltage_V * 0.85 * 0.88),
+          );
       } else if (p.kind === "breaker") {
         current_A = (p as any).in_A ?? 20;
       } else if (p.kind === "load") {
         current_A = Math.round((p as any).power_W / ((p as any).voltage_V * (p as any).fp));
       }
+    } else {
+      assumptions.push("Corrente adotada como padrão (20 A)");
     }
 
     const config = e.circuitConfig ?? inferCircuitConfig(e, src, tgt);
@@ -513,6 +528,7 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
       max_allowed_pct,
       compliant,
       message: `Queda de tensão no cabo ${cableName}: ${drop_pct}% (Permitido < ${max_allowed_pct.toFixed(1)}% NBR 5410)`,
+      assumptions: assumptions.length > 0 ? assumptions : undefined,
     });
   }
 
@@ -522,8 +538,11 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
 export interface DiagnosticAlert {
   id: string;
   type: "AVISO" | "ERRO" | "OK";
+  severity?: Severity;
   message: string;
   nodeId?: string;
+  edgeId?: string;
+  assumptions?: readonly string[];
 }
 
 /**
@@ -544,7 +563,9 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
   );
 
   if (nodes.length === 0) {
-    return [{ id: "empty", type: "AVISO", message: "Diagrama elétrico vazio." }];
+    return [
+      { id: "empty", type: "AVISO", severity: "warning", message: "Diagrama elétrico vazio." },
+    ];
   }
 
   // 1. Verificação de tags obrigatórias
@@ -554,6 +575,7 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
       alerts.push({
         id: `tag_${n.id}`,
         type: "ERRO",
+        severity: "error",
         message: `${n.id} sem tag definida`,
         nodeId: n.id,
       });
@@ -566,33 +588,61 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
     alerts.push({
       id: `mismatch_${m.edgeId}`,
       type: "ERRO",
+      severity: "error",
       message: `Inconsistência de fases: dispositivo possui ${m.availablePoles} pólos, mas a carga exige ${m.requiredPoles} fases.`,
+      edgeId: m.edgeId,
     });
   }
 
-  // 3. Verificação de queda de tensão NBR 5410
+  // 3. Verificação de queda de tensão NBR 5410 com classificação determinística de margem
   const voltageDrops = calculateVoltageDropNbr5410(doc);
   for (const vd of voltageDrops) {
-    if (!vd.compliant) {
+    const marginRatio = vd.max_allowed_pct > 0 ? vd.drop_pct / vd.max_allowed_pct : 1;
+    const severity = classifyMargin(marginRatio, 0.9);
+    const targetNodeId = doc.edges[vd.edgeId]?.target;
+
+    if (severity === "error") {
       alerts.push({
         id: `vd_err_${vd.edgeId}`,
         type: "ERRO",
+        severity: "error",
         message: `Excesso de queda de tensão: ${vd.drop_pct}% > ${vd.max_allowed_pct}% (NBR 5410). Aumente a seção do cabo.`,
+        nodeId: targetNodeId,
+        edgeId: vd.edgeId,
+        assumptions: vd.assumptions,
       });
-    } else {
+    } else if (severity === "warning") {
       alerts.push({
         id: `vd_warn_${vd.edgeId}`,
         type: "AVISO",
-        message: vd.message,
+        severity: "warning",
+        message: `Atenção: queda de tensão ${vd.drop_pct}% próxima ao limite de ${vd.max_allowed_pct}% (NBR 5410, margem >= 90%).`,
+        nodeId: targetNodeId,
+        edgeId: vd.edgeId,
+        assumptions: vd.assumptions,
+      });
+    } else {
+      alerts.push({
+        id: `vd_ok_${vd.edgeId}`,
+        type: "OK",
+        severity: "ok",
+        message: `Queda de tensão em conformidade: ${vd.drop_pct}% (< ${vd.max_allowed_pct.toFixed(1)}% NBR 5410).`,
+        nodeId: targetNodeId,
+        edgeId: vd.edgeId,
+        assumptions: vd.assumptions,
       });
     }
   }
 
   // 4. Verificação de conectividade contínua
-  if (edges.length > 0 && alerts.filter((a) => a.type === "ERRO").length === 0) {
+  if (
+    edges.length > 0 &&
+    alerts.filter((a) => a.type === "ERRO" || a.severity === "error").length === 0
+  ) {
     alerts.push({
       id: "conn_ok",
       type: "OK",
+      severity: "ok",
       message: "Conectividade validada",
     });
   }

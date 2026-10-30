@@ -173,6 +173,13 @@ export function UnifiedBottomDock() {
     }
   }, [isElectricalMode, doc]);
 
+  // Apenas diagnósticos acionáveis (warning ou error) contam para badge e atenção
+  const actionableDiagnostics = useMemo(() => {
+    return unifilarDiagnostics.filter(
+      (d) => d.type === "ERRO" || d.type === "AVISO" || (d.severity && d.severity !== "ok"),
+    );
+  }, [unifilarDiagnostics]);
+
   const voltageDrops: VoltageDropResult[] = useMemo(() => {
     if (!isElectricalMode) return [];
     try {
@@ -344,12 +351,12 @@ export function UnifiedBottomDock() {
                     <span
                       className={cn(
                         "ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono",
-                        unifilarDiagnostics.length > 0
+                        actionableDiagnostics.length > 0
                           ? "bg-warning/15 text-warning border border-warning/30"
                           : "bg-success/15 text-success border border-success/30",
                       )}
                     >
-                      {unifilarDiagnostics.length}
+                      {actionableDiagnostics.length}
                     </span>
                   )}
 
@@ -456,16 +463,16 @@ export function UnifiedBottomDock() {
           {/* ABA 1: DIAGNÓSTICOS UNIFILAR / MULTIFILAR */}
           {tab === "diagnosticos" && (activeMode === "unifilar" || activeMode === "multifilar") && (
             <div className="space-y-1.5">
-              {unifilarDiagnostics.length === 0 ? (
+              {actionableDiagnostics.length === 0 ? (
                 <div className="flex items-center gap-2 text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 p-3 rounded">
                   <CheckCircle className="h-4 w-4 shrink-0" />
                   <span>
                     Nenhum problema detectado. Diagrama unifilar e conexões de barramento em
-                    conformidade com as regras de conectividade.
+                    conformidade com as regras de conectividade e limites da NBR 5410.
                   </span>
                 </div>
               ) : (
-                unifilarDiagnostics.map((diag, idx) => (
+                actionableDiagnostics.map((diag, idx) => (
                   <div
                     key={diag.id || idx}
                     onClick={() => {
@@ -503,6 +510,17 @@ export function UnifiedBottomDock() {
                     >
                       {diag.type}
                     </span>
+
+                    {/* Indicador próprio: baseado em premissa (não eleva a severidade) */}
+                    {diag.assumptions && diag.assumptions.length > 0 && (
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-muted text-muted-foreground border border-border shrink-0"
+                        title={diag.assumptions.join("; ")}
+                      >
+                        baseado em premissa
+                      </span>
+                    )}
+
                     <span className="flex-1 truncate">{diag.message}</span>
                     {diag.nodeId && (
                       <span className="text-[10px] text-[#38bdf8] underline shrink-0 hover:text-white">
