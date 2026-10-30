@@ -22,6 +22,7 @@ import {
   Info,
   Stack,
   ArrowRight,
+  ArrowCounterClockwise,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/lib/editor/store";
@@ -37,6 +38,10 @@ import {
   type VoltageDropResult,
 } from "@/lib/diagram/multifilar";
 import { validateRungs, type LadderIssue } from "@/lib/ladder/validator";
+import { cmd, type Command } from "@/lib/diagram/commands";
+import { evaluateAllRules, proposeFixes } from "@/lib/diagnostics/draft-orchestrator";
+import { AiFixDialog } from "./ai-fix-dialog";
+import type { FixProposal } from "@/lib/diagnostics/contract";
 
 /**
  * Retorna o conjunto de abas contextuais de acordo com o modo de canvas ativo.
@@ -247,6 +252,83 @@ export function UnifiedBottomDock() {
     return liveLogs.filter((l) => (l.channel ?? "Logs") === "Alarmes" && l.lvl === "err").length;
   }, [liveLogs]);
 
+  // Propostas de correção determinísticas com IA para não conformidades ativas
+  const [fixDialogOpen, setFixDialogOpen] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<FixProposal | null>(null);
+  const [isApplyingFix, setIsApplyingFix] = useState(false);
+  const [lastAppliedFix, setLastAppliedFix] = useState<{ count: number; timestamp: number } | null>(null);
+
+  // Timer para expirar o aviso de desfazer em 30 segundos
+  useEffect(() => {
+    if (!lastAppliedFix) return;
+    const timer = setTimeout(() => {
+      setLastAppliedFix(null);
+    }, 30_000);
+    return () => clearTimeout(timer);
+  }, [lastAppliedFix]);
+
+  const computedProposals = useMemo(() => {
+    if (!isElectricalMode || actionableDiagnostics.length === 0) return [];
+    try {
+      const rulesDiags = evaluateAllRules(doc);
+      const proposals = proposeFixes(doc, rulesDiags);
+      return proposals.filter(
+        (p) => p.operations.length > 0 && !p.blockReason?.includes("elemento de segurança"),
+      );
+    } catch {
+      return [];
+    }
+  }, [isElectricalMode, actionableDiagnostics.length, doc]);
+
+  const handleOpenAiFix = useCallback(() => {
+    if (computedProposals.length === 0) return;
+    setSelectedProposal(computedProposals[0]);
+    setFixDialogOpen(true);
+  }, [computedProposals]);
+
+  const handleApproveFix = useCallback(
+    (proposal: FixProposal) => {
+      setIsApplyingFix(true);
+      try {
+        const commands: Command[] = [];
+        for (const op of proposal.operations) {
+          const unifilarEdge = doc.edges[op.conductorId];
+          if (unifilarEdge) {
+            commands.push(
+              cmd.updateEdgeCable(op.conductorId, unifilarEdge.cable, {
+                ...(unifilarEdge.cable ?? { insulation: "PVC" }),
+                section_mm2: op.sectionMm2,
+              }),
+            );
+          }
+          const mfEdgeId = `mf_${op.conductorId}`;
+          const mfEdge = doc.edges[mfEdgeId];
+          if (mfEdge) {
+            commands.push(
+              cmd.updateEdgeCable(mfEdgeId, mfEdge.cable, {
+                ...(mfEdge.cable ?? { insulation: "PVC" }),
+                section_mm2: op.sectionMm2,
+              }),
+            );
+          }
+        }
+        if (commands.length > 0) {
+          useDiagramStore.getState().dispatch(cmd.batch(commands));
+          setLastAppliedFix({ count: proposal.operations.length, timestamp: Date.now() });
+        }
+        setFixDialogOpen(false);
+      } finally {
+        setIsApplyingFix(false);
+      }
+    },
+    [doc],
+  );
+
+  const handleUndoFix = useCallback(() => {
+    useDiagramStore.getState().undo();
+    setLastAppliedFix(null);
+  }, []);
+
   // Linhas do console para a aba selecionada
   const consoleLines = useMemo(() => {
     const live = liveLogs.filter((l) => (l.channel ?? "Logs") === tab);
@@ -431,6 +513,39 @@ export function UnifiedBottomDock() {
         <div className="flex items-center gap-1.5 ml-auto shrink-0">
           {tab === "Modbus" && <WifiHigh className="h-3 w-3 text-muted-foreground" />}
 
+          {/* Banner de Desfazer Correção (se ativo nos últimos 30s) */}
+          {lastAppliedFix && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded bg-success/15 border border-success/30 text-success text-[11px] font-mono">
+              <span>{t("aiFix.toastSuccess", { count: lastAppliedFix.count })}</span>
+              <button
+                onClick={handleUndoFix}
+                className="ml-1 underline font-semibold hover:text-white transition-colors"
+                data-testid="ai-fix-undo-button-dock"
+              >
+                {t("aiFix.undoButton")}
+              </button>
+            </div>
+          )}
+
+          {/* Botão de Corrigir com IA no Dock Unifilar/Multifilar */}
+          {isElectricalMode && actionableDiagnostics.length > 0 && (
+            <button
+              onClick={handleOpenAiFix}
+              disabled={computedProposals.length === 0}
+              className={cn(
+                "h-7 px-2.5 rounded text-xs font-mono font-semibold flex items-center gap-1.5 border transition-colors",
+                computedProposals.length > 0
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 border-primary"
+                  : "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-60",
+              )}
+              title={t("aiFix.buttonTooltip")}
+              data-testid="ai-fix-button"
+            >
+              <Cpu className="h-3.5 w-3.5" />
+              <span>{t("aiFix.buttonLabel")}</span>
+            </button>
+          )}
+
           {/* Robotão Limpar Console */}
           {(tab === "Logs" || tab === "Terminal" || tab === "Eventos") && (
             <button
@@ -463,6 +578,28 @@ export function UnifiedBottomDock() {
           {/* ABA 1: DIAGNÓSTICOS UNIFILAR / MULTIFILAR */}
           {tab === "diagnosticos" && (activeMode === "unifilar" || activeMode === "multifilar") && (
             <div className="space-y-1.5">
+              {actionableDiagnostics.length > 0 && (
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/60">
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {actionableDiagnostics.length} não conformidade(s) detectada(s) segundo a NBR 5410
+                  </span>
+                  <button
+                    onClick={handleOpenAiFix}
+                    disabled={computedProposals.length === 0}
+                    className={cn(
+                      "h-6 px-2 rounded text-[11px] font-mono font-semibold flex items-center gap-1 border transition-colors",
+                      computedProposals.length > 0
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 border-primary"
+                        : "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-60",
+                    )}
+                    data-testid="ai-fix-action-button"
+                  >
+                    <Cpu className="h-3 w-3" />
+                    <span>{t("aiFix.buttonLabel")}</span>
+                  </button>
+                </div>
+              )}
+
               {actionableDiagnostics.length === 0 ? (
                 <div className="flex items-center gap-2 text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 p-3 rounded">
                   <CheckCircle className="h-4 w-4 shrink-0" />
@@ -990,6 +1127,16 @@ export function UnifiedBottomDock() {
             )}
         </div>
       )}
+
+      {/* 3. Diálogo Modal de Homologação Corretiva IA */}
+      <AiFixDialog
+        open={fixDialogOpen}
+        onOpenChange={setFixDialogOpen}
+        proposal={selectedProposal}
+        rationalePt={selectedProposal?.rationalePt}
+        isApplying={isApplyingFix}
+        onApprove={handleApproveFix}
+      />
     </div>
   );
 }
