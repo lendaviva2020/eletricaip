@@ -158,7 +158,6 @@ neutralizeMessageChannelGlobals(self as unknown as Record<string, unknown>);
 // qualquer script de usuário rodar, impedindo poluição de protótipo.
 freezeIntrinsics(self as unknown as Record<string, unknown>);
 
-
 const BLOCKED_PROPERTIES = new Set([
   "__proto__",
   "prototype",

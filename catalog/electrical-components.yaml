@@ -1,0 +1,501 @@
+# ==============================================================================
+# ELÉTRICAI — CATÁLOGO OFICIAL DE COMPONENTES ELÉTRICOS INDUSTRIAIS
+# ==============================================================================
+# Padrões Normativos de Referência:
+# - ABNT NBR 5410:2004 (Instalações elétricas de baixa tensão)
+# - ABNT NBR 14039:2005 (Instalações elétricas de média tensão de 1,0 kV a 36,2 kV)
+# - IEC 60947-2 (Aparelhagem de manobra e comando de baixa tensão - Disjuntores)
+# - IEC 60898-1 (Disjuntores para proteção de sobrecorrentes para instalações domésticas e análogas)
+# - IEC 60909-0 (Correntes de curto-circuito em redes trifásicas de corrente alternada)
+# - IEC 61643-11 (Dispositivos de proteção contra surtos de baixa tensão - DPS)
+# - IEC 61008-1 / IEC 61009-1 (Dispositivos a corrente diferencial-residual - DR)
+# ==============================================================================
+
+version: "2.0.0"
+updated_at: "2026-10-30"
+
+# ------------------------------------------------------------------------------
+# 1. TRANSFORMADORES DE POTÊNCIA (MT/BT)
+# ------------------------------------------------------------------------------
+transformers:
+  - id: "trafo-oil-75kva-13.8k-380"
+    manufacturer: "WEG"
+    model: "Óleo Mineral Standard"
+    standard: "NBR 5440"
+    power_kVA: 75
+    primary_voltage_V: 13800
+    secondary_voltage_V: 380
+    frequency_Hz: 60
+    impedance_pct: 4.0
+    xr_ratio: 3.5
+    vector_group: "Dyn11"
+    cooling: "ONAN"
+    insulation_class: "A (105°C)"
+    no_load_losses_W: 240
+    load_losses_75C_W: 1350
+    oil_volume_L: 140
+    total_weight_kg: 480
+
+  - id: "trafo-oil-150kva-13.8k-380"
+    manufacturer: "WEG"
+    model: "Óleo Mineral Standard"
+    standard: "NBR 5440"
+    power_kVA: 150
+    primary_voltage_V: 13800
+    secondary_voltage_V: 380
+    frequency_Hz: 60
+    impedance_pct: 4.5
+    xr_ratio: 4.0
+    vector_group: "Dyn11"
+    cooling: "ONAN"
+    insulation_class: "A (105°C)"
+    no_load_losses_W: 410
+    load_losses_75C_W: 2350
+    oil_volume_L: 210
+    total_weight_kg: 780
+
+  - id: "trafo-oil-300kva-13.8k-380"
+    manufacturer: "WEG"
+    model: "Óleo Mineral Standard"
+    standard: "NBR 5440"
+    power_kVA: 300
+    primary_voltage_V: 13800
+    secondary_voltage_V: 380
+    frequency_Hz: 60
+    impedance_pct: 4.5
+    xr_ratio: 5.0
+    vector_group: "Dyn11"
+    cooling: "ONAN"
+    insulation_class: "A (105°C)"
+    no_load_losses_W: 720
+    load_losses_75C_W: 4100
+    oil_volume_L: 340
+    total_weight_kg: 1320
+
+  - id: "trafo-oil-500kva-13.8k-380"
+    manufacturer: "WEG"
+    model: "Óleo Mineral Standard"
+    standard: "NBR 5440"
+    power_kVA: 500
+    primary_voltage_V: 13800
+    secondary_voltage_V: 380
+    frequency_Hz: 60
+    impedance_pct: 4.5
+    xr_ratio: 6.5
+    vector_group: "Dyn11"
+    cooling: "ONAN"
+    insulation_class: "A (105°C)"
+    no_load_losses_W: 1080
+    load_losses_75C_W: 6200
+    oil_volume_L: 490
+    total_weight_kg: 1950
+
+  - id: "trafo-dry-1000kva-13.8k-380"
+    manufacturer: "Schneider Electric"
+    model: "Trihal Resina Epóxi"
+    standard: "NBR 10295 / IEC 60076-11"
+    power_kVA: 1000
+    primary_voltage_V: 13800
+    secondary_voltage_V: 380
+    frequency_Hz: 60
+    impedance_pct: 5.5
+    xr_ratio: 8.0
+    vector_group: "Dyn11"
+    cooling: "AN"
+    insulation_class: "F (155°C)"
+    no_load_losses_W: 2400
+    load_losses_75C_W: 10500
+    total_weight_kg: 3450
+
+# ------------------------------------------------------------------------------
+# 2. DISJUNTORES EM CAIXA MOLDADA (MCCB) E MINI-DISJUNTORES (MCB)
+# ------------------------------------------------------------------------------
+circuit_breakers:
+  # Mini-disjuntores padrão trilho DIN (IEC 60898-1 / IEC 60947-2)
+  - id: "mcb-mdw-c10-3p"
+    manufacturer: "WEG"
+    series: "MDW"
+    standard: "NBR NM 60898 / IEC 60947-2"
+    poles: 3
+    rated_current_A: 10
+    curve: "C"
+    rated_voltage_V: 400
+    breaking_capacity_Icn_kA: 5.0
+    breaking_capacity_Icu_kA: 10.0
+    ui_insulation_V: 500
+    uimp_kV: 4.0
+
+  - id: "mcb-mdw-c16-3p"
+    manufacturer: "WEG"
+    series: "MDW"
+    standard: "NBR NM 60898 / IEC 60947-2"
+    poles: 3
+    rated_current_A: 16
+    curve: "C"
+    rated_voltage_V: 400
+    breaking_capacity_Icn_kA: 5.0
+    breaking_capacity_Icu_kA: 10.0
+    ui_insulation_V: 500
+    uimp_kV: 4.0
+
+  - id: "mcb-mdw-c25-3p"
+    manufacturer: "WEG"
+    series: "MDW"
+    standard: "NBR NM 60898 / IEC 60947-2"
+    poles: 3
+    rated_current_A: 25
+    curve: "C"
+    rated_voltage_V: 400
+    breaking_capacity_Icn_kA: 5.0
+    breaking_capacity_Icu_kA: 10.0
+    ui_insulation_V: 500
+    uimp_kV: 4.0
+
+  - id: "mcb-mdw-c32-3p"
+    manufacturer: "WEG"
+    series: "MDW"
+    standard: "NBR NM 60898 / IEC 60947-2"
+    poles: 3
+    rated_current_A: 32
+    curve: "C"
+    rated_voltage_V: 400
+    breaking_capacity_Icn_kA: 5.0
+    breaking_capacity_Icu_kA: 10.0
+    ui_insulation_V: 500
+    uimp_kV: 4.0
+
+  - id: "mcb-mdw-c63-3p"
+    manufacturer: "WEG"
+    series: "MDW"
+    standard: "NBR NM 60898 / IEC 60947-2"
+    poles: 3
+    rated_current_A: 63
+    curve: "C"
+    rated_voltage_V: 400
+    breaking_capacity_Icn_kA: 5.0
+    breaking_capacity_Icu_kA: 10.0
+    ui_insulation_V: 500
+    uimp_kV: 4.0
+
+  # Disjuntores Caixa Moldada (MCCB - IEC 60947-2)
+  - id: "mccb-dwb-160-125a"
+    manufacturer: "WEG"
+    series: "DWB160"
+    standard: "IEC 60947-2"
+    poles: 3
+    rated_current_A: 125
+    trip_unit: "TMD (Térmico ajustável 0.8-1.0 x In, Magnético fixo 10 x In)"
+    rated_voltage_V: 415
+    breaking_capacity_Icu_kA: 25.0
+    breaking_capacity_Ics_pct: 100
+    ui_insulation_V: 800
+    uimp_kV: 8.0
+
+  - id: "mccb-dwb-250-200a"
+    manufacturer: "WEG"
+    series: "DWB250"
+    standard: "IEC 60947-2"
+    poles: 3
+    rated_current_A: 200
+    trip_unit: "TMD (Térmico ajustável 0.8-1.0 x In, Magnético fixo 10 x In)"
+    rated_voltage_V: 415
+    breaking_capacity_Icu_kA: 36.0
+    breaking_capacity_Ics_pct: 100
+    ui_insulation_V: 800
+    uimp_kV: 8.0
+
+  - id: "mccb-nsx-400f-micrologic"
+    manufacturer: "Schneider Electric"
+    series: "ComPact NSX400F"
+    standard: "IEC 60947-2"
+    poles: 3
+    rated_current_A: 400
+    trip_unit: "Micrologic 2.3 (Eletrônico LSI)"
+    rated_voltage_V: 415
+    breaking_capacity_Icu_kA: 36.0
+    breaking_capacity_Ics_pct: 100
+    ui_insulation_V: 800
+    uimp_kV: 8.0
+
+  - id: "mccb-3va-630-etuo"
+    manufacturer: "Siemens"
+    series: "3VA24"
+    standard: "IEC 60947-2"
+    poles: 3
+    rated_current_A: 630
+    trip_unit: "ETU320 (Eletrônico LI)"
+    rated_voltage_V: 415
+    breaking_capacity_Icu_kA: 55.0
+    breaking_capacity_Ics_pct: 100
+    ui_insulation_V: 1000
+    uimp_kV: 8.0
+
+# ------------------------------------------------------------------------------
+# 3. CONDUTORES ELÉTRICOS (CABOS DE COBRE E ALUMÍNIO)
+# ------------------------------------------------------------------------------
+cables:
+  # Cobre isolado em PVC 70°C (NBR NM 247-3 / NBR 5410)
+  - material: "copper"
+    insulation: "PVC"
+    temp_rating_operating_C: 70
+    temp_rating_short_circuit_C: 160
+    k_factor_adiabatic: 115
+    voltage_class: "0.6/1 kV"
+    sections_catalog:
+      - section_mm2: 1.5
+        r_dc_20C_ohm_km: 12.1
+        r_ac_70C_ohm_km: 14.48
+        x_ac_ohm_km: 0.115
+        weight_kg_km: 22
+      - section_mm2: 2.5
+        r_dc_20C_ohm_km: 7.41
+        r_ac_70C_ohm_km: 8.87
+        x_ac_ohm_km: 0.108
+        weight_kg_km: 33
+      - section_mm2: 4.0
+        r_dc_20C_ohm_km: 4.61
+        r_ac_70C_ohm_km: 5.52
+        x_ac_ohm_km: 0.101
+        weight_kg_km: 49
+      - section_mm2: 6.0
+        r_dc_20C_ohm_km: 3.08
+        r_ac_70C_ohm_km: 3.69
+        x_ac_ohm_km: 0.096
+        weight_kg_km: 70
+      - section_mm2: 10.0
+        r_dc_20C_ohm_km: 1.83
+        r_ac_70C_ohm_km: 2.19
+        x_ac_ohm_km: 0.089
+        weight_kg_km: 115
+      - section_mm2: 16.0
+        r_dc_20C_ohm_km: 1.15
+        r_ac_70C_ohm_km: 1.38
+        x_ac_ohm_km: 0.084
+        weight_kg_km: 175
+      - section_mm2: 25.0
+        r_dc_20C_ohm_km: 0.727
+        r_ac_70C_ohm_km: 0.870
+        x_ac_ohm_km: 0.081
+        weight_kg_km: 275
+      - section_mm2: 35.0
+        r_dc_20C_ohm_km: 0.524
+        r_ac_70C_ohm_km: 0.627
+        x_ac_ohm_km: 0.080
+        weight_kg_km: 375
+      - section_mm2: 50.0
+        r_dc_20C_ohm_km: 0.387
+        r_ac_70C_ohm_km: 0.464
+        x_ac_ohm_km: 0.078
+        weight_kg_km: 505
+      - section_mm2: 70.0
+        r_dc_20C_ohm_km: 0.268
+        r_ac_70C_ohm_km: 0.322
+        x_ac_ohm_km: 0.076
+        weight_kg_km: 710
+      - section_mm2: 95.0
+        r_dc_20C_ohm_km: 0.193
+        r_ac_70C_ohm_km: 0.232
+        x_ac_ohm_km: 0.075
+        weight_kg_km: 980
+      - section_mm2: 120.0
+        r_dc_20C_ohm_km: 0.153
+        r_ac_70C_ohm_km: 0.184
+        x_ac_ohm_km: 0.074
+        weight_kg_km: 1230
+      - section_mm2: 150.0
+        r_dc_20C_ohm_km: 0.124
+        r_ac_70C_ohm_km: 0.150
+        x_ac_ohm_km: 0.073
+        weight_kg_km: 1510
+      - section_mm2: 185.0
+        r_dc_20C_ohm_km: 0.0991
+        r_ac_70C_ohm_km: 0.120
+        x_ac_ohm_km: 0.073
+        weight_kg_km: 1880
+      - section_mm2: 240.0
+        r_dc_20C_ohm_km: 0.0754
+        r_ac_70C_ohm_km: 0.0925
+        x_ac_ohm_km: 0.072
+        weight_kg_km: 2460
+      - section_mm2: 300.0
+        r_dc_20C_ohm_km: 0.0601
+        r_ac_70C_ohm_km: 0.0752
+        x_ac_ohm_km: 0.071
+        weight_kg_km: 3090
+
+  # Cobre isolado em EPR / XLPE 90°C (NBR 7286 / NBR 7288 / NBR 5410)
+  - material: "copper"
+    insulation: "EPR"
+    temp_rating_operating_C: 90
+    temp_rating_short_circuit_C: 250
+    k_factor_adiabatic: 143
+    voltage_class: "0.6/1 kV"
+    sections_catalog:
+      - section_mm2: 2.5
+        r_ac_90C_ohm_km: 9.54
+        x_ac_ohm_km: 0.108
+      - section_mm2: 16.0
+        r_ac_90C_ohm_km: 1.48
+        x_ac_ohm_km: 0.084
+      - section_mm2: 35.0
+        r_ac_90C_ohm_km: 0.674
+        x_ac_ohm_km: 0.080
+      - section_mm2: 70.0
+        r_ac_90C_ohm_km: 0.345
+        x_ac_ohm_km: 0.076
+      - section_mm2: 120.0
+        r_ac_90C_ohm_km: 0.197
+        x_ac_ohm_km: 0.074
+      - section_mm2: 240.0
+        r_ac_90C_ohm_km: 0.099
+        x_ac_ohm_km: 0.072
+
+# ------------------------------------------------------------------------------
+# 4. MOTORES DE INDUÇÃO TRIFÁSICOS (MIT) — WEG W22 IR3 PREMIUM
+# ------------------------------------------------------------------------------
+motors_mit:
+  - id: "motor-w22-1cv-4p-380"
+    manufacturer: "WEG"
+    line: "W22 IR3 Premium"
+    power_kW: 0.75
+    power_cv: 1.0
+    poles: 4
+    rpm_sync: 1800
+    rpm_nominal: 1720
+    voltage_V: 380
+    current_nominal_A: 1.83
+    starting_current_ratio_Ip_In: 7.2
+    efficiency_pct: 83.5
+    power_factor: 0.75
+    frame: "80"
+
+  - id: "motor-w22-5cv-4p-380"
+    manufacturer: "WEG"
+    line: "W22 IR3 Premium"
+    power_kW: 3.7
+    power_cv: 5.0
+    poles: 4
+    rpm_sync: 1800
+    rpm_nominal: 1735
+    voltage_V: 380
+    current_nominal_A: 8.05
+    starting_current_ratio_Ip_In: 7.5
+    efficiency_pct: 89.0
+    power_factor: 0.81
+    frame: "100L"
+
+  - id: "motor-w22-10cv-4p-380"
+    manufacturer: "WEG"
+    line: "W22 IR3 Premium"
+    power_kW: 7.5
+    power_cv: 10.0
+    poles: 4
+    rpm_sync: 1800
+    rpm_nominal: 1755
+    voltage_V: 380
+    current_nominal_A: 15.3
+    starting_current_ratio_Ip_In: 7.6
+    efficiency_pct: 91.0
+    power_factor: 0.84
+    frame: "132M"
+
+  - id: "motor-w22-25cv-4p-380"
+    manufacturer: "WEG"
+    line: "W22 IR3 Premium"
+    power_kW: 18.5
+    power_cv: 25.0
+    poles: 4
+    rpm_sync: 1800
+    rpm_nominal: 1765
+    voltage_V: 380
+    current_nominal_A: 36.2
+    starting_current_ratio_Ip_In: 7.8
+    efficiency_pct: 93.0
+    power_factor: 0.86
+    frame: "160L"
+
+  - id: "motor-w22-50cv-4p-380"
+    manufacturer: "WEG"
+    line: "W22 IR3 Premium"
+    power_kW: 37.0
+    power_cv: 50.0
+    poles: 4
+    rpm_sync: 1800
+    rpm_nominal: 1775
+    voltage_V: 380
+    current_nominal_A: 70.8
+    starting_current_ratio_Ip_In: 7.8
+    efficiency_pct: 94.2
+    power_factor: 0.87
+    frame: "200L"
+
+# ------------------------------------------------------------------------------
+# 5. CONTATORES E RELÉS DE SOBRECARGA
+# ------------------------------------------------------------------------------
+contactors:
+  - id: "contactor-cwm-9"
+    manufacturer: "WEG"
+    series: "CWM"
+    standard: "IEC 60947-4-1"
+    rated_current_ac3_A: 9
+    motor_power_380v_kW: 4.0
+    coil_voltage: "24Vcc / 220Vca"
+    aux_contacts: "1NA + 1NF"
+
+  - id: "contactor-cwm-18"
+    manufacturer: "WEG"
+    series: "CWM"
+    standard: "IEC 60947-4-1"
+    rated_current_ac3_A: 18
+    motor_power_380v_kW: 7.5
+    coil_voltage: "24Vcc / 220Vca"
+    aux_contacts: "1NA + 1NF"
+
+  - id: "contactor-cwm-40"
+    manufacturer: "WEG"
+    series: "CWM"
+    standard: "IEC 60947-4-1"
+    rated_current_ac3_A: 40
+    motor_power_380v_kW: 18.5
+    coil_voltage: "24Vcc / 220Vca"
+    aux_contacts: "1NA + 1NF"
+
+# ------------------------------------------------------------------------------
+# 6. DISPOSITIVOS DE PROTEÇÃO CONTRA SURTOS (DPS)
+# ------------------------------------------------------------------------------
+surge_protective_devices:
+  - id: "dps-clamper-vcl-275v-45ka"
+    manufacturer: "Clamper"
+    model: "VCL 275V 45kA Slim"
+    standard: "IEC 61643-11"
+    class: "Classe II"
+    max_continuous_voltage_Uc_V: 275
+    nominal_discharge_current_In_kA: 20
+    max_discharge_current_Imax_kA: 45
+    voltage_protection_level_Up_kV: 1.5
+    technology: "Varistor de Óxido de Zinco (MOV) com desconector térmico"
+
+  - id: "dps-clamper-vcl-class1-25ka"
+    manufacturer: "Clamper"
+    model: "VCL Classe I 25kA"
+    standard: "IEC 61643-11"
+    class: "Classe I + II"
+    max_continuous_voltage_Uc_V: 275
+    impulse_current_Iimp_kA: 25.0 # forma de onda 10/350 us
+    voltage_protection_level_Up_kV: 1.5
+    technology: "Centelhador a Gás / Varistor Híbrido"
+
+# ------------------------------------------------------------------------------
+# 7. DISPOSITIVOS DIFERENCIAL-RESIDUAL (DR)
+# ------------------------------------------------------------------------------
+residual_current_devices:
+  - id: "rccb-rdw-4p-40a-30ma"
+    manufacturer: "WEG"
+    series: "RDW"
+    standard: "NBR NM 61008-1"
+    poles: 4
+    rated_current_A: 40
+    sensitivity_Idn_mA: 30
+    type: "AC"
+    rated_voltage_V: 400
+    breaking_capacity_Inc_kA: 6.0

@@ -75,7 +75,8 @@ export function generateStructuredText(
 
   if (!result.ok || !result.ast || !result.ir) {
     const diagLines = result.diagnostics.map(
-      (d) => `// [${d.severity.toUpperCase()}] ${d.code}: ${d.message}${d.nodeId ? ` (node: ${d.nodeId})` : ""}`,
+      (d) =>
+        `// [${d.severity.toUpperCase()}] ${d.code}: ${d.message}${d.nodeId ? ` (node: ${d.nodeId})` : ""}`,
     );
     const code = [
       `// IEC 61131-3 Structured Text — Erro de Compilação FBD`,
@@ -110,7 +111,8 @@ export function generateStructuredText(
   if (inputVars.length > 0) {
     lines.push("VAR_INPUT");
     for (const v of inputVars) {
-      const init = v.initialValue !== undefined ? ` := ${formatLiteral(v.initialValue, v.dataType)}` : "";
+      const init =
+        v.initialValue !== undefined ? ` := ${formatLiteral(v.initialValue, v.dataType)}` : "";
       lines.push(`  ${v.name} : ${v.dataType}${init};`);
     }
     lines.push("END_VAR");
@@ -122,7 +124,8 @@ export function generateStructuredText(
   if (outputVars.length > 0) {
     lines.push("VAR_OUTPUT");
     for (const v of outputVars) {
-      const init = v.initialValue !== undefined ? ` := ${formatLiteral(v.initialValue, v.dataType)}` : "";
+      const init =
+        v.initialValue !== undefined ? ` := ${formatLiteral(v.initialValue, v.dataType)}` : "";
       lines.push(`  ${v.name} : ${v.dataType}${init};`);
     }
     lines.push("END_VAR");
@@ -137,7 +140,8 @@ export function generateStructuredText(
 
   // Variáveis declaradas no modelo do usuário com direction = 'local'
   for (const v of ast.variables.filter((v) => v.direction === "local")) {
-    const init = v.initialValue !== undefined ? ` := ${formatLiteral(v.initialValue, v.dataType)}` : "";
+    const init =
+      v.initialValue !== undefined ? ` := ${formatLiteral(v.initialValue, v.dataType)}` : "";
     internalVars.push({ name: `${v.name}${init}`, type: v.dataType });
   }
 

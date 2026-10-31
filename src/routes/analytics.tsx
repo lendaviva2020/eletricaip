@@ -349,12 +349,7 @@ function AnalyticsPage() {
                       fontSize: 11,
                     }}
                   />
-                  <Bar
-                    dataKey="v"
-                    fill="oklch(0.78 0.18 150)"
-                    radius={[4, 4, 0, 0]}
-                    name="Valor"
-                  />
+                  <Bar dataKey="v" fill="oklch(0.78 0.18 150)" radius={[4, 4, 0, 0]} name="Valor" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -369,10 +364,7 @@ function AnalyticsPage() {
           ) : plcData.length > 0 ? (
             <ResponsiveContainer>
               <LineChart data={plcData}>
-                <XAxis
-                  dataKey="t"
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                />
+                <XAxis dataKey="t" tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }} />
                 <YAxis
                   tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
                   axisLine={false}

@@ -235,7 +235,18 @@ export const getDashboardTelemetry = createServerFn({ method: "POST" })
       .object({
         projectId: z.string().uuid().optional(),
         hours: z.number().min(1).max(720).default(24), // até 30 dias
-        tagPatterns: z.array(z.string()).default(["energy", "power", "consumption", "production", "count", "output", "temperature", "temp"]),
+        tagPatterns: z
+          .array(z.string())
+          .default([
+            "energy",
+            "power",
+            "consumption",
+            "production",
+            "count",
+            "output",
+            "temperature",
+            "temp",
+          ]),
       })
       .parse(i),
   )
@@ -253,10 +264,7 @@ export const getDashboardTelemetry = createServerFn({ method: "POST" })
     }
 
     // Buscar projetos do tenant (ou projeto específico)
-    let projectsQuery = supabase
-      .from("projects")
-      .select("id")
-      .eq("tenant_id", profile.tenant_id);
+    let projectsQuery = supabase.from("projects").select("id").eq("tenant_id", profile.tenant_id);
     if (data.projectId) {
       projectsQuery = projectsQuery.eq("id", data.projectId);
     }

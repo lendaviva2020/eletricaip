@@ -59,7 +59,9 @@ export function parsePlcopenXml(
   const rungs: BundleLadderRung[] = [];
 
   // Extração segura de variáveis usando Regex sem resolver entidades externas
-  const varMatches = rawXml.matchAll(/<variable\s+name="([^"]+)"(?:\s+address="([^"]*)")?[^>]*>([\s\S]*?)<\/variable>/gi);
+  const varMatches = rawXml.matchAll(
+    /<variable\s+name="([^"]+)"(?:\s+address="([^"]*)")?[^>]*>([\s\S]*?)<\/variable>/gi,
+  );
   for (const m of varMatches) {
     const name = m[1];
     const address = m[2] || undefined;
@@ -83,7 +85,9 @@ export function parsePlcopenXml(
   }
 
   // Extração básica de lógica e networks
-  const pouMatches = rawXml.matchAll(/<pou\s+name="([^"]+)"\s+pouType="([^"]+)"[^>]*>([\s\S]*?)<\/pou>/gi);
+  const pouMatches = rawXml.matchAll(
+    /<pou\s+name="([^"]+)"\s+pouType="([^"]+)"[^>]*>([\s\S]*?)<\/pou>/gi,
+  );
   let rungIdx = 1;
 
   for (const p of pouMatches) {
@@ -113,7 +117,8 @@ export function parsePlcopenXml(
           id: "plcopen-no-elements",
           severity: "critical",
           category: "schema",
-          message: "Nenhuma variável ou POU IEC 61131-3 reconhecível foi encontrada no arquivo PLCopen XML.",
+          message:
+            "Nenhuma variável ou POU IEC 61131-3 reconhecível foi encontrada no arquivo PLCopen XML.",
           rejected: true,
         },
       ],

@@ -67,7 +67,18 @@ export const EquipmentCategorySchema = z.enum([
 ]);
 export type EquipmentCategory = z.infer<typeof EquipmentCategorySchema>;
 
-export const PhasesConfigSchema = z.enum(["1F", "2F", "3F", "F+N", "F+N+PE", "3F+N", "3F+N+PE", "DC", "N", "PE"]);
+export const PhasesConfigSchema = z.enum([
+  "1F",
+  "2F",
+  "3F",
+  "F+N",
+  "F+N+PE",
+  "3F+N",
+  "3F+N+PE",
+  "DC",
+  "N",
+  "PE",
+]);
 export type PhasesConfig = z.infer<typeof PhasesConfigSchema>;
 
 export const TerminalKindSchema = z.enum([
@@ -144,9 +155,7 @@ export const ElectricalConnectionSchema = z.object({
   toEquipmentId: z.string().min(1),
   toTerminalId: z.string().min(1),
   kind: EdgeKindSchema.default("power"),
-  circuitConfig: z
-    .enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"])
-    .optional(),
+  circuitConfig: z.enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"]).optional(),
   conductor: ConductorSpecSchema.optional(),
 });
 export type ElectricalConnection = z.infer<typeof ElectricalConnectionSchema>;
@@ -322,9 +331,7 @@ export const MultifilarEdgeLayoutSchema = z.object({
   connectionId: z.string().min(1),
   sourceNodeId: z.string().min(1),
   targetNodeId: z.string().min(1),
-  circuitConfig: z
-    .enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"])
-    .optional(),
+  circuitConfig: z.enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"]).optional(),
   waypoints: z.array(PositionSchema).optional(),
 });
 export type MultifilarEdgeLayout = z.infer<typeof MultifilarEdgeLayoutSchema>;
@@ -562,10 +569,7 @@ export function computeEquipmentStudyHash(
         : { id, missing: true };
     }),
     connections: Object.values(doc.engineering.connections)
-      .filter(
-        (c) =>
-          sortedIds.includes(c.fromEquipmentId) || sortedIds.includes(c.toEquipmentId),
-      )
+      .filter((c) => sortedIds.includes(c.fromEquipmentId) || sortedIds.includes(c.toEquipmentId))
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((c) => ({
         id: c.id,

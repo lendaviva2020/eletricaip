@@ -20,7 +20,9 @@ describe("Universal Importer - Format Detection & Parsing", () => {
     expect(detectFormat('{"format": "eletricai.canvas-bundle"}')).toBe("json-bundle");
     expect(detectFormat('format: "eletricai.canvas-bundle"\nnodes:\n')).toBe("yaml-bundle");
     expect(detectFormat("tag,tipo,potencia_kW,tensao_V\nDJ-01,disjuntor,0,380")).toBe("csv-table");
-    expect(detectFormat('<?xml version="1.0"?><project xmlns="http://www.plcopen.org/xml/tc6_0201">')).toBe("plcopen-xml");
+    expect(
+      detectFormat('<?xml version="1.0"?><project xmlns="http://www.plcopen.org/xml/tc6_0201">'),
+    ).toBe("plcopen-xml");
     expect(detectFormat("plain random text without structure")).toBe("unknown");
   });
 
@@ -112,7 +114,10 @@ describe("Universal Importer - Format Detection & Parsing", () => {
     // Converter para Ladder
     const rungs = convertBundleToLadderRungs(report.bundle!);
     expect(rungs).toHaveLength(1);
-    expect((rungs[0] as any).output?.operand || (rungs[0].cells[0][rungs[0].cells[0].length - 1] as any).operand).toBe("K1");
+    expect(
+      (rungs[0] as any).output?.operand ||
+        (rungs[0].cells[0][rungs[0].cells[0].length - 1] as any).operand,
+    ).toBe("K1");
   });
 
   it("normalizes Portuguese component aliases automatically (disjuntor -> breaker, contator -> contactor)", () => {
@@ -142,7 +147,8 @@ describe("Universal Importer - Format Detection & Parsing", () => {
 
 describe("Universal Importer - Zero Trust Security Scanning", () => {
   it("rejects Prototype Pollution (__proto__, constructor, prototype)", () => {
-    const maliciousProto = '{"format": "eletricai.canvas-bundle", "__proto__": {"isAdmin": true}, "nodes": []}';
+    const maliciousProto =
+      '{"format": "eletricai.canvas-bundle", "__proto__": {"isAdmin": true}, "nodes": []}';
     const scanProto = scanPayloadSecurity(maliciousProto);
     expect(scanProto.safe).toBe(false);
     expect(scanProto.issues.some((i) => i.id === "prototype-pollution")).toBe(true);
@@ -158,7 +164,8 @@ describe("Universal Importer - Zero Trust Security Scanning", () => {
     expect(scanScript.safe).toBe(false);
     expect(scanScript.issues.some((i) => i.id === "script-injection")).toBe(true);
 
-    const jsUriInjection = '{"nodes": [{"id": "n1", "label": "javascript:alert(document.cookie)"}]}';
+    const jsUriInjection =
+      '{"nodes": [{"id": "n1", "label": "javascript:alert(document.cookie)"}]}';
     const scanJs = scanPayloadSecurity(jsUriInjection);
     expect(scanJs.safe).toBe(false);
 
@@ -308,7 +315,9 @@ describe("Universal Importer - Merge vs Replace Application Modes", () => {
     const replaced = convertBundleToDiagramDoc(bundle, existingDoc, "replace");
     expect(replaced.nodes["old1"]).toBeUndefined();
     expect(replaced.nodes["new1"]).toBeDefined();
-    expect((replaced.nodes["new1"] as any).kind || replaced.nodes["new1"].params.kind).toBe("motor");
+    expect((replaced.nodes["new1"] as any).kind || replaced.nodes["new1"].params.kind).toBe(
+      "motor",
+    );
   });
 
   it("merges incoming nodes by shifting coordinates and preserving existing elements", () => {
@@ -408,7 +417,9 @@ describe("Universal Importer - Zero AI Credits & Determinism Guarantee", () => {
     let fetchCalled = false;
     globalThis.fetch = (() => {
       fetchCalled = true;
-      throw new Error("AI or Network call detected! Importer must be 100% local and deterministic.");
+      throw new Error(
+        "AI or Network call detected! Importer must be 100% local and deterministic.",
+      );
     }) as any;
 
     try {
@@ -418,11 +429,14 @@ describe("Universal Importer - Zero AI Credits & Determinism Guarantee", () => {
         project: { name: "Zero Credits Verification", diagramType: "unifilar" },
         nodes: [
           { id: "DJ_ZERO", type: "breaker", position: { x: 100, y: 100 }, properties: { In: 100 } },
-          { id: "MTR_ZERO", type: "motor", position: { x: 100, y: 300 }, properties: { power_kW: 15 } },
+          {
+            id: "MTR_ZERO",
+            type: "motor",
+            position: { x: 100, y: 300 },
+            properties: { power_kW: 15 },
+          },
         ],
-        edges: [
-          { source: "DJ_ZERO", target: "MTR_ZERO", kind: "power" },
-        ],
+        edges: [{ source: "DJ_ZERO", target: "MTR_ZERO", kind: "power" }],
       });
 
       // 1. Validate
@@ -476,13 +490,18 @@ describe("Universal Importer - Zero AI Credits & Determinism Guarantee", () => {
   });
 
   it("handles markdown code fences automatically when copying from ChatGPT / Claude", () => {
-    const wrappedJson = "```json\n" + JSON.stringify({
-      format: "eletricai.canvas-bundle",
-      schemaVersion: "1.0.0",
-      project: { name: "ChatGPT Output", diagramType: "unifilar" },
-      nodes: [{ id: "DJ_GPT", type: "breaker", position: { x: 100, y: 100 }, properties: { In: 50 } }],
-      edges: [],
-    }) + "\n```";
+    const wrappedJson =
+      "```json\n" +
+      JSON.stringify({
+        format: "eletricai.canvas-bundle",
+        schemaVersion: "1.0.0",
+        project: { name: "ChatGPT Output", diagramType: "unifilar" },
+        nodes: [
+          { id: "DJ_GPT", type: "breaker", position: { x: 100, y: 100 }, properties: { In: 50 } },
+        ],
+        edges: [],
+      }) +
+      "\n```";
 
     expect(detectFormat(wrappedJson)).toBe("json-bundle");
     const report = validateAndParseExternalPayload(wrappedJson);
@@ -502,9 +521,15 @@ MTR_RECALQUE N3 0 15kW
     const report = validateAndParseExternalPayload(netlistText);
     expect(report.canImport).toBe(true);
     expect(report.stats.totalNodes).toBe(4);
-    expect(report.bundle?.nodes.some((n) => n.id === "DJ_GERAL" && n.type === "breaker")).toBe(true);
-    expect(report.bundle?.nodes.some((n) => n.id === "KM_BOMBA" && n.type === "contactor")).toBe(true);
-    expect(report.bundle?.nodes.some((n) => n.id === "MTR_RECALQUE" && n.type === "motor")).toBe(true);
+    expect(report.bundle?.nodes.some((n) => n.id === "DJ_GERAL" && n.type === "breaker")).toBe(
+      true,
+    );
+    expect(report.bundle?.nodes.some((n) => n.id === "KM_BOMBA" && n.type === "contactor")).toBe(
+      true,
+    );
+    expect(report.bundle?.nodes.some((n) => n.id === "MTR_RECALQUE" && n.type === "motor")).toBe(
+      true,
+    );
     expect(report.bundle?.edges.length).toBeGreaterThan(0);
   });
 

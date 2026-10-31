@@ -2,7 +2,11 @@
 // Covers: ABNT NBR 5410:2004, NR-10:2019, NR-12:2019, NBR IEC 60204-1:2020, NBR IEC 61439:2016, IEC 61131-3:2013, ISO 13849-1
 
 import type { ExtractedCanvasData } from "./extractor";
-import type { ElectricalCalculationMemory, NormativeFinding, NormativeValidationReport } from "./types";
+import type {
+  ElectricalCalculationMemory,
+  NormativeFinding,
+  NormativeValidationReport,
+} from "./types";
 
 export function evaluateNormativeCompliance(
   extracted: ExtractedCanvasData,
@@ -19,9 +23,15 @@ export function evaluateNormativeCompliance(
     "ISO 13849-1:2023 (Partes de sistemas de comando relacionadas à segurança)",
   ];
 
-  const motors = extracted.equipments.filter((e) => e.catalogType === "motor" || e.category === "drive");
-  const breakers = extracted.equipments.filter((e) => e.catalogType === "breaker" || e.category === "protection");
-  const estops = extracted.equipments.filter((e) => e.catalogType === "estop" || e.category === "safety");
+  const motors = extracted.equipments.filter(
+    (e) => e.catalogType === "motor" || e.category === "drive",
+  );
+  const breakers = extracted.equipments.filter(
+    (e) => e.catalogType === "breaker" || e.category === "protection",
+  );
+  const estops = extracted.equipments.filter(
+    (e) => e.catalogType === "estop" || e.category === "safety",
+  );
   const transformers = extracted.equipments.filter((e) => e.catalogType === "transformer");
 
   // ── 1. NBR 5410:2004 — Coordenação de Proteção e Condutores ──────────────
@@ -41,7 +51,8 @@ export function evaluateNormativeCompliance(
         involvedCircuit: c.circuitCode,
         correctiveAction: "Nenhuma ação necessária.",
         isResolved: true,
-        testToConfirm: "Teste de transitório térmico e conformidade com curva característica do fabricante.",
+        testToConfirm:
+          "Teste de transitório térmico e conformidade com curva característica do fabricante.",
       });
     } else {
       findings.push({
@@ -134,16 +145,19 @@ export function evaluateNormativeCompliance(
       status: "REPROVADO",
       severity: "warning",
       title: "Dispositivo Diferencial Residual (DR) não identificado no alimentador",
-      description: "A NBR 5410 §5.1.3.2 prescreve o uso de proteção diferencial-residual em circuitos industriais de força e tomadas.",
+      description:
+        "A NBR 5410 §5.1.3.2 prescreve o uso de proteção diferencial-residual em circuitos industriais de força e tomadas.",
       evidence: "Nenhum nó de catálogo 'rcd' ou com sensibilidade DR foi identificado no diagrama.",
-      correctiveAction: "Inserir módulo ou disjuntor DR com sensibilidade de 300 mA para proteção de equipamentos ou 30 mA para tomadas.",
+      correctiveAction:
+        "Inserir módulo ou disjuntor DR com sensibilidade de 300 mA para proteção de equipamentos ou 30 mA para tomadas.",
       isResolved: false,
       testToConfirm: "Inclusão do dispositivo DR na lista de materiais e diagrama unifilar.",
     });
   }
 
   // ── 3. NR-10:2019 — Aterramento e Seccionamento de Bloqueio (LOTO) ───────
-  const hasPeGround = extracted.conductors.some((c) => c.phaseOrFunction === "PE") ||
+  const hasPeGround =
+    extracted.conductors.some((c) => c.phaseOrFunction === "PE") ||
     extracted.terminals.some((t) => t.signalType === "pe");
 
   if (hasPeGround) {
@@ -156,11 +170,13 @@ export function evaluateNormativeCompliance(
       status: "VALIDADO",
       severity: "info",
       title: "Aterramento elétrico das massas (PE) implementado",
-      description: "Condutores de proteção equipotencial presentes para todas as carcaças e quadros.",
+      description:
+        "Condutores de proteção equipotencial presentes para todas as carcaças e quadros.",
       evidence: "Barramento e condutores PE atribuídos para motores e painel.",
       correctiveAction: "Nenhuma ação necessária.",
       isResolved: true,
-      testToConfirm: "Ensaio de continuidade das massas (R ≤ 0,1 Ω) e medição da resistência de aterramento (R ≤ 10 Ω).",
+      testToConfirm:
+        "Ensaio de continuidade das massas (R ≤ 0,1 Ω) e medição da resistência de aterramento (R ≤ 10 Ω).",
     });
   } else {
     findings.push({
@@ -172,9 +188,11 @@ export function evaluateNormativeCompliance(
       status: "REPROVADO",
       severity: "critical",
       title: "Condutor de proteção (PE) não declarado",
-      description: "A NR-10 e a NBR 5410 exigem que todas as massas metálicas estejam conectadas ao condutor de proteção.",
+      description:
+        "A NR-10 e a NBR 5410 exigem que todas as massas metálicas estejam conectadas ao condutor de proteção.",
       evidence: "Nenhum condutor ou borne PE encontrado nas conexões das cargas.",
-      correctiveAction: "Declarar a barra de terra PE no painel e estender os condutores PE até os motores.",
+      correctiveAction:
+        "Declarar a barra de terra PE no painel e estender os condutores PE até os motores.",
       isResolved: false,
       testToConfirm: "Verificação da inclusão de condutor PE no cronograma de fiação.",
     });
@@ -198,7 +216,8 @@ export function evaluateNormativeCompliance(
       status: "VALIDADO",
       severity: "info",
       title: "Dispositivo de seccionamento para bloqueio (LOTO) presente",
-      description: "Dispositivo rotativo ou seccionador com dispositivo para cadeado de bloqueio identificado.",
+      description:
+        "Dispositivo rotativo ou seccionador com dispositivo para cadeado de bloqueio identificado.",
       evidence: "Chave seccionadora de entrada documentada no painel.",
       correctiveAction: "Nenhuma ação necessária.",
       isResolved: true,
@@ -214,9 +233,11 @@ export function evaluateNormativeCompliance(
       status: "REPROVADO",
       severity: "warning",
       title: "Chave seccionadora para bloqueio LOTO ausente",
-      description: "NR-10 Item 10.5.1 exige dispositivo que garanta o seccionamento visível e bloqueio mecânico antes de intervenções de manutenção.",
+      description:
+        "NR-10 Item 10.5.1 exige dispositivo que garanta o seccionamento visível e bloqueio mecânico antes de intervenções de manutenção.",
       evidence: "Nenhuma seccionadora rotativa 'QS' encontrada na entrada do CCM ou da máquina.",
-      correctiveAction: "Incluir chave seccionadora geral manobrável sob carga com manopla amarela/vermelha bloqueável por cadeado.",
+      correctiveAction:
+        "Incluir chave seccionadora geral manobrável sob carga com manopla amarela/vermelha bloqueável por cadeado.",
       isResolved: false,
       testToConfirm: "Adicionar chave seccionadora na lista de materiais e diagrama unifilar.",
     });
@@ -234,11 +255,13 @@ export function evaluateNormativeCompliance(
         status: "VALIDADO",
         severity: "info",
         title: "Dispositivo de parada de emergência (E-STOP) implementado",
-        description: "Botão tipo cogumelo com retenção e rearme manual conforme NR-12 e NBR IEC 60204-1 §10.7.",
+        description:
+          "Botão tipo cogumelo com retenção e rearme manual conforme NR-12 e NBR IEC 60204-1 §10.7.",
         evidence: `Dispositivo de emergência identificado no projeto elétrico e integrado à lógica de comando.`,
         correctiveAction: "Nenhuma ação necessária.",
         isResolved: true,
-        testToConfirm: "Teste funcional de corte imediato dos atuadores motores (Categoria de Parada 0).",
+        testToConfirm:
+          "Teste funcional de corte imediato dos atuadores motores (Categoria de Parada 0).",
       });
     } else {
       findings.push({
@@ -250,9 +273,12 @@ export function evaluateNormativeCompliance(
         status: "REPROVADO",
         severity: "critical",
         title: "Falta dispositivo de parada de emergência (E-STOP)",
-        description: "A NR-12 exige que máquinas com partes móveis acionadas eletricamente possuam dispositivo de parada de emergência.",
-        evidence: "Existem acionamentos motores no projeto sem nenhum botão de emergência correspondente.",
-        correctiveAction: "Adicionar botoeira de emergência cogumelo vermelha com contatos NF positivos de ruptura mecânica.",
+        description:
+          "A NR-12 exige que máquinas com partes móveis acionadas eletricamente possuam dispositivo de parada de emergência.",
+        evidence:
+          "Existem acionamentos motores no projeto sem nenhum botão de emergência correspondente.",
+        correctiveAction:
+          "Adicionar botoeira de emergência cogumelo vermelha com contatos NF positivos de ruptura mecânica.",
         isResolved: false,
         testToConfirm: "Adição da botoeira no circuito de comando ou canal de segurança do CLP.",
       });
@@ -269,9 +295,12 @@ export function evaluateNormativeCompliance(
     status: "REVISAO_PROFISSIONAL_NECESSARIA",
     severity: "warning",
     title: "Apreciação de Risco Formal (PLr / SIL) requer laudo do engenheiro responsável",
-    description: "Conforme norma e política de segurança industrial, a determinação do Performance Level Requerido (PLr) e SIL depende de apreciação de risco formal (severidade, frequência de exposição e possibilidade de evitar o perigo) e não pode ser homologada puramente por algoritmo sem inspeção da aplicação mecânica.",
-    evidence: "A arquitetura elétrica prevê comando de segurança, porém o cálculo de MTTFd, DCavg e CCF exige os dados dos componentes certificados.",
-    correctiveAction: "O responsável técnico deve emitir a ART de apreciação de risco e confirmar os blocos de segurança certificados.",
+    description:
+      "Conforme norma e política de segurança industrial, a determinação do Performance Level Requerido (PLr) e SIL depende de apreciação de risco formal (severidade, frequência de exposição e possibilidade de evitar o perigo) e não pode ser homologada puramente por algoritmo sem inspeção da aplicação mecânica.",
+    evidence:
+      "A arquitetura elétrica prevê comando de segurança, porém o cálculo de MTTFd, DCavg e CCF exige os dados dos componentes certificados.",
+    correctiveAction:
+      "O responsável técnico deve emitir a ART de apreciação de risco e confirmar os blocos de segurança certificados.",
     isResolved: false,
     testToConfirm: "Validação da matriz de segurança e emissão da ART/CFT correspondente.",
   });
@@ -287,7 +316,8 @@ export function evaluateNormativeCompliance(
       status: "VALIDADO",
       severity: "info",
       title: "Lógica Ladder conforme padrão IEC 61131-3",
-      description: "Redes numeradas, variáveis tipadas (BOOL/INT), intertravamentos e contatos de comando em conformidade semântica.",
+      description:
+        "Redes numeradas, variáveis tipadas (BOOL/INT), intertravamentos e contatos de comando em conformidade semântica.",
       evidence: `${extracted.plcProgram.networks.length} redes Ladder extraídas e mapeadas.`,
       correctiveAction: "Nenhuma ação necessária.",
       isResolved: true,
@@ -303,7 +333,8 @@ export function evaluateNormativeCompliance(
       status: "NAO_APLICAVEL",
       severity: "info",
       title: "Lógica de automação em CLP não utilizada neste projeto",
-      description: "O projeto é composto exclusivamente por comando eletromecânico discreto sem CLP.",
+      description:
+        "O projeto é composto exclusivamente por comando eletromecânico discreto sem CLP.",
       evidence: "Nenhuma rede Ladder ou CPU configurada no rack do projeto.",
       correctiveAction: "Nenhuma ação necessária.",
       isResolved: true,
@@ -312,7 +343,9 @@ export function evaluateNormativeCompliance(
   }
 
   // ── 7. Avaliar status geral do relatório ──────────────────────────────────
-  const reprovedCount = findings.filter((f) => f.status === "REPROVADO" && f.severity === "critical").length;
+  const reprovedCount = findings.filter(
+    (f) => f.status === "REPROVADO" && f.severity === "critical",
+  ).length;
   const pendingCount = extracted.pendingInputs.length;
 
   let overallStatus: NormativeValidationReport["overallStatus"] = "approved";

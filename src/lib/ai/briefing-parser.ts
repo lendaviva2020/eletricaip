@@ -406,7 +406,9 @@ export function parseBriefingDocument(input: BriefingDocumentInput): ParsedBrief
         : validInput.content;
     motors = parseMotorsFromCsv(extractedText);
     if (motors.length === 0) {
-      warnings.push("Nenhum motor estruturado identificado nas colunas do CSV; usando texto bruto.");
+      warnings.push(
+        "Nenhum motor estruturado identificado nas colunas do CSV; usando texto bruto.",
+      );
     }
   } else if (format === "json") {
     extractedText =
@@ -457,7 +459,7 @@ export function parseBriefingDocument(input: BriefingDocumentInput): ParsedBrief
   });
 
   const formattedPromptBlock = [
-    `[DOCUMENTO DE BRIEFING: ${ sanitizePromptText(validInput.fileName, 120) } (${format.toUpperCase()})]`,
+    `[DOCUMENTO DE BRIEFING: ${sanitizePromptText(validInput.fileName, 120)} (${format.toUpperCase()})]`,
     motors.length > 0
       ? `LISTA ESTRUTURADA DE MOTORES EXTRAÍDA (${motors.length} motores obrigatórios):\n${motorSummaryLines.join("\n")}\n\nOBRIGATÓRIO: O projeto gerado DEVE conter EXATAMENTE todos os ${motors.length} motores listados acima (${motors.map((m) => m.id).join(", ")}) com suas respectivas potências, proteções NBR 5410 e interlocks E-STOP NR-12.`
       : `CONTEÚDO EXTRAÍDO DO BRIEFING:\n${safeText}`,
@@ -540,7 +542,11 @@ export function buildArchitectureFromBriefingMotors(
       kind: "switch",
       category: "power",
       label: "Seccionadora Geral LOTO (NR-10)",
-      params: { loto: true, lockout: true, in_A: Math.ceil((trafoKva * 1000) / (1.732 * secondaryV)) },
+      params: {
+        loto: true,
+        lockout: true,
+        in_A: Math.ceil((trafoKva * 1000) / (1.732 * secondaryV)),
+      },
       position: { x: 420, y: 170 },
     },
     {
@@ -636,11 +642,7 @@ export function buildArchitectureFromBriefingMotors(
     const startOperand = `START_${cleanTag}`;
 
     const driveKind =
-      m.startMethod === "VFD"
-        ? "vfd"
-        : m.startMethod === "SOFT"
-          ? "softstarter"
-          : "contactor";
+      m.startMethod === "VFD" ? "vfd" : m.startMethod === "SOFT" ? "softstarter" : "contactor";
 
     nodes.push(
       {
@@ -766,8 +768,7 @@ export function reconcileArchitectureWithBriefing(
         Math.abs(Number(em?.power_kW) - bm.power_kW) < 0.5,
     );
     const inNodes = existingNodes.some(
-      (en) =>
-        en?.kind === "motor" && String(en?.id ?? "").toUpperCase() === bm.id.toUpperCase(),
+      (en) => en?.kind === "motor" && String(en?.id ?? "").toUpperCase() === bm.id.toUpperCase(),
     );
     return inMotors && inNodes;
   });
@@ -789,9 +790,7 @@ export function reconcileArchitectureWithBriefing(
 /**
  * Gera um AiDiagramPatch validado pelo Zod para o canvas WebGL a partir da lista de motores do briefing.
  */
-export function buildDiagramPatchFromBriefingMotors(
-  motors: ParsedBriefingMotor[],
-): AiDiagramPatch {
+export function buildDiagramPatchFromBriefingMotors(motors: ParsedBriefingMotor[]): AiDiagramPatch {
   const totalKw = motors.reduce((acc, m) => acc + m.power_kW, 0);
   const secondaryV = motors[0]?.voltage_V ?? 380;
   const trafoKva = pickCommercialTrafoKva(totalKw);

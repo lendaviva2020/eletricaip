@@ -57,7 +57,7 @@ export function sha256(asciiOrUtf8Str: string): string {
 
   // Preenchimento (padding): acrescenta 0x80 e zeros até tamanho % 64 === 56
   utf8Bytes.push(0x80);
-  while ((utf8Bytes.length % 64) !== 56) {
+  while (utf8Bytes.length % 64 !== 56) {
     utf8Bytes.push(0x00);
   }
 

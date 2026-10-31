@@ -525,7 +525,8 @@ export const en: TranslationCatalog = {
     buttonLabel: "Fix with AI",
     buttonTooltip: "Propose deterministic validated corrections for electrical non-compliances",
     dialogTitle: "Corrective Diagnostics — ABNT NBR 5410",
-    dialogSubtitle: "The deterministic engine computed valid options; AI selects and justifies the technical proposal.",
+    dialogSubtitle:
+      "The deterministic engine computed valid options; AI selects and justifies the technical proposal.",
     diagnosticsToFix: "Non-compliances to be corrected",
     diffTableTitle: "Sizing Comparison (Before / After Diff)",
     cableCol: "Conductor",

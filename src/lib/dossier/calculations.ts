@@ -17,11 +17,7 @@ import {
   type InsulationType,
 } from "@/lib/electrical-calc";
 import type { ExtractedCanvasData } from "./extractor";
-import type {
-  CircuitCalculation,
-  CircuitType,
-  ElectricalCalculationMemory,
-} from "./types";
+import type { CircuitCalculation, CircuitType, ElectricalCalculationMemory } from "./types";
 
 export function computePeSection(phaseSectionMm2: number): number {
   // ABNT NBR 5410:2004 — Tabela 58 (Seção mínima do condutor de proteção PE)
@@ -51,9 +47,7 @@ export function computeVoltageDropWithReactance(params: {
   const sin = Math.sqrt(Math.max(0, 1 - cos * cos));
   const rOhmPerM = RHO_COPPER_OHM_MM2_PER_M / params.sectionMm2;
   const xOhmPerM =
-    params.sectionMm2 >= REACTANCE_THRESHOLD_MM2
-      ? DEFAULT_REACTANCE_MOHM_PER_M / 1000
-      : 0;
+    params.sectionMm2 >= REACTANCE_THRESHOLD_MM2 ? DEFAULT_REACTANCE_MOHM_PER_M / 1000 : 0;
 
   const factor = params.isThreePhase !== false ? Math.sqrt(3) : 2;
   // Delta V = factor * I * L * (R * cosPhi + X * sinPhi)
@@ -98,8 +92,7 @@ export function generateElectricalCalculationMemory(
     if (!isMotor && !isGeneralLoad && !isLamp && !isSocket) continue;
 
     const powerKw =
-      eq.specs.powerKw ??
-      (eq.specs.powerW ? eq.specs.powerW / 1000 : isMotor ? 5.5 : 1.0);
+      eq.specs.powerKw ?? (eq.specs.powerW ? eq.specs.powerW / 1000 : isMotor ? 5.5 : 1.0);
 
     totalInstalledKw += powerKw;
 
@@ -193,11 +186,13 @@ export function generateElectricalCalculationMemory(
     const breakingCapacityIcuKa = 10;
 
     // Neutro e PE
-    const neutralCableMm2 = isThreePhase ? computeNeutralSection(selectedCableMm2) : selectedCableMm2;
+    const neutralCableMm2 = isThreePhase
+      ? computeNeutralSection(selectedCableMm2)
+      : selectedCableMm2;
     const peCableMm2 = computePeSection(selectedCableMm2);
 
     // Dados de partida para motores
-    let startMethod = eq.specs.startingMethod ?? "DOL";
+    const startMethod = eq.specs.startingMethod ?? "DOL";
     let startingCurrentIstartA: number | undefined;
     let overloadRelaySettingA: number | undefined;
 
@@ -244,7 +239,8 @@ export function generateElectricalCalculationMemory(
       selectedCableMm2,
       nominalAmpacityIzA,
       correctedAmpacityIzA,
-      ampacityCheckPass: correctedAmpacityIzA >= breakerRatingInA && breakerRatingInA >= designCurrentIbA,
+      ampacityCheckPass:
+        correctedAmpacityIzA >= breakerRatingInA && breakerRatingInA >= designCurrentIbA,
       lengthM,
       resistanceOhmPerM: vDrop.resistanceOhmPerM,
       reactanceOhmPerM: vDrop.reactanceOhmPerM,
@@ -258,7 +254,8 @@ export function generateElectricalCalculationMemory(
       breakerCurve,
       breakingCapacityIcuKa,
       presumedIccKa,
-      protectionCoordinationPass: breakerRatingInA >= designCurrentIbA && breakerRatingInA <= correctedAmpacityIzA,
+      protectionCoordinationPass:
+        breakerRatingInA >= designCurrentIbA && breakerRatingInA <= correctedAmpacityIzA,
       startMethod,
       startingCurrentIstartA,
       overloadRelaySettingA,
@@ -271,13 +268,18 @@ export function generateElectricalCalculationMemory(
   const totalDemandKw = Number((totalInstalledKw * demandFactor).toFixed(2));
   const avgCosPhi = 0.86;
   const totalApparentPowerKva = Number((totalDemandKw / avgCosPhi).toFixed(2));
-  const mainFeederIbA = Number(((totalDemandKw * 1000) / (Math.sqrt(3) * systemVoltage * avgCosPhi)).toFixed(1));
+  const mainFeederIbA = Number(
+    ((totalDemandKw * 1000) / (Math.sqrt(3) * systemVoltage * avgCosPhi)).toFixed(1),
+  );
   const recommendedTransformerKva = selectStandardTransformer(totalApparentPowerKva * 1.25);
   const mainBreakerInA = pickBreaker_A(mainFeederIbA);
 
   let mainCable: CableSection_mm2 = 16;
   for (const s of NBR5410_SECTIONS) {
-    if (correctedAmpacityIz(s, { method: "C", insulation: "EPR", loadedConductors: 3 }) >= mainBreakerInA) {
+    if (
+      correctedAmpacityIz(s, { method: "C", insulation: "EPR", loadedConductors: 3 }) >=
+      mainBreakerInA
+    ) {
       mainCable = s;
       break;
     }
@@ -333,7 +335,9 @@ export function generateElectricalCalculationMemory(
       {
         standard: "IEC 60909-0",
         edition: "2016",
-        clauses: ["Short-circuit currents in three-phase a.c. systems — Presumed prospective Icc calculation"],
+        clauses: [
+          "Short-circuit currents in three-phase a.c. systems — Presumed prospective Icc calculation",
+        ],
       },
     ],
   };

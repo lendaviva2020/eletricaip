@@ -74,10 +74,7 @@ export type BomItemSource =
   | "incomplete_specification"
   | "commercial_selection_pending";
 
-export type BomValidationState =
-  | "validated"
-  | "pending_catalog_selection"
-  | "requires_review";
+export type BomValidationState = "validated" | "pending_catalog_selection" | "requires_review";
 
 export interface BomItem {
   id: string;
@@ -194,7 +191,7 @@ export interface CircuitCalculation {
   powerFactor: number;
   efficiency: number;
   designCurrentIbA: number;
-  
+
   // Condutor por capacidade de condução (NBR 5410 Tabelas 36-38, 40, 42)
   installationMethod: string;
   insulation: "PVC" | "EPR" | "XLPE";
@@ -262,11 +259,7 @@ export interface ElectricalCalculationMemory {
 // ── Normative Validation Engine ─────────────────────────────────────────────
 
 export type NormativeResultState =
-  | "VALIDADO"
-  | "REPROVADO"
-  | "PENDENTE"
-  | "NAO_APLICAVEL"
-  | "REVISAO_PROFISSIONAL_NECESSARIA";
+  "VALIDADO" | "REPROVADO" | "PENDENTE" | "NAO_APLICAVEL" | "REVISAO_PROFISSIONAL_NECESSARIA";
 
 export interface NormativeFinding {
   id: string;
@@ -322,7 +315,7 @@ export interface CompleteEngineeringDossier {
   scope: DossierScope;
   createdAt: string;
   revision: number;
-  
+
   approval: EngineeringApproval;
   calculationMemory: ElectricalCalculationMemory;
   normativeReport: NormativeValidationReport;
@@ -330,7 +323,7 @@ export interface CompleteEngineeringDossier {
   conductorsSchedule: ConductorScheduleRow[];
   terminalsSchedule: TerminalBlockTerminal[];
   plcProgram: PlcProgramDoc;
-  
+
   // Pending missing inputs requiring engineer resolution
   pendingInputs: Array<{
     id: string;

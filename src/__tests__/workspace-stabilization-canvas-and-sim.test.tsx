@@ -41,7 +41,13 @@ describe("ELÉTRICAI — Estabilização do Workspace e Canvas Profissional", ()
           position: { x: 500, y: 400 },
           rotation: 0,
           label: "M1",
-          params: { kind: "motor", power_kW: 7.5, current_A: 15.2, voltage_V: 380, startMethod: "DOL" },
+          params: {
+            kind: "motor",
+            power_kW: 7.5,
+            current_A: 15.2,
+            voltage_V: 380,
+            startMethod: "DOL",
+          },
         },
       ];
 
@@ -140,7 +146,13 @@ describe("ELÉTRICAI — Estabilização do Workspace e Canvas Profissional", ()
           sheet: "unifilar",
           position: { x: 200, y: 400 },
           label: "M_MAIN",
-          params: { kind: "motor", power_kW: 15, current_A: 30, voltage_V: 380, startMethod: "DOL" },
+          params: {
+            kind: "motor",
+            power_kW: 15,
+            current_A: 30,
+            voltage_V: 380,
+            startMethod: "DOL",
+          },
         }),
       );
       store.dispatch(
@@ -191,7 +203,13 @@ describe("ELÉTRICAI — Estabilização do Workspace e Canvas Profissional", ()
           sheet: "unifilar",
           position: { x: 100, y: 100 },
           label: "TRAFO_1",
-          params: { kind: "transformer", kVA: 150, primary_V: 13800, secondary_V: 380, vector: "Dyn11" },
+          params: {
+            kind: "transformer",
+            kVA: 150,
+            primary_V: 13800,
+            secondary_V: 380,
+            vector: "Dyn11",
+          },
         }),
       );
       store.dispatch(
@@ -303,7 +321,13 @@ describe("ELÉTRICAI — Estabilização do Workspace e Canvas Profissional", ()
         position: { x: 0, y: 0 },
         rotation: 0,
         label: "TRAFO",
-        params: { kind: "transformer", kVA: 150, primary_V: 13800, secondary_V: 380, vector: "Dyn11" },
+        params: {
+          kind: "transformer",
+          kVA: 150,
+          primary_V: 13800,
+          secondary_V: 380,
+          vector: "Dyn11",
+        },
       };
       expect(isPowerSourceNode(trafoNode)).toBe(true);
     });
@@ -329,7 +353,13 @@ describe("ELÉTRICAI — Estabilização do Workspace e Canvas Profissional", ()
             position: { x: 0, y: 200 },
             rotation: 0,
             label: "MOTOR",
-            params: { kind: "motor", power_kW: 7.5, current_A: 15.2, voltage_V: 380, startMethod: "DOL" },
+            params: {
+              kind: "motor",
+              power_kW: 7.5,
+              current_A: 15.2,
+              voltage_V: 380,
+              startMethod: "DOL",
+            },
           },
         },
         edges: {
@@ -377,7 +407,13 @@ describe("ELÉTRICAI — Estabilização do Workspace e Canvas Profissional", ()
             position: { x: 0, y: 200 },
             rotation: 0,
             label: "M1",
-            params: { kind: "motor", power_kW: 7.5, current_A: 15.2, voltage_V: 380, startMethod: "DOL" },
+            params: {
+              kind: "motor",
+              power_kW: 7.5,
+              current_A: 15.2,
+              voltage_V: 380,
+              startMethod: "DOL",
+            },
           },
         },
         edges: {

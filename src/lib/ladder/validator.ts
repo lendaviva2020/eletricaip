@@ -120,7 +120,10 @@ export const validateRungs = (
       }
 
       // Verificação de tipos incompatíveis em comparadores
-      if (inst.kind.startsWith("CMP_") || ["GT", "LT", "GE", "LE", "EQ", "NE"].includes(inst.kind)) {
+      if (
+        inst.kind.startsWith("CMP_") ||
+        ["GT", "LT", "GE", "LE", "EQ", "NE"].includes(inst.kind)
+      ) {
         const in1 = String(inst.params?.IN1 ?? inst.operand ?? "");
         const in2 = String(inst.params?.IN2 ?? "");
         if (tags && in1 && in2) {
@@ -155,7 +158,8 @@ export const validateRungs = (
     const checkBranch = (branch: typeof topology.rootBranch) => {
       (branch.items ?? []).forEach((item) => {
         const anyItem = item as any;
-        const inst: LadderInstruction | undefined = anyItem.instruction ?? (anyItem.kind ? anyItem : undefined);
+        const inst: LadderInstruction | undefined =
+          anyItem.instruction ?? (anyItem.kind ? anyItem : undefined);
 
         if (inst) {
           checkInstruction(inst, false);

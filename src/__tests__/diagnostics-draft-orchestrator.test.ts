@@ -101,7 +101,9 @@ describe("Orquestrador de Diagnósticos em Rascunho (Fase 5)", () => {
     const originalHash = computeCanonicalDocHash(doc);
     const diags = evaluateAllRules(doc);
 
-    const ops: PatchOperation[] = [{ op: "set-conductor-section", conductorId: "w1", sectionMm2: 10 }];
+    const ops: PatchOperation[] = [
+      { op: "set-conductor-section", conductorId: "w1", sectionMm2: 10 },
+    ];
 
     const result = validateDraft(doc, ops, diags);
 
@@ -121,7 +123,9 @@ describe("Orquestrador de Diagnósticos em Rascunho (Fase 5)", () => {
     const doc = makeDocWithVoltageDropError();
     const diags = evaluateAllRules(doc);
 
-    const ops: PatchOperation[] = [{ op: "set-conductor-section", conductorId: "w1", sectionMm2: 2.5 }];
+    const ops: PatchOperation[] = [
+      { op: "set-conductor-section", conductorId: "w1", sectionMm2: 2.5 },
+    ];
 
     const result = validateDraft(doc, ops, diags);
 

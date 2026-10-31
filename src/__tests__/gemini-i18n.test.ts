@@ -1,10 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { buildDiagramSystemPrompt } from "@/lib/diagram/ai.functions";
-import {
-  getArchitectSystemPrompt,
-  ARCHITECT_SYSTEM_PROMPT,
-} from "@/lib/ai-architect.functions";
+import { getArchitectSystemPrompt, ARCHITECT_SYSTEM_PROMPT } from "@/lib/ai-architect.functions";
 import { getChatSystemPrompt } from "@/lib/ai-chat.functions";
 import { ptBR } from "@/lib/i18n/catalogs/pt-BR";
 import { en } from "@/lib/i18n/catalogs/en";
@@ -70,7 +67,9 @@ describe("Fase G — Integração de Idioma com a IA Google Gemini", () => {
 
     it("injeta diretivas internacionais (IEC 60364, NFPA 70E, ISO 13849) no prompt en", () => {
       const promptEn = getArchitectSystemPrompt("en");
-      expect(promptEn).toContain("senior industrial electrical engineer specializing in international standards");
+      expect(promptEn).toContain(
+        "senior industrial electrical engineer specializing in international standards",
+      );
       expect(promptEn).toContain("IEC 60364");
       expect(promptEn).toContain("NFPA 70E");
       expect(promptEn).toContain("ISO 13849");

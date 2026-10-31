@@ -21,7 +21,10 @@ import {
 } from "@/lib/model";
 import { deriveStudyDefaultsFromModel } from "@/components/simulation/electrical-study-panel";
 
-function applyAll(doc: DiagramDoc, commands: ReturnType<typeof buildMultifilarCommands>): DiagramDoc {
+function applyAll(
+  doc: DiagramDoc,
+  commands: ReturnType<typeof buildMultifilarCommands>,
+): DiagramDoc {
   let cur = doc;
   for (const c of commands) {
     cur = applyCommand(cur, c);

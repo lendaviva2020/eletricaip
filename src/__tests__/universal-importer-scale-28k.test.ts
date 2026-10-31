@@ -103,7 +103,9 @@ describe("Universal Importer - 28,000+ Line Industrial Scale Acceptance", () => 
     expect(motor265?.type).toBe("motor");
 
     // Verificar conexões íntegras da subestação
-    const edgeEntrada = bundle.edges.find((e) => e.source === "SUBESTACAO-13KV" && e.target === "DJ-GERAL-QGBT");
+    const edgeEntrada = bundle.edges.find(
+      (e) => e.source === "SUBESTACAO-13KV" && e.target === "DJ-GERAL-QGBT",
+    );
     expect(edgeEntrada).toBeDefined();
     expect(edgeEntrada?.circuitConfig).toBe("3F+N+PE");
   });
@@ -151,7 +153,9 @@ describe("Universal Importer - 28,000+ Line Industrial Scale Acceptance", () => 
     expect(report.isValid).toBe(false);
     expect(report.canImport).toBe(false);
 
-    const lineIssue = report.issues.find((i) => i.id === "line-count-exceeded" || i.id === "sec-size");
+    const lineIssue = report.issues.find(
+      (i) => i.id === "line-count-exceeded" || i.id === "sec-size",
+    );
     expect(lineIssue).toBeDefined();
     expect(lineIssue?.message).toContain("20.000");
     expect(lineIssue?.rejected).toBe(true);

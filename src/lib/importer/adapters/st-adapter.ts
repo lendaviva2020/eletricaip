@@ -87,7 +87,8 @@ export function parseStructuredText(
   let aoCount = 0;
 
   // 4. Extração de variáveis em blocos VAR, VAR_INPUT, VAR_OUTPUT, VAR_GLOBAL
-  const varBlockRegex = /\b(VAR|VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR_GLOBAL)\b([\s\S]*?)\bEND_VAR\b/gi;
+  const varBlockRegex =
+    /\b(VAR|VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR_GLOBAL)\b([\s\S]*?)\bEND_VAR\b/gi;
   let blockMatch: RegExpExecArray | null;
 
   while ((blockMatch = varBlockRegex.exec(cleanCode)) !== null) {
@@ -141,17 +142,33 @@ export function parseStructuredText(
         // Dedução de nós elétricos/industriais baseados no nome da tag
         const lowerName = name.toLowerCase();
         let inferredKind: string | null = null;
-        let inferredLabel = name;
+        const inferredLabel = name;
 
-        if (lowerName.includes("motor") || lowerName.startsWith("m_") || lowerName.startsWith("mot_")) {
+        if (
+          lowerName.includes("motor") ||
+          lowerName.startsWith("m_") ||
+          lowerName.startsWith("mot_")
+        ) {
           inferredKind = "motor";
         } else if (lowerName.includes("km") || lowerName.includes("contator")) {
           inferredKind = "contactor";
-        } else if (lowerName.includes("dj") || lowerName.includes("disjuntor") || lowerName.includes("q_")) {
+        } else if (
+          lowerName.includes("dj") ||
+          lowerName.includes("disjuntor") ||
+          lowerName.includes("q_")
+        ) {
           inferredKind = "breaker";
-        } else if (lowerName.includes("ft") || lowerName.includes("rele") || lowerName.includes("termico")) {
+        } else if (
+          lowerName.includes("ft") ||
+          lowerName.includes("rele") ||
+          lowerName.includes("termico")
+        ) {
           inferredKind = "relay";
-        } else if (lowerName.includes("lamp") || lowerName.includes("h_") || lowerName.includes("sinal")) {
+        } else if (
+          lowerName.includes("lamp") ||
+          lowerName.includes("h_") ||
+          lowerName.includes("sinal")
+        ) {
           inferredKind = "lamp";
         } else if (lowerName.includes("estop") || lowerName.includes("emergencia")) {
           inferredKind = "estop";
@@ -185,10 +202,46 @@ export function parseStructuredText(
       cpuModel: "ElétricAi SoftPLC Core",
       rackName: "Rack_Principal",
       modules: [
-        ...(diCount > 0 ? [{ slot: 1, type: "DI" as const, channelsCount: Math.max(8, Math.ceil(diCount / 8) * 8), label: "Módulo DI" }] : []),
-        ...(doCount > 0 ? [{ slot: 2, type: "DO" as const, channelsCount: Math.max(8, Math.ceil(doCount / 8) * 8), label: "Módulo DO" }] : []),
-        ...(aiCount > 0 ? [{ slot: 3, type: "AI" as const, channelsCount: Math.max(4, Math.ceil(aiCount / 4) * 4), label: "Módulo AI" }] : []),
-        ...(aoCount > 0 ? [{ slot: 4, type: "AO" as const, channelsCount: Math.max(4, Math.ceil(aoCount / 4) * 4), label: "Módulo AO" }] : []),
+        ...(diCount > 0
+          ? [
+              {
+                slot: 1,
+                type: "DI" as const,
+                channelsCount: Math.max(8, Math.ceil(diCount / 8) * 8),
+                label: "Módulo DI",
+              },
+            ]
+          : []),
+        ...(doCount > 0
+          ? [
+              {
+                slot: 2,
+                type: "DO" as const,
+                channelsCount: Math.max(8, Math.ceil(doCount / 8) * 8),
+                label: "Módulo DO",
+              },
+            ]
+          : []),
+        ...(aiCount > 0
+          ? [
+              {
+                slot: 3,
+                type: "AI" as const,
+                channelsCount: Math.max(4, Math.ceil(aiCount / 4) * 4),
+                label: "Módulo AI",
+              },
+            ]
+          : []),
+        ...(aoCount > 0
+          ? [
+              {
+                slot: 4,
+                type: "AO" as const,
+                channelsCount: Math.max(4, Math.ceil(aoCount / 4) * 4),
+                label: "Módulo AO",
+              },
+            ]
+          : []),
       ],
     };
   }
@@ -297,7 +350,8 @@ export function parseStructuredText(
           id: "st-no-elements",
           severity: "critical",
           category: "schema",
-          message: "Nenhuma variável, instrução I/O ou lógica reconhecida no código Structured Text fornecido.",
+          message:
+            "Nenhuma variável, instrução I/O ou lógica reconhecida no código Structured Text fornecido.",
           rejected: true,
         },
       ],

@@ -88,7 +88,18 @@ describe("Fase E & F — Exportações Localizadas e Invariância de Símbolos T
   });
 
   it("preserva rigorosamente identificadores técnicos, endereços PLC e mnemônicos IEC entre idiomas", () => {
-    const technicalSymbols = ["QF1", "KM1", "M1", "%I0.0", "%Q0.0", "%MW10", "TON", "TOF", "CTU", "PID"];
+    const technicalSymbols = [
+      "QF1",
+      "KM1",
+      "M1",
+      "%I0.0",
+      "%Q0.0",
+      "%MW10",
+      "TON",
+      "TOF",
+      "CTU",
+      "PID",
+    ];
 
     // Troca para pt-BR
     useI18nStore.getState().setLocale("pt-BR", { syncProfile: false });

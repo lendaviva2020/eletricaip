@@ -303,8 +303,12 @@ function setupCircuit() {
 
   // Ligações de Sinal e Comando (Linhas Tracejadas Laranjas)
   store.dispatch(cmd.addEdge({ sheet: "unifilar", source: "PLC1", target: "KM1", kind: "signal" }));
-  store.dispatch(cmd.addEdge({ sheet: "unifilar", source: "PLC1", target: "VFD1", kind: "signal" }));
-  store.dispatch(cmd.addEdge({ sheet: "unifilar", source: "PLC1", target: "HMI1", kind: "signal" }));
+  store.dispatch(
+    cmd.addEdge({ sheet: "unifilar", source: "PLC1", target: "VFD1", kind: "signal" }),
+  );
+  store.dispatch(
+    cmd.addEdge({ sheet: "unifilar", source: "PLC1", target: "HMI1", kind: "signal" }),
+  );
 
   // Deriva o diagrama multifilar inicial compartilhado a partir do doc atualizado
   const currentDoc = useDiagramStore.getState().doc;
@@ -407,7 +411,8 @@ describe("ElétricAi — Canvas Elétrico Unifilar + Multifilar Profissional", (
     const docAfterSync = useDiagramStore.getState().doc;
     const m1EquipId = currentM1.ui?.equipmentId || currentM1.id;
     const multiM1 = Object.values(docAfterSync.nodes).find(
-      (n) => n.sheet === "multifilar" && (n.ui?.equipmentId === m1EquipId || n.id === `mf_${m1EquipId}`),
+      (n) =>
+        n.sheet === "multifilar" && (n.ui?.equipmentId === m1EquipId || n.id === `mf_${m1EquipId}`),
     );
     expect(multiM1).toBeDefined();
     expect((multiM1?.params as any).power_kW).toBe(11);

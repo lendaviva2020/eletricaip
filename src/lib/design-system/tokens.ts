@@ -4,10 +4,10 @@
 
 export const BRAND_PALETTE = {
   graphite: "#0B0F14", // Deep Graphite — Fundo principal escuro, navegação principal
-  steel: "#151C24",    // Dark Steel — Superfícies secundárias, painéis, cartões, menus
-  orange: "#FF8A00",   // Industrial Orange — Ações primárias, botões, seleção, destaques
-  white: "#F1F5F9",    // Technical White — Títulos, texto de alta prioridade sobre fundo escuro
-  gray: "#A7B0BB",     // Reading Gray — Descrições, legendas, metadados, texto secundário
+  steel: "#151C24", // Dark Steel — Superfícies secundárias, painéis, cartões, menus
+  orange: "#FF8A00", // Industrial Orange — Ações primárias, botões, seleção, destaques
+  white: "#F1F5F9", // Technical White — Títulos, texto de alta prioridade sobre fundo escuro
+  gray: "#A7B0BB", // Reading Gray — Descrições, legendas, metadados, texto secundário
 } as const;
 
 export const THEME_TOKENS = {
@@ -61,7 +61,7 @@ export const THEME_TOKENS = {
     primaryActive: "#CC6E00",
     primaryForeground: "#0B0F14", // 9.4:1 contrast ratio (AAA)
     // Para links textuais ou texto de ênfase laranja sobre fundo branco, usamos tom ajustado para WCAG AA >= 4.5:1
-    primaryText: "#B45309",      // 4.9:1 contrast ratio sobre branco (AA)
+    primaryText: "#B45309", // 4.9:1 contrast ratio sobre branco (AA)
     secondary: "#F1F5F9",
     secondaryForeground: "#0B0F14",
     focusRing: "#FF8A00",
@@ -94,38 +94,38 @@ export const TYPOGRAPHY = {
     bold: "700",
   },
   scale: {
-    xs: { fontSize: "0.75rem", lineHeight: "1rem" },        // 12px
-    sm: { fontSize: "0.875rem", lineHeight: "1.25rem" },    // 14px
-    base: { fontSize: "1rem", lineHeight: "1.5rem" },       // 16px
-    lg: { fontSize: "1.125rem", lineHeight: "1.75rem" },    // 18px
-    xl: { fontSize: "1.25rem", lineHeight: "1.75rem" },     // 20px
-    "2xl": { fontSize: "1.5rem", lineHeight: "2rem" },      // 24px
+    xs: { fontSize: "0.75rem", lineHeight: "1rem" }, // 12px
+    sm: { fontSize: "0.875rem", lineHeight: "1.25rem" }, // 14px
+    base: { fontSize: "1rem", lineHeight: "1.5rem" }, // 16px
+    lg: { fontSize: "1.125rem", lineHeight: "1.75rem" }, // 18px
+    xl: { fontSize: "1.25rem", lineHeight: "1.75rem" }, // 20px
+    "2xl": { fontSize: "1.5rem", lineHeight: "2rem" }, // 24px
     "3xl": { fontSize: "1.875rem", lineHeight: "2.25rem" }, // 30px
-    "4xl": { fontSize: "2.25rem", lineHeight: "2.5rem" },   // 36px
-    "5xl": { fontSize: "3rem", lineHeight: "1.15" },        // 48px
+    "4xl": { fontSize: "2.25rem", lineHeight: "2.5rem" }, // 36px
+    "5xl": { fontSize: "3rem", lineHeight: "1.15" }, // 48px
   },
 } as const;
 
 export const SPACING = {
   0: "0px",
   1: "0.25rem", // 4px
-  2: "0.5rem",  // 8px
+  2: "0.5rem", // 8px
   3: "0.75rem", // 12px
-  4: "1rem",    // 16px
+  4: "1rem", // 16px
   5: "1.25rem", // 20px
-  6: "1.5rem",  // 24px
-  8: "2rem",    // 32px
+  6: "1.5rem", // 24px
+  8: "2rem", // 32px
   10: "2.5rem", // 40px
-  12: "3rem",   // 48px
-  16: "4rem",   // 64px
+  12: "3rem", // 48px
+  16: "4rem", // 64px
 } as const;
 
 export const RADIUS = {
   none: "0px",
   sm: "0.25rem", // 4px
   md: "0.375rem", // 6px
-  lg: "0.5rem",   // 8px (padrão industrial)
-  xl: "0.75rem",  // 12px
+  lg: "0.5rem", // 8px (padrão industrial)
+  xl: "0.75rem", // 12px
   full: "9999px",
 } as const;
 

@@ -18,14 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  CheckCircle,
-  Warning,
-  Info,
-  ShieldCheck,
-  Cpu,
-  ArrowRight,
-} from "@phosphor-icons/react";
+import { CheckCircle, Warning, Info, ShieldCheck, Cpu, ArrowRight } from "@phosphor-icons/react";
 import { useI18n } from "@/lib/i18n";
 import type { FixProposal } from "@/lib/diagnostics/contract";
 
@@ -114,26 +107,20 @@ export const AiFixDialog: React.FC<AiFixDialogProps> = ({
                     const op = proposal.operations.find((o) => o.conductorId === m.elementId);
                     return (
                       <tr key={idx} className="hover:bg-accent/30 transition-colors">
-                        <td className="py-1.5 px-3 font-semibold text-foreground">
-                          {m.elementId}
-                        </td>
+                        <td className="py-1.5 px-3 font-semibold text-foreground">{m.elementId}</td>
                         <td className="py-1.5 px-3 text-muted-foreground">
                           {m.metric === "voltage_drop_pct"
-                            ? `${(proposal.metrics.find((x) => x.elementId === m.elementId && x.metric === "section_mm2")?.before ?? "—")} mm²`
+                            ? `${proposal.metrics.find((x) => x.elementId === m.elementId && x.metric === "section_mm2")?.before ?? "—"} mm²`
                             : `${m.before} ${m.unit}`}
                         </td>
                         <td className="py-1.5 px-3 text-primary font-bold">
                           {op ? `${op.sectionMm2} mm²` : "—"}
                         </td>
                         <td className="py-1.5 px-3 text-destructive">
-                          {m.metric === "voltage_drop_pct"
-                            ? `${m.before}%`
-                            : "—"}
+                          {m.metric === "voltage_drop_pct" ? `${m.before}%` : "—"}
                         </td>
                         <td className="py-1.5 px-3 text-success font-semibold">
-                          {m.metric === "voltage_drop_pct"
-                            ? `${m.after}%`
-                            : "—"}
+                          {m.metric === "voltage_drop_pct" ? `${m.after}%` : "—"}
                         </td>
                         <td className="py-1.5 px-3 text-muted-foreground">
                           {m.limit} {m.unit}
@@ -181,7 +168,10 @@ export const AiFixDialog: React.FC<AiFixDialogProps> = ({
               </span>
               <ul className="space-y-1 bg-card/60 p-2.5 rounded border border-border">
                 {proposal.sideEffects.map((effect, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[11px] text-muted-foreground font-sans">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-[11px] text-muted-foreground font-sans"
+                  >
                     <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                     <span>{effect}</span>
                   </li>

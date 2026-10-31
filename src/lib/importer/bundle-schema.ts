@@ -156,13 +156,19 @@ export const BundleNodeSchema = z.object({
     .string()
     .min(1)
     .max(64)
-    .regex(/^[a-zA-Z0-9_\-\.]+$/, "ID do nó deve conter apenas caracteres alfanuméricos, hífen ou sublinhado"),
+    .regex(
+      /^[a-zA-Z0-9_\-.]+$/,
+      "ID do nó deve conter apenas caracteres alfanuméricos, hífen ou sublinhado",
+    ),
   type: z.string().min(1).max(64),
   label: z.string().max(120).optional(),
   position: BundleNodePositionSchema,
   rotation: z.number().finite().min(0).max(360).optional().default(0),
   properties: z
-    .record(z.string().max(64), z.union([z.string().max(500), z.number().finite(), z.boolean(), z.null()]))
+    .record(
+      z.string().max(64),
+      z.union([z.string().max(500), z.number().finite(), z.boolean(), z.null()]),
+    )
     .optional()
     .default({}),
 });
@@ -190,7 +196,9 @@ export const BundleLadderRungSchema = z.object({
   output: z.object({
     kind: z.enum(["OTE", "OTL", "OTU", "TON", "TOF", "TP"]),
     operand: z.string().min(1).max(64),
-    params: z.record(z.string().max(32), z.union([z.string().max(64), z.number().finite()])).optional(),
+    params: z
+      .record(z.string().max(32), z.union([z.string().max(64), z.number().finite()]))
+      .optional(),
   }),
   branches: z.array(z.array(BundleLadderContactSchema)).min(1).max(20),
 });
@@ -218,7 +226,10 @@ export const BundleProjectMetaSchema = z.object({
   description: z.string().max(1000).optional(),
   standards: z.array(z.string().max(64)).optional().default(["NBR_5410", "NR-10", "NR-12"]),
   systemVoltageV: z.number().finite().positive().optional().default(380),
-  frequencyHz: z.union([z.literal(50), z.literal(60)]).optional().default(60),
+  frequencyHz: z
+    .union([z.literal(50), z.literal(60)])
+    .optional()
+    .default(60),
 });
 
 export const EletricAiCanvasBundleSchema = z.object({

@@ -177,7 +177,12 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
       expect(out.results[0].diagnostics?.["out:out-rtio"]?.targetPreserved).toBe(true);
 
       // 7. Entrada +Infinity
-      out = scanRungsPure([rungRTI], { INPUT_REAL: Number.POSITIVE_INFINITY, MY_INT: 777 }, state, 700);
+      out = scanRungsPure(
+        [rungRTI],
+        { INPUT_REAL: Number.POSITIVE_INFINITY, MY_INT: 777 },
+        state,
+        700,
+      );
       expect(out.tags.MY_INT).toBe(777); // PRESERVADO
       expect(out.results[0].poweredOut).toBe(false);
       expect(out.results[0].diagnostics?.["out:out-rtio"]?.isErr).toBe(true);
@@ -222,22 +227,50 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
       };
 
       // 50000.0 estoura INT16 no perfil generic
-      let out = scanRungsPure([rungRTI], { VAL_REAL: 50000.0, VAL_INT: 10 }, state, 100, undefined, "generic");
+      let out = scanRungsPure(
+        [rungRTI],
+        { VAL_REAL: 50000.0, VAL_INT: 10 },
+        state,
+        100,
+        undefined,
+        "generic",
+      );
       expect(out.tags.VAL_INT).toBe(10); // Preservado por erro de overflow
       expect(out.results[0].diagnostics?.["out:out-rtid"]?.isErr).toBe(true);
 
       // 50000.0 é VÁLIDO no perfil rockwell (DINT32 suporta até 2147483647)
-      out = scanRungsPure([rungRTI], { VAL_REAL: 50000.0, VAL_INT: 10 }, state, 200, undefined, "rockwell");
+      out = scanRungsPure(
+        [rungRTI],
+        { VAL_REAL: 50000.0, VAL_INT: 10 },
+        state,
+        200,
+        undefined,
+        "rockwell",
+      );
       expect(out.tags.VAL_INT).toBe(50000);
       expect(out.results[0].diagnostics?.["out:out-rtid"]?.isErr).toBe(false);
       expect(out.results[0].poweredOut).toBe(true);
 
       // Limites de DINT32 após arredondamento: 2147483647.4 -> válido; 2147483647.5 -> overflow
-      out = scanRungsPure([rungRTI], { VAL_REAL: 2147483647.4, VAL_INT: 10 }, state, 300, undefined, "rockwell");
+      out = scanRungsPure(
+        [rungRTI],
+        { VAL_REAL: 2147483647.4, VAL_INT: 10 },
+        state,
+        300,
+        undefined,
+        "rockwell",
+      );
       expect(out.tags.VAL_INT).toBe(2147483647);
       expect(out.results[0].poweredOut).toBe(true);
 
-      out = scanRungsPure([rungRTI], { VAL_REAL: 2147483647.5, VAL_INT: 10 }, state, 400, undefined, "rockwell");
+      out = scanRungsPure(
+        [rungRTI],
+        { VAL_REAL: 2147483647.5, VAL_INT: 10 },
+        state,
+        400,
+        undefined,
+        "rockwell",
+      );
       expect(out.tags.VAL_INT).toBe(10); // Preservado
       expect(out.results[0].poweredOut).toBe(false);
       expect(out.results[0].diagnostics?.["out:out-rtid"]?.isErr).toBe(true);
@@ -276,7 +309,7 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
         },
       };
 
-      let outOvf = scanRungsPure([rungAddOverflow], { F32_OUT: 123.45 }, state, 500);
+      const outOvf = scanRungsPure([rungAddOverflow], { F32_OUT: 123.45 }, state, 500);
       expect(outOvf.tags.F32_OUT).toBe(123.45); // Tag PRESERVADA!
       expect(outOvf.results[0].poweredOut).toBe(false);
       expect(outOvf.results[0].diagnostics?.["out:out-add-ovf"]?.isErr).toBe(true);
@@ -300,7 +333,7 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
           ],
         },
       };
-      let outLR = scanRungsPure([rungAddLReal], { F64_OUT: 0 }, state, 600);
+      const outLR = scanRungsPure([rungAddLReal], { F64_OUT: 0 }, state, 600);
       expect(outLR.tags.F64_OUT).toBe(1.1e39);
       expect(outLR.results[0].poweredOut).toBe(true);
 
@@ -322,7 +355,14 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
           ],
         },
       };
-      let outAbs = scanRungsPure([rungAbsMin], { ABS_OUT: 999 }, state, 700, undefined, "generic");
+      const outAbs = scanRungsPure(
+        [rungAbsMin],
+        { ABS_OUT: 999 },
+        state,
+        700,
+        undefined,
+        "generic",
+      );
       expect(outAbs.tags.ABS_OUT).toBe(999); // Preservado!
       expect(outAbs.results[0].poweredOut).toBe(false);
       expect(outAbs.results[0].diagnostics?.["out:out-abs-min"]?.isErr).toBe(true);
@@ -406,9 +446,7 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
               },
             ],
           },
-          outputs: [
-            { id: "o-mot", kind: "OTE", operand: "MOTOR_K1" },
-          ],
+          outputs: [{ id: "o-mot", kind: "OTE", operand: "MOTOR_K1" }],
         },
       };
 
@@ -602,7 +640,12 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
           id: "t-err",
           rootBranch: { id: "b-err", items: [] },
           outputs: [
-            { id: "o-err", kind: "DIV", operand: "ERR_VAR", params: { IN1: 10, IN2: 0, OUT: "ERR_VAR" } },
+            {
+              id: "o-err",
+              kind: "DIV",
+              operand: "ERR_VAR",
+              params: { IN1: 10, IN2: 0, OUT: "ERR_VAR" },
+            },
           ],
         },
       };
@@ -615,7 +658,12 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
           id: "t-ok",
           rootBranch: { id: "b-ok", items: [] },
           outputs: [
-            { id: "o-ok", kind: "ADD", operand: "OK_VAR", params: { IN1: 30, IN2: 70, OUT: "OK_VAR" } },
+            {
+              id: "o-ok",
+              kind: "ADD",
+              operand: "OK_VAR",
+              params: { IN1: 30, IN2: 70, OUT: "OK_VAR" },
+            },
           ],
         },
       };
@@ -708,12 +756,18 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
       const ctudMap = new Map();
       // Teste saturação positiva: inicializa em INT16_MAX
       tickCTUD(ctudMap, "c-sat", false, false, false, true, INT16_MAX);
-      let res = tickCTUD(ctudMap, "c-sat", true, false, false, false, INT16_MAX, { min: INT16_MIN, max: INT16_MAX });
+      const res = tickCTUD(ctudMap, "c-sat", true, false, false, false, INT16_MAX, {
+        min: INT16_MIN,
+        max: INT16_MAX,
+      });
       expect(res.cv).toBe(INT16_MAX); // Não transborda além do teto
 
       // Teste saturação negativa: inicializa em INT16_MIN
       tickCTUD(ctudMap, "c-sat-neg", false, false, false, true, INT16_MIN);
-      let resNeg = tickCTUD(ctudMap, "c-sat-neg", false, true, false, false, INT16_MAX, { min: INT16_MIN, max: INT16_MAX });
+      const resNeg = tickCTUD(ctudMap, "c-sat-neg", false, true, false, false, INT16_MAX, {
+        min: INT16_MIN,
+        max: INT16_MAX,
+      });
       expect(resNeg.cv).toBe(INT16_MIN); // Não transborda além do piso
     });
   });
@@ -763,7 +817,12 @@ describe("ELÉTRICAI — FASE 4.1: HOMOLOGAÇÃO TÉCNICA E SEMÂNTICA DO LADDER
         },
       };
 
-      const out = scanRungsPure([rung0, rung1], { IN_START: true, FLAG_A: false, MOTOR: false }, state, 100);
+      const out = scanRungsPure(
+        [rung0, rung1],
+        { IN_START: true, FLAG_A: false, MOTOR: false },
+        state,
+        100,
+      );
 
       // No mesmo ciclo de scan, Rung 1 já lê FLAG_A = true gerado por Rung 0
       expect(out.tags.FLAG_A).toBe(true);

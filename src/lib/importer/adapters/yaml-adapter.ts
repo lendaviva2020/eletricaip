@@ -13,7 +13,9 @@ import type { ImportIssue, ImporterLimits } from "../types";
 export function safeParseYaml(yamlText: string): unknown {
   // 1. Proibir tags personalizadas ou executáveis do YAML
   if (/!\w+/g.test(yamlText)) {
-    throw new Error("Tags customizadas do YAML (!tag) são estritamente proibidas por motivos de segurança.");
+    throw new Error(
+      "Tags customizadas do YAML (!tag) são estritamente proibidas por motivos de segurança.",
+    );
   }
 
   const lines = yamlText.split(/\r?\n/);
@@ -126,7 +128,7 @@ export function parseYamlBundle(
   try {
     const cleaned = rawYaml
       .trim()
-      .replace(/^```[a-zA-Z0-9_\-]*\s*\r?\n?/, "")
+      .replace(/^```[a-zA-Z0-9_-]*\s*\r?\n?/, "")
       .replace(/\r?\n?```\s*$/, "")
       .trim();
     const parsedObj = safeParseYaml(cleaned);

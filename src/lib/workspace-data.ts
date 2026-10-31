@@ -1,15 +1,7 @@
 // Workspace data — shared types for the industrial workspace
 
 export type WorkspaceMode =
-  | "unifilar"
-  | "multifilar"
-  | "ladder"
-  | "fbd"
-  | "scada"
-  | "twin"
-  | "plc"
-  | "sim"
-  | "alarms";
+  "unifilar" | "multifilar" | "ladder" | "fbd" | "scada" | "twin" | "plc" | "sim" | "alarms";
 
 export type ConsoleTab =
   | "Logs"

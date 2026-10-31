@@ -43,9 +43,7 @@ import {
   type UnifiedProjectDoc,
 } from "./unified-schema";
 
-export function createEmptyUnifiedDoc(
-  partialMeta?: Partial<ProjectMetadata>,
-): UnifiedProjectDoc {
+export function createEmptyUnifiedDoc(partialMeta?: Partial<ProjectMetadata>): UnifiedProjectDoc {
   const now = new Date().toISOString();
   const defaultPlc = createDefaultPlcProject();
   const ob1 = defaultPlc.programBlocks.find((b) => b.type === "OB") ?? defaultPlc.programBlocks[0];
@@ -201,7 +199,9 @@ export function mergeSpecsIntoDiagramParams(
         kind: "breaker",
         tag,
         notes: baseParams?.notes,
-        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "breaker" && baseParams.in_A ? baseParams.in_A : 32),
+        in_A:
+          specs.nominalCurrentA ??
+          (baseParams?.kind === "breaker" && baseParams.in_A ? baseParams.in_A : 32),
         curve:
           specs.tripCurve === "B" || specs.tripCurve === "C" || specs.tripCurve === "D"
             ? specs.tripCurve
@@ -218,7 +218,9 @@ export function mergeSpecsIntoDiagramParams(
         kind: "rcd",
         tag,
         notes: baseParams?.notes,
-        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "rcd" && baseParams.in_A ? baseParams.in_A : 40),
+        in_A:
+          specs.nominalCurrentA ??
+          (baseParams?.kind === "rcd" && baseParams.in_A ? baseParams.in_A : 40),
         sensitivity_mA:
           specs.rcdSensitivityMa ?? (baseParams?.kind === "rcd" ? baseParams.sensitivity_mA : 30),
         poles: specs.poles ?? (baseParams?.kind === "rcd" ? baseParams.poles : 4),
@@ -228,8 +230,12 @@ export function mergeSpecsIntoDiagramParams(
         kind: "contactor",
         tag,
         notes: baseParams?.notes,
-        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "contactor" && baseParams.in_A ? baseParams.in_A : 32),
-        coil_V: specs.coilVoltageV ?? (baseParams?.kind === "contactor" && baseParams.coil_V ? baseParams.coil_V : 24),
+        in_A:
+          specs.nominalCurrentA ??
+          (baseParams?.kind === "contactor" && baseParams.in_A ? baseParams.in_A : 32),
+        coil_V:
+          specs.coilVoltageV ??
+          (baseParams?.kind === "contactor" && baseParams.coil_V ? baseParams.coil_V : 24),
       };
     case "relay":
       return {
@@ -244,7 +250,9 @@ export function mergeSpecsIntoDiagramParams(
         kind: "fuse",
         tag,
         notes: baseParams?.notes,
-        in_A: specs.nominalCurrentA ?? (baseParams?.kind === "fuse" && baseParams.in_A ? baseParams.in_A : 16),
+        in_A:
+          specs.nominalCurrentA ??
+          (baseParams?.kind === "fuse" && baseParams.in_A ? baseParams.in_A : 16),
       };
     case "disconnector":
       return {
@@ -252,15 +260,15 @@ export function mergeSpecsIntoDiagramParams(
         tag,
         notes: baseParams?.notes,
         in_A:
-          specs.nominalCurrentA ?? (baseParams?.kind === "disconnector" && baseParams.in_A ? baseParams.in_A : 63),
+          specs.nominalCurrentA ??
+          (baseParams?.kind === "disconnector" && baseParams.in_A ? baseParams.in_A : 63),
       };
     case "transformer":
       return {
         kind: "transformer",
         tag,
         notes: baseParams?.notes,
-        kVA:
-          specs.apparentPowerKva ?? (baseParams?.kind === "transformer" ? baseParams.kVA : 500),
+        kVA: specs.apparentPowerKva ?? (baseParams?.kind === "transformer" ? baseParams.kVA : 500),
         primary_V:
           specs.primaryV ?? (baseParams?.kind === "transformer" ? baseParams.primary_V : 13800),
         secondary_V:
@@ -273,8 +281,7 @@ export function mergeSpecsIntoDiagramParams(
         tag,
         notes: baseParams?.notes,
         output_V: specs.voltageV ?? (baseParams?.kind === "psu" ? baseParams.output_V : 24),
-        output_A:
-          specs.nominalCurrentA ?? (baseParams?.kind === "psu" ? baseParams.output_A : 10),
+        output_A: specs.nominalCurrentA ?? (baseParams?.kind === "psu" ? baseParams.output_A : 10),
       };
     case "vfd":
       return {
@@ -289,8 +296,7 @@ export function mergeSpecsIntoDiagramParams(
         kind: "softstarter",
         tag,
         notes: baseParams?.notes,
-        power_kW:
-          specs.powerKw ?? (baseParams?.kind === "softstarter" ? baseParams.power_kW : 11),
+        power_kW: specs.powerKw ?? (baseParams?.kind === "softstarter" ? baseParams.power_kW : 11),
       };
     case "busbar":
       return {
@@ -298,8 +304,11 @@ export function mergeSpecsIntoDiagramParams(
         tag,
         notes: baseParams?.notes,
         current_A:
-          specs.nominalCurrentA ?? (baseParams?.kind === "busbar" && baseParams.current_A ? baseParams.current_A : 250),
-        voltage_V: specs.voltageV ?? (baseParams?.kind === "busbar" && baseParams.voltage_V ? baseParams.voltage_V : 380),
+          specs.nominalCurrentA ??
+          (baseParams?.kind === "busbar" && baseParams.current_A ? baseParams.current_A : 250),
+        voltage_V:
+          specs.voltageV ??
+          (baseParams?.kind === "busbar" && baseParams.voltage_V ? baseParams.voltage_V : 380),
       };
     case "ccm":
       return {
@@ -316,7 +325,8 @@ export function mergeSpecsIntoDiagramParams(
         notes: baseParams?.notes,
         power_kW: specs.powerKw ?? (baseParams?.kind === "motor" ? baseParams.power_kW : 7.5),
         voltage_V: specs.voltageV ?? (baseParams?.kind === "motor" ? baseParams.voltage_V : 380),
-        fla_A: specs.nominalCurrentA ?? (baseParams?.kind === "motor" ? baseParams.fla_A : undefined),
+        fla_A:
+          specs.nominalCurrentA ?? (baseParams?.kind === "motor" ? baseParams.fla_A : undefined),
         startMethod:
           specs.startingMethod === "DOL" ||
           specs.startingMethod === "SOFT" ||
@@ -519,7 +529,9 @@ export function upgradeSnapshotV2ToV3(
         position: { ...mn.position },
         rotation: mn.rotation ?? 0,
         label: mn.label ?? "",
-        ui: mn.ui ? { ...mn.ui, equipmentId: matchedEquipmentId } : { equipmentId: matchedEquipmentId },
+        ui: mn.ui
+          ? { ...mn.ui, equipmentId: matchedEquipmentId }
+          : { equipmentId: matchedEquipmentId },
       };
     }
 
@@ -630,8 +642,7 @@ export function upgradeSnapshotV2ToV3(
       const et = rawVal as EditorTag;
       if (!et || typeof et !== "object") continue;
       const existingId =
-        unifiedTags[et.id]?.id ??
-        (et.name ? tagNameToId.get(et.name.toUpperCase()) : undefined);
+        unifiedTags[et.id]?.id ?? (et.name ? tagNameToId.get(et.name.toUpperCase()) : undefined);
       const id = existingId ?? et.id ?? rawKey;
       const prev = unifiedTags[id];
       unifiedTags[id] = {

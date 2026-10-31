@@ -29,7 +29,10 @@ export interface CentralSafetyState {
   history: EmergencyEvent[];
 
   /** Dispara a parada de emergência com travamento e corte imediato de atuadores. */
-  triggerEmergency: (sourceOrOpts: string | { source: string; reason?: string }, reason?: string) => void;
+  triggerEmergency: (
+    sourceOrOpts: string | { source: string; reason?: string },
+    reason?: string,
+  ) => void;
   /** Procedimento explícito de rearme (NÃO inicia a simulação automaticamente). */
   rearmEmergency: (operator?: string) => { success: boolean; message: string };
   /** Validador de segurança que deve ser consultado antes de qualquer comando START / RUN. */
@@ -63,7 +66,9 @@ export const useSafetyStore = create<CentralSafetyState>()(
 
     triggerEmergency: (sourceOrOpts, reasonParam) => {
       const source = typeof sourceOrOpts === "object" ? sourceOrOpts.source : sourceOrOpts;
-      const reason = (typeof sourceOrOpts === "object" ? sourceOrOpts.reason : reasonParam) || "Parada de Emergência acionada pelo operador";
+      const reason =
+        (typeof sourceOrOpts === "object" ? sourceOrOpts.reason : reasonParam) ||
+        "Parada de Emergência acionada pelo operador";
       const timestamp = new Date().toISOString();
       const event: EmergencyEvent = {
         id: `estop_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -104,7 +109,8 @@ export const useSafetyStore = create<CentralSafetyState>()(
         kind: "rearm",
         timestamp,
         source: operator,
-        reason: "Rearme manual efetuado. Sistema em estado seguro aguardando comando explícito de partida.",
+        reason:
+          "Rearme manual efetuado. Sistema em estado seguro aguardando comando explícito de partida.",
       };
 
       set((s) => ({
@@ -146,7 +152,9 @@ export const useSafetyStore = create<CentralSafetyState>()(
 
         return {
           allowed: false,
-          reason: emergencyReason || "Parada de emergência atuada. Efetue o rearme do circuito antes de iniciar.",
+          reason:
+            emergencyReason ||
+            "Parada de emergência atuada. Efetue o rearme do circuito antes de iniciar.",
         };
       }
       return { allowed: true };

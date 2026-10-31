@@ -256,7 +256,9 @@ export function UnifiedBottomDock() {
   const [fixDialogOpen, setFixDialogOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<FixProposal | null>(null);
   const [isApplyingFix, setIsApplyingFix] = useState(false);
-  const [lastAppliedFix, setLastAppliedFix] = useState<{ count: number; timestamp: number } | null>(null);
+  const [lastAppliedFix, setLastAppliedFix] = useState<{ count: number; timestamp: number } | null>(
+    null,
+  );
 
   // Timer para expirar o aviso de desfazer em 30 segundos
   useEffect(() => {
@@ -581,7 +583,8 @@ export function UnifiedBottomDock() {
               {actionableDiagnostics.length > 0 && (
                 <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/60">
                   <span className="text-[11px] text-muted-foreground font-mono">
-                    {actionableDiagnostics.length} não conformidade(s) detectada(s) segundo a NBR 5410
+                    {actionableDiagnostics.length} não conformidade(s) detectada(s) segundo a NBR
+                    5410
                   </span>
                   <button
                     onClick={handleOpenAiFix}

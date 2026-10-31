@@ -61,11 +61,19 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(148, 163, 184);
-  doc.text("PROJETO EXECUTIVO · MEMÓRIA DE CÁLCULO · BOM INDUSTRIAL · VALIDAÇÃO NORMATIVA", margin + 6, margin + 26);
+  doc.text(
+    "PROJETO EXECUTIVO · MEMÓRIA DE CÁLCULO · BOM INDUSTRIAL · VALIDAÇÃO NORMATIVA",
+    margin + 6,
+    margin + 26,
+  );
 
   doc.setFontSize(8);
   doc.setTextColor(203, 213, 225);
-  doc.text("Ambiente Integrado ElétricAi Industrial OS · Conectado à Topologia do Canvas", margin + 6, margin + 34);
+  doc.text(
+    "Ambiente Integrado ElétricAi Industrial OS · Conectado à Topologia do Canvas",
+    margin + 6,
+    margin + 34,
+  );
 
   // Bloco de Identificação
   let y = margin + 50;
@@ -87,7 +95,10 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
     ["Data de Emissão:", dossier.approval.issueDate || new Date().toLocaleDateString("pt-BR")],
     ["Revisão:", `Rev. ${dossier.revision}`],
     ["Responsável Técnico:", dossier.approval.engineerName || "Engenheiro Responsável"],
-    ["Registro Profissional:", dossier.approval.professionalRegistration || "CREA / CFT — Pendente de ART"],
+    [
+      "Registro Profissional:",
+      dossier.approval.professionalRegistration || "CREA / CFT — Pendente de ART",
+    ],
   ];
 
   let iy = y + 17;
@@ -171,7 +182,11 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(100);
-  doc.text("Critérios: ABNT NBR 5410:2004 (Ampacidade Tabelas 36-38, Queda de Tensão §6.2.7 c/ reatância XL=0,08 mΩ/m e Proteção PE Tab. 58)", margin, y);
+  doc.text(
+    "Critérios: ABNT NBR 5410:2004 (Ampacidade Tabelas 36-38, Queda de Tensão §6.2.7 c/ reatância XL=0,08 mΩ/m e Proteção PE Tab. 58)",
+    margin,
+    y,
+  );
 
   y += 6;
   doc.setDrawColor(200);
@@ -183,8 +198,30 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
   doc.setFontSize(7.5);
   doc.setTextColor(15, 23, 42);
 
-  const headers = ["Circuito", "Descrição", "P (kW)", "Ib (A)", "Cabo mm²", "I'z (A)", "Disj.", "ΔV %", "PE mm²", "Status"];
-  const colXs = [margin, margin + 20, margin + 62, margin + 76, margin + 94, margin + 110, margin + 125, margin + 140, margin + 155, margin + 170];
+  const headers = [
+    "Circuito",
+    "Descrição",
+    "P (kW)",
+    "Ib (A)",
+    "Cabo mm²",
+    "I'z (A)",
+    "Disj.",
+    "ΔV %",
+    "PE mm²",
+    "Status",
+  ];
+  const colXs = [
+    margin,
+    margin + 20,
+    margin + 62,
+    margin + 76,
+    margin + 94,
+    margin + 110,
+    margin + 125,
+    margin + 140,
+    margin + 155,
+    margin + 170,
+  ];
 
   for (let i = 0; i < headers.length; i++) {
     doc.text(headers[i], colXs[i], y);
@@ -210,7 +247,11 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
     doc.text(`${c.breakerRatingInA}A (${c.breakerCurve})`, colXs[6], y);
     doc.text(`${c.voltageDropPct}%`, colXs[7], y);
     doc.text(`${c.peCableMm2}`, colXs[8], y);
-    doc.setTextColor(c.ampacityCheckPass && c.voltageDropPass ? 22 : 220, c.ampacityCheckPass && c.voltageDropPass ? 101 : 38, 52);
+    doc.setTextColor(
+      c.ampacityCheckPass && c.voltageDropPass ? 22 : 220,
+      c.ampacityCheckPass && c.voltageDropPass ? 101 : 38,
+      52,
+    );
     doc.text(c.ampacityCheckPass && c.voltageDropPass ? "OK" : "FALHA", colXs[9], y);
     doc.setTextColor(15, 23, 42);
     y += 5;
@@ -243,7 +284,11 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(100);
-  doc.text("Vinculada diretamente aos nós e ligações do Canvas e aos componentes derivados do cálculo.", margin, y);
+  doc.text(
+    "Vinculada diretamente aos nós e ligações do Canvas e aos componentes derivados do cálculo.",
+    margin,
+    y,
+  );
   y += 6;
 
   // Agrupar BOM por categoria
@@ -375,7 +420,11 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(100);
-  doc.text("Auditoria automática contra NBR 5410:2004, NR-10:2019, NR-12:2019, IEC 60204-1 e IEC 61131-3", margin, y);
+  doc.text(
+    "Auditoria automática contra NBR 5410:2004, NR-10:2019, NR-12:2019, IEC 60204-1 e IEC 61131-3",
+    margin,
+    y,
+  );
   y += 6;
   doc.line(margin, y, pageW - margin, y);
   y += 6;
@@ -390,13 +439,25 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
     const isOk = f.status === "VALIDADO";
     const isWarn = f.severity === "warning" || f.status === "REVISAO_PROFISSIONAL_NECESSARIA";
 
-    doc.setDrawColor(isOk ? 187 : isWarn ? 254 : 254, isOk ? 247 : isWarn ? 240 : 202, isOk ? 208 : isWarn ? 138 : 202);
-    doc.setFillColor(isOk ? 240 : isWarn ? 254 : 254, isOk ? 253 : isWarn ? 252 : 242, isOk ? 244 : isWarn ? 232 : 242);
+    doc.setDrawColor(
+      isOk ? 187 : isWarn ? 254 : 254,
+      isOk ? 247 : isWarn ? 240 : 202,
+      isOk ? 208 : isWarn ? 138 : 202,
+    );
+    doc.setFillColor(
+      isOk ? 240 : isWarn ? 254 : 254,
+      isOk ? 253 : isWarn ? 252 : 242,
+      isOk ? 244 : isWarn ? 232 : 242,
+    );
     doc.rect(margin, y, contentW, 18, "FD");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.setTextColor(isOk ? 22 : isWarn ? 161 : 220, isOk ? 101 : isWarn ? 98 : 38, isOk ? 52 : isWarn ? 7 : 38);
+    doc.setTextColor(
+      isOk ? 22 : isWarn ? 161 : 220,
+      isOk ? 101 : isWarn ? 98 : 38,
+      isOk ? 52 : isWarn ? 7 : 38,
+    );
     doc.text(`[${f.status}] ${f.standard} ${f.clause}: ${f.title}`, margin + 3, y + 4.5);
 
     doc.setFont("helvetica", "normal");

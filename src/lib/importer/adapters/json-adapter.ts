@@ -2,14 +2,8 @@
 // Supports both strict EletricAiCanvasBundle and forgiving LLM-generated JSON shapes.
 // 100% deterministic, no AI credits consumed.
 
-import {
-  EletricAiCanvasBundleSchema,
-  resolveComponentKind,
-} from "../bundle-schema";
-import {
-  scanObjectForSecurityViolations,
-  validatePayloadSize,
-} from "../security-validator";
+import { EletricAiCanvasBundleSchema, resolveComponentKind } from "../bundle-schema";
+import { scanObjectForSecurityViolations, validatePayloadSize } from "../security-validator";
 import {
   CANVAS_BUNDLE_FORMAT,
   CURRENT_BUNDLE_VERSION,
@@ -48,7 +42,7 @@ export function parseJsonBundle(
   // 2. Parse JSON (com suporte a remoção de markdown fences ```json ... ```)
   const cleaned = rawText
     .trim()
-    .replace(/^```[a-zA-Z0-9_\-]*\s*\r?\n?/, "")
+    .replace(/^```[a-zA-Z0-9_-]*\s*\r?\n?/, "")
     .replace(/\r?\n?```\s*$/, "")
     .trim();
 
@@ -95,7 +89,9 @@ export function parseJsonBundle(
     diagramType: rawObj.project?.diagramType || rawObj.diagramType || "unifilar",
     units: rawObj.project?.units || "metric",
     description: rawObj.project?.description || rawObj.description || "",
-    standards: Array.isArray(rawObj.project?.standards) ? rawObj.project.standards : ["NBR_5410", "NR-10", "NR-12"],
+    standards: Array.isArray(rawObj.project?.standards)
+      ? rawObj.project.standards
+      : ["NBR_5410", "NR-10", "NR-12"],
     systemVoltageV: Number(rawObj.project?.systemVoltageV || rawObj.voltage_V || 380),
     frequencyHz: rawObj.project?.frequencyHz === 50 ? 50 : 60,
   };
@@ -134,7 +130,9 @@ export function parseJsonBundle(
     }
 
     const posX = Number.isFinite(n.position?.x) ? Number(n.position.x) : 100 + (i % 5) * 160;
-    const posY = Number.isFinite(n.position?.y) ? Number(n.position.y) : 100 + Math.floor(i / 5) * 160;
+    const posY = Number.isFinite(n.position?.y)
+      ? Number(n.position.y)
+      : 100 + Math.floor(i / 5) * 160;
 
     normalizedNodes.push({
       id: cleanId,

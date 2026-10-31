@@ -10,11 +10,7 @@ import {
   analyzeUnifilarForLadder,
   type BridgeResult,
 } from "@/lib/simulation/unifilar-ladder-bridge";
-import type {
-  CanonicalEquipment,
-  ModelDiagnostic,
-  UnifiedProjectDoc,
-} from "./unified-schema";
+import type { CanonicalEquipment, ModelDiagnostic, UnifiedProjectDoc } from "./unified-schema";
 import { useUnifiedProjectStore } from "./unified-store";
 
 export type BridgeDiagnostic = Omit<ModelDiagnostic, "id" | "createdAt">;

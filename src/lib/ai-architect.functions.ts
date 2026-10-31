@@ -578,10 +578,7 @@ ${errors
 Contexto atual do projeto (JSON):
 ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed), plcLogic: (parsed as any)?.plcLogic }).slice(0, 20000)}`;
 
-      const fix = await callArchitectModel([
-        ...messages,
-        { role: "user", content: fixMsg },
-      ]);
+      const fix = await callArchitectModel([...messages, { role: "user", content: fixMsg }]);
       rounds++;
       if (!fix.ok) {
         correctionFailed = true;

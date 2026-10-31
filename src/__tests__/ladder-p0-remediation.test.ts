@@ -379,7 +379,12 @@ describe("Ladder P0 Remediation — Type Integrity, AST Synchronization & Legacy
       parsedRung.cells[0][3].operand = "BOMBA_RECALQUE_01";
 
       const firstItem = normalizedTopology.rootBranch.items[0];
-      if (firstItem && firstItem.type === "parallel" && firstItem.branches && firstItem.branches[0]) {
+      if (
+        firstItem &&
+        firstItem.type === "parallel" &&
+        firstItem.branches &&
+        firstItem.branches[0]
+      ) {
         firstItem.branches[0].items[0] = {
           id: "item-renamed",
           type: "instruction",

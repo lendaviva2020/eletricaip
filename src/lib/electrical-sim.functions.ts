@@ -39,8 +39,6 @@ export interface ElectricalStudyResults {
   circuits?: VoltageDropResult[];
 }
 
-
-
 const Earthing = z.enum(["TN-S", "TN-C", "TN-C-S", "TT", "IT"]);
 
 const TransformerInput = z.object({

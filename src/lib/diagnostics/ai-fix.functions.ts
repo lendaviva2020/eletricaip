@@ -17,11 +17,7 @@ import {
   requireAiQuota,
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
-import {
-  AiFixRequestSchema,
-  AiFixResponseSchema,
-  type FixProposal,
-} from "./contract";
+import { AiFixRequestSchema, AiFixResponseSchema, type FixProposal } from "./contract";
 
 export interface AiFixClientResult {
   readonly ok: boolean;
@@ -114,11 +110,21 @@ Selecione a melhor proposta para resolver os diagnósticos e gere a justificativ
       return fallbackResult;
     }
 
-    const cleanedText = rawText.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
-    const parsed = JSON.parse(cleanedText) as { chosenProposalId?: string | null; rationalePt?: string };
+    const cleanedText = rawText
+      .replace(/^```json\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
+    const parsed = JSON.parse(cleanedText) as {
+      chosenProposalId?: string | null;
+      rationalePt?: string;
+    };
 
     const validIds = new Set(proposals.map((p) => p.id));
-    if (parsed.chosenProposalId !== null && parsed.chosenProposalId !== undefined && !validIds.has(parsed.chosenProposalId)) {
+    if (
+      parsed.chosenProposalId !== null &&
+      parsed.chosenProposalId !== undefined &&
+      !validIds.has(parsed.chosenProposalId)
+    ) {
       console.warn(
         `[ai-fix-diagnostics] IA tentou inventar proposalId inválido: "${parsed.chosenProposalId}". Descartado; acionando fallback determinístico.`,
       );
@@ -155,10 +161,10 @@ export const requestAiFix = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (projectError || !project) {
-      throw new Response(
-        JSON.stringify({ error: "Projeto não encontrado ou acesso negado." }),
-        { status: 403, headers: { "content-type": "application/json" } },
-      );
+      throw new Response(JSON.stringify({ error: "Projeto não encontrado ou acesso negado." }), {
+        status: 403,
+        headers: { "content-type": "application/json" },
+      });
     }
 
     // 2. Débito de créditos de IA no servidor
@@ -179,10 +185,10 @@ export const requestAiFix = createServerFn({ method: "POST" })
         );
       }
       console.error("[requestAiFix] Erro ao debitar créditos:", creditError);
-      throw new Response(
-        JSON.stringify({ error: "Falha ao validar cota de créditos de IA." }),
-        { status: 500, headers: { "content-type": "application/json" } },
-      );
+      throw new Response(JSON.stringify({ error: "Falha ao validar cota de créditos de IA." }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
     }
 
     // 3. Execução com defesas

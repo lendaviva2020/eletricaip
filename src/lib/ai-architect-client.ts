@@ -434,11 +434,9 @@ export function applyArchitectToStore(
   try {
     const snap = buildProjectSnapshot();
     const currentMeta = useUnifiedProjectStore.getState().doc.metadata;
-    useUnifiedProjectStore.getState().hydrateFromV2Snapshot(
-      snap,
-      currentMeta,
-      { syncLegacy: false },
-    );
+    useUnifiedProjectStore
+      .getState()
+      .hydrateFromV2Snapshot(snap, currentMeta, { syncLegacy: false });
   } catch (err) {
     console.warn("[applyArchitectToStore] unified store sync:", err);
   }

@@ -541,9 +541,7 @@ export class DiagramStage {
       const w = 32;
       const h = 26;
       // Moldura interna translúcida ciano
-      view.selection
-        .rect(-w, -h, w * 2, h * 2)
-        .stroke({ width: 1.5, color: 0x38bdf8, alpha: 0.8 });
+      view.selection.rect(-w, -h, w * 2, h * 2).stroke({ width: 1.5, color: 0x38bdf8, alpha: 0.8 });
 
       // Alças de canto industriais em laranja elétrico (#F97316)
       const cLen = 7;
@@ -784,11 +782,7 @@ export class DiagramStage {
       e.stopPropagation();
 
       // Interação durante simulação: alternar abertura de disjuntores/chaves
-      if (
-        this.lastEnergization &&
-        this.lastEnergization.status !== "stopped" &&
-        !e.shiftKey
-      ) {
+      if (this.lastEnergization && this.lastEnergization.status !== "stopped" && !e.shiftKey) {
         const node = this.lastDoc?.nodes[id];
         if (node && isSwitchingDevice(node.params.kind)) {
           this.events.onToggleDevice?.(id);

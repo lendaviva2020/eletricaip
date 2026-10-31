@@ -15,7 +15,12 @@ export type Command =
   | { type: "UpdateNodeParams"; nodeId: string; from: NodeParams; to: NodeParams }
   | { type: "AddEdge"; edge: DiagramEdge }
   | { type: "RemoveEdge"; edgeId: string }
-  | { type: "UpdateEdgeCable"; edgeId: string; from?: DiagramEdge["cable"]; to: DiagramEdge["cable"] }
+  | {
+      type: "UpdateEdgeCable";
+      edgeId: string;
+      from?: DiagramEdge["cable"];
+      to: DiagramEdge["cable"];
+    }
   | { type: "ApplyAiPatch"; patch: AiDiagramPatch; inverse: Command[] }
   | { type: "Batch"; commands: Command[] };
 

@@ -386,9 +386,7 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
         invalidateStudiesInDraft(d, [equipmentId]);
         delete d.engineering.equipments[equipmentId];
         delete d.views.twin.nameplates[equipmentId];
-        d.views.twin.mappings = d.views.twin.mappings.filter(
-          (m) => m.equipmentId !== equipmentId,
-        );
+        d.views.twin.mappings = d.views.twin.mappings.filter((m) => m.equipmentId !== equipmentId);
 
         // Remove connections touching equipment
         const removedConnIds = new Set<string>();

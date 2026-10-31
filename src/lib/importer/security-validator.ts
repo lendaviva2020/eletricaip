@@ -5,8 +5,8 @@ import { DEFAULT_IMPORTER_LIMITS, type ImporterLimits } from "./types";
 // Strict bounds, no eval, no Function, no remote resource resolution.
 
 export const MAX_PAYLOAD_BYTES = DEFAULT_IMPORTER_LIMITS.maxPayloadBytes; // 25 MB
-export const MAX_OBJECT_DEPTH = DEFAULT_IMPORTER_LIMITS.maxObjectDepth;   // 15
-export const MAX_TOTAL_KEYS = DEFAULT_IMPORTER_LIMITS.maxTotalKeys;       // 150000
+export const MAX_OBJECT_DEPTH = DEFAULT_IMPORTER_LIMITS.maxObjectDepth; // 15
+export const MAX_TOTAL_KEYS = DEFAULT_IMPORTER_LIMITS.maxTotalKeys; // 150000
 
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -38,7 +38,7 @@ export function validatePayloadSize(
 ): SecurityCheckResult {
   const limits: ImporterLimits = { ...DEFAULT_IMPORTER_LIMITS, ...customLimits };
   const size = typeof raw === "string" ? new Blob([raw]).size : raw.byteLength;
-  
+
   if (size > limits.maxPayloadBytes) {
     const limitMb = (limits.maxPayloadBytes / (1024 * 1024)).toFixed(1);
     const actualMb = (size / (1024 * 1024)).toFixed(2);
@@ -138,7 +138,12 @@ export function scanObjectForSecurityViolations(
           issues: [{ id: "too-many-keys", message: msg }],
         };
       }
-      const childRes = scanObjectForSecurityViolations(obj[i], currentDepth + 1, keyCountRef, customLimits);
+      const childRes = scanObjectForSecurityViolations(
+        obj[i],
+        currentDepth + 1,
+        keyCountRef,
+        customLimits,
+      );
       if (!childRes.isSafe) {
         violations.push(...childRes.violations);
         issues.push(...childRes.issues);
@@ -181,7 +186,12 @@ export function scanObjectForSecurityViolations(
       }
 
       const val = (obj as Record<string, unknown>)[k];
-      const childRes = scanObjectForSecurityViolations(val, currentDepth + 1, keyCountRef, customLimits);
+      const childRes = scanObjectForSecurityViolations(
+        val,
+        currentDepth + 1,
+        keyCountRef,
+        customLimits,
+      );
       if (!childRes.isSafe) {
         violations.push(...childRes.violations);
         issues.push(...childRes.issues);
@@ -201,7 +211,8 @@ export function validateXmlSecurity(xmlString: string): SecurityCheckResult {
   const issues: { id: string; message: string }[] = [];
 
   if (/<!DOCTYPE\b/i.test(xmlString)) {
-    const msg = "Declaração <!DOCTYPE proibida por motivos de segurança (proteção contra XXE/Billion Laughs).";
+    const msg =
+      "Declaração <!DOCTYPE proibida por motivos de segurança (proteção contra XXE/Billion Laughs).";
     violations.push(msg);
     issues.push({ id: "xxe-doctype-prohibited", message: msg });
   }

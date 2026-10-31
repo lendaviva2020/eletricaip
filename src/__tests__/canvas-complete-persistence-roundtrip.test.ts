@@ -21,7 +21,9 @@ describe("Prioridade 4 — Teste Completo de Persistência Local (Abrir, Editar,
     });
     useProjectStore.getState().hydrateSnapshot([], [], {});
     useDiagramStore.getState().resetDoc();
-    useUnifiedProjectStore.getState().resetUnifiedDoc({ id: "proj_rt_1", name: "Projeto Round-Trip" });
+    useUnifiedProjectStore
+      .getState()
+      .resetUnifiedDoc({ id: "proj_rt_1", name: "Projeto Round-Trip" });
   });
 
   it("Ciclo Completo: abrir projeto existente, editar múltiplos editores, salvar snapshot, limpar memória e reabrir com 100% de integridade", () => {
@@ -90,12 +92,30 @@ describe("Prioridade 4 — Teste Completo de Persistência Local (Abrir, Editar,
     ];
 
     const initialFbdEdges = [
-      { id: "e_and_ton", source: "AND_1", sourceHandle: "out", target: "TON_1", targetHandle: "in" },
+      {
+        id: "e_and_ton",
+        source: "AND_1",
+        sourceHandle: "out",
+        target: "TON_1",
+        targetHandle: "in",
+      },
     ];
 
     const initialTags = {
-      tag_start: { id: "tag_start", name: "BTN_START", type: "BOOL" as const, value: false, forced: false },
-      tag_stop: { id: "tag_stop", name: "BTN_STOP", type: "BOOL" as const, value: true, forced: false },
+      tag_start: {
+        id: "tag_start",
+        name: "BTN_START",
+        type: "BOOL" as const,
+        value: false,
+        forced: false,
+      },
+      tag_stop: {
+        id: "tag_stop",
+        name: "BTN_STOP",
+        type: "BOOL" as const,
+        value: true,
+        forced: false,
+      },
     };
 
     // Hidrata projeto inicial no editor
@@ -111,11 +131,25 @@ describe("Prioridade 4 — Teste Completo de Persistência Local (Abrir, Editar,
     useDiagramStore.getState().loadDoc({
       ...baseDoc,
       nodes: {
-        "BAR-01": { id: "BAR-01", type: "busbar", position: { x: 100, y: 100 }, properties: { tag: "BARRAMENTO_380V" } },
-        "QF-01": { id: "QF-01", type: "breaker", position: { x: 100, y: 200 }, properties: { in_A: 63, curve: "C" } },
+        "BAR-01": {
+          id: "BAR-01",
+          type: "busbar",
+          position: { x: 100, y: 100 },
+          properties: { tag: "BARRAMENTO_380V" },
+        },
+        "QF-01": {
+          id: "QF-01",
+          type: "breaker",
+          position: { x: 100, y: 200 },
+          properties: { in_A: 63, curve: "C" },
+        },
       },
       edges: {
-        "cabo-01": { id: "cabo-01", from: { nodeId: "BAR-01", portId: "out" }, to: { nodeId: "QF-01", portId: "in" } },
+        "cabo-01": {
+          id: "cabo-01",
+          from: { nodeId: "BAR-01", portId: "out" },
+          to: { nodeId: "QF-01", portId: "in" },
+        },
       },
     } as any);
 
@@ -159,7 +193,10 @@ describe("Prioridade 4 — Teste Completo de Persistência Local (Abrir, Editar,
     };
     useEditorStore.getState().setFbdAll(
       (nodes) => [...nodes, newFbdNode],
-      (edges) => [...edges, { id: "e_ton_sr", source: "TON_1", sourceHandle: "q", target: "SR_1", targetHandle: "s1" }]
+      (edges) => [
+        ...edges,
+        { id: "e_ton_sr", source: "TON_1", sourceHandle: "q", target: "SR_1", targetHandle: "s1" },
+      ],
     );
 
     // Edição Unifilar: adiciona motor na saída do disjuntor
@@ -169,7 +206,7 @@ describe("Prioridade 4 — Teste Completo de Persistência Local (Abrir, Editar,
         type: "motor",
         position: { x: 100, y: 300 },
         params: { power_kW: 7.5, voltage_V: 380 },
-      } as any)
+      } as any),
     );
 
     // -------------------------------------------------------------
@@ -247,7 +284,7 @@ describe("Prioridade 4 — Teste Completo de Persistência Local (Abrir, Editar,
     expect(restoredDoc.nodes["MOT-01"]).toBeDefined();
     expect(
       (restoredDoc.nodes["MOT-01"].params as any)?.power_kW ??
-        (restoredDoc.nodes["MOT-01"] as any).properties?.power_kW
+        (restoredDoc.nodes["MOT-01"] as any).properties?.power_kW,
     ).toBe(7.5);
     expect(restoredDoc.edges["cabo-01"]).toBeDefined();
   });

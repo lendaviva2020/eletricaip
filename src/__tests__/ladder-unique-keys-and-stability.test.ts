@@ -45,19 +45,46 @@ describe("Fase 2 & 7 — Estabilização de Chaves Únicas e Integridade do Ladd
         id: "rung_0",
         label: "Rede 1 (Original)",
         cols: 6,
-        cells: [[{ kind: "XIC", operand: "BT_START" }, emptyCell(), emptyCell(), emptyCell(), emptyCell(), { kind: "OTE", operand: "K1" }]],
+        cells: [
+          [
+            { kind: "XIC", operand: "BT_START" },
+            emptyCell(),
+            emptyCell(),
+            emptyCell(),
+            emptyCell(),
+            { kind: "OTE", operand: "K1" },
+          ],
+        ],
       },
       {
         id: "rung_0", // Duplicata proposital comum de importação/cópia
         label: "Rede 2 (Duplicata)",
         cols: 6,
-        cells: [[{ kind: "XIO", operand: "BT_STOP" }, emptyCell(), emptyCell(), emptyCell(), emptyCell(), { kind: "OTE", operand: "K2" }]],
+        cells: [
+          [
+            { kind: "XIO", operand: "BT_STOP" },
+            emptyCell(),
+            emptyCell(),
+            emptyCell(),
+            emptyCell(),
+            { kind: "OTE", operand: "K2" },
+          ],
+        ],
       },
       {
         id: "rung_0", // Terceira duplicata
         label: "Rede 3 (Terceira Duplicata)",
         cols: 6,
-        cells: [[{ kind: "XIC", operand: "SISTEMA_OK" }, emptyCell(), emptyCell(), emptyCell(), emptyCell(), { kind: "OTE", operand: "K3" }]],
+        cells: [
+          [
+            { kind: "XIC", operand: "SISTEMA_OK" },
+            emptyCell(),
+            emptyCell(),
+            emptyCell(),
+            emptyCell(),
+            { kind: "OTE", operand: "K3" },
+          ],
+        ],
       },
     ];
 

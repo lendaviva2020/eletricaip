@@ -81,7 +81,8 @@ describe("Segurança de Tokens e Sessões Pós-Logout (Auditoria Servidor e Sess
       const nextMock = vi.fn();
 
       // Invocamos a função de verificação do requireActiveSession
-      const serverFn = (requireActiveSession as any).options?.server ?? (requireActiveSession as any).serverFn;
+      const serverFn =
+        (requireActiveSession as any).options?.server ?? (requireActiveSession as any).serverFn;
 
       await expect(
         serverFn({
@@ -206,7 +207,9 @@ describe("Segurança de Tokens e Sessões Pós-Logout (Auditoria Servidor e Sess
     });
 
     it("Em falha de storage local (ex.: SecurityError no localStorage), localSignedOut é falso e storageError é populado", () => {
-      const storageException = new Error("QuotaExceeded or SecurityError: Access denied to localStorage");
+      const storageException = new Error(
+        "QuotaExceeded or SecurityError: Access denied to localStorage",
+      );
 
       const result: SignOutResult = {
         error: null,

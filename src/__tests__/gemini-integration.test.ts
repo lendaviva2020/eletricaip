@@ -185,7 +185,9 @@ describe("Google Gemini Integration — Server-side Configuration & Resilience",
     });
 
     it("bounds project context serialization and limits nested depth", () => {
-      const deepContext: Record<string, unknown> = { level1: { level2: { level3: { level4: { level5: { level6: "deep" } } } } } };
+      const deepContext: Record<string, unknown> = {
+        level1: { level2: { level3: { level4: { level5: { level6: "deep" } } } } },
+      };
       const sanitizedContext = sanitizeProjectContext(deepContext);
       expect(sanitizedContext).toContain("[nested_too_deep]");
       expect(sanitizedContext.length).toBeLessThanOrEqual(8000);

@@ -107,7 +107,7 @@ export function parseCsvProject(
     if (currStr) properties.in_A = parseFloat(currStr) || 0;
 
     nodes.push({
-      id: tag.replace(/[^a-zA-Z0-9_\-\.]/g, "_"),
+      id: tag.replace(/[^a-zA-Z0-9_\-.]/g, "_"),
       type: kind,
       label,
       position: { x, y },

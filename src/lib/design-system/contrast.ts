@@ -13,7 +13,10 @@ export interface RgbColor {
 export function hexToRgb(hex: string): RgbColor {
   let clean = hex.replace(/^#/, "").trim();
   if (clean.length === 3) {
-    clean = clean.split("").map((c) => c + c).join("");
+    clean = clean
+      .split("")
+      .map((c) => c + c)
+      .join("");
   }
   const num = parseInt(clean, 16);
   return {

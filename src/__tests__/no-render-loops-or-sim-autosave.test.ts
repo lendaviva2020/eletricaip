@@ -55,7 +55,9 @@ describe("Fase D — Ausência de Loops de Renderização e Zero Autosave em Car
     useAutosaveLog.getState().clear();
     useUnifiedProjectStore.getState().resetUnifiedDoc();
     useProjectStore.getState().reset();
-    useEditorStore.getState().hydrateSnapshot({ editorTags: {}, rungs: [], fbdNodes: [], fbdEdges: [] });
+    useEditorStore
+      .getState()
+      .hydrateSnapshot({ editorTags: {}, rungs: [], fbdNodes: [], fbdEdges: [] });
     useDiagramStore.getState().resetDoc();
   });
 

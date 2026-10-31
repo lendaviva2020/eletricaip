@@ -42,7 +42,8 @@ export function assembleCompleteDossier(params: {
 
   const approval: EngineeringApproval = {
     engineerName: params.approval?.engineerName || "Engenheiro Responsável Técnico",
-    professionalRegistration: params.approval?.professionalRegistration || "CREA / CFT — Emissão Inicial",
+    professionalRegistration:
+      params.approval?.professionalRegistration || "CREA / CFT — Emissão Inicial",
     issueDate: params.approval?.issueDate || new Date().toLocaleDateString("pt-BR"),
     revision: params.approval?.revision ?? 1,
     isApproved: params.approval?.isApproved ?? false,
@@ -111,7 +112,13 @@ export const getEngineeringDossier = createServerFn({ method: "POST" })
           project: { nodes: [], edges: [], tags: {}, scadaLayout: { nodes: [], edges: [] } },
           voltai: { components: [], edges: [] },
           editor: { tags: {}, rungs: [], fbdNodes: [], fbdEdges: [] },
-          plc: { vendor: "siemens", rack: { id: "rack-1", label: "Rack", modules: [] }, variables: [], programBlocks: [], cycleTimeMs: 10 },
+          plc: {
+            vendor: "siemens",
+            rack: { id: "rack-1", label: "Rack", modules: [] },
+            variables: [],
+            programBlocks: [],
+            cycleTimeMs: 10,
+          },
         };
 
     const metadata = (project.metadata as Record<string, unknown> | null) ?? {};

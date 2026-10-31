@@ -67,10 +67,7 @@ export function generateInstructionList(program: PlcProgramDoc): string {
   return lines.join("\n");
 }
 
-export function generatePlcopenXml(
-  extracted: ExtractedCanvasData,
-  program: PlcProgramDoc,
-): string {
+export function generatePlcopenXml(extracted: ExtractedCanvasData, program: PlcProgramDoc): string {
   const now = new Date().toISOString();
   const projectName = extracted.projectName.replace(/[<>&'"]/g, "_");
   const author = extracted.clientName.replace(/[<>&'"]/g, "_");

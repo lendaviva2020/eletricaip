@@ -97,9 +97,7 @@ export const useRuntimeStore = create<RuntimeStoreState>()(
           return s;
         }
         const nextById = { ...s.tagValuesById, [tagId]: value };
-        const nextByName = tagName
-          ? { ...s.tagValuesByName, [tagName]: value }
-          : s.tagValuesByName;
+        const nextByName = tagName ? { ...s.tagValuesByName, [tagName]: value } : s.tagValuesByName;
         let nextTelemetry = s.telemetryByTagId;
         if (typeof value === "number") {
           const prev = s.telemetryByTagId[tagId] ?? [];
@@ -119,9 +117,7 @@ export const useRuntimeStore = create<RuntimeStoreState>()(
       set((s) => ({
         forcedTagIds: { ...s.forcedTagIds, [tagId]: true },
         tagValuesById: { ...s.tagValuesById, [tagId]: value },
-        tagValuesByName: tagName
-          ? { ...s.tagValuesByName, [tagName]: value }
-          : s.tagValuesByName,
+        tagValuesByName: tagName ? { ...s.tagValuesByName, [tagName]: value } : s.tagValuesByName,
       })),
 
     releaseForcedTag: (tagId) =>

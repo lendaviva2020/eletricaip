@@ -60,7 +60,7 @@ export function parseTxtSpecification(
 
   let projectName = "Projeto Especificado em TXT";
   let systemVoltageV = 380;
-  let frequencyHz: 50 | 60 = 60;
+  const frequencyHz: 50 | 60 = 60;
   const standards: string[] = ["NBR_5410"];
 
   const nodes: BundleNode[] = [];
@@ -77,12 +77,29 @@ export function parseTxtSpecification(
       .filter(Boolean);
 
     // Identificar índices das colunas
-    const tagIdx = headerCols.findIndex((c) => c.includes("tag") || c.includes("id") || c.includes("identificador") || c.includes("nome"));
-    const typeIdx = headerCols.findIndex((c) => c.includes("tipo") || c.includes("kind") || c.includes("componente"));
-    const powerIdx = headerCols.findIndex((c) => c.includes("pot") || c.includes("kw") || c.includes("kva") || c.includes("power"));
-    const voltIdx = headerCols.findIndex((c) => c.includes("tens") || c.includes("volt") || c.includes("v"));
-    const currIdx = headerCols.findIndex((c) => c.includes("corr") || c.includes("amper") || c.includes("in"));
-    const feederIdx = headerCols.findIndex((c) => c.includes("aliment") || c.includes("origem") || c.includes("fonte") || c.includes("painel"));
+    const tagIdx = headerCols.findIndex(
+      (c) =>
+        c.includes("tag") || c.includes("id") || c.includes("identificador") || c.includes("nome"),
+    );
+    const typeIdx = headerCols.findIndex(
+      (c) => c.includes("tipo") || c.includes("kind") || c.includes("componente"),
+    );
+    const powerIdx = headerCols.findIndex(
+      (c) => c.includes("pot") || c.includes("kw") || c.includes("kva") || c.includes("power"),
+    );
+    const voltIdx = headerCols.findIndex(
+      (c) => c.includes("tens") || c.includes("volt") || c.includes("v"),
+    );
+    const currIdx = headerCols.findIndex(
+      (c) => c.includes("corr") || c.includes("amper") || c.includes("in"),
+    );
+    const feederIdx = headerCols.findIndex(
+      (c) =>
+        c.includes("aliment") ||
+        c.includes("origem") ||
+        c.includes("fonte") ||
+        c.includes("painel"),
+    );
 
     // Pular linha 0 (header) e linha 1 (divisor |---|---|)
     for (let i = 1; i < tableLines.length; i++) {
@@ -177,7 +194,9 @@ export function parseTxtSpecification(
       }
 
       // Conexões: "SRC -> TGT" ou "- SRC -> TGT"
-      const connMatch = line.match(/^[-*]?\s*([a-zA-Z0-9_]+)\s*(?:->|PARA|TO)\s*([a-zA-Z0-9_]+)(?:\s*\((power|signal|pipe)\))?/i);
+      const connMatch = line.match(
+        /^[-*]?\s*([a-zA-Z0-9_]+)\s*(?:->|PARA|TO)\s*([a-zA-Z0-9_]+)(?:\s*\((power|signal|pipe)\))?/i,
+      );
       if (connMatch) {
         const src = connMatch[1];
         const tgt = connMatch[2];
@@ -210,7 +229,10 @@ export function parseTxtSpecification(
         }
 
         // Dividir propriedades por '|' ou vírgula
-        const propParts = remainder.split(/[|,;]/).map((p) => p.trim()).filter(Boolean);
+        const propParts = remainder
+          .split(/[|,;]/)
+          .map((p) => p.trim())
+          .filter(Boolean);
         const rawKind = propParts[0] || remainder;
         const resolvedKind = resolveComponentKind(rawKind) || "load";
 

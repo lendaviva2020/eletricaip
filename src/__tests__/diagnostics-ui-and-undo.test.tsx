@@ -32,10 +32,9 @@ const mockProposal: FixProposal = {
     "queda_de_tensao (NBR 5410 §6.2.7)",
     "capacidade_conducao_corrente_iz (NBR 5410 §6.2.5)",
   ],
-  unavailableChecks: [
-    "suportabilidade_curto_circuito (NBR 5410 §5.3.5 / I²t <= k²S²)",
-  ],
-  rationalePt: "Aumento da bitola de 4 mm² para 10 mm² para reduzir queda de tensão de 5.2% para 2.1%.",
+  unavailableChecks: ["suportabilidade_curto_circuito (NBR 5410 §5.3.5 / I²t <= k²S²)"],
+  rationalePt:
+    "Aumento da bitola de 4 mm² para 10 mm² para reduzir queda de tensão de 5.2% para 2.1%.",
   isApplicable: true,
 };
 
@@ -75,9 +74,7 @@ describe("Interface de Correção com IA, Diálogo de Homologação e Undo (Fase
     expect(screen.getByText(/taxa de ocupação dos eletrodutos/i)).toBeDefined();
 
     // Justificativa em português
-    expect(
-      screen.getByText(/Aumento da bitola de 4 mm² para 10 mm²/i),
-    ).toBeDefined();
+    expect(screen.getByText(/Aumento da bitola de 4 mm² para 10 mm²/i)).toBeDefined();
 
     // Botão de aprovação explícita
     expect(screen.getByTestId("ai-fix-approve-button")).toBeDefined();

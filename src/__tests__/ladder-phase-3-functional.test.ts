@@ -10,10 +10,7 @@ import {
   type PureTags,
   type ScanState,
 } from "@/lib/ladder/scan-core";
-import {
-  scanRungs,
-  resetRuntimeState,
-} from "@/lib/ladder/runtime";
+import { scanRungs, resetRuntimeState } from "@/lib/ladder/runtime";
 import {
   newRung,
   emptyCell,
@@ -104,7 +101,16 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
         id: "rung-ctud",
         label: "Rung CTUD",
         cols: 6,
-        cells: [[emptyCell(), emptyCell(), emptyCell(), emptyCell(), emptyCell(), { kind: "CTUD", operand: "CONTADOR_1", preset: 3 }]],
+        cells: [
+          [
+            emptyCell(),
+            emptyCell(),
+            emptyCell(),
+            emptyCell(),
+            emptyCell(),
+            { kind: "CTUD", operand: "CONTADOR_1", preset: 3 },
+          ],
+        ],
         topology: {
           id: "rung-ctud",
           rootBranch: {
@@ -244,9 +250,7 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
     it("3.1 Tabelas-verdade completas para AND, OR, XOR e NOT", () => {
       const makeLogicRung = (kind: "AND" | "OR" | "XOR" | "NOT", id: string): LadderRung => {
         const params: Record<string, string | number | boolean> =
-          kind === "NOT"
-            ? { IN: "A", OUT: `RES_${id}` }
-            : { IN1: "A", IN2: "B", OUT: `RES_${id}` };
+          kind === "NOT" ? { IN: "A", OUT: `RES_${id}` } : { IN1: "A", IN2: "B", OUT: `RES_${id}` };
         return {
           id: `rung-${id}`,
           label: `Logic ${id}`,
@@ -310,7 +314,14 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
         topology: {
           id: "rung-1",
           rootBranch: { id: "root-1", items: [] },
-          outputs: [{ id: "o1", kind: "AND", operand: "FLAG_1", params: { IN1: "S1", IN2: "S2", OUT: "FLAG_1" } }],
+          outputs: [
+            {
+              id: "o1",
+              kind: "AND",
+              operand: "FLAG_1",
+              params: { IN1: "S1", IN2: "S2", OUT: "FLAG_1" },
+            },
+          ],
         },
       };
 
@@ -322,7 +333,13 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "rung-2",
           rootBranch: {
             id: "root-2",
-            items: [{ id: "i1", type: "instruction", instruction: { id: "c1", kind: "XIC", operand: "FLAG_1" } }],
+            items: [
+              {
+                id: "i1",
+                type: "instruction",
+                instruction: { id: "c1", kind: "XIC", operand: "FLAG_1" },
+              },
+            ],
           },
           outputs: [{ id: "o2", kind: "OTE", operand: "MOTOR_ON" }],
         },
@@ -432,7 +449,14 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
         topology: {
           id: "r-div",
           rootBranch: { id: "root-div", items: [] },
-          outputs: [{ id: "o-div", kind: "DIV", operand: "DIV_RES", params: { IN1: 100, IN2: 0, OUT: "DIV_RES" } }],
+          outputs: [
+            {
+              id: "o-div",
+              kind: "DIV",
+              operand: "DIV_RES",
+              params: { IN1: 100, IN2: 0, OUT: "DIV_RES" },
+            },
+          ],
         },
       };
 
@@ -443,7 +467,14 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
         topology: {
           id: "r-mod",
           rootBranch: { id: "root-mod", items: [] },
-          outputs: [{ id: "o-mod", kind: "MOD", operand: "MOD_RES", params: { IN1: 100, IN2: 0, OUT: "MOD_RES" } }],
+          outputs: [
+            {
+              id: "o-mod",
+              kind: "MOD",
+              operand: "MOD_RES",
+              params: { IN1: 100, IN2: 0, OUT: "MOD_RES" },
+            },
+          ],
         },
       };
 
@@ -469,7 +500,14 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
         topology: {
           id: "r-sqrt",
           rootBranch: { id: "root-sqrt", items: [] },
-          outputs: [{ id: "o-sqrt", kind: "SQRT", operand: "SQRT_RES", params: { IN1: -25, OUT: "SQRT_RES" } }],
+          outputs: [
+            {
+              id: "o-sqrt",
+              kind: "SQRT",
+              operand: "SQRT_RES",
+              params: { IN1: -25, OUT: "SQRT_RES" },
+            },
+          ],
         },
       };
 
@@ -488,7 +526,9 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
         topology: {
           id: "r-fail",
           rootBranch: { id: "root-fail", items: [] },
-          outputs: [{ id: "o-f", kind: "DIV", operand: "F_RES", params: { IN1: 50, IN2: 0, OUT: "F_RES" } }],
+          outputs: [
+            { id: "o-f", kind: "DIV", operand: "F_RES", params: { IN1: 50, IN2: 0, OUT: "F_RES" } },
+          ],
         },
       };
 
@@ -499,7 +539,14 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
         topology: {
           id: "r-ok",
           rootBranch: { id: "root-ok", items: [] },
-          outputs: [{ id: "o-ok", kind: "ADD", operand: "OK_RES", params: { IN1: 20, IN2: 30, OUT: "OK_RES" } }],
+          outputs: [
+            {
+              id: "o-ok",
+              kind: "ADD",
+              operand: "OK_RES",
+              params: { IN1: 20, IN2: 30, OUT: "OK_RES" },
+            },
+          ],
         },
       };
 
@@ -524,7 +571,13 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "r0",
           rootBranch: {
             id: "root-0",
-            items: [{ id: "i0", type: "instruction", instruction: { id: "c0", kind: "XIC", operand: "START" } }],
+            items: [
+              {
+                id: "i0",
+                type: "instruction",
+                instruction: { id: "c0", kind: "XIC", operand: "START" },
+              },
+            ],
           },
           outputs: [{ id: "o0", kind: "OTE", operand: "FLAG_M1" }],
         },
@@ -539,7 +592,13 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "r1",
           rootBranch: {
             id: "root-1",
-            items: [{ id: "i1", type: "instruction", instruction: { id: "c1", kind: "XIC", operand: "FLAG_M1" } }],
+            items: [
+              {
+                id: "i1",
+                type: "instruction",
+                instruction: { id: "c1", kind: "XIC", operand: "FLAG_M1" },
+              },
+            ],
           },
           outputs: [{ id: "o1", kind: "OTE", operand: "FLAG_M2" }],
         },
@@ -554,7 +613,13 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "r2",
           rootBranch: {
             id: "root-2",
-            items: [{ id: "i2", type: "instruction", instruction: { id: "c2", kind: "XIC", operand: "FLAG_M2" } }],
+            items: [
+              {
+                id: "i2",
+                type: "instruction",
+                instruction: { id: "c2", kind: "XIC", operand: "FLAG_M2" },
+              },
+            ],
           },
           outputs: [{ id: "o2", kind: "OTE", operand: "FINAL_OUT" }],
         },
@@ -581,7 +646,13 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "r-ton-a",
           rootBranch: {
             id: "root-a",
-            items: [{ id: "ia", type: "instruction", instruction: { id: "ca", kind: "XIC", operand: "ENA_A" } }],
+            items: [
+              {
+                id: "ia",
+                type: "instruction",
+                instruction: { id: "ca", kind: "XIC", operand: "ENA_A" },
+              },
+            ],
           },
           outputs: [{ id: "ton-inst-A", kind: "TON", operand: "Q_A", preset: 1000 }],
         },
@@ -595,7 +666,13 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "r-ton-b",
           rootBranch: {
             id: "root-b",
-            items: [{ id: "ib", type: "instruction", instruction: { id: "cb", kind: "XIC", operand: "ENA_B" } }],
+            items: [
+              {
+                id: "ib",
+                type: "instruction",
+                instruction: { id: "cb", kind: "XIC", operand: "ENA_B" },
+              },
+            ],
           },
           outputs: [{ id: "ton-inst-B", kind: "TON", operand: "Q_B", preset: 1000 }],
         },
@@ -626,7 +703,13 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "r-trig-1",
           rootBranch: {
             id: "root-1",
-            items: [{ id: "i1", type: "instruction", instruction: { id: "trig-inst-1", kind: "R_TRIG", operand: "SIG_1" } }],
+            items: [
+              {
+                id: "i1",
+                type: "instruction",
+                instruction: { id: "trig-inst-1", kind: "R_TRIG", operand: "SIG_1" },
+              },
+            ],
           },
           outputs: [{ id: "o1", kind: "OTE", operand: "PULSE_1" }],
         },
@@ -640,7 +723,13 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "r-trig-2",
           rootBranch: {
             id: "root-2",
-            items: [{ id: "i2", type: "instruction", instruction: { id: "trig-inst-2", kind: "R_TRIG", operand: "SIG_2" } }],
+            items: [
+              {
+                id: "i2",
+                type: "instruction",
+                instruction: { id: "trig-inst-2", kind: "R_TRIG", operand: "SIG_2" },
+              },
+            ],
           },
           outputs: [{ id: "o2", kind: "OTE", operand: "PULSE_2" }],
         },
@@ -754,13 +843,27 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "r-cycle",
           rootBranch: {
             id: "root-c",
-            items: [{ id: "ic", type: "instruction", instruction: { id: "c-pulse", kind: "R_TRIG", operand: "CLOCK" } }],
+            items: [
+              {
+                id: "ic",
+                type: "instruction",
+                instruction: { id: "c-pulse", kind: "R_TRIG", operand: "CLOCK" },
+              },
+            ],
           },
-          outputs: [{ id: "out-cnt", kind: "CTU", operand: "CONTADOR_ACUM", preset: 50, params: { PV: 50 } }],
+          outputs: [
+            {
+              id: "out-cnt",
+              kind: "CTU",
+              operand: "CONTADOR_ACUM",
+              preset: 50,
+              params: { PV: 50 },
+            },
+          ],
         },
       };
 
-      let currentTags: PureTags = { CLOCK: false };
+      const currentTags: PureTags = { CLOCK: false };
       for (let cycle = 1; cycle <= 10; cycle++) {
         // Alterna clock (0 -> 1 -> 0)
         currentTags.CLOCK = true;
@@ -795,7 +898,9 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
               },
             ],
           },
-          outputs: [{ id: "out-div-zero", kind: "DIV", operand: "DIV_RES", params: { IN1: 10, IN2: 0 } }],
+          outputs: [
+            { id: "out-div-zero", kind: "DIV", operand: "DIV_RES", params: { IN1: 10, IN2: 0 } },
+          ],
         },
       };
 
@@ -842,19 +947,39 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
       ensureRungTopology(rungPartida);
 
       // 1. Repouso (sem botão de ligar pressionado)
-      let out = scanRungsPure([rungPartida], { EMERGENCIA: true, RELE_TERMICO: true, BOTAO_LIGA: false, K1: false }, state, 100);
+      let out = scanRungsPure(
+        [rungPartida],
+        { EMERGENCIA: true, RELE_TERMICO: true, BOTAO_LIGA: false, K1: false },
+        state,
+        100,
+      );
       expect(out.tags.K1).toBe(false);
 
       // 2. Pulso no botão de ligar -> Liga K1
-      out = scanRungsPure([rungPartida], { EMERGENCIA: true, RELE_TERMICO: true, BOTAO_LIGA: true, K1: false }, state, 200);
+      out = scanRungsPure(
+        [rungPartida],
+        { EMERGENCIA: true, RELE_TERMICO: true, BOTAO_LIGA: true, K1: false },
+        state,
+        200,
+      );
       expect(out.tags.K1).toBe(true);
 
       // 3. Solta botão de ligar -> Selo K1 mantém ligado!
-      out = scanRungsPure([rungPartida], { EMERGENCIA: true, RELE_TERMICO: true, BOTAO_LIGA: false, K1: true }, state, 300);
+      out = scanRungsPure(
+        [rungPartida],
+        { EMERGENCIA: true, RELE_TERMICO: true, BOTAO_LIGA: false, K1: true },
+        state,
+        300,
+      );
       expect(out.tags.K1).toBe(true);
 
       // 4. Emergência abre (EMERGENCIA = FALSE) -> Interrompe K1 imediatamente!
-      out = scanRungsPure([rungPartida], { EMERGENCIA: false, RELE_TERMICO: true, BOTAO_LIGA: false, K1: true }, state, 400);
+      out = scanRungsPure(
+        [rungPartida],
+        { EMERGENCIA: false, RELE_TERMICO: true, BOTAO_LIGA: false, K1: true },
+        state,
+        400,
+      );
       expect(out.tags.K1).toBe(false);
     });
   });
@@ -892,7 +1017,12 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
       const serialized = JSON.stringify(originalRung);
       const deserialized: LadderRung = JSON.parse(serialized);
 
-      const out = scanRungsPure([deserialized], { IN_CD: false, IN_R: false, IN_LD: false, SET_1: true, RESET_1: false }, state, 100);
+      const out = scanRungsPure(
+        [deserialized],
+        { IN_CD: false, IN_R: false, IN_LD: false, SET_1: true, RESET_1: false },
+        state,
+        100,
+      );
       expect(out.tags.LATCH_1).toBe(true);
       expect(out.tags.CV_1).toBe(1);
     });
@@ -906,27 +1036,53 @@ describe("ELÉTRICAI — FASE 3: COMPLETUDE FUNCIONAL DO MOTOR LADDER", () => {
           id: "r-compile",
           rootBranch: {
             id: "root-c",
-            items: [{ id: "i1", type: "instruction", instruction: { id: "c1", kind: "XIC", operand: "HABILITA" } }],
+            items: [
+              {
+                id: "i1",
+                type: "instruction",
+                instruction: { id: "c1", kind: "XIC", operand: "HABILITA" },
+              },
+            ],
           },
           outputs: [
-            { id: "o-ctud", kind: "CTUD", operand: "CONTADOR_CTUD", preset: 20, params: { CD: "CD_PIN", R: "R_PIN", LD: "LD_PIN" } },
+            {
+              id: "o-ctud",
+              kind: "CTUD",
+              operand: "CONTADOR_CTUD",
+              preset: 20,
+              params: { CD: "CD_PIN", R: "R_PIN", LD: "LD_PIN" },
+            },
             { id: "o-sr", kind: "SR", operand: "BISTAVEL_SR", params: { R: "R_PIN" } },
             { id: "o-rs", kind: "RS", operand: "BISTAVEL_RS", params: { R1: "R1_PIN" } },
-            { id: "o-conv", kind: "REAL_TO_INT", operand: "CONV_RES", params: { IN: "FLOAT_IN", OUT: "INT_OUT" } },
-            { id: "o-and", kind: "AND", operand: "AND_RES", params: { IN1: "BIT_1", IN2: "BIT_2", OUT: "AND_OUT" } },
+            {
+              id: "o-conv",
+              kind: "REAL_TO_INT",
+              operand: "CONV_RES",
+              params: { IN: "FLOAT_IN", OUT: "INT_OUT" },
+            },
+            {
+              id: "o-and",
+              kind: "AND",
+              operand: "AND_RES",
+              params: { IN1: "BIT_1", IN2: "BIT_2", OUT: "AND_OUT" },
+            },
           ],
         },
       };
 
       const st = compileRungToST(rung);
-      expect(st).toContain("CONTADOR_CTUD(CU := TRUE, CD := CD_PIN, R := R_PIN, LD := LD_PIN, PV := 20)");
+      expect(st).toContain(
+        "CONTADOR_CTUD(CU := TRUE, CD := CD_PIN, R := R_PIN, LD := LD_PIN, PV := 20)",
+      );
       expect(st).toContain("BISTAVEL_SR_SR(S1 := HABILITA, R := R_PIN)");
       expect(st).toContain("BISTAVEL_RS_RS(S := HABILITA, R1 := R1_PIN)");
       expect(st).toContain("INT_OUT := REAL_TO_INT(FLOAT_IN)");
       expect(st).toContain("AND_OUT := BIT_1 AND BIT_2");
 
       const il = compileRungToIL(rung);
-      expect(il).toContain("CAL CONTADOR_CTUD(CU := %MX, CD := CD_PIN, R := R_PIN, LD := LD_PIN, PV := 20)");
+      expect(il).toContain(
+        "CAL CONTADOR_CTUD(CU := %MX, CD := CD_PIN, R := R_PIN, LD := LD_PIN, PV := 20)",
+      );
       expect(il).toContain("CAL BISTAVEL_SR_SR(S1 := %MX, R := R_PIN)");
       expect(il).toContain("CAL BISTAVEL_RS_RS(S := %MX, R1 := R1_PIN)");
     });

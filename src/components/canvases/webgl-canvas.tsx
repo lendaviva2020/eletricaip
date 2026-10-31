@@ -7,7 +7,36 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { listBom } from "@/lib/bom.functions";
 import { Button } from "@/components/ui/button";
-import { FileArchive, FileText, Magnet, ArrowsOutSimple, ArrowUUpRight, ArrowClockwise, Trash, ArrowUUpLeft, FloppyDisk, DownloadSimple, CheckCircle, Warning, WarningCircle, Gear, CaretDown, CaretUp, List, X, FileXls, Pulse, Lightning, Play, Pause, Square, ArrowCounterClockwise, MagnifyingGlassPlus, MagnifyingGlassMinus, Octagon } from "@phosphor-icons/react";
+import {
+  FileArchive,
+  FileText,
+  Magnet,
+  ArrowsOutSimple,
+  ArrowUUpRight,
+  ArrowClockwise,
+  Trash,
+  ArrowUUpLeft,
+  FloppyDisk,
+  DownloadSimple,
+  CheckCircle,
+  Warning,
+  WarningCircle,
+  Gear,
+  CaretDown,
+  CaretUp,
+  List,
+  X,
+  FileXls,
+  Pulse,
+  Lightning,
+  Play,
+  Pause,
+  Square,
+  ArrowCounterClockwise,
+  MagnifyingGlassPlus,
+  MagnifyingGlassMinus,
+  Octagon,
+} from "@phosphor-icons/react";
 import { computeCircuitEnergization } from "@/lib/diagram/electrical-simulation";
 import { useSafetyStore } from "@/lib/simulation/safety-core";
 import {
@@ -124,11 +153,31 @@ function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
     case "generator":
       return { kind, kVA: 150, voltage_V: 380, manufacturer: "Stemac", model: "GTA150" };
     case "plc":
-      return { kind, cpu: "1769-L33ER", io_count: 16, manufacturer: "Rockwell", model: "CompactLogix" };
+      return {
+        kind,
+        cpu: "1769-L33ER",
+        io_count: 16,
+        manufacturer: "Rockwell",
+        model: "CompactLogix",
+      };
     case "hmi":
-      return { kind, screen_size_in: 10.1, protocol: "EtherNet/IP", manufacturer: "Siemens", model: "KTP1000" };
+      return {
+        kind,
+        screen_size_in: 10.1,
+        protocol: "EtherNet/IP",
+        manufacturer: "Siemens",
+        model: "KTP1000",
+      };
     case "transformer":
-      return { kind, kVA: 100, primary_V: 13800, secondary_V: 380, vector: "Dyn11", manufacturer: "WEG", model: "TRAFO-100" };
+      return {
+        kind,
+        kVA: 100,
+        primary_V: 13800,
+        secondary_V: 380,
+        vector: "Dyn11",
+        manufacturer: "WEG",
+        model: "TRAFO-100",
+      };
     case "psu":
       return { kind, output_V: 24, output_A: 10 };
     case "vfd":
@@ -140,7 +189,15 @@ function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
     case "ccm":
       return { kind, columns: 4, cells: 6 };
     case "motor":
-      return { kind, power_kW: 7.5, current_A: 15.2, voltage_V: 380, startMethod: "DOL", manufacturer: "WEG", model: "W22 Premium" };
+      return {
+        kind,
+        power_kW: 7.5,
+        current_A: 15.2,
+        voltage_V: 380,
+        startMethod: "DOL",
+        manufacturer: "WEG",
+        model: "W22 Premium",
+      };
     case "load":
       return { kind, power_W: 1000, voltage_V: 220, fp: 0.92 };
     case "lamp":
@@ -234,7 +291,10 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   }, [simulationStatus]);
 
   const bomItems = useMemo(() => {
-    const counts: Record<string, { tag: string; kind: string; desc: string; manufacturer: string; model: string; qty: number }> = {};
+    const counts: Record<
+      string,
+      { tag: string; kind: string; desc: string; manufacturer: string; model: string; qty: number }
+    > = {};
     for (const n of Object.values(doc.nodes)) {
       if (n.sheet !== effectiveSheet && n.sheet !== "unifilar") continue;
       const tag = (n.params as any).tag || n.label || n.id;
@@ -286,10 +346,12 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           const currentDoc = useDiagramStore.getState().doc;
           const node = currentDoc.nodes[nodeId];
           if (node?.params?.kind === "estop") {
-            useSafetyStore.getState().triggerEmergency(
-              "canvas_estop",
-              `Parada de emergência acionada pelo componente ${node.label || node.id}`,
-            );
+            useSafetyStore
+              .getState()
+              .triggerEmergency(
+                "canvas_estop",
+                `Parada de emergência acionada pelo componente ${node.label || node.id}`,
+              );
             toast.error(
               `Parada de emergência atuada por ${node.label || node.id}. Circuito desenergizado.`,
             );
@@ -338,9 +400,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           useDiagramStore.getState().selectedEdgeIds,
           energization,
         );
-        stage.fitView(
-          Object.values(currentDoc.nodes).filter((n) => n.sheet === currentSheet),
-        );
+        stage.fitView(Object.values(currentDoc.nodes).filter((n) => n.sheet === currentSheet));
       });
     return () => {
       disposed = true;
@@ -434,7 +494,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
 
   const handleExportDxf = useCallback(() => {
     try {
-      const safe = (doc.metadata.title || "MCC-01_REFORCO").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
+      const safe = (doc.metadata.title || "MCC-01_REFORCO")
+        .replace(/[^a-z0-9-_]+/gi, "_")
+        .slice(0, 60);
       const counts = exportDiagramDxf(doc, effectiveSheet, `${safe}_${effectiveSheet}.dxf`);
       toast.success(`DXF gerado · ${counts.nodes} símbolos, ${counts.edges} ligações.`);
       setExportMenuOpen(false);
@@ -445,7 +507,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
 
   const handleExportSvg = useCallback(() => {
     try {
-      const safe = (doc.metadata.title || "MCC-01_REFORCO").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
+      const safe = (doc.metadata.title || "MCC-01_REFORCO")
+        .replace(/[^a-z0-9-_]+/gi, "_")
+        .slice(0, 60);
       exportDiagramSvg(doc, effectiveSheet, `${safe}_${effectiveSheet}.svg`);
       toast.success(`SVG vetorial IEC gerado com sucesso.`);
       setExportMenuOpen(false);
@@ -457,7 +521,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const handleExportPdf = useCallback(async () => {
     try {
       const { buildProjectPdf } = await import("@/lib/pdf-export");
-      const safe = (doc.metadata.title || "MCC-01_REFORCO").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
+      const safe = (doc.metadata.title || "MCC-01_REFORCO")
+        .replace(/[^a-z0-9-_]+/gi, "_")
+        .slice(0, 60);
       let bom: Parameters<typeof buildProjectPdf>[0]["bom"] = [];
       let totalBRL = 0;
       if (projectId) {
@@ -624,7 +690,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         {/* Informações Técnicas do Projeto */}
         <div className="hidden 2xl:flex items-center gap-2.5 text-xs font-mono shrink-0">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#131d2e] border border-border/60 text-foreground max-w-[220px]">
-            <span className="text-muted-foreground font-semibold shrink-0">{t("canvasToolbar.project") || "PROJETO:"}</span>
+            <span className="text-muted-foreground font-semibold shrink-0">
+              {t("canvasToolbar.project") || "PROJETO:"}
+            </span>
             <span className="font-bold text-[#38bdf8] truncate">
               {doc.metadata.title && !/^[=\-_*\s]+$/.test(doc.metadata.title)
                 ? doc.metadata.title
@@ -633,7 +701,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           </div>
 
           <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#131d2e] border border-border/60 text-foreground">
-            <span className="text-muted-foreground font-semibold">{t("canvasToolbar.sheet") || "FOLHA:"}</span>
+            <span className="text-muted-foreground font-semibold">
+              {t("canvasToolbar.sheet") || "FOLHA:"}
+            </span>
             <span className="font-bold">{effectiveSheet === "unifilar" ? "01/03" : "02/03"}</span>
           </div>
 
@@ -684,7 +754,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   <FileText className="h-4 w-4 text-[#ef4444]" />
                   <div>
                     <div className="font-semibold">Memorial de Cálculo PDF</div>
-                    <div className="text-[10px] text-muted-foreground">NBR 5410 com BOM e cabos</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      NBR 5410 com BOM e cabos
+                    </div>
                   </div>
                 </button>
                 <button
@@ -694,7 +766,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   <Pulse className="h-4 w-4 text-[#f97316]" />
                   <div>
                     <div className="font-semibold">Diagrama Vetorial SVG</div>
-                    <div className="text-[10px] text-muted-foreground">Padrão IEC 60617 em alta resolução</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Padrão IEC 60617 em alta resolução
+                    </div>
                   </div>
                 </button>
                 <button
@@ -704,7 +778,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   <FileArchive className="h-4 w-4 text-[#38bdf8]" />
                   <div>
                     <div className="font-semibold">Arquivo CAD DXF</div>
-                    <div className="text-[10px] text-muted-foreground">AutoCAD com camadas elétricas</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      AutoCAD com camadas elétricas
+                    </div>
                   </div>
                 </button>
               </div>
@@ -783,8 +859,13 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   size="sm"
                   variant="destructive"
                   onClick={() => {
-                    triggerEmergency("canvas_toolbar", "Parada de emergência acionada na barra do canvas");
-                    toast.error("PARADA DE EMERGÊNCIA ATUADA. Todos os circuitos foram desenergizados.");
+                    triggerEmergency(
+                      "canvas_toolbar",
+                      "Parada de emergência acionada na barra do canvas",
+                    );
+                    toast.error(
+                      "PARADA DE EMERGÊNCIA ATUADA. Todos os circuitos foram desenergizados.",
+                    );
                   }}
                   className="h-7 px-2 gap-1 text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold tracking-wide"
                   title="PARADA DE EMERGÊNCIA (Corte imediato de atuadores)"
@@ -831,8 +912,13 @@ export function WebglCanvas({ sheet, projectId }: Props) {
                   size="sm"
                   variant="destructive"
                   onClick={() => {
-                    triggerEmergency("canvas_toolbar", "Parada de emergência acionada na barra do canvas");
-                    toast.error("PARADA DE EMERGÊNCIA ATUADA. Todos os circuitos foram desenergizados.");
+                    triggerEmergency(
+                      "canvas_toolbar",
+                      "Parada de emergência acionada na barra do canvas",
+                    );
+                    toast.error(
+                      "PARADA DE EMERGÊNCIA ATUADA. Todos os circuitos foram desenergizados.",
+                    );
                   }}
                   className="h-7 px-2 gap-1 text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold tracking-wide"
                   title="PARADA DE EMERGÊNCIA (Corte imediato de atuadores)"
@@ -863,7 +949,8 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             <div className="hidden xl:flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/50 border border-emerald-500/40 text-[10px] font-mono font-semibold text-emerald-400 animate-pulse">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
               <span>
-                ENERGIZADO ({energization.metrics.energizedCircuits}/{energization.metrics.totalEdges})
+                ENERGIZADO ({energization.metrics.energizedCircuits}/
+                {energization.metrics.totalEdges})
               </span>
             </div>
           )}
@@ -897,10 +984,22 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           <div className="h-4 w-px bg-border/60 mx-1" />
 
           {/* Ações de navegação rápida e Zoom */}
-          <Button size="icon" variant="ghost" onClick={undo} className="h-8 w-8" title="Desfazer (Ctrl+Z)">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={undo}
+            className="h-8 w-8"
+            title="Desfazer (Ctrl+Z)"
+          >
             <ArrowUUpLeft className="size-3.5" />
           </Button>
-          <Button size="icon" variant="ghost" onClick={redo} className="h-8 w-8" title="Refazer (Ctrl+Y)">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={redo}
+            className="h-8 w-8"
+            title="Refazer (Ctrl+Y)"
+          >
             <ArrowUUpRight className="size-3.5" />
           </Button>
           <Button

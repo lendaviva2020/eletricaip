@@ -524,7 +524,8 @@ export const ptBR = {
     buttonLabel: "Corrigir com IA",
     buttonTooltip: "Propor correções determinísticas validadas para as não conformidades elétricas",
     dialogTitle: "Diagnósticos Corretivos — ABNT NBR 5410",
-    dialogSubtitle: "O motor determinístico calculou as opções válidas; a IA seleciona e justifica a proposta técnica.",
+    dialogSubtitle:
+      "O motor determinístico calculou as opções válidas; a IA seleciona e justifica a proposta técnica.",
     diagnosticsToFix: "Não conformidades a serem corrigidas",
     diffTableTitle: "Comparativo de Dimensionamento (Diff Antes / Depois)",
     cableCol: "Condutor",
@@ -545,7 +546,8 @@ export const ptBR = {
     undoButton: "Desfazer correção",
     undoneSuccess: "Correção desfeita com sucesso.",
     noActionableTitle: "Sem correções pendentes",
-    noActionableDesc: "Todos os circuitos estão em conformidade ou as premissas de projeto exigem preenchimento manual.",
+    noActionableDesc:
+      "Todos os circuitos estão em conformidade ou as premissas de projeto exigem preenchimento manual.",
   },
 } as const;
 

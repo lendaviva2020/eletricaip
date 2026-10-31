@@ -3,7 +3,13 @@
 // and converts external AI bundles into real, editable Canvas elements with 0 AI credits consumed.
 
 import { ulid } from "ulid";
-import type { DiagramDoc, DiagramEdge, DiagramNode, NodeKind, NodeParams } from "@/lib/diagram/schema";
+import type {
+  DiagramDoc,
+  DiagramEdge,
+  DiagramNode,
+  NodeKind,
+  NodeParams,
+} from "@/lib/diagram/schema";
 import { makeEdge, makeNode } from "@/lib/diagram/model";
 import type { IndustrialEdge, IndustrialNode } from "@/lib/project-store";
 import { type LadderRung, type LadderCell, normalizeLadderRungs } from "@/lib/ladder/types";
@@ -32,7 +38,7 @@ import {
 export function cleanExternalPayloadText(raw: string): string {
   let cleaned = raw.trim();
   if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```[a-zA-Z0-9_\-]*\s*\r?\n?/, "");
+    cleaned = cleaned.replace(/^```[a-zA-Z0-9_-]*\s*\r?\n?/, "");
     cleaned = cleaned.replace(/\r?\n?```\s*$/, "");
   }
   return cleaned.trim();
@@ -40,7 +46,10 @@ export function cleanExternalPayloadText(raw: string): string {
 
 export function detectFormat(raw: string): SupportedImporterFormat {
   const trimmed = cleanExternalPayloadText(raw);
-  if (trimmed.startsWith("<?xml") || (trimmed.startsWith("<") && /<(project|tc6_xml)\b/i.test(trimmed))) {
+  if (
+    trimmed.startsWith("<?xml") ||
+    (trimmed.startsWith("<") && /<(project|tc6_xml)\b/i.test(trimmed))
+  ) {
     return "plcopen-xml";
   }
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
@@ -55,14 +64,19 @@ export function detectFormat(raw: string): SupportedImporterFormat {
   }
   // Structured Text IEC 61131-3 / Siemens SCL
   if (
-    /\b(PROGRAM|FUNCTION_BLOCK|VAR_INPUT|VAR_OUTPUT|VAR_GLOBAL|END_VAR|END_PROGRAM)\b/i.test(trimmed) &&
+    /\b(PROGRAM|FUNCTION_BLOCK|VAR_INPUT|VAR_OUTPUT|VAR_GLOBAL|END_VAR|END_PROGRAM)\b/i.test(
+      trimmed,
+    ) &&
     trimmed.includes(";")
   ) {
     return "st-program";
   }
   // Se contiver delimitadores CSV e quebras de linha com cabeçalhos conhecidos
   const firstLine = trimmed.split("\n")[0] || "";
-  if ((firstLine.includes(",") || firstLine.includes(";")) && /(tag|tipo|kind|identificador|descricao|power_kw)/i.test(firstLine)) {
+  if (
+    (firstLine.includes(",") || firstLine.includes(";")) &&
+    /(tag|tipo|kind|identificador|descricao|power_kw)/i.test(firstLine)
+  ) {
     return "csv-table";
   }
   // Especificação técnica em TXT / Tabela Markdown
@@ -76,7 +90,10 @@ export function detectFormat(raw: string): SupportedImporterFormat {
     return "txt-spec";
   }
   // Se contiver linhas de Netlist SPICE / circuito elétrico (ex: Q1 N1 N2 63A, KM1 N2 N3)
-  if (/^\s*([VvIiRrCcLlMmQqDd]\w*|[A-Za-z]+)\s+\w+\s+\w+/m.test(trimmed) && trimmed.includes("\n")) {
+  if (
+    /^\s*([VvIiRrCcLlMmQqDd]\w*|[A-Za-z]+)\s+\w+\s+\w+/m.test(trimmed) &&
+    trimmed.includes("\n")
+  ) {
     return "netlist";
   }
   return "unknown";
@@ -233,7 +250,11 @@ export function validateAndParseExternalPayload(
 
   const validEdges = bundle.edges.length;
   const criticalIssuesCount = issues.filter((i) => i.severity === "critical" && i.rejected).length;
-  const canImport = criticalIssuesCount === 0 && (bundle.nodes.length > 0 || (bundle.ladder?.rungs.length ?? 0) > 0 || (bundle.tags?.length ?? 0) > 0);
+  const canImport =
+    criticalIssuesCount === 0 &&
+    (bundle.nodes.length > 0 ||
+      (bundle.ladder?.rungs.length ?? 0) > 0 ||
+      (bundle.tags?.length ?? 0) > 0);
 
   return {
     isValid: adapterResult.success && criticalIssuesCount === 0,
@@ -330,7 +351,9 @@ export function buildCanonicalDiagramParams(
         tag,
         kVA: Number.isFinite(kVA) && kVA > 0 ? kVA : 75,
         primary_V: Number(rawProps.primary_V ?? rawProps.primaryV ?? 13800),
-        secondary_V: Number(rawProps.secondary_V ?? rawProps.secondaryV ?? (voltage_V > 0 ? voltage_V : 380)),
+        secondary_V: Number(
+          rawProps.secondary_V ?? rawProps.secondaryV ?? (voltage_V > 0 ? voltage_V : 380),
+        ),
         vector: String(rawProps.vector || "Dyn11"),
       };
     }
@@ -370,7 +393,11 @@ export function buildCanonicalDiagramParams(
       };
     case "motor": {
       const sm = String(rawProps.startMethod || "DOL").toUpperCase();
-      const startMethod = sm.includes("SOFT") ? "SOFT" : sm.includes("VFD") || sm.includes("INV") ? "VFD" : "DOL";
+      const startMethod = sm.includes("SOFT")
+        ? "SOFT"
+        : sm.includes("VFD") || sm.includes("INV")
+          ? "VFD"
+          : "DOL";
       return {
         kind: "motor",
         tag,
@@ -448,7 +475,7 @@ export function convertBundleToDiagramDoc(
   baseDoc?: DiagramDoc,
   mode: ImportApplicationMode = "replace",
 ): DiagramDoc {
-  let doc: DiagramDoc =
+  const doc: DiagramDoc =
     mode === "merge" && baseDoc
       ? JSON.parse(JSON.stringify(baseDoc))
       : {
@@ -462,7 +489,7 @@ export function convertBundleToDiagramDoc(
 
   // Calcular deslocamento para o modo "merge" (evitar sobreposição)
   let offsetX = 0;
-  let offsetY = 0;
+  const offsetY = 0;
   if (mode === "merge" && baseDoc && baseDoc.nodes) {
     const existingXs = Object.values(baseDoc.nodes)
       .map((n) => n?.position?.x)
@@ -525,9 +552,10 @@ export function convertBundleToDiagramDoc(
 /**
  * Converte o Bundle para os modelos de simulação `IndustrialNode` e `IndustrialEdge`.
  */
-export function convertBundleToIndustrialElements(
-  bundle: EletricAiCanvasBundle,
-): { nodes: IndustrialNode[]; edges: IndustrialEdge[] } {
+export function convertBundleToIndustrialElements(bundle: EletricAiCanvasBundle): {
+  nodes: IndustrialNode[];
+  edges: IndustrialEdge[];
+} {
   const nodes: IndustrialNode[] = [];
   const edges: IndustrialEdge[] = [];
 
@@ -589,7 +617,9 @@ export function convertBundleToLadderRungs(bundle: EletricAiCanvasBundle): Ladde
                   kind: r.output.kind as any,
                   operand: r.output.operand,
                   preset:
-                    typeof r.output.params?.preset === "number" ? r.output.params.preset : undefined,
+                    typeof r.output.params?.preset === "number"
+                      ? r.output.params.preset
+                      : undefined,
                 },
               ],
             ],

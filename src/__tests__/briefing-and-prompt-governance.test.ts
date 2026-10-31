@@ -128,10 +128,7 @@ describe("Fase 6 — Tarefa 6.1: Pipeline de Processamento Real de Documentos de
       edges: [],
     };
 
-    const reconciled = reconcileArchitectureWithBriefing(
-      incompleteAiOutput,
-      parsedBriefing.motors,
-    );
+    const reconciled = reconcileArchitectureWithBriefing(incompleteAiOutput, parsedBriefing.motors);
     expect(reconciled.reconciled).toBe(true);
     expect(reconciled.system.motors).toHaveLength(3);
     expect(reconciled.system.motors.map((m: any) => m.id)).toEqual(["M-101", "M-102", "M-103"]);

@@ -61,23 +61,13 @@ export function EletricAiSymbol({ className = "h-8 w-8", ...props }: SVGProps<SV
       <polygon points="26,100 96,100 92,96 32,96" fill="#05080E" opacity="0.85" />
 
       {/* Lightning Bolt Contour */}
-      <polygon
-        points="82,8 34,62 58,62 16,114 46,114 94,54 70,54"
-        fill="#9A3412"
-      />
+      <polygon points="82,8 34,62 58,62 16,114 46,114 94,54 70,54" fill="#9A3412" />
 
       {/* High-Voltage Radiant Bolt */}
-      <polygon
-        points="80,10 36,60 60,60 20,110 44,110 92,54 68,54"
-        fill="url(#symBolt)"
-      />
+      <polygon points="80,10 36,60 60,60 20,110 44,110 92,54 68,54" fill="url(#symBolt)" />
 
       {/* White-Hot Core Spark Line */}
-      <polygon
-        points="77,14 41,58 61,58 29,105 40,105 85,55 67,55"
-        fill="#FFFBEB"
-        opacity="0.9"
-      />
+      <polygon points="77,14 41,58 61,58 29,105 40,105 85,55 67,55" fill="#FFFBEB" opacity="0.9" />
     </svg>
   );
 }

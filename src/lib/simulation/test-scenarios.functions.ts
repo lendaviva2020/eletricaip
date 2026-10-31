@@ -22,8 +22,6 @@ import {
   type PlantState,
 } from "@/lib/simulation/plant-engine";
 
-
-
 // ---------------------------------------------------------------------------
 // Schemas
 // ---------------------------------------------------------------------------
@@ -576,7 +574,10 @@ export const runTestScenario = createServerFn({ method: "POST" })
       .from("test_scenarios")
       .update({
         last_run_at: new Date(startedAtMs).toISOString(),
-        last_run_result: { passed: outcome.evaluation.passed, metrics: outcome.metrics } as unknown as Json,
+        last_run_result: {
+          passed: outcome.evaluation.passed,
+          metrics: outcome.metrics,
+        } as unknown as Json,
       })
       .eq("id", scenario.id);
     if (updErr) throw new Error(updErr.message);

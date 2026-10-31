@@ -384,7 +384,10 @@ function parseIlBlock(lines: string[]): { branches: Branch[]; output: LadderCell
 
     // 5. Instruções de saída
     if (/^STN\s+/i.test(line)) {
-      return { branches, output: { kind: "NEG_COIL", operand: line.replace(/^STN\s+/i, "").trim() } };
+      return {
+        branches,
+        output: { kind: "NEG_COIL", operand: line.replace(/^STN\s+/i, "").trim() },
+      };
     }
     if (/^ST\s+/i.test(line)) {
       return { branches, output: { kind: "OTE", operand: line.replace(/^ST\s+/i, "").trim() } };

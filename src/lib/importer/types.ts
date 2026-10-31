@@ -5,12 +5,7 @@
 export const CANVAS_BUNDLE_FORMAT = "eletricai.canvas-bundle" as const;
 export const CURRENT_BUNDLE_VERSION = "1.0.0" as const;
 
-export type SupportedDiagramType =
-  | "unifilar"
-  | "multifilar"
-  | "ladder"
-  | "fbd"
-  | "hybrid";
+export type SupportedDiagramType = "unifilar" | "multifilar" | "ladder" | "fbd" | "hybrid";
 
 export type AllowedNodeKind =
   // Proteção e Manobra
@@ -49,15 +44,7 @@ export type AllowedNodeKind =
 export type AllowedEdgeKind = "power" | "signal" | "pipe" | "ground";
 
 export type AllowedCircuitConfig =
-  | "F"
-  | "F+N"
-  | "F+N+PE"
-  | "3F"
-  | "3F+PE"
-  | "3F+N"
-  | "3F+N+PE"
-  | "PE"
-  | "N";
+  "F" | "F+N" | "F+N+PE" | "3F" | "3F+PE" | "3F+N" | "3F+N+PE" | "PE" | "N";
 
 export interface BundleProjectMeta {
   name: string;
@@ -174,13 +161,13 @@ export interface ImporterLimits {
 
 export const DEFAULT_IMPORTER_LIMITS: ImporterLimits = {
   maxPayloadBytes: 25 * 1024 * 1024, // 25 MB
-  maxLines: 50_000,                  // 50.000 linhas
-  maxNodes: 10_000,                  // 10.000 nós
-  maxEdges: 25_000,                  // 25.000 conexões
-  maxTotalKeys: 150_000,             // 150.000 chaves/elementos
-  maxObjectDepth: 15,                // 15 níveis de profundidade
-  maxPropertyLength: 10_000,         // 10.000 caracteres por propriedade
-  maxProcessingTimeMs: 15_000,       // 15 segundos
+  maxLines: 50_000, // 50.000 linhas
+  maxNodes: 10_000, // 10.000 nós
+  maxEdges: 25_000, // 25.000 conexões
+  maxTotalKeys: 150_000, // 150.000 chaves/elementos
+  maxObjectDepth: 15, // 15 níveis de profundidade
+  maxPropertyLength: 10_000, // 10.000 caracteres por propriedade
+  maxProcessingTimeMs: 15_000, // 15 segundos
 };
 
 export type ImportSecuritySeverity = "critical" | "warning" | "info";

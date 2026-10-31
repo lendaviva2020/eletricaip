@@ -139,7 +139,7 @@ describe("Fase 9 — Observabilidade, Rastreamento de Erros e Backups", () => {
       const backupContent = readFileSync(backupScriptPath, "utf-8");
       expect(backupContent).toContain("pg_dump");
       expect(backupContent).toContain("--format=custom");
-      expect(backupContent).toContain('BACKUP_RETENTION_DAYS:-30');
+      expect(backupContent).toContain("BACKUP_RETENTION_DAYS:-30");
       expect(backupContent).toContain("sha256sum");
 
       const restoreContent = readFileSync(restoreScriptPath, "utf-8");
@@ -150,7 +150,7 @@ describe("Fase 9 — Observabilidade, Rastreamento de Erros e Backups", () => {
 
       const workflowContent = readFileSync(workflowPath, "utf-8");
       expect(workflowContent).toContain('cron: "0 3 * * *"');
-      expect(workflowContent).toContain("BACKUP_RETENTION_DAYS: \"30\"");
+      expect(workflowContent).toContain('BACKUP_RETENTION_DAYS: "30"');
       expect(workflowContent).toContain("./scripts/backup-db.sh");
       expect(workflowContent).toContain("./scripts/restore-db.sh");
     });

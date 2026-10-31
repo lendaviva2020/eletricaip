@@ -31,7 +31,37 @@ import { LadderCellView } from "./ladder-cell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plus, Play, Pause, Square, ArrowCounterClockwise, SkipForward, CodeBlock, Rows, X, Copy, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Trash, PencilSimple, ArrowUUpLeft, ArrowUUpRight, ClipboardText, GitFork, Warning, WarningCircle, MagnifyingGlassPlus, MagnifyingGlassMinus, Hand, CheckCircle, Pulse, Stack, Octagon } from "@phosphor-icons/react";
+import {
+  Plus,
+  Play,
+  Pause,
+  Square,
+  ArrowCounterClockwise,
+  SkipForward,
+  CodeBlock,
+  Rows,
+  X,
+  Copy,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Trash,
+  PencilSimple,
+  ArrowUUpLeft,
+  ArrowUUpRight,
+  ClipboardText,
+  GitFork,
+  Warning,
+  WarningCircle,
+  MagnifyingGlassPlus,
+  MagnifyingGlassMinus,
+  Hand,
+  CheckCircle,
+  Pulse,
+  Stack,
+  Octagon,
+} from "@phosphor-icons/react";
 import { useSafetyStore } from "@/lib/simulation/safety-core";
 
 /**
@@ -235,7 +265,9 @@ export function RungGrid() {
   const [compileFormat, setCompileFormat] = useState<"ST" | "IL">("ST");
 
   // Ponto e cursor de inserção previsível
-  const [insertionPoint, setInsertionPoint] = useState<{ rungId: string; index: number } | null>(null);
+  const [insertionPoint, setInsertionPoint] = useState<{ rungId: string; index: number } | null>(
+    null,
+  );
 
   // Pilha de histórico para Undo / Redo (com refs para evitar mutação in-place e dupla invocação do StrictMode)
   const [undoStack, setUndoStack] = useState<LadderRung[][]>([]);
@@ -405,7 +437,13 @@ export function RungGrid() {
       upsertTag({ id: "tag-1", name: "B_PARTIDA", type: "BOOL", value: true, forced: false });
       upsertTag({ id: "tag-2", name: "B_STATUS_RUN", type: "BOOL", value: true, forced: false });
       upsertTag({ id: "tag-3", name: "E_PARADA_EMERG", type: "BOOL", value: false, forced: false });
-      upsertTag({ id: "tag-4", name: "FALHA_SOBRECARGA", type: "BOOL", value: false, forced: false });
+      upsertTag({
+        id: "tag-4",
+        name: "FALHA_SOBRECARGA",
+        type: "BOOL",
+        value: false,
+        forced: false,
+      });
       upsertTag({ id: "tag-5", name: "BOMBA_MAIN", type: "BOOL", value: true, forced: false });
       upsertTag({ id: "tag-6", name: "SINALIZ_RUN", type: "BOOL", value: true, forced: false });
       upsertTag({ id: "tag-7", name: "NIVEL_AGUA", type: "INT", value: 1450, forced: false });
@@ -786,9 +824,7 @@ export function RungGrid() {
           }
         }
         topology.outputs = topology.outputs.filter((o) => o.id !== elementId);
-        const cells = r.cells.map((row) =>
-          row.map((c) => (c.id === elementId ? emptyCell() : c)),
-        );
+        const cells = r.cells.map((row) => row.map((c) => (c.id === elementId ? emptyCell() : c)));
         return { ...r, cells, topology };
       }),
     );
@@ -978,7 +1014,9 @@ export function RungGrid() {
               variant="outline"
               onClick={() => {
                 if (!canStartSimulation()) {
-                  toast.error("Intertravamento de Segurança Ativo! Destrave e rearme o botão de emergência antes de iniciar.");
+                  toast.error(
+                    "Intertravamento de Segurança Ativo! Destrave e rearme o botão de emergência antes de iniciar.",
+                  );
                   return;
                 }
                 setSimulationStatus("running");
@@ -1127,7 +1165,11 @@ export function RungGrid() {
                             className="h-6 text-xs font-mono"
                             placeholder="Comentário da rede..."
                           />
-                          <Button size="sm" className="h-6 px-2 text-xs" onClick={() => saveComment(rung.id)}>
+                          <Button
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => saveComment(rung.id)}
+                          >
                             Salvar
                           </Button>
                         </div>
@@ -1155,7 +1197,10 @@ export function RungGrid() {
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => {
-                          setInsertionPoint({ rungId: rung.id, index: topology.rootBranch.items.length });
+                          setInsertionPoint({
+                            rungId: rung.id,
+                            index: topology.rootBranch.items.length,
+                          });
                           insertInstructionAtCursor(rung.id, "XIC");
                         }}
                         className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-medium flex items-center gap-1 cursor-pointer"
@@ -1227,7 +1272,9 @@ export function RungGrid() {
                         {/* Fio de conexão inicial vindo do trilho esquerdo */}
                         <div
                           className={`h-1 w-6 shrink-0 rounded-full transition-colors ${
-                            running ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.7)]" : "bg-slate-600"
+                            running
+                              ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.7)]"
+                              : "bg-slate-600"
                           }`}
                         />
 
@@ -1243,7 +1290,9 @@ export function RungGrid() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setInsertionPoint({ rungId: rung.id, index: itemIdx });
-                                  toast.info(`Cursor de inserção posicionado antes do item ${itemIdx + 1}`);
+                                  toast.info(
+                                    `Cursor de inserção posicionado antes do item ${itemIdx + 1}`,
+                                  );
                                 }}
                                 title="Clique para posicionar o cursor de inserção aqui"
                                 className={`flex items-center justify-center cursor-pointer transition-all ${
@@ -1274,14 +1323,16 @@ export function RungGrid() {
                                       targetInst.preset = n.preset;
                                       targetInst.params = n.params;
                                       applyRungsWithHistory((prev) =>
-                                        prev.map((r) => (r.id === rung.id ? { ...r, topology } : r)),
+                                        prev.map((r) =>
+                                          r.id === rung.id ? { ...r, topology } : r,
+                                        ),
                                       );
                                     }}
                                   />
                                   {/* Fio condutor pós-instrução */}
                                   <div
                                     className={`h-1 w-5 shrink-0 rounded-full transition-colors ${
-                                      Boolean(item.instruction.energized)
+                                      item.instruction.energized
                                         ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.7)]"
                                         : "bg-slate-600"
                                     }`}
@@ -1294,10 +1345,14 @@ export function RungGrid() {
                                   <div className="flex flex-col justify-around py-1 space-y-3 relative">
                                     {item.branches.map((br, bIdx) => {
                                       const brEnergized = br.items.some(
-                                        (bi) => bi.type === "instruction" && bi.instruction?.energized,
+                                        (bi) =>
+                                          bi.type === "instruction" && bi.instruction?.energized,
                                       );
                                       return (
-                                        <div key={br.id || bIdx} className="flex items-center gap-1.5 relative">
+                                        <div
+                                          key={br.id || bIdx}
+                                          className="flex items-center gap-1.5 relative"
+                                        >
                                           {/* Linha horizontal para o ramo */}
                                           <div
                                             className={`h-1 w-4 shrink-0 transition-colors ${
@@ -1307,13 +1362,18 @@ export function RungGrid() {
                                           {/* Instruções do Ramo */}
                                           {br.items.map((bi) =>
                                             bi.type === "instruction" && bi.instruction ? (
-                                              <div key={bi.instruction.id} className="flex items-center gap-1.5">
+                                              <div
+                                                key={bi.instruction.id}
+                                                className="flex items-center gap-1.5"
+                                              >
                                                 <LadderCellView
                                                   cell={bi.instruction}
                                                   rungId={rung.id}
                                                   isOutputCol={false}
                                                   energized={Boolean(bi.instruction.energized)}
-                                                  diagnostic={res?.diagnostics?.[`inst:${bi.instruction.id}`]}
+                                                  diagnostic={
+                                                    res?.diagnostics?.[`inst:${bi.instruction.id}`]
+                                                  }
                                                   onDelete={() =>
                                                     bi.instruction?.id &&
                                                     deleteElement(rung.id, bi.instruction.id)
@@ -1351,7 +1411,8 @@ export function RungGrid() {
                                     className={`h-1 w-5 shrink-0 rounded-full transition-colors ml-1 ${
                                       item.branches.some((b) =>
                                         b.items.some(
-                                          (bi) => bi.type === "instruction" && bi.instruction?.energized,
+                                          (bi) =>
+                                            bi.type === "instruction" && bi.instruction?.energized,
                                         ),
                                       )
                                         ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.7)]"
@@ -1448,7 +1509,10 @@ export function RungGrid() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => {
-                          setInsertionPoint({ rungId: rung.id, index: topology.rootBranch.items.length });
+                          setInsertionPoint({
+                            rungId: rung.id,
+                            index: topology.rootBranch.items.length,
+                          });
                           insertInstructionAtCursor(rung.id, "XIC");
                         }}
                         className="px-2.5 py-1 rounded text-[11px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-medium flex items-center gap-1 cursor-pointer"
@@ -1476,7 +1540,9 @@ export function RungGrid() {
                     {selectedTarget?.elementId && selectedTarget.rungId === rung.id && (
                       <div className="flex items-center gap-1 text-[10px] font-mono bg-muted/40 px-2 py-0.5 rounded border border-border/40">
                         <span className="text-muted-foreground">Elemento:</span>
-                        <span className="text-primary font-bold">{selectedTarget.operand || selectedTarget.kind}</span>
+                        <span className="text-primary font-bold">
+                          {selectedTarget.operand || selectedTarget.kind}
+                        </span>
                         <button
                           onClick={() => moveElement(rung.id, selectedTarget.elementId!, "left")}
                           className="p-1 hover:text-foreground text-muted-foreground"
@@ -1559,7 +1625,9 @@ export function RungGrid() {
                   <button
                     onClick={() => setCompileFormat("ST")}
                     className={`px-2 py-0.5 rounded font-mono font-medium ${
-                      compileFormat === "ST" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                      compileFormat === "ST"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground"
                     }`}
                   >
                     Structured Text (ST)
@@ -1567,21 +1635,34 @@ export function RungGrid() {
                   <button
                     onClick={() => setCompileFormat("IL")}
                     className={`px-2 py-0.5 rounded font-mono font-medium ${
-                      compileFormat === "IL" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                      compileFormat === "IL"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground"
                     }`}
                   >
                     Instruction List (IL - Legado)
                   </button>
                 </div>
               </div>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowST(false)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={() => setShowST(false)}
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
             {compileFormat === "IL" && (
               <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-[11px] text-amber-500 flex items-center gap-2">
-                <span className="font-semibold uppercase tracking-wider">Formato Legado (IEC 61131-3):</span>
-                <span>A linguagem IL foi formalmente descontinuada na norma IEC 61131-3:2025 em favor de ST. Exportação mantida exclusivamente para interoperabilidade com CLPs clássicos (2ª Edição).</span>
+                <span className="font-semibold uppercase tracking-wider">
+                  Formato Legado (IEC 61131-3):
+                </span>
+                <span>
+                  A linguagem IL foi formalmente descontinuada na norma IEC 61131-3:2025 em favor de
+                  ST. Exportação mantida exclusivamente para interoperabilidade com CLPs clássicos
+                  (2ª Edição).
+                </span>
               </div>
             )}
             <pre className="p-4 flex-1 overflow-auto font-mono text-xs text-foreground/90 bg-muted/10 whitespace-pre-wrap select-text">

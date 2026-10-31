@@ -40,7 +40,19 @@ export const Route = createFileRoute("/")({
         content:
           "Diagramas unifilar e multifilar, Ladder IEC 61131-3, dimensionamento NBR 5410 e documentação técnica para engenharia industrial.",
       },
-      { property: "og:image", content: "/media/eletricai-demo-poster.jpg" },
+      { property: "og:image", content: "/landing/demo-canvas-poster.webp" },
+      { property: "og:image:type", content: "image/webp" },
+      { property: "og:image:width", content: "1600" },
+      { property: "og:image:height", content: "900" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "ElétricAi — Engenharia Elétrica Industrial e Automação" },
+      {
+        name: "twitter:description",
+        content:
+          "Ambiente integrado de engenharia elétrica e automação industrial: diagramas unifilar e multifilar sincronizados, Ladder IEC 61131-3, cálculos NBR 5410, dossiê técnico e BOM.",
+      },
+      { name: "twitter:image", content: "/landing/demo-canvas-poster.webp" },
     ],
   }),
   component: LandingPage,
@@ -285,8 +297,19 @@ function VideoCardPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(25.5);
+  const [duration, setDuration] = useState(50.88);
   const [progress, setProgress] = useState(0);
+  const [videoSrc, setVideoSrc] = useState("/landing/demo-canvas-1080.mp4");
+  const [hasFallenBack, setHasFallenBack] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  // Seleção de fonte HD em telas móveis/menores sem causar inconsistência de hidratação no SSR
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setVideoSrc("/landing/demo-canvas-720.mp4");
+      setHasFallenBack(true);
+    }
+  }, []);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -307,21 +330,50 @@ function VideoCardPlayer() {
     setIsMuted(!isMuted);
   };
 
+  const handleLoadedMetadata = () => {
+    if (
+      videoRef.current &&
+      Number.isFinite(videoRef.current.duration) &&
+      videoRef.current.duration > 0
+    ) {
+      setDuration(videoRef.current.duration);
+    }
+  };
+
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
     const current = videoRef.current.currentTime;
-    const total = videoRef.current.duration || 25.5;
+    const total =
+      Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0
+        ? videoRef.current.duration
+        : duration || 50.88;
     setCurrentTime(current);
-    setDuration(total);
-    setProgress((current / total) * 100);
+    if (Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0) {
+      setDuration(total);
+    }
+    setProgress(total > 0 ? (current / total) * 100 : 0);
   };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!videoRef.current) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const pos = (e.clientX - rect.left) / rect.width;
-    const target = pos * (videoRef.current.duration || 25.5);
+    const total =
+      Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0
+        ? videoRef.current.duration
+        : duration || 50.88;
+    const target = Math.max(0, Math.min(pos * total, total));
     videoRef.current.currentTime = target;
+  };
+
+  const handleVideoError = () => {
+    if (!hasFallenBack) {
+      // Fallback seguro de 1080p para 720p sem loop infinito
+      setHasFallenBack(true);
+      setVideoSrc("/landing/demo-canvas-720.mp4");
+    } else {
+      setLoadError(true);
+    }
   };
 
   const toggleFullscreen = () => {
@@ -352,18 +404,40 @@ function VideoCardPlayer() {
       <div className="relative bg-background aspect-video flex items-center justify-center overflow-hidden">
         <video
           ref={videoRef}
-          src="/media/eletricai-demo.webm"
-          poster="/media/eletricai-demo-poster.jpg"
+          src={videoSrc}
+          poster="/landing/demo-canvas-poster.webp"
           preload="metadata"
           playsInline
           muted={isMuted}
+          onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={handleTimeUpdate}
           onEnded={() => setIsPlaying(false)}
+          onError={handleVideoError}
           className="w-full h-full object-cover cursor-pointer"
           onClick={togglePlay}
+          aria-label="Demonstração interativa do ElétricAi Workspace em funcionamento real"
         />
 
-        {!isPlaying && (
+        {loadError && (
+          <div className="absolute inset-0 z-30 bg-card/90 flex flex-col items-center justify-center p-4 text-center">
+            <p className="text-sm font-semibold text-destructive mb-2">
+              Não foi possível carregar a demonstração em vídeo.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setLoadError(false);
+                setHasFallenBack(false);
+                setVideoSrc("/landing/demo-canvas-1080.mp4");
+              }}
+              className="text-xs px-3 py-1.5 rounded bg-muted hover:bg-muted/80 text-foreground transition-colors"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        )}
+
+        {!isPlaying && !loadError && (
           <button
             type="button"
             onClick={togglePlay}
@@ -378,6 +452,11 @@ function VideoCardPlayer() {
           <div
             onClick={handleSeek}
             className="w-full h-1 bg-muted rounded-sm cursor-pointer relative"
+            role="slider"
+            aria-label="Posição do vídeo"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress)}
           >
             <div className="h-full bg-primary rounded-sm" style={{ width: `${progress}%` }} />
           </div>

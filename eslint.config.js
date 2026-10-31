@@ -11,8 +11,14 @@ export default tseslint.config(
       "dist",
       ".output",
       ".vinxi",
+      ".vercel",
+      ".agents",
+      "docs",
+      "scripts",
+      "public",
       "supabase",
       "vite.config.ts",
+      "src/__tests__/fixtures",
       // autogerado por `supabase gen types typescript`
       "src/integrations/supabase/types.ts",
       // gerenciado pela plataforma (regerado a cada sync de integração)

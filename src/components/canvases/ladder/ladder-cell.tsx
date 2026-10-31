@@ -132,9 +132,7 @@ export function LadderCellView({
   const selectedTarget = useEditorStore((s) => s.selectedLadderTarget);
 
   const isSelected =
-    selectedTarget?.rungId === rungId &&
-    Boolean(cell.id) &&
-    selectedTarget?.elementId === cell.id;
+    selectedTarget?.rungId === rungId && Boolean(cell.id) && selectedTarget?.elementId === cell.id;
 
   const tagNames = useMemo(
     () =>
@@ -196,7 +194,9 @@ export function LadderCellView({
         kind,
         operand: cell.operand || (isOutputCol ? "%Q0.0" : "%I0.0"),
         preset,
-        params: el.params ? Object.fromEntries(Object.entries(el.params).map(([k, p]) => [k, p.defaultValue])) : {},
+        params: el.params
+          ? Object.fromEntries(Object.entries(el.params).map(([k, p]) => [k, p.defaultValue]))
+          : {},
       };
 
       onChange(nextCell);
@@ -239,7 +239,8 @@ export function LadderCellView({
   };
 
   const isTimerBlock = ["TON", "TOF", "TP", "TONR"].includes(cell.kind);
-  const isCmpBlock = cell.kind.startsWith("CMP_") || ["GT", "LT", "GE", "LE", "EQ", "NE"].includes(cell.kind);
+  const isCmpBlock =
+    cell.kind.startsWith("CMP_") || ["GT", "LT", "GE", "LE", "EQ", "NE"].includes(cell.kind);
   const isMathBlock = ["ADD", "SUB", "MUL", "DIV", "MOD", "ABS", "SQRT"].includes(cell.kind);
 
   // RENDERIZAÇÃO DE BLOCO FUNCIONAL (TON, TOF, TP, TONR) - IDÊNTICO À IMAGEM 1
@@ -274,7 +275,9 @@ export function LadderCellView({
             <div className="p-2 space-y-1.5 text-[10px] font-mono">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground font-semibold">IN</span>
-                <span className={`font-bold ${energized ? "text-emerald-400" : "text-muted-foreground"}`}>
+                <span
+                  className={`font-bold ${energized ? "text-emerald-400" : "text-muted-foreground"}`}
+                >
                   Q
                 </span>
               </div>
@@ -328,11 +331,17 @@ export function LadderCellView({
     const in1 = String(cell.params?.IN1 ?? cell.operand ?? "VALOR");
     const in2 = String(cell.params?.IN2 ?? "LIMITE");
     const opSym =
-      cell.kind === "CMP_GE" ? ">=" :
-      cell.kind === "CMP_LE" ? "<=" :
-      cell.kind === "CMP_GT" ? ">" :
-      cell.kind === "CMP_LT" ? "<" :
-      cell.kind === "CMP_NE" ? "<>" : "==";
+      cell.kind === "CMP_GE"
+        ? ">="
+        : cell.kind === "CMP_LE"
+          ? "<="
+          : cell.kind === "CMP_GT"
+            ? ">"
+            : cell.kind === "CMP_LT"
+              ? "<"
+              : cell.kind === "CMP_NE"
+                ? "<>"
+                : "==";
 
     return (
       <Popover open={open} onOpenChange={handlePopoverOpenChange}>
@@ -443,7 +452,9 @@ export function LadderCellView({
           {/* Glifo Simbólico Industrial (ex.: -[ ]-, -[/]-, -( )-) */}
           <span
             className={`font-mono text-sm tracking-wider font-bold ${
-              energized ? "text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]" : "text-primary/90"
+              energized
+                ? "text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]"
+                : "text-primary/90"
             }`}
           >
             {KIND_GLYPH[cell.kind] ?? cell.kind}
@@ -457,7 +468,9 @@ export function LadderCellView({
           <div className="grid grid-cols-3 gap-1">
             <button
               className={`rounded border px-2 py-1 text-[11px] ${
-                cell.kind === "EMPTY" ? "border-primary text-primary" : "border-border text-muted-foreground"
+                cell.kind === "EMPTY"
+                  ? "border-primary text-primary"
+                  : "border-border text-muted-foreground"
               }`}
               onClick={() => onChange({ ...cell, kind: "EMPTY", operand: "" })}
             >
@@ -479,7 +492,9 @@ export function LadderCellView({
 
         {cell.kind !== "EMPTY" && (
           <div className="space-y-1">
-            <div className="text-[10px] uppercase font-semibold text-muted-foreground">Tag / Operando</div>
+            <div className="text-[10px] uppercase font-semibold text-muted-foreground">
+              Tag / Operando
+            </div>
             <Input
               autoFocus
               value={cell.operand}

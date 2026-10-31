@@ -44,17 +44,15 @@ export interface ExtractedCanvasData {
   }>;
 }
 
-export function extractCanvasData(
-  input: {
-    projectId?: string;
-    projectName?: string;
-    clientName?: string;
-    description?: string;
-    snapshot?: ProjectSnapshot | null;
-    unifiedDoc?: UnifiedProjectDoc | null;
-    diagramDoc?: DiagramDoc | null;
-  },
-): ExtractedCanvasData {
+export function extractCanvasData(input: {
+  projectId?: string;
+  projectName?: string;
+  clientName?: string;
+  description?: string;
+  snapshot?: ProjectSnapshot | null;
+  unifiedDoc?: UnifiedProjectDoc | null;
+  diagramDoc?: DiagramDoc | null;
+}): ExtractedCanvasData {
   // 1. Obter UnifiedProjectDoc canônico
   let doc: UnifiedProjectDoc;
   if (input.unifiedDoc) {
@@ -103,7 +101,9 @@ export function extractCanvasData(
   });
 
   const hasLadder = ladderRungs.length > 0;
-  const hasFbd = Object.keys(doc.views.scada.widgets).some((w) => doc.views.scada.widgets[w]?.kind === "fbd_block");
+  const hasFbd = Object.keys(doc.views.scada.widgets).some(
+    (w) => doc.views.scada.widgets[w]?.kind === "fbd_block",
+  );
   const hasScada = Object.keys(doc.views.scada.widgets).length > 0;
 
   let scope: DossierScope = "unifilar";
@@ -302,9 +302,17 @@ export function extractCanvasData(
         const ch = mod.channels[c];
         const isInput = modType === "DI" || modType === "AI";
         const fallbackAddr = isInput ? `%I${slotNum}.${c}` : `%Q${slotNum}.${c}`;
-        const addr = (typeof ch === "object" && ch?.address) ? ch.address : fallbackAddr;
-        const tagSymbol = (typeof ch === "object" && ch?.tag) ? ch.tag : (typeof ch === "string" ? ch : `TAG_${modType}_${c}`);
-        const desc = (typeof ch === "object" && ch?.description) ? ch.description : `Canal ${modType} slot ${slotNum} ch ${c}`;
+        const addr = typeof ch === "object" && ch?.address ? ch.address : fallbackAddr;
+        const tagSymbol =
+          typeof ch === "object" && ch?.tag
+            ? ch.tag
+            : typeof ch === "string"
+              ? ch
+              : `TAG_${modType}_${c}`;
+        const desc =
+          typeof ch === "object" && ch?.description
+            ? ch.description
+            : `Canal ${modType} slot ${slotNum} ch ${c}`;
         ioMappings.push({
           address: addr,
           channel: `Ch ${c}`,
@@ -343,7 +351,8 @@ export function extractCanvasData(
     return {
       networkNumber: idx + 1,
       title: r.comment || `Rede ${idx + 1}: Controle de Acionamento`,
-      functionalDescription: r.comment || "Lógica de comando, intertravamento e segurança operacional.",
+      functionalDescription:
+        r.comment || "Lógica de comando, intertravamento e segurança operacional.",
       rungsCount: 1,
       tagsUsed: [r.output?.operand].filter(Boolean) as string[],
       hasSafetyInterlock: hasEstop,
@@ -355,10 +364,18 @@ export function extractCanvasData(
   const plcProgram: PlcProgramDoc = {
     vendor: doc.plc.project.vendor || "Siemens (S7-1200 / TIA Portal)",
     rackName: plcRack.label || "Bastidor Principal de Automação",
-    cpuModel: (plcRack.modules?.[0] as any)?.catalogKey || (plcRack.modules?.[0] as any)?.partNumber || "CPU 1214C DC/DC/DC",
+    cpuModel:
+      (plcRack.modules?.[0] as any)?.catalogKey ||
+      (plcRack.modules?.[0] as any)?.partNumber ||
+      "CPU 1214C DC/DC/DC",
     ioModules: ((plcRack.modules as any[]) ?? []).map((m) => {
       const slotNum = typeof m.slot === "number" ? m.slot : (m.slotNumber ?? 1);
-      const chCount = typeof m.channels === "number" ? m.channels : (Array.isArray(m.channels) ? m.channels.length : 8);
+      const chCount =
+        typeof m.channels === "number"
+          ? m.channels
+          : Array.isArray(m.channels)
+            ? m.channels.length
+            : 8;
       const modType = (m.category || m.type || "DI").toUpperCase();
       const partNum = m.catalogKey || m.partNumber || `PLC-${modType}`;
       return {
@@ -372,7 +389,9 @@ export function extractCanvasData(
     ioMappings,
     networks: ladderNetworks,
     safetyChainDocumented: ladderNetworks.some((n) => n.hasSafetyInterlock),
-    estopPresent: equipments.some((e) => e.catalogType === "estop") || ladderNetworks.some((n) => n.hasSafetyInterlock),
+    estopPresent:
+      equipments.some((e) => e.catalogType === "estop") ||
+      ladderNetworks.some((n) => n.hasSafetyInterlock),
     plcopenXmlSupported: true,
   };
 

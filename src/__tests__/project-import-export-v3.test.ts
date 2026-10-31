@@ -12,7 +12,16 @@ import {
 const VALID_SNAPSHOT: ProjectSnapshot = {
   schemaVersion: 3,
   project: {
-    nodes: [{ id: "n1", kind: "breaker", category: "power", label: "QF1", position: { x: 50, y: 50 }, params: {} }],
+    nodes: [
+      {
+        id: "n1",
+        kind: "breaker",
+        category: "power",
+        label: "QF1",
+        position: { x: 50, y: 50 },
+        params: {},
+      },
+    ],
     edges: [],
     tags: {},
     scadaLayout: { nodes: [], edges: [] },
@@ -54,7 +63,15 @@ const VALID_PACKAGE: ProjectPackage = {
   snapshot: VALID_SNAPSHOT,
 };
 
-function createMockSupabaseForPackage(initialDiagram: unknown, projectData: { id: string; name: string; description: string | null; metadata: Record<string, unknown> }) {
+function createMockSupabaseForPackage(
+  initialDiagram: unknown,
+  projectData: {
+    id: string;
+    name: string;
+    description: string | null;
+    metadata: Record<string, unknown>;
+  },
+) {
   let savedDiagramCanvas: unknown = null;
   const client = {
     from: (table: string) => {
@@ -140,8 +157,8 @@ describe("Fase D — Exportação e Importação Determinística de Pacote do Pr
       claims: {},
     };
 
-    await expect(
-      importProjectPackageData(authCtx, { packageData: invalidData }),
-    ).rejects.toThrow(/Pacote inválido/);
+    await expect(importProjectPackageData(authCtx, { packageData: invalidData })).rejects.toThrow(
+      /Pacote inválido/,
+    );
   });
 });

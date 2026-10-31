@@ -12,7 +12,9 @@ import type { CanonicalEquipment, CanonicalTag } from "@/lib/model/unified-schem
 
 describe("Fase D — Persistência Completa e Round-Trip (T5)", () => {
   beforeEach(() => {
-    useUnifiedProjectStore.getState().resetUnifiedDoc({ id: "proj_test_roundtrip", name: "Projeto Round-Trip" });
+    useUnifiedProjectStore
+      .getState()
+      .resetUnifiedDoc({ id: "proj_test_roundtrip", name: "Projeto Round-Trip" });
   });
 
   it("produz snapshot v3 completo através de buildProjectSnapshot() compatível com SnapshotSchema", () => {
@@ -163,10 +165,14 @@ describe("Fase D — Persistência Completa e Round-Trip (T5)", () => {
     useUnifiedProjectStore.getState().resetUnifiedDoc();
     useDiagramStore.getState().resetDoc();
     useProjectStore.getState().reset();
-    useEditorStore.getState().hydrateSnapshot({ editorTags: {}, rungs: [], fbdNodes: [], fbdEdges: [] });
+    useEditorStore
+      .getState()
+      .hydrateSnapshot({ editorTags: {}, rungs: [], fbdNodes: [], fbdEdges: [] });
     usePlcStore.getState().setProject(createDefaultPlcProject());
 
-    expect(Object.keys(useUnifiedProjectStore.getState().doc.engineering.equipments)).toHaveLength(0);
+    expect(Object.keys(useUnifiedProjectStore.getState().doc.engineering.equipments)).toHaveLength(
+      0,
+    );
 
     // Reidrata do snapshot
     const hydratedDoc = useUnifiedProjectStore.getState().hydrateFromV2Snapshot(savedSnapshot);

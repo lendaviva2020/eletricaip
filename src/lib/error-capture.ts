@@ -53,10 +53,7 @@ export function maskSensitiveString(input: string): string {
   );
 
   // 2. Authorization Bearer / Basic tokens
-  scrubbed = scrubbed.replace(
-    /\b(Bearer|Basic)\s+[A-Za-z0-9\-._~+/]+=*/gi,
-    "$1 [REDACTED_TOKEN]",
-  );
+  scrubbed = scrubbed.replace(/\b(Bearer|Basic)\s+[A-Za-z0-9\-._~+/]+=*/gi, "$1 [REDACTED_TOKEN]");
 
   // 3. JSON Web Tokens (eyJ...header.payload.signature)
   scrubbed = scrubbed.replace(
@@ -228,7 +225,10 @@ function detectEnvironment(): string {
     if (typeof process !== "undefined" && process.env?.NODE_ENV) {
       return process.env.NODE_ENV;
     }
-    if (typeof import.meta !== "undefined" && (import.meta as { env?: { MODE?: string } }).env?.MODE) {
+    if (
+      typeof import.meta !== "undefined" &&
+      (import.meta as { env?: { MODE?: string } }).env?.MODE
+    ) {
       return (import.meta as { env: { MODE: string } }).env.MODE;
     }
   } catch {

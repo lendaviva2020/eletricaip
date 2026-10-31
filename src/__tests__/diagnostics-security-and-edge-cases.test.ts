@@ -192,9 +192,7 @@ describe("Suíte de Segurança Estrita e Injeção de Prompt (Fase 9)", () => {
         sectionMm2: 2.5,
       };
 
-      expect(() => applyPatchOperationsToDoc(doc, [reduceOp])).toThrowError(
-        SafetyViolationError,
-      );
+      expect(() => applyPatchOperationsToDoc(doc, [reduceOp])).toThrowError(SafetyViolationError);
 
       const sameOp: PatchOperation = {
         op: "set-conductor-section",
@@ -202,9 +200,7 @@ describe("Suíte de Segurança Estrita e Injeção de Prompt (Fase 9)", () => {
         sectionMm2: 4,
       };
 
-      expect(() => applyPatchOperationsToDoc(doc, [sameOp])).toThrowError(
-        SafetyViolationError,
-      );
+      expect(() => applyPatchOperationsToDoc(doc, [sameOp])).toThrowError(SafetyViolationError);
 
       expect(computeCanonicalDocHash(doc)).toBe(originalHash);
     });

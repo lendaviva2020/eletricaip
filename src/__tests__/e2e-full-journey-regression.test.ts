@@ -5,10 +5,7 @@ import { createProjectRecord, ensureTenant } from "@/lib/projects.functions";
 import { useEditorStore } from "@/lib/editor/store";
 import { applyCommand, cmd } from "@/lib/diagram/commands";
 import { createEmptyDoc, makeEdge, makeNode } from "@/lib/diagram/model";
-import {
-  buildMultifilarCommands,
-  summarizeConductors,
-} from "@/lib/diagram/multifilar";
+import { buildMultifilarCommands, summarizeConductors } from "@/lib/diagram/multifilar";
 import { diagramToDxf } from "@/lib/diagram/export-dxf";
 import { buildProjectPdf, ENGINEERING_LEGAL_DISCLAIMER } from "@/lib/pdf-export";
 import {
@@ -154,7 +151,10 @@ function createE2ESupabaseMock(db: E2EInMemoryDb, authUserId: string): SupabaseC
             return { data: db.tenants.find((t) => t.id === filters.id) ?? null, error: null };
           }
           if (table === "plan_limits") {
-            return { data: db.plan_limits.find((l) => l.plan === filters.plan) ?? null, error: null };
+            return {
+              data: db.plan_limits.find((l) => l.plan === filters.plan) ?? null,
+              error: null,
+            };
           }
           return { data: null, error: null };
         },
@@ -281,7 +281,13 @@ describe("Fase 10 — Tarefa 10.1: Bateria de Testes de Regressão de Ponta a Po
       sheet: "unifilar",
       label: "TR-01 500kVA",
       position: { x: 200, y: 120 },
-      params: { kind: "transformer", kVA: 500, primary_V: 13800, secondary_V: 380, vector: "Dyn11" },
+      params: {
+        kind: "transformer",
+        kVA: 500,
+        primary_V: 13800,
+        secondary_V: 380,
+        vector: "Dyn11",
+      },
     });
     const breakerNode = makeNode({
       id: "QF-01",
@@ -437,10 +443,38 @@ describe("Fase 10 — Tarefa 10.1: Bateria de Testes de Regressão de Ponta a Po
 
     // ── 7. LÓGICA LADDER E INTERTRAVAMENTO DE SEGURANÇA NR-12 (E-STOP) ───────
     const plantNodes: IndustrialNode[] = [
-      { id: "TR-01", kind: "busbar", label: "Barra 380V", category: "power", position: { x: 0, y: 0 }, params: {} },
-      { id: "KM-01", kind: "contactor", label: "KM-01", category: "power", position: { x: 0, y: 100 }, params: {} },
-      { id: "M-01", kind: "motor", label: "M-01", category: "power", position: { x: 0, y: 200 }, params: {} },
-      { id: "ES-01", kind: "estop", label: "ES-01", category: "power", position: { x: 100, y: 100 }, params: {} },
+      {
+        id: "TR-01",
+        kind: "busbar",
+        label: "Barra 380V",
+        category: "power",
+        position: { x: 0, y: 0 },
+        params: {},
+      },
+      {
+        id: "KM-01",
+        kind: "contactor",
+        label: "KM-01",
+        category: "power",
+        position: { x: 0, y: 100 },
+        params: {},
+      },
+      {
+        id: "M-01",
+        kind: "motor",
+        label: "M-01",
+        category: "power",
+        position: { x: 0, y: 200 },
+        params: {},
+      },
+      {
+        id: "ES-01",
+        kind: "estop",
+        label: "ES-01",
+        category: "power",
+        position: { x: 100, y: 100 },
+        params: {},
+      },
     ];
     const plantEdges: IndustrialEdge[] = [
       { id: "e_bus_km", source: "TR-01", target: "KM-01", kind: "power" },

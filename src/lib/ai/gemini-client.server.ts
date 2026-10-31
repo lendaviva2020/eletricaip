@@ -59,8 +59,8 @@ export type GeminiStandardError = {
 export function mapGeminiError(err: unknown): GeminiStandardError {
   const status =
     typeof err === "object" && err !== null
-      ? (err as { status?: number; statusCode?: number }).status ??
-        (err as { status?: number; statusCode?: number }).statusCode
+      ? ((err as { status?: number; statusCode?: number }).status ??
+        (err as { status?: number; statusCode?: number }).statusCode)
       : undefined;
 
   let msg = "";

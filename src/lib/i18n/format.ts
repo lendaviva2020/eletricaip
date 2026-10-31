@@ -13,11 +13,7 @@ export function formatNumber(
   }
 }
 
-export function formatCurrency(
-  value: number,
-  locale: SupportedLocale,
-  currency = "BRL",
-): string {
+export function formatCurrency(value: number, locale: SupportedLocale, currency = "BRL"): string {
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",
@@ -49,10 +45,7 @@ export function formatDate(
   }
 }
 
-export function formatRelativeTime(
-  date: Date | string | number,
-  locale: SupportedLocale,
-): string {
+export function formatRelativeTime(date: Date | string | number, locale: SupportedLocale): string {
   try {
     const d = date instanceof Date ? date : new Date(date);
     if (isNaN(d.getTime())) return "";

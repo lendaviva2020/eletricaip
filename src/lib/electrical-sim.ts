@@ -16,22 +16,28 @@
 import {
   ampacityIz,
   calcVoltageDrop,
+  conductorThermalConstantK,
   correctedAmpacityIz,
   groupingFactorKg,
+  minCommercialSectionShortCircuit,
   pickBreaker_A,
   pickCable_mm2,
   sizeConductorNBR5410,
   temperatureFactorKt,
   verifyOverloadCoordination,
+  verifyThermalWithstandI2t,
   voltageDrop_pct,
   type AmpacityOptions,
   type CableSection_mm2,
   type CableSizingOptions,
   type CableSizingResult,
+  type ConductorMaterial,
   type InstallationMethod,
   type InsulationType,
   type LoadedConductors,
   type OverloadCoordinationResult,
+  type ThermalWithstandParams,
+  type ThermalWithstandResult,
   type VoltageDropCalcResult,
   type VoltageDropOptions,
 } from "@/lib/electrical-calc";
@@ -39,22 +45,28 @@ import {
 export {
   ampacityIz,
   calcVoltageDrop,
+  conductorThermalConstantK,
   correctedAmpacityIz,
   groupingFactorKg,
+  minCommercialSectionShortCircuit,
   pickBreaker_A,
   pickCable_mm2,
   sizeConductorNBR5410,
   temperatureFactorKt,
   verifyOverloadCoordination,
+  verifyThermalWithstandI2t,
   voltageDrop_pct,
   type AmpacityOptions,
   type CableSection_mm2,
   type CableSizingOptions,
   type CableSizingResult,
+  type ConductorMaterial,
   type InstallationMethod,
   type InsulationType,
   type LoadedConductors,
   type OverloadCoordinationResult,
+  type ThermalWithstandParams,
+  type ThermalWithstandResult,
   type VoltageDropCalcResult,
   type VoltageDropOptions,
 };
@@ -172,6 +184,165 @@ export function shortCircuitIEC60909(
     transformer_kVA: Sn,
     impedance_pct: uk,
     Z_transformer_ohm: round4(Z),
+  };
+}
+
+// ---------------- Curto-circuito ao longo do alimentador / circuito (IEC 60909 / NBR 5410) ----------------
+
+export interface CircuitFeederShortCircuitSpec {
+  /** Comprimento do alimentador em metros. */
+  length_m: number;
+  /** Seção transversal do condutor (mm²). */
+  section_mm2: CableSection_mm2;
+  /** Material do condutor (cobre ou alumínio). Padrão: "copper". */
+  material?: ConductorMaterial;
+  /** Tipo de isolação do condutor. Padrão: "PVC". */
+  insulation?: InsulationType;
+  /** Tensão nominal entre fases em V. Padrão: 380 V. */
+  voltage_V?: number;
+  /** Número de fases (1, 2 ou 3). Padrão: 3. */
+  phases?: 1 | 2 | 3;
+  /** Corrente de curto trifásico no barramento a montante em kA rms. Padrão: 25 kA. */
+  upstream_Ik3_kA?: number;
+  /** Especificação do transformador a montante (se disponível, substitui upstream_Ik3_kA). */
+  upstream_trafo?: TransformerSpec;
+  /** Relação X/R da impedância a montante. Padrão: 3.0. */
+  upstream_XR?: number;
+  /** Tempo total de eliminação do defeito pela proteção (s). Padrão: 0.04 s (disparo instantâneo). */
+  clearingTime_s?: number;
+  /** Corrente nominal do disjuntor de proteção (A). */
+  breaker_A?: number;
+  /** Curva do disjuntor (B = 5×In, C = 10×In, D = 20×In). Padrão: "C". */
+  breaker_curve?: "B" | "C" | "D";
+}
+
+export interface CircuitFeederShortCircuitResult {
+  /** Corrente de curto-circuito trifásica simétrica máxima no final do circuito (kA rms). */
+  Ik3_max_kA: number;
+  /** Corrente de curto-circuito bifásica no final do circuito (kA rms). */
+  Ik2_kA: number;
+  /** Corrente de curto-circuito monofásica/fase-terra mínima no final do circuito (kA rms). */
+  Ik1_min_kA: number;
+  /** Corrente de pico no final do circuito (kA). */
+  ip_kA: number;
+  /** Impedância total no ponto de falta para curto máximo (mΩ). */
+  Z_total_max_mOhm: number;
+  /** Impedância total de loop para curto mínimo fase-neutro/terra (mΩ). */
+  Z_loop_min_mOhm: number;
+  /** Resistência do cabo a 20 °C (frio, máximo defeito) (mΩ). */
+  R_cable_20C_mOhm: number;
+  /** Resistência do cabo a 70 °C (quente, mínimo defeito para desarme) (mΩ). */
+  R_cable_hot_mOhm: number;
+  /** Reatância indutiva do cabo (mΩ). */
+  X_cable_mOhm: number;
+  /** Verificação de suportabilidade térmica adiabática I²t <= k²S² (NBR 5410 §5.3.5). */
+  thermalWithstand: ThermalWithstandResult;
+  /** Indica se a corrente de curto mínima Ik1_min é suficiente para o disparo magnético instantâneo. */
+  magneticTripGuaranteed?: boolean;
+  /** Corrente mínima necessária para disparo instantâneo da curva do disjuntor (A). */
+  minMagneticTripCurrent_A?: number;
+}
+
+/**
+ * Calcula a corrente de curto-circuito downstream no ponto da carga/terminal de um circuito,
+ * considerando a impedância a montante e a impedância distribuída dos condutores (IEC 60909-0),
+ * e verifica a suportabilidade térmica adiabática do cabo (NBR 5410 §5.3.5 / I²·t <= k²·S²).
+ */
+export function calculateCircuitFeederShortCircuit(
+  spec: CircuitFeederShortCircuitSpec,
+): CircuitFeederShortCircuitResult {
+  const U = spec.voltage_V ?? 380;
+  const phases = spec.phases ?? 3;
+  const L = spec.length_m;
+  const S = spec.section_mm2;
+  const material = spec.material ?? "copper";
+  const insulation = spec.insulation ?? "PVC";
+  const t_clearing = spec.clearingTime_s ?? 0.04;
+
+  // Resistividade: Cobre (0,017241 a 20°C, 0,0178 a 70°C); Alumínio (0,02826 a 20°C, 0,034 a 70°C)
+  const rho20 = material === "copper" ? 0.017241 : 0.028264;
+  const rhoHot = material === "copper" ? 0.0178 : 0.034;
+  const x_unit = 0.08e-3; // 0,08 mΩ/m = 0,08 × 10^-3 Ω/m
+
+  // 1. Impedância a montante (R_up e X_up em ohm)
+  let R_up = 0;
+  let X_up = 0;
+  let xr_up = spec.upstream_XR ?? 3.0;
+
+  if (spec.upstream_trafo) {
+    const trafoRes = shortCircuitIEC60909(spec.upstream_trafo, { voltage_V: U });
+    const Z_tr = trafoRes.Z_transformer_ohm;
+    xr_up = trafoRes.X_R;
+    R_up = Z_tr / Math.sqrt(1 + xr_up * xr_up);
+    X_up = R_up * xr_up;
+  } else {
+    const Ik_up_kA = spec.upstream_Ik3_kA ?? 25;
+    const c_max = voltageFactorC(U);
+    const Z_up = (c_max * U) / (SQRT3 * (Ik_up_kA * 1000));
+    R_up = Z_up / Math.sqrt(1 + xr_up * xr_up);
+    X_up = R_up * xr_up;
+  }
+
+  // 2. Impedância do cabo (em ohm)
+  const R_c_20 = (rho20 * L) / S;
+  const R_c_hot = (rhoHot * L) / S;
+  const X_c = x_unit * L;
+
+  // 3. Curto-Circuito Máximo Trifásico (Cabo a 20 °C, c = 1,10)
+  const c_max = voltageFactorC(U);
+  const R_tot_max = R_up + R_c_20;
+  const X_tot_max = X_up + X_c;
+  const Z_tot_max = Math.sqrt(R_tot_max * R_tot_max + X_tot_max * X_tot_max);
+
+  const Ik3_max_A = (c_max * U) / (SQRT3 * Z_tot_max);
+  const Ik2_A = (SQRT3 / 2) * Ik3_max_A;
+
+  const xr_fault = X_tot_max / Math.max(1e-6, R_tot_max);
+  const ip_A = peakFactorK(xr_fault) * SQRT3 * Ik3_max_A;
+
+  // 4. Curto-Circuito Mínimo Fase-Neutro/Fase-Terra (Cabo quente, c_min = 0,95)
+  // Impedância de loop: condutor de fase + condutor de retorno neutro/PE
+  const c_min = 0.95;
+  const U_fase = U / SQRT3;
+  const loopMultiplier = phases === 1 ? 2 : 2; // ida e volta no defeito fase-neutro/terra
+  const R_loop = R_up + loopMultiplier * R_c_hot;
+  const X_loop = X_up + loopMultiplier * X_c;
+  const Z_loop = Math.sqrt(R_loop * R_loop + X_loop * X_loop);
+  const Ik1_min_A = (c_min * U_fase) / Z_loop;
+
+  // 5. Verificação Térmica I²t <= k²S² sob Ik3_max
+  const thermalWithstand = verifyThermalWithstandI2t({
+    section_mm2: S,
+    material,
+    insulation,
+    faultCurrent_A: Ik3_max_A,
+    clearingTime_s: t_clearing,
+  });
+
+  // 6. Verificação de Disparo Instantâneo Magnético
+  let magneticTripGuaranteed: boolean | undefined;
+  let minMagneticTripCurrent_A: number | undefined;
+
+  if (spec.breaker_A !== undefined) {
+    const curve = spec.breaker_curve ?? "C";
+    const factor = curve === "B" ? 5 : curve === "D" ? 20 : 10;
+    minMagneticTripCurrent_A = spec.breaker_A * factor;
+    magneticTripGuaranteed = Ik1_min_A >= minMagneticTripCurrent_A;
+  }
+
+  return {
+    Ik3_max_kA: round2(Ik3_max_A / 1000),
+    Ik2_kA: round2(Ik2_A / 1000),
+    Ik1_min_kA: round2(Ik1_min_A / 1000),
+    ip_kA: round2(ip_A / 1000),
+    Z_total_max_mOhm: round2(Z_tot_max * 1000),
+    Z_loop_min_mOhm: round2(Z_loop * 1000),
+    R_cable_20C_mOhm: round2(R_c_20 * 1000),
+    R_cable_hot_mOhm: round2(R_c_hot * 1000),
+    X_cable_mOhm: round2(X_c * 1000),
+    thermalWithstand,
+    magneticTripGuaranteed,
+    minMagneticTripCurrent_A,
   };
 }
 

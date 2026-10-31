@@ -37,7 +37,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-dps-${itemCounter++}`,
     tag: "DPS_01",
-    description: "Dispositivo de Proteção contra Surtos (DPS) Classe II 275V Imax=40kA In=20kA (Conjunto 3F+N)",
+    description:
+      "Dispositivo de Proteção contra Surtos (DPS) Classe II 275V Imax=40kA In=20kA (Conjunto 3F+N)",
     category: "1_protecao_eletrica",
     quantity: 4,
     unit: "un",
@@ -63,7 +64,8 @@ export function generateIndustrialBom(
     circuitRef: "QGD_FORCA",
     sourceKind: "recommended_pending",
     validationStatus: "pending_catalog_selection",
-    notes: "Proteção adicional contra correntes de fuga à terra e princípio de incêndio (NBR 5410 §5.1.3.2).",
+    notes:
+      "Proteção adicional contra correntes de fuga à terra e princípio de incêndio (NBR 5410 §5.1.3.2).",
   });
 
   // Disjuntores dos circuitos terminais
@@ -109,7 +111,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-qs-${itemCounter++}`,
     tag: "QS_01",
-    description: "Chave Seccionadora Rotativa Tripolar sob Carga In=100A com Manopla Bloqueável LOTO Vermelha/Amarela",
+    description:
+      "Chave Seccionadora Rotativa Tripolar sob Carga In=100A com Manopla Bloqueável LOTO Vermelha/Amarela",
     category: "2_manobra_comando",
     quantity: 1,
     unit: "un",
@@ -223,7 +226,7 @@ export function generateIndustrialBom(
       items.push({
         id: `bom-vfd-${eq.tagCode}-${itemCounter++}`,
         tag: eq.tagCode,
-        description: `Inversor de Frequência Vetorial VFD ${(eq.specs.powerKw || 7.5)} kW 380-480V 3F com IHM e porta Modbus-RTU/RS-485`,
+        description: `Inversor de Frequência Vetorial VFD ${eq.specs.powerKw || 7.5} kW 380-480V 3F com IHM e porta Modbus-RTU/RS-485`,
         category: "3_motores_acionamentos",
         quantity: 1,
         unit: "un",
@@ -241,7 +244,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-psu-${itemCounter++}`,
     tag: "G1",
-    description: "Fonte Chaveada Industrial para Trilho DIN Entrada 100-240Vca Saída 24Vcc 10A (240W) Proteção contra Curto",
+    description:
+      "Fonte Chaveada Industrial para Trilho DIN Entrada 100-240Vca Saída 24Vcc 10A (240W) Proteção contra Curto",
     category: "4_clp_modulos_interfaces",
     quantity: 1,
     unit: "un",
@@ -289,7 +293,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-relay-slim-${itemCounter++}`,
     tag: "KA_ARRAY",
-    description: "Relé Acoplador de Interface Slim 6.2mm Bobina 24Vcc 1 Contato Reversor (1NAF) 6A 250Vca com LED",
+    description:
+      "Relé Acoplador de Interface Slim 6.2mm Bobina 24Vcc 1 Contato Reversor (1NAF) 6A 250Vca com LED",
     category: "4_clp_modulos_interfaces",
     quantity: relaysNeeded,
     unit: "un",
@@ -297,12 +302,17 @@ export function generateIndustrialBom(
     circuitRef: "CIR_INTERFACES",
     sourceKind: "calculated_derived",
     validationStatus: "validated",
-    notes: "Isolação galvânica entre as saídas a transistor do CLP e as bobinas dos contatores de potência.",
+    notes:
+      "Isolação galvânica entre as saídas a transistor do CLP e as bobinas dos contatores de potência.",
   });
 
   // ── Grupo 5: Sensores e Instrumentação ────────────────────────────────────
   for (const eq of extracted.equipments) {
-    if (eq.category === "instrumentation" || eq.catalogType === "pt100" || eq.catalogType === "pressure") {
+    if (
+      eq.category === "instrumentation" ||
+      eq.catalogType === "pt100" ||
+      eq.catalogType === "pressure"
+    ) {
       items.push({
         id: `bom-inst-${eq.tagCode}-${itemCounter++}`,
         tag: eq.tagCode,
@@ -323,7 +333,10 @@ export function generateIndustrialBom(
   const cablesBySection = new Map<number, number>();
   for (const c of calculations.circuits) {
     const totalCircM = c.lengthM * (c.phases.startsWith("3F") ? 3 : 2);
-    cablesBySection.set(c.selectedCableMm2, (cablesBySection.get(c.selectedCableMm2) || 0) + totalCircM);
+    cablesBySection.set(
+      c.selectedCableMm2,
+      (cablesBySection.get(c.selectedCableMm2) || 0) + totalCircM,
+    );
   }
 
   for (const [sec, lenM] of cablesBySection.entries()) {
@@ -341,7 +354,8 @@ export function generateIndustrialBom(
       circuitRef: "CIRCUITOS_FORCA",
       sourceKind: "calculated_derived",
       validationStatus: "validated",
-      notes: "Condutores de fase dimensionados conforme critério conjunto de ampacidade e queda de tensão NBR 5410.",
+      notes:
+        "Condutores de fase dimensionados conforme critério conjunto de ampacidade e queda de tensão NBR 5410.",
     });
   }
 
@@ -350,7 +364,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-cable-pe-${itemCounter++}`,
     tag: "CABO_PE_VERDE",
-    description: "Cabo de Cobre Unipolar Flexível Classe 5 Seção 16 mm² 750V Isolação PVC Verde/Amarelo (Condutor de Proteção PE)",
+    description:
+      "Cabo de Cobre Unipolar Flexível Classe 5 Seção 16 mm² 750V Isolação PVC Verde/Amarelo (Condutor de Proteção PE)",
     category: "6_cabos_condutores",
     quantity: Math.ceil(totalPeM * 1.1),
     unit: "m",
@@ -361,14 +376,16 @@ export function generateIndustrialBom(
     circuitRef: "BARRA_PE",
     sourceKind: "calculated_derived",
     validationStatus: "validated",
-    notes: "Aterramento e equipotencialização de todas as massas metálicas conforme NBR 5410 Tabela 58 e NR-10.",
+    notes:
+      "Aterramento e equipotencialização de todas as massas metálicas conforme NBR 5410 Tabela 58 e NR-10.",
   });
 
   // Cabos de comando e instrumentação
   items.push({
     id: `bom-cable-cmd-${itemCounter++}`,
     tag: "CABO_COMANDO_1MM",
-    description: "Cabo de Comando Flexível 1,0 mm² 750V PVC Azul Escuro (Comando 24Vcc) e Azul Claro (Neutro)",
+    description:
+      "Cabo de Comando Flexível 1,0 mm² 750V PVC Azul Escuro (Comando 24Vcc) e Azul Claro (Neutro)",
     category: "6_cabos_condutores",
     quantity: 150,
     unit: "m",
@@ -387,7 +404,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-borne-pas-${itemCounter++}`,
     tag: "BORNE_UK5N",
-    description: "Borne de Passagem Tipo Parafuso/Mola para Cabos até 4mm² Cor Cinza Montagem em Trilho DIN TS-35",
+    description:
+      "Borne de Passagem Tipo Parafuso/Mola para Cabos até 4mm² Cor Cinza Montagem em Trilho DIN TS-35",
     category: "7_bornes_acessorios",
     quantity: bornesCount,
     unit: "un",
@@ -398,7 +416,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-borne-pe-${itemCounter++}`,
     tag: "BORNE_PE_TERRA",
-    description: "Borne de Passagem de Aterramento (PE) com Contato Direto ao Trilho DIN TS-35 Cor Verde/Amarelo até 10mm²",
+    description:
+      "Borne de Passagem de Aterramento (PE) com Contato Direto ao Trilho DIN TS-35 Cor Verde/Amarelo até 10mm²",
     category: "7_bornes_acessorios",
     quantity: Math.max(6, Math.ceil(bornesCount / 4)),
     unit: "un",
@@ -420,7 +439,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-painel-box-${itemCounter++}`,
     tag: "PAINEL_QGD",
-    description: "Quadro Autoportante / Painel de Aço Carbono Pintura Eletrostática RAL 7035 Dimensões 2000x800x600mm Grau de Proteção IP54 com Placa de Montagem Laranja",
+    description:
+      "Quadro Autoportante / Painel de Aço Carbono Pintura Eletrostática RAL 7035 Dimensões 2000x800x600mm Grau de Proteção IP54 com Placa de Montagem Laranja",
     category: "8_paineis_barramentos_montagem",
     quantity: 1,
     unit: "un",
@@ -433,7 +453,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-barra-cu-${itemCounter++}`,
     tag: "BARRAMENTO_COBRE",
-    description: "Barra de Cobre Eletrolítico Retangular 25x5mm (Capacidade nominal 250A) com Isoladores Epóxi Paralelos (Conjunto R, S, T, N, PE)",
+    description:
+      "Barra de Cobre Eletrolítico Retangular 25x5mm (Capacidade nominal 250A) com Isoladores Epóxi Paralelos (Conjunto R, S, T, N, PE)",
     category: "8_paineis_barramentos_montagem",
     quantity: 5,
     unit: "barras",
@@ -454,7 +475,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-prensa-cabo-${itemCounter++}`,
     tag: "PRENSA_CABOS_KIT",
-    description: "Conjunto de Prensa-Cabos Metálicos / Nylon PG16, PG21 e PG29 com Porcas e Anéis de Vedação IP68",
+    description:
+      "Conjunto de Prensa-Cabos Metálicos / Nylon PG16, PG21 e PG29 com Porcas e Anéis de Vedação IP68",
     category: "8_paineis_barramentos_montagem",
     quantity: 1,
     unit: "kit",
@@ -466,7 +488,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-safety-estop-${itemCounter++}`,
     tag: "SB_EMG_01",
-    description: "Botoeira de Emergência Tipo Cogumelo 40mm Vermelha com Trava Mecânica Girar-para-Soltar com 2 Contatos NF Positivos e Plaqueta Amarela 'EMERGÊNCIA'",
+    description:
+      "Botoeira de Emergência Tipo Cogumelo 40mm Vermelha com Trava Mecânica Girar-para-Soltar com 2 Contatos NF Positivos e Plaqueta Amarela 'EMERGÊNCIA'",
     category: "9_dispositivos_seguranca",
     quantity: Math.max(1, extracted.equipments.filter((e) => e.catalogType === "estop").length),
     unit: "un",
@@ -479,7 +502,8 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-safety-relay-${itemCounter++}`,
     tag: "KS_01",
-    description: "Relé de Segurança para Monitoramento de Parada de Emergência Categoria 4 / PLe (ISO 13849-1) Alimentação 24Vcc 3 Contatos de Segurança NA + 1 NF Auxiliar",
+    description:
+      "Relé de Segurança para Monitoramento de Parada de Emergência Categoria 4 / PLe (ISO 13849-1) Alimentação 24Vcc 3 Contatos de Segurança NA + 1 NF Auxiliar",
     category: "9_dispositivos_seguranca",
     quantity: 1,
     unit: "un",
@@ -494,18 +518,21 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-anilha-${itemCounter++}`,
     tag: "ANILHAS_MARCACAO",
-    description: "Kit de Anilhas Marcadoras Tubulares PVC Amarelas para Fios 0.5 a 6.0 mm² Números (0-9) e Letras (L1, L2, L3, N, PE, +, -)",
+    description:
+      "Kit de Anilhas Marcadoras Tubulares PVC Amarelas para Fios 0.5 a 6.0 mm² Números (0-9) e Letras (L1, L2, L3, N, PE, +, -)",
     category: "10_identificacao_documentacao",
     quantity: 1,
     unit: "kit",
     sourceKind: "calculated_derived",
     validationStatus: "validated",
-    notes: "Identificação indelével de cada condutor conforme numeração do diagrama unifilar/multifilar.",
+    notes:
+      "Identificação indelével de cada condutor conforme numeração do diagrama unifilar/multifilar.",
   });
   items.push({
     id: `bom-plaquetas-${itemCounter++}`,
     tag: "PLAQUETAS_ACRILICO",
-    description: "Conjunto de Plaquetas de Identificação Acrílicas Bicolor Gravadas a Laser com Fita 3M para Frontal do Painel e Componentes Internos",
+    description:
+      "Conjunto de Plaquetas de Identificação Acrílicas Bicolor Gravadas a Laser com Fita 3M para Frontal do Painel e Componentes Internos",
     category: "10_identificacao_documentacao",
     quantity: 1,
     unit: "kit",
@@ -515,13 +542,15 @@ export function generateIndustrialBom(
   items.push({
     id: `bom-porta-esquema-${itemCounter++}`,
     tag: "PORTA_ESQUEMAS_A4",
-    description: "Porta-Documentos / Esquemas Plástico Auto-Adesivo Formato A4 Fixado na Parte Interna da Porta do Painel",
+    description:
+      "Porta-Documentos / Esquemas Plástico Auto-Adesivo Formato A4 Fixado na Parte Interna da Porta do Painel",
     category: "10_identificacao_documentacao",
     quantity: 1,
     unit: "un",
     sourceKind: "calculated_derived",
     validationStatus: "validated",
-    notes: "Armazenamento do Dossiê Técnico e Diagramas Elétricos no interior do painel conforme NR-10.",
+    notes:
+      "Armazenamento do Dossiê Técnico e Diagramas Elétricos no interior do painel conforme NR-10.",
   });
 
   return items;

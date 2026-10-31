@@ -2,8 +2,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as React from "react";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { BRAND_PALETTE, THEME_TOKENS, TYPOGRAPHY, RADIUS, SPACING } from "@/lib/design-system/tokens";
-import { getRelativeLuminance, getContrastRatio, checkWcagCompliance } from "@/lib/design-system/contrast";
+import {
+  BRAND_PALETTE,
+  THEME_TOKENS,
+  TYPOGRAPHY,
+  RADIUS,
+  SPACING,
+} from "@/lib/design-system/tokens";
+import {
+  getRelativeLuminance,
+  getContrastRatio,
+  checkWcagCompliance,
+} from "@/lib/design-system/contrast";
 import { applyThemeToDom, useTheme } from "@/lib/design-system/theme";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -31,7 +41,7 @@ describe("Design System - Brand Palette & Tokens", () => {
 
   it("defines consistent geometric spacing and border radii", () => {
     expect(RADIUS.lg).toBe("0.5rem"); // 8px industrial standard
-    expect(SPACING[4]).toBe("1rem");   // 16px
+    expect(SPACING[4]).toBe("1rem"); // 16px
   });
 });
 
@@ -130,12 +140,17 @@ describe("Design System - Component Primitives & States", () => {
   it("renders SearchInput with clear action and shortcut badge", () => {
     const onClear = vi.fn();
     const { rerender } = render(
-      <SearchInput placeholder="Buscar nó..." value="" shortcut="Ctrl K" />
+      <SearchInput placeholder="Buscar nó..." value="" shortcut="Ctrl K" />,
     );
     expect(screen.getByText("Ctrl K")).toBeDefined();
 
     rerender(
-      <SearchInput placeholder="Buscar nó..." value="Disjuntor" onClear={onClear} shortcut="Ctrl K" />
+      <SearchInput
+        placeholder="Buscar nó..."
+        value="Disjuntor"
+        onClear={onClear}
+        shortcut="Ctrl K"
+      />,
     );
     const clearBtn = screen.getByLabelText("Limpar pesquisa");
     expect(clearBtn).toBeDefined();
@@ -147,7 +162,7 @@ describe("Design System - Component Primitives & States", () => {
     render(
       <FormField id="tag" label="Tag NBR" description="Identificador único" error="Tag obrigatória">
         <input />
-      </FormField>
+      </FormField>,
     );
 
     const label = screen.getByText("Tag NBR");
@@ -167,7 +182,7 @@ describe("Design System - Component Primitives & States", () => {
         <Badge variant="success">Energizado</Badge>
         <Badge variant="warning">Alerta</Badge>
         <Badge variant="info">Telemetria</Badge>
-      </div>
+      </div>,
     );
 
     expect(screen.getByText("Laranja")).toBeDefined();
@@ -182,7 +197,7 @@ describe("Design System - Component Primitives & States", () => {
         title="Nenhum Motor Cadastrado"
         description="Adicione alimentadores na barra de ferramentas."
         action={<Button size="sm">Novo Motor</Button>}
-      />
+      />,
     );
 
     expect(screen.getByText("Nenhum Motor Cadastrado")).toBeDefined();

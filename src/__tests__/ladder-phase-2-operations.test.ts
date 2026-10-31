@@ -186,7 +186,10 @@ describe("Ladder Fase 2 — Programação Natural, Inserção Previsível e Oper
         label: `${original.label} (Cópia)`,
         comment: `${original.comment} (Cópia)`,
         cells: original.cells.map((row) =>
-          row.map((c) => ({ ...c, id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` })),
+          row.map((c) => ({
+            ...c,
+            id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          })),
         ),
       };
       cloned.topology = buildTopologyFromCells(cloned);
@@ -224,17 +227,29 @@ describe("Ladder Fase 2 — Programação Natural, Inserção Previsível e Oper
       const topology = ensureRungTopology(rung);
 
       // Adiciona ramo paralelo
-      const parItem: typeof topology.rootBranch.items[0] = {
+      const parItem: (typeof topology.rootBranch.items)[0] = {
         id: "par-1",
         type: "parallel",
         branches: [
           {
             id: "br-1",
-            items: [{ id: "it-1", type: "instruction", instruction: { id: "i1", kind: "XIC", operand: "START_1" } }],
+            items: [
+              {
+                id: "it-1",
+                type: "instruction",
+                instruction: { id: "i1", kind: "XIC", operand: "START_1" },
+              },
+            ],
           },
           {
             id: "br-2",
-            items: [{ id: "it-2", type: "instruction", instruction: { id: "i2", kind: "XIC", operand: "START_2" } }],
+            items: [
+              {
+                id: "it-2",
+                type: "instruction",
+                instruction: { id: "i2", kind: "XIC", operand: "START_2" },
+              },
+            ],
           },
         ],
       };
@@ -245,7 +260,13 @@ describe("Ladder Fase 2 — Programação Natural, Inserção Previsível e Oper
       // Expande com um terceiro nível (adicionar nível de ramo)
       topology.rootBranch.items[0].branches?.push({
         id: "br-3",
-        items: [{ id: "it-3", type: "instruction", instruction: { id: "i3", kind: "XIC", operand: "START_3" } }],
+        items: [
+          {
+            id: "it-3",
+            type: "instruction",
+            instruction: { id: "i3", kind: "XIC", operand: "START_3" },
+          },
+        ],
       });
       expect(topology.rootBranch.items[0].branches).toHaveLength(3);
 
@@ -267,9 +288,21 @@ describe("Ladder Fase 2 — Programação Natural, Inserção Previsível e Oper
           rootBranch: {
             id: "root",
             items: [
-              { id: "it-1", type: "instruction", instruction: { id: "i1", kind: "XIC", operand: "TAG_1" } },
-              { id: "it-2", type: "instruction", instruction: { id: "i2", kind: "XIC", operand: "TAG_2" } },
-              { id: "it-3", type: "instruction", instruction: { id: "i3", kind: "XIC", operand: "TAG_3" } },
+              {
+                id: "it-1",
+                type: "instruction",
+                instruction: { id: "i1", kind: "XIC", operand: "TAG_1" },
+              },
+              {
+                id: "it-2",
+                type: "instruction",
+                instruction: { id: "i2", kind: "XIC", operand: "TAG_2" },
+              },
+              {
+                id: "it-3",
+                type: "instruction",
+                instruction: { id: "i3", kind: "XIC", operand: "TAG_3" },
+              },
             ],
           },
           outputs: [{ id: "out", kind: "OTE", operand: "OUT" }],
@@ -285,11 +318,20 @@ describe("Ladder Fase 2 — Programação Natural, Inserção Previsível e Oper
       items.splice(0, 0, moved);
       topology.rootBranch.items = items;
 
-      expect(topology.rootBranch.items.map((i) => i.instruction?.operand)).toEqual(["TAG_2", "TAG_1", "TAG_3"]);
+      expect(topology.rootBranch.items.map((i) => i.instruction?.operand)).toEqual([
+        "TAG_2",
+        "TAG_1",
+        "TAG_3",
+      ]);
 
       // Exclui elemento TAG_1
-      topology.rootBranch.items = topology.rootBranch.items.filter((i) => i.instruction?.operand !== "TAG_1");
-      expect(topology.rootBranch.items.map((i) => i.instruction?.operand)).toEqual(["TAG_2", "TAG_3"]);
+      topology.rootBranch.items = topology.rootBranch.items.filter(
+        (i) => i.instruction?.operand !== "TAG_1",
+      );
+      expect(topology.rootBranch.items.map((i) => i.instruction?.operand)).toEqual([
+        "TAG_2",
+        "TAG_3",
+      ]);
     });
 
     it("executa Desfazer (Undo) e Refazer (Redo) com histórico de snapshots imutáveis", () => {

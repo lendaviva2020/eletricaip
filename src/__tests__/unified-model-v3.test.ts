@@ -250,9 +250,9 @@ describe("Fase B — Modelo Técnico Unificado (v3) e Separação de Runtime", (
     expect(updated.views.scada.widgets.w_btn_1.params.tag).toBe("BOMBA_RECALQUE_CMD");
     expect(updated.views.twin.mappings[0].hotspots[0].tag).toBe("BOMBA_RECALQUE_CMD");
     expect(useEditorStore.getState().editorTags.tag_cmd_m1.name).toBe("BOMBA_RECALQUE_CMD");
-    expect(
-      usePlcStore.getState().project.variables.find((v) => v.id === "tag_cmd_m1")?.name,
-    ).toBe("BOMBA_RECALQUE_CMD");
+    expect(usePlcStore.getState().project.variables.find((v) => v.id === "tag_cmd_m1")?.name).toBe(
+      "BOMBA_RECALQUE_CMD",
+    );
   });
 
   it("detecta colisão de canal I/O no PLC (PLC_IO_ADDRESS_COLLISION) e emite diagnóstico quando tag SCADA fica órfã", () => {
@@ -437,9 +437,9 @@ describe("Fase B — Modelo Técnico Unificado (v3) e Separação de Runtime", (
           },
         },
       });
-      useEditorStore.getState().setRungsRuntime((rs) =>
-        rs.map((r) => ({ ...r, poweredOut: i % 2 === 0 })),
-      );
+      useEditorStore
+        .getState()
+        .setRungsRuntime((rs) => rs.map((r) => ({ ...r, poweredOut: i % 2 === 0 })));
     }
 
     expect(useRuntimeStore.getState().scanCycleCount).toBe(50);

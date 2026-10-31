@@ -157,7 +157,8 @@ export const useEditorStore = create<EditorState>()(
     dragValidation: "Arraste componentes IEC 60617 para o canvas.",
     validateComponent: null,
 
-    setActiveMode: (mode) => set({ activeMode: mode, selectedNodeId: null, selectedLadderTarget: null }),
+    setActiveMode: (mode) =>
+      set({ activeMode: mode, selectedNodeId: null, selectedLadderTarget: null }),
     setSelectedNode: (id) => set({ selectedNodeId: id }),
     setSelectedLadderTarget: (target) => set({ selectedLadderTarget: target }),
     setLadderProfile: (profile) => set({ ladderProfile: profile }),
@@ -331,4 +332,3 @@ export function useEditorMode() {
 if (typeof window !== "undefined" && import.meta.env.DEV) {
   (window as any).__editorStore = useEditorStore;
 }
-

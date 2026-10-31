@@ -94,7 +94,10 @@ export function toLReal64(val: number): number {
   return val;
 }
 
-export function getProfileIntLimits(profile: LadderProfile = "generic"): { min: number; max: number } {
+export function getProfileIntLimits(profile: LadderProfile = "generic"): {
+  min: number;
+  max: number;
+} {
   if (profile === "rockwell") {
     return { min: DINT32_MIN, max: DINT32_MAX };
   }
@@ -113,7 +116,11 @@ export const readBool = (operand: string, tags: PureTags): boolean => {
   return truthy(tags[operand]);
 };
 
-export const readNum = (val: string | number | boolean | undefined, tags: PureTags, defaultVal = 0): number => {
+export const readNum = (
+  val: string | number | boolean | undefined,
+  tags: PureTags,
+  defaultVal = 0,
+): number => {
   if (val === undefined || val === null || val === "") return defaultVal;
   if (typeof val === "boolean") return val ? 1 : 0;
   if (typeof val === "number") return val; // Preserva NaN e Infinity para validação fiel pelo bloco consumidor
@@ -571,7 +578,16 @@ function evalInstructionNode(
     const reset = readBool(String(params.R ?? ""), tags);
     const load = readBool(String(params.LD ?? ""), tags);
     const limits = getProfileIntLimits(profile);
-    const { qu, qd, cv } = tickCTUD(state.ctud, inst.id, incomingPower, cd, reset, load, preset, limits);
+    const { qu, qd, cv } = tickCTUD(
+      state.ctud,
+      inst.id,
+      incomingPower,
+      cd,
+      reset,
+      load,
+      preset,
+      limits,
+    );
     if (op) writes[op] = qu;
     if (params.QU) writes[String(params.QU)] = qu;
     if (params.QD) writes[String(params.QD)] = qd;
@@ -681,10 +697,13 @@ function evalInstructionNode(
       // ABS do menor inteiro representável em complemento de dois produz overflow no tipo correspondente
       const isIntTarget =
         targetType === "INT" ||
-        (!targetType && profile !== "rockwell" && Number.isInteger(in1) && in1 <= INT16_MAX && in1 >= INT16_MIN);
+        (!targetType &&
+          profile !== "rockwell" &&
+          Number.isInteger(in1) &&
+          in1 <= INT16_MAX &&
+          in1 >= INT16_MIN);
       const isDintTarget =
-        targetType === "DINT" ||
-        (!targetType && profile === "rockwell" && Number.isInteger(in1));
+        targetType === "DINT" || (!targetType && profile === "rockwell" && Number.isInteger(in1));
 
       if (isIntTarget && in1 === INT16_MIN) {
         isErr = true;
@@ -912,8 +931,7 @@ function evalInstructionNode(
   }
   // 9. Lógica Booleana
   else if (["AND", "OR", "XOR", "NOT"].includes(kind)) {
-    const in1Raw =
-      params.IN1 !== undefined ? params.IN1 : params.IN !== undefined ? params.IN : op;
+    const in1Raw = params.IN1 !== undefined ? params.IN1 : params.IN !== undefined ? params.IN : op;
     const in2Raw = params.IN2;
     const targetOp = String(params.OUT || op || "");
 
@@ -1018,7 +1036,16 @@ function evalBranchRecursive(
       } else if (item.branches && item.branches.length > 0) {
         let subAny = false;
         for (const sub of item.branches) {
-          const subOn = evalBranchRecursive(sub, true, tags, state, now, writes, diagnostics, profile);
+          const subOn = evalBranchRecursive(
+            sub,
+            true,
+            tags,
+            state,
+            now,
+            writes,
+            diagnostics,
+            profile,
+          );
           subAny = subAny || subOn;
         }
         itemPower = subAny;
@@ -1054,7 +1081,16 @@ function evalBranchRecursive(
         } else {
           let anySubPower = false;
           for (const sub of item.branches) {
-            const subOn = evalBranchRecursive(sub, power, tags, state, now, writes, diagnostics, profile);
+            const subOn = evalBranchRecursive(
+              sub,
+              power,
+              tags,
+              state,
+              now,
+              writes,
+              diagnostics,
+              profile,
+            );
             anySubPower = anySubPower || subOn;
           }
           power = anySubPower;
@@ -1135,7 +1171,17 @@ function evalRungOutputs(
       kind.startsWith("CMP_") ||
       ["ADD", "SUB", "MUL", "DIV", "MOD", "ABS", "SQRT", "MOVE"].includes(kind)
     ) {
-      evalInstructionNode(out, power, tags, state, now, writes, diagnostics, `out:${out.id}`, profile);
+      evalInstructionNode(
+        out,
+        power,
+        tags,
+        state,
+        now,
+        writes,
+        diagnostics,
+        `out:${out.id}`,
+        profile,
+      );
     }
   }
 }
@@ -1171,7 +1217,7 @@ export function scanRungsPure(
   profile: LadderProfile = "generic",
 ): { results: ScanResult[]; tags: PureTags } {
   const results: ScanResult[] = [];
-  let workingTags: PureTags = { ...tags };
+  const workingTags: PureTags = { ...tags };
   const oteWritesInScan = new Map<string, number>();
 
   for (let idx = 0; idx < rungs.length; idx++) {
@@ -1205,9 +1251,7 @@ export function scanRungsPure(
       oteWritesInScan,
     );
     const finalPoweredOut =
-      topology.outputs.length > 0
-        ? topology.outputs.some((o) => o.energized)
-        : poweredOut;
+      topology.outputs.length > 0 ? topology.outputs.some((o) => o.energized) : poweredOut;
     rung.poweredOut = finalPoweredOut;
 
     // 3. Propagação determinística entre redes no mesmo scan (IEC 61131-3)

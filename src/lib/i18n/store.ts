@@ -4,11 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { ptBR, type TranslationCatalog } from "./catalogs/pt-BR";
 import { en } from "./catalogs/en";
-import {
-  DEFAULT_LOCALE,
-  normalizeLocale,
-  type SupportedLocale,
-} from "./types";
+import { DEFAULT_LOCALE, normalizeLocale, type SupportedLocale } from "./types";
 import { recordMissingKey } from "./missing-key-detector";
 import { formatCurrency, formatDate, formatNumber, formatRelativeTime } from "./format";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,9 +116,7 @@ export function translate(
     return current;
   }
 
-  return current.replace(/\{(\w+)\}/g, (_, k) =>
-    k in params ? String(params[k]) : `{${k}}`,
-  );
+  return current.replace(/\{(\w+)\}/g, (_, k) => (k in params ? String(params[k]) : `{${k}}`));
 }
 
 export const t = translate;
@@ -138,18 +132,15 @@ export function useI18n() {
   const toggleLocale = useI18nStore((s) => s.toggleLocale);
 
   const boundT = useCallback(
-    (key: string, params?: Record<string, string | number>) =>
-      translate(key, params, locale),
+    (key: string, params?: Record<string, string | number>) => translate(key, params, locale),
     [locale],
   );
   const boundFormatNumber = useCallback(
-    (val: number, options?: Intl.NumberFormatOptions) =>
-      formatNumber(val, locale, options),
+    (val: number, options?: Intl.NumberFormatOptions) => formatNumber(val, locale, options),
     [locale],
   );
   const boundFormatCurrency = useCallback(
-    (val: number, currency?: string) =>
-      formatCurrency(val, locale, currency),
+    (val: number, currency?: string) => formatCurrency(val, locale, currency),
     [locale],
   );
   const boundFormatDate = useCallback(
@@ -158,8 +149,7 @@ export function useI18n() {
     [locale],
   );
   const boundFormatRelativeTime = useCallback(
-    (d: Date | string | number) =>
-      formatRelativeTime(d, locale),
+    (d: Date | string | number) => formatRelativeTime(d, locale),
     [locale],
   );
 

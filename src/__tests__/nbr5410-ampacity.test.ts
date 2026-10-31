@@ -213,8 +213,8 @@ describe("NBR 5410 — Dimensionamento e casos de referência (Mamede / Creder)"
     expect(cableError).toBeDefined();
     expect(cableError?.norm).toBe("NBR 5410");
     expect(cableError?.severity).toBe("error");
-    expect(correctedAmpacityIz(10, { method: "B2", ambientTemp_C: 40, groupedCircuits: 4 })).toBeLessThan(
-      motor.In_A,
-    );
+    expect(
+      correctedAmpacityIz(10, { method: "B2", ambientTemp_C: 40, groupedCircuits: 4 }),
+    ).toBeLessThan(motor.In_A);
   });
 });

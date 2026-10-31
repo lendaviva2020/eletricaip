@@ -78,4 +78,3 @@ export function sanitizeProjectContext(context: Record<string, unknown> | unknow
   const serialized = JSON.stringify(sanitized);
   return serialized.slice(0, MAX_CONTEXT_CHARS);
 }
-

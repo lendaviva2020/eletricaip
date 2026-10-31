@@ -39,7 +39,11 @@ export function FormField({
     <div className={cn("space-y-1.5", className)} {...props}>
       <Label htmlFor={id} className="text-xs font-semibold text-foreground flex items-center gap-1">
         <span>{label}</span>
-        {required && <span className="text-destructive font-bold" aria-hidden="true">*</span>}
+        {required && (
+          <span className="text-destructive font-bold" aria-hidden="true">
+            *
+          </span>
+        )}
       </Label>
       {childWithProps}
       {description && (
@@ -48,7 +52,11 @@ export function FormField({
         </p>
       )}
       {error && (
-        <p id={errorId} role="alert" className="text-[11px] font-medium text-destructive leading-normal">
+        <p
+          id={errorId}
+          role="alert"
+          className="text-[11px] font-medium text-destructive leading-normal"
+        >
           {error}
         </p>
       )}

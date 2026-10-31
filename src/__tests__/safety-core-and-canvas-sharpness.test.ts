@@ -53,7 +53,13 @@ describe("P0: Safety Core & Emergency Stop (E-STOP) Interlock", () => {
       editorTags: {
         ...s.editorTags,
         "tag-q0": { id: "tag-q0", name: "%Q0.0", type: "BOOL", value: true, forced: false },
-        "tag-motor": { id: "tag-motor", name: "MOTOR_PRINCIPAL", type: "BOOL", value: true, forced: false },
+        "tag-motor": {
+          id: "tag-motor",
+          name: "MOTOR_PRINCIPAL",
+          type: "BOOL",
+          value: true,
+          forced: false,
+        },
         "tag-km1": { id: "tag-km1", name: "KM1_BOBINA", type: "BOOL", value: true, forced: false },
         "tag-cmd": { id: "tag-cmd", name: "CMD_VALVULA", type: "BOOL", value: true, forced: false },
       },

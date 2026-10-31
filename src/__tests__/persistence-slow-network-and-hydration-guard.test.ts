@@ -58,7 +58,14 @@ describe("Prioridade 3 — Proteção de Hidratação contra Rede Lenta e Falhas
       diagram: { nodes: { NODE_S1: { id: "NODE_S1", type: "supply" } }, edges: {} },
       editor: {
         tags: {},
-        rungs: [{ id: "rung_slow_net_1", label: "Rede 1", cols: 8, cells: [[{ kind: "NO", operand: "%I0.0" }]] }],
+        rungs: [
+          {
+            id: "rung_slow_net_1",
+            label: "Rede 1",
+            cols: 8,
+            cells: [[{ kind: "NO", operand: "%I0.0" }]],
+          },
+        ],
         fbdNodes: [],
         fbdEdges: [],
       },
@@ -102,7 +109,12 @@ describe("Prioridade 3 — Proteção de Hidratação contra Rede Lenta e Falhas
   it("2. Falha de Conexão: não dispara autosave e não destrói o estado local em memória", async () => {
     // Configura rungs locais prévios
     useEditorStore.getState().setRungs([
-      { id: "rung_local_pre", label: "Rede Preexistente", cols: 8, cells: [[{ kind: "OTE", operand: "%Q0.0" }]] }
+      {
+        id: "rung_local_pre",
+        label: "Rede Preexistente",
+        cols: 8,
+        cells: [[{ kind: "OTE", operand: "%Q0.0" }]],
+      },
     ]);
     useEditorStore.getState().markSaved();
 
@@ -154,10 +166,12 @@ describe("Prioridade 3 — Proteção de Hidratação contra Rede Lenta e Falhas
 
     // Agora o usuário realiza uma edição legítima
     act(() => {
-      useEditorStore.getState().setRungs((r) => [
-        ...r,
-        { id: "rung_user_added", label: "Rede Nova Usuário", cols: 8, cells: [] }
-      ]);
+      useEditorStore
+        .getState()
+        .setRungs((r) => [
+          ...r,
+          { id: "rung_user_added", label: "Rede Nova Usuário", cols: 8, cells: [] },
+        ]);
     });
 
     // O autosave tem debounce de 2000ms. Aguardamos ele disparar
@@ -169,10 +183,10 @@ describe("Prioridade 3 — Proteção de Hidratação contra Rede Lenta e Falhas
               projectId,
               expectedVersion: 5,
             }),
-          })
+          }),
         );
       },
-      { timeout: 3500 }
+      { timeout: 3500 },
     );
   });
 });

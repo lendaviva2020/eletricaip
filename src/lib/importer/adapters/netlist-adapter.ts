@@ -111,7 +111,7 @@ export function parseNetlistProject(
       kindStr = resolveComponentKind(compName) || "load";
     }
 
-    const compId = compName.replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+    const compId = compName.replace(/[^a-zA-Z0-9_\-.]/g, "_");
     const posX = 150 + (compIndex % 4) * 220;
     const posY = 100 + Math.floor(compIndex / 4) * 180;
     compIndex++;

@@ -63,10 +63,7 @@ export function evaluateAllRules(doc: DiagramDoc): Diagnostic[] {
 /**
  * Gera propostas de correção determinísticas para os diagnósticos acionáveis (warning ou error).
  */
-export function proposeFixes(
-  doc: DiagramDoc,
-  diagnostics: readonly Diagnostic[],
-): FixProposal[] {
+export function proposeFixes(doc: DiagramDoc, diagnostics: readonly Diagnostic[]): FixProposal[] {
   const proposalsMap = new Map<string, FixProposal>();
 
   for (const diag of diagnostics) {
@@ -316,7 +313,9 @@ export function orchestrateDraftFixes(
       if (p.operations.length === 0) return false;
       if (p.isApplicable) return true;
       // Propostas assistidas: permitidas se allowAssisted for true e o único bloqueio for verificação indisponível
-      return allowAssisted && p.unavailableChecks.length > 0 && !p.blockReason?.includes("premissas");
+      return (
+        allowAssisted && p.unavailableChecks.length > 0 && !p.blockReason?.includes("premissas")
+      );
     });
 
     if (applicableProposals.length === 0) {

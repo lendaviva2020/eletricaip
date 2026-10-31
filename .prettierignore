@@ -2,6 +2,8 @@ node_modules
 dist
 .output
 .vinxi
+.vercel
+.agents
 pnpm-lock.yaml
 package-lock.json
 bun.lock
@@ -12,6 +14,12 @@ src/integrations/supabase/types.ts
 # Gerenciado pela plataforma (regenerado a cada sync de integração)
 src/integrations/supabase/previewAuthStorage.ts
 
-# Estado local da CLI do Supabase (não é código do projeto)
-supabase/.temp/
-supabase/supabase/.temp/
+# Estado local e funções Supabase (gerenciadas pela CLI/Deno)
+supabase/
+
+# Documentação, scripts internos e fixtures de teste
+docs/
+scripts/
+public/fonts/
+public/legal/
+src/__tests__/fixtures/

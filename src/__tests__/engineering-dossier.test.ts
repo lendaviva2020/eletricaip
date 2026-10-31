@@ -163,7 +163,9 @@ describe("ElétricAi Engineering Dossier — Industrial Suite", () => {
 
     // Verifica régua de bornes X1
     expect(extracted.terminals.length).toBeGreaterThan(0);
-    const m1Terminals = extracted.terminals.filter((t) => t.externalEquipment.includes("m1") || t.wireTag.includes("m1"));
+    const m1Terminals = extracted.terminals.filter(
+      (t) => t.externalEquipment.includes("m1") || t.wireTag.includes("m1"),
+    );
     expect(m1Terminals.length).toBe(4); // U1, V1, W1, PE
   });
 
@@ -251,7 +253,9 @@ describe("ElétricAi Engineering Dossier — Industrial Suite", () => {
     expect(new Set(ids).size).toBe(ids.length);
 
     // Verifica motor presente
-    const motItem = bom.find((b) => b.category === "3_motores_acionamentos" && b.nominalPower?.includes("15 kW"));
+    const motItem = bom.find(
+      (b) => b.category === "3_motores_acionamentos" && b.nominalPower?.includes("15 kW"),
+    );
     expect(motItem).toBeDefined();
     expect(motItem?.sourceKind).toBe("canvas_identified");
   });

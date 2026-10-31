@@ -16,10 +16,7 @@ import {
   validateGeminiKey,
   mapGeminiError,
 } from "@/lib/ai/gemini-client.server";
-import {
-  BRIEFING_SECURITY_DIRECTIVE,
-  wrapUserBriefing,
-} from "@/lib/ai/context-sanitizer";
+import { BRIEFING_SECURITY_DIRECTIVE, wrapUserBriefing } from "@/lib/ai/context-sanitizer";
 import {
   BriefingDocumentInputSchema,
   buildDiagramPatchFromBriefingMotors,
@@ -185,7 +182,8 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
         ok: false,
         error: {
           code: !apiKey ? "MISSING_KEY" : "INVALID_KEY_FORMAT",
-          message: keyValidation.reason || "GEMINI_API_KEY ausente ou inválida nos secrets do servidor.",
+          message:
+            keyValidation.reason || "GEMINI_API_KEY ausente ou inválida nos secrets do servidor.",
         },
       };
     }

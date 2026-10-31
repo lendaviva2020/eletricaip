@@ -16,9 +16,6 @@ import { z } from "zod";
 import { requireSupabaseAuth, requireActiveSession } from "@/integrations/supabase/auth-middleware";
 import type { AuthContext } from "@/integrations/supabase/auth-middleware";
 
-
-
-
 export interface EraseStep {
   step: string;
   ok: boolean;
