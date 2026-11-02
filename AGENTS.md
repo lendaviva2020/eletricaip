@@ -45,8 +45,10 @@ O ElétricAi permite a um engenheiro criar e gerir **projetos de automação ind
 | Editor Ladder + runtime de scan (TON/TOF/TP/CTU)                    | ✅                     | `lib/ladder/scan-core.ts` (puro), compilador IL/ST, importador, validador, verificação de E-STOP por simulação                                                                                                                                                                                            |
 | Editor FBD + motor IEC (AST→IR, EN/ENO, runtime, simulação)         | ✅                     | `lib/fbd/engine/*`; paleta além dos blocos IEC é limitada; **sem blocos customizados no motor**                                                                                                                                                                                                           |
 | PLC (rack, variáveis, blocos, PLCopen XML)                          | ✅ (camada de projeto) | `lib/plc/*`, `plcopen-export.ts`; **sem download/execução em PLC real**                                                                                                                                                                                                                                   |
-| Comunicação Modbus                                                  | 🟡                     | Conexão TCP real com guarda SSRF, mas **sem framing Modbus**; registradores em memória simulada                                                                                                                                                                                                           |
-| Comunicação OPC-UA                                                  | 🟡/❌                  | Sessão simulada; conexão real lança erro — `node-opcua` não está em `package.json`                                                                                                                                                                                                                        |
+| Comunicação Modbus                                                  | ✅ (Gate 3 Edge)       | Driver Modbus TCP Read-Only em `lib/edge/drivers/modbus-driver.ts`; MBAP/PDU, FC1/2/3/4, 4 endianness (ABCD/DCBA/CDAB/BADC), escala e zero/one-based                                                                                                                                                       |
+| Comunicação OPC-UA                                                  | ✅ (Gate 3 Edge)       | Driver OPC UA Read-Only em `lib/edge/drivers/opcua-driver.ts`; SignAndEncrypt, Trust List, Browse, Read, Subscriptions, mapeamento de StatusCodes para qualidade                                                                                                                                          |
+| Comunicação MQTT Sparkplug B                                        | ✅ (Gate 3 Edge)       | Driver Sparkplug B Read-Only em `lib/edge/drivers/sparkplug-driver.ts`; NBIRTH, DBIRTH, NDATA, DDATA, NDEATH, sequenciamento 0-255 e ACL de tópicos                                                                                                                                                        |
+| ElétricAi Edge Gateway (Store-and-Forward)                          | ✅ (Gate 3 Edge)       | Daemon autônomo `lib/edge/gateway-manager.ts`, outbox transacional `lib/edge/buffer/sqlite-outbox.ts`, provisionamento por token descartável `lib/edge/provisioning.ts`, isolamento multi-tenant IEC 62443                                                                                                   |
 | SCADA/HMI (telas, tags, alarmes ISA-18.2, trends)                   | ✅                     | `scada-canvas.tsx`, `scada-engine.ts`, sandbox de scripts em Web Worker                                                                                                                                                                                                                                   |
 | Simulação                                                           | 🟡                     | Ladder/FBD simulam lógica real; planta 8M+2EX com motor determinístico; **circuitos de potência e PLC real não são simulados**; painel "Simulação" reúne planta, cenários, ponte e estudos                                                                                                                |
 | Digital twin 3D + telemetria + what-if                              | ✅                     | `/digital-twin`, upload GLB (bucket privado, signed URLs), flush de telemetria, Realtime                                                                                                                                                                                                                  |
@@ -1260,4 +1262,55 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 
 ---
 
-_Documento gerado por auditoria de leitura. Nenhum outro arquivo do repositório foi modificado; nenhuma dependência foi instalada; nenhuma migration foi executada; nenhuma credencial foi revelada._
+## 11. SCADA SUPERVISÓRIO INDUSTRIAL — Diretrizes e Arquitetura
+
+O módulo SCADA SUPERVISÓRIO é um subsistema de primeira classe integrado à plataforma, em conformidade com as normas ISA-101, ISA-18.2, IEC 62443 e IEC 61131-3.
+
+### 11.1 Princípios Inegociáveis
+
+1. **Single Source of Truth**: Equipamentos visíveis no SCADA (`CanonicalEquipment`) compartilham identidade única com o Unifilar, Multifilar, Ladder e Digital Twin. Não criar entidades duplicadas ou desconectadas.
+2. **Fronteiras de Segurança Operacional e os 4 Níveis de Parada (NR-10 / NR-12)**:
+   - Um botão de software em navegador web **NUNCA** substitui um circuito físico de emergência (NR-10, NR-12, ISO 13849-1, IEC 62061). O sistema diferencia rigidamente via `SafetyActionLevel`:
+     a. `SIMULATION_HALT`: Parada exclusiva da simulação local/virtual. Bloqueio mandatório de escrita em campo (`isPhysicalControlAllowed: false`) e banner permanente NR-10/NR-12 na UI.
+     b. `OPERATIONAL_STOP_REQUEST`: Requisição de parada operacional do processo industrial via CLP (Cat. 0/1 IEC 60204-1).
+     c. `PHYSICAL_EMERGENCY_STOP`: Circuito físico cabeado de segurança (cogumelo vermelho com trava e contatos NF positivos).
+     d. `VALIDATED_SAFETY_FUNCTION`: Função de segurança instrumentada certificada SIL 2/3 / PL d/e com relé de monitoramento.
+   - O comando de simulação gera o alarme auditado `ETE.SAFETY.ESTOP` com flag `isSimulated: true` e ação auditada `SIMULATION_HALT`. O rearme é manual e intencional.
+3. **Multi-tenancy e Isolamento de Contexto (`resolveScadaProjectContext`)**:
+   - A rota `/scada` e seus sub-painéis dependem obrigatoriamente do search param `projectId`.
+   - A autorização é validada no servidor via server function `resolveScadaProjectContext` verificando `tenant_memberships` e RLS do Supabase. Bloqueio 403 HTTP imediato e isolamento/limpeza completa de store (`clearProjectContext`) caso o usuário não pertença à organização proprietária da planta.
+   - Proibido acoplar fixtures estáticas na inicialização da aplicação: plantas de demonstração usam semente explícita (`demo-ete-seed.ts`) com ID isolado (`00000000-0000-4000-8000-000000000001`).
+4. **Identificação Mandatória de Simulação**:
+   - Sempre que o sistema estiver operando com dados virtuais/simulados, é mandatório exibir o banner amarelo/âmbar: `MODO SIMULAÇÃO — DADOS ILUSTRATIVOS, NÃO ORIGINADOS DE EQUIPAMENTO FÍSICO.`
+5. **Isolamento de Persistência**:
+   - A telemetria de alta frequência (100 ms) roda no `useScadaStore` de forma desacoplada do documento do projeto para garantir zero poluição de histórico e evitar requisições repetitivas de autosave ao Supabase.
+6. **Preservação de Código e Ferramental**:
+   - O editor de telas Konva 2D e o script sandbox com Monaco Editor são integrados na Visão 10 ("Editor HMI"), preservando os componentes legados sem descarte.
+
+---
+
+## 12. UNIFILAR & CONECTIVIDADE ELÉTRICA CANÔNICA — Diretrizes e Arquitetura
+
+O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distribuição de potência da plataforma, em estrita conformidade com a ABNT NBR 5410, ABNT NBR 14039, IEC 60947, IEC 60617 e IEC 60204-1.
+
+### 12.1 Princípios Inegociáveis
+
+1. **Topologia Elétrica vs Renderização Geométrica**:
+   - O diagrama unifilar é primariamente um **grafo topológico elétrico determinístico** (`CanonicalEquipment`, `CanonicalTerminal`, `ElectricalConnection`, `CanonicalNet`).
+   - O canvas WebGL/Pixi é apenas a projeção visual e geométrica desse grafo. Nenhuma regra de continuidade, seletividade ou cálculo elétrico depende de suposições visuais ou distâncias de pixels no canvas.
+2. **Proibição de Equipamentos Desconectados e Circuitos Fantasmas na Geração por IA**:
+   - Todo fluxo de geração de diagramas por inteligência artificial aciona obrigatoriamente o pipeline de reparação determinística (`repairDiagramConnections`).
+   - Disjuntores gerais (QGBT) conectam-se ao barramento principal; disjuntores de ramal derivam do barramento; ramais de motores encadeiam ordenadamente: Disjuntor ($2/T1$) $\to$ Contator ($1/L1$) $\to$ Relé Térmico ($1/L1$) $\to$ Motor ($U1$).
+   - Ramais com Inversor de Frequência conectam: Disjuntor $\to$ VFD ($R/S/T \to U/V/W$) $\to$ Motor ($U1$).
+   - Fontes de alimentação conectam: Disjuntor $\to$ PSU ($L/N \to +24V/0V$).
+3. **Terminais Industriais Padronizados**:
+   - Proibido o uso de portas genéricas fictícias (`:in`, `:out`, `:port1`). Toda conexão física é mapeada para códigos de terminal reais da IEC 60947 / IEC 60617 / NBR 5410 (`1/L1`, `2/T1`, `A1`, `A2`, `13-14`, `95-96`, `U1`, `PE`).
+   - A função `resolveTerminalCode` realiza o mapeamento determinístico entre as âncoras geométricas (`T`, `B`, `L`, `R`) e os terminais normalizados do equipamento.
+4. **Isolamento de Netlists em Cruzamentos Visuais**:
+   - Cruzamentos de linhas condutoras no canvas em ângulo reto ($+$ ou $\times$) sem ponto de derivação explícito pertencem a netlists totalmente independentes. Não há condução de potencial nem curto-circuito virtual entre condutores que apenas se sobrepõem na tela.
+5. **Rastreabilidade e Alimentação Contínua da Fonte à Carga (`CircuitPath`)**:
+   - Todo consumidor elétrico ativo deve possuir um caminho ininterrupto e protegido contra sobrecorrente desde uma fonte de alimentação válida (rede, gerador, transformador ou alimentador raiz QGBT).
+   - O validador de grafos (`validateElectricalTopology`) emite o `ConnectivityReport` estruturado com o status do projeto (`VALID`, `WARNING`, `INVALID`).
+6. **Equivalência e Sincronização Unifilar $\leftrightarrow$ Multifilar**:
+   - A conversão de um circuito unifilar para multifilar desdobra as fases em condutores individuais de acordo com o código de cores da NBR 5410 (Preto/Cinza/Vermelho para fases, Azul Claro para Neutro, Verde/Amarelo para PE) e gera automaticamente réguas de bornes padronizadas (`-X1`) na fronteira entre painel e campo.
+

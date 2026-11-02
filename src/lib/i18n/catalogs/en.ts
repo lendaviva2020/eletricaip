@@ -61,6 +61,7 @@ export const en: TranslationCatalog = {
     analytics: "Analytics",
     clients: "Clients",
     catalog: "Component Catalog",
+    scada: "SCADA Supervisory",
     settings: "Settings",
     logout: "Log out",
     login: "Log in",

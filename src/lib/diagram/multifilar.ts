@@ -4,6 +4,7 @@ import type { Command } from "./commands";
 import { makeEdge, makeNode } from "./model";
 import type { CircuitConfig, DiagramDoc, DiagramEdge, DiagramNode, NodeKind } from "./schema";
 import { classifyMargin, type Severity } from "../diagnostics/types";
+import { validateElectricalTopology } from "./connection/graph-validator";
 
 export const CONDUCTOR_LABELS: Record<CircuitConfig, string[]> = {
   F: ["L1"],
@@ -634,7 +635,41 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
     }
   }
 
-  // 4. Verificação de conectividade contínua
+  // 4. Verificação de topologia elétrica, nós desconectados e cargas sem alimentação
+  const topology = validateElectricalTopology(doc);
+  for (const disconn of topology.disconnectedNodes) {
+    if (disconn.kind !== "ground" && disconn.kind !== "neutral") {
+      alerts.push({
+        id: `disconn_${disconn.nodeId}`,
+        type: "ERRO",
+        severity: "error",
+        message: `Equipamento '${disconn.label || disconn.nodeId}' (${disconn.kind}) está totalmente desconectado.`,
+        nodeId: disconn.nodeId,
+      });
+    }
+  }
+
+  for (const missing of topology.missingConnections) {
+    alerts.push({
+      id: `missing_${missing.equipmentId}_${missing.terminalCode}`,
+      type: missing.severity === "error" ? "ERRO" : "AVISO",
+      severity: missing.severity,
+      message: missing.reason,
+      nodeId: missing.equipmentId,
+    });
+  }
+
+  for (const invalid of topology.invalidConnections) {
+    alerts.push({
+      id: `invalid_${invalid.edgeId}`,
+      type: "ERRO",
+      severity: "error",
+      message: invalid.reason,
+      edgeId: invalid.edgeId,
+    });
+  }
+
+  // 5. Verificação de conectividade contínua
   if (
     edges.length > 0 &&
     alerts.filter((a) => a.type === "ERRO" || a.severity === "error").length === 0
@@ -643,7 +678,7 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
       id: "conn_ok",
       type: "OK",
       severity: "ok",
-      message: "Conectividade validada",
+      message: "Conectividade validada com sucesso.",
     });
   }
 

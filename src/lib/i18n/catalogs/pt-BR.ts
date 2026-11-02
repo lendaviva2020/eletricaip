@@ -60,6 +60,7 @@ export const ptBR = {
     analytics: "Analytics",
     clients: "Clientes",
     catalog: "Catálogo de Componentes",
+    scada: "SCADA Supervisório",
     settings: "Configurações",
     logout: "Sair",
     login: "Entrar",

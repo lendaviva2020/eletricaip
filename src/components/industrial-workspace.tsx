@@ -46,8 +46,8 @@ const LadderCanvas = lazy(() =>
 const FbdCanvas = lazy(() =>
   import("@/components/canvases/fbd-canvas").then((m) => ({ default: m.FbdCanvas })),
 );
-const ScadaCanvas = lazy(() =>
-  import("@/components/canvases/scada-canvas").then((m) => ({ default: m.ScadaCanvas })),
+const ScadaLayout = lazy(() =>
+  import("@/components/scada/scada-layout").then((m) => ({ default: m.ScadaLayout })),
 );
 const TwinCanvas = lazy(() =>
   import("@/components/canvases/twin-canvas").then((m) => ({ default: m.TwinCanvas })),
@@ -141,7 +141,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       )}
 
       {/* Gaveta esquerda em mobile/tablet (< 1024px) */}
-      {!leftCollapsed && (
+      {!leftCollapsed && mode !== "scada" && (
         <div className="lg:hidden flex absolute left-0 inset-y-0 z-40 border-r border-border bg-panel h-full overflow-hidden">
           <LeftSidebarHost mode={mode} />
           <button
@@ -156,7 +156,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       )}
 
       {/* Alça para expandir o painel esquerdo quando recolhido */}
-      {leftCollapsed && (
+      {leftCollapsed && mode !== "scada" && (
         <button
           onClick={toggleLeftPanel}
           className="flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-6 bg-panel border border-border border-l-0 rounded-r-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors touch-manipulation"
@@ -172,7 +172,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         orientation="horizontal"
         className="flex-1 min-h-0 min-w-0 h-full w-full"
       >
-        {!leftCollapsed && (
+        {!leftCollapsed && mode !== "scada" && (
           <>
             <ResizablePanel
               id="workspace-left-panel"
@@ -242,7 +242,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
                     )}
                     {mode === "ladder" && <LadderCanvas />}
                     {mode === "fbd" && <FbdCanvas />}
-                    {mode === "scada" && <ScadaCanvas />}
+                    {mode === "scada" && <ScadaLayout projectId={projectId} />}
                     {mode === "twin" && <TwinCanvas />}
                     {mode === "plc" && <PlcCanvas />}
                     {mode === "sim" && <SimCanvas />}
@@ -255,13 +255,15 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
                 <CanvasAiChat />
               </ErrorBoundary>
             </div>
-            <ErrorBoundary fallback={null}>
-              <UnifiedBottomDock />
-            </ErrorBoundary>
+            {mode !== "scada" && (
+              <ErrorBoundary fallback={null}>
+                <UnifiedBottomDock />
+              </ErrorBoundary>
+            )}
           </div>
         </ResizablePanel>
 
-        {!rightCollapsed && (
+        {!rightCollapsed && mode !== "scada" && (
           <>
             <ResizableHandle withHandle className="hidden lg:flex" />
             <ResizablePanel
@@ -289,7 +291,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       </ResizablePanelGroup>
 
       {/* Gaveta direita em mobile/tablet (< 1024px) */}
-      {!rightCollapsed && (
+      {!rightCollapsed && mode !== "scada" && (
         <div className="lg:hidden flex absolute right-0 inset-y-0 z-40 border-l border-border bg-panel h-full">
           <button
             onClick={toggleRightPanel}
@@ -304,7 +306,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       )}
 
       {/* Alça para expandir o painel direito quando recolhido */}
-      {rightCollapsed && (
+      {rightCollapsed && mode !== "scada" && (
         <button
           onClick={toggleRightPanel}
           className="flex absolute right-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-6 bg-panel border border-border border-r-0 rounded-l-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors touch-manipulation"

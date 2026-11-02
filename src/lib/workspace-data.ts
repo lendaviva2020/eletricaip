@@ -23,7 +23,7 @@ export const MODES: { id: WorkspaceMode; label: string; hint: string }[] = [
   { id: "multifilar", label: "Multifilar", hint: "IEC 60617" },
   { id: "ladder", label: "Ladder", hint: "IEC 61131-3" },
   { id: "fbd", label: "FBD", hint: "IEC 61131-3" },
-  { id: "scada", label: "SCADA", hint: "ISA-101" },
+  { id: "scada", label: "SCADA Supervisório", hint: "ISA-101" },
   { id: "twin", label: "Digital Twin", hint: "3D" },
   { id: "plc", label: "PLC", hint: "Config" },
   { id: "sim", label: "Simulação", hint: "Runtime" },

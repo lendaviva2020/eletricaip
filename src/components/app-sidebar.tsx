@@ -8,7 +8,6 @@ import {
   Sparkle,
   Gear,
   FolderOpen,
-  Cube,
   CaretLeft,
   CaretRight,
   WifiHigh,
@@ -41,7 +40,6 @@ const items: NavItem[] = [
     icon: Cpu,
     accent: true,
   },
-  { key: "twin", defaultTitle: "Digital Twin", url: "/digital-twin", icon: Cube, accent: true },
   { key: "ai", defaultTitle: "IA Industrial", url: "/ai", icon: Sparkle, core: true },
   { key: "analytics", defaultTitle: "Analytics", url: "/analytics", icon: ChartBar },
   { key: "clients", defaultTitle: "Clientes", url: "/clients", icon: Users },
@@ -149,6 +147,11 @@ export function AppSidebar() {
             <Link
               key={item.url}
               to={item.url}
+              search={
+                project?.id && (item.url === "/workspace" || item.url === "/scada")
+                  ? { projectId: project.id }
+                  : undefined
+              }
               className={cn(
                 "group flex items-center rounded-md text-sm transition-all",
                 collapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2",

@@ -19,6 +19,7 @@ import {
   Palette,
   Plug,
   SignOut,
+  HardDrives,
 } from "@phosphor-icons/react";
 import { LogoutButton } from "@/components/auth/logout-dialog";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
@@ -212,6 +213,13 @@ function SettingsPage() {
               desc="Configure OPC-UA, Modbus TCP, teste conexões e gerencie endpoints"
               to="/settings/protocols"
               badge="Novo"
+            />
+            <SettingsLinkCard
+              icon={HardDrives}
+              title="Gerenciamento de Frota Edge"
+              desc="Status, telemetria, certificados mTLS, saúde e atualizações remotas de múltiplos gateways"
+              to="/settings/edge-fleet"
+              badge="Gate 3.5"
             />
           </div>
           <Card className="mt-3">

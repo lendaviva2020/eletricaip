@@ -26,6 +26,7 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as RealtimeRouteImport } from './routes/realtime'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ScadaRouteImport } from './routes/scada'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermosRouteImport } from './routes/termos'
@@ -40,6 +41,7 @@ import { Route as SettingsAutosaveRouteImport } from './routes/settings.autosave
 import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
 import { Route as SettingsCatalogImportRouteImport } from './routes/settings.catalog-import'
 import { Route as SettingsDiagnosticsRouteImport } from './routes/settings.diagnostics'
+import { Route as SettingsEdgeFleetRouteImport } from './routes/settings.edge-fleet'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
@@ -140,6 +142,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScadaRoute = ScadaRouteImport.update({
+  id: '/scada',
+  path: '/scada',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -209,6 +216,11 @@ const SettingsCatalogImportRoute = SettingsCatalogImportRouteImport.update({
 const SettingsDiagnosticsRoute = SettingsDiagnosticsRouteImport.update({
   id: '/diagnostics',
   path: '/diagnostics',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsEdgeFleetRoute = SettingsEdgeFleetRouteImport.update({
+  id: '/edge-fleet',
+  path: '/edge-fleet',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
@@ -300,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRouteWithChildren
   '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/scada': typeof ScadaRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
@@ -314,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/catalog-import': typeof SettingsCatalogImportRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
+  '/settings/edge-fleet': typeof SettingsEdgeFleetRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -347,6 +361,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRouteWithChildren
   '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/scada': typeof ScadaRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
@@ -361,6 +376,7 @@ export interface FileRoutesByTo {
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/catalog-import': typeof SettingsCatalogImportRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
+  '/settings/edge-fleet': typeof SettingsEdgeFleetRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -395,6 +411,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRouteWithChildren
   '/realtime': typeof RealtimeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/scada': typeof ScadaRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
@@ -409,6 +426,7 @@ export interface FileRoutesById {
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/catalog-import': typeof SettingsCatalogImportRoute
   '/settings/diagnostics': typeof SettingsDiagnosticsRoute
+  '/settings/edge-fleet': typeof SettingsEdgeFleetRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -444,6 +462,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/realtime'
     | '/reset-password'
+    | '/scada'
     | '/settings'
     | '/signup'
     | '/termos'
@@ -458,6 +477,7 @@ export interface FileRouteTypes {
     | '/settings/billing'
     | '/settings/catalog-import'
     | '/settings/diagnostics'
+    | '/settings/edge-fleet'
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
@@ -491,6 +511,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/realtime'
     | '/reset-password'
+    | '/scada'
     | '/settings'
     | '/signup'
     | '/termos'
@@ -505,6 +526,7 @@ export interface FileRouteTypes {
     | '/settings/billing'
     | '/settings/catalog-import'
     | '/settings/diagnostics'
+    | '/settings/edge-fleet'
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
@@ -538,6 +560,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/realtime'
     | '/reset-password'
+    | '/scada'
     | '/settings'
     | '/signup'
     | '/termos'
@@ -552,6 +575,7 @@ export interface FileRouteTypes {
     | '/settings/billing'
     | '/settings/catalog-import'
     | '/settings/diagnostics'
+    | '/settings/edge-fleet'
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/profile'
@@ -586,6 +610,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRouteWithChildren
   RealtimeRoute: typeof RealtimeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ScadaRoute: typeof ScadaRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SignupRoute: typeof SignupRoute
   TermosRoute: typeof TermosRoute
@@ -720,6 +745,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scada': {
+      id: '/scada'
+      path: '/scada'
+      fullPath: '/scada'
+      preLoaderRoute: typeof ScadaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -816,6 +848,13 @@ declare module '@tanstack/react-router' {
       path: '/diagnostics'
       fullPath: '/settings/diagnostics'
       preLoaderRoute: typeof SettingsDiagnosticsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/edge-fleet': {
+      id: '/settings/edge-fleet'
+      path: '/edge-fleet'
+      fullPath: '/settings/edge-fleet'
+      preLoaderRoute: typeof SettingsEdgeFleetRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/integrations': {
@@ -951,6 +990,7 @@ interface SettingsRouteChildren {
   SettingsBillingRoute: typeof SettingsBillingRoute
   SettingsCatalogImportRoute: typeof SettingsCatalogImportRoute
   SettingsDiagnosticsRoute: typeof SettingsDiagnosticsRoute
+  SettingsEdgeFleetRoute: typeof SettingsEdgeFleetRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
@@ -968,6 +1008,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsBillingRoute: SettingsBillingRoute,
   SettingsCatalogImportRoute: SettingsCatalogImportRoute,
   SettingsDiagnosticsRoute: SettingsDiagnosticsRoute,
+  SettingsEdgeFleetRoute: SettingsEdgeFleetRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsProfileRoute: SettingsProfileRoute,
@@ -1000,6 +1041,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRouteWithChildren,
   RealtimeRoute: RealtimeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ScadaRoute: ScadaRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SignupRoute: SignupRoute,
   TermosRoute: TermosRoute,

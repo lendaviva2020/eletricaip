@@ -38,6 +38,7 @@ import {
   projectLegacyViewsFromV3,
   upgradeSnapshotV2ToV3,
 } from "./migration-v2-to-v3";
+import { resolveTerminalCode } from "@/lib/diagram/connection/connection-engine";
 import { useRuntimeStore } from "./runtime-store";
 
 export interface EquipmentPlacementInput {
@@ -833,12 +834,21 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
           if (e.sheet === "unifilar") {
             const fromEq = nextUniNodes[e.source]?.equipmentId ?? e.source;
             const toEq = nextUniNodes[e.target]?.equipmentId ?? e.target;
+            const srcNode = diagramDoc.nodes[e.source];
+            const tgtNode = diagramDoc.nodes[e.target];
+            const fromCode = srcNode
+              ? resolveTerminalCode(srcNode, e.sourcePort, "source")
+              : (e.sourcePort || "out");
+            const toCode = tgtNode
+              ? resolveTerminalCode(tgtNode, e.targetPort, "target")
+              : (e.targetPort || "in");
+
             d.engineering.connections[e.id] = {
               id: e.id,
               fromEquipmentId: fromEq,
-              fromTerminalId: e.sourcePort || `${fromEq}:out`,
+              fromTerminalId: `${fromEq}:${fromCode}`,
               toEquipmentId: toEq,
-              toTerminalId: e.targetPort || `${toEq}:in`,
+              toTerminalId: `${toEq}:${toCode}`,
               kind: e.kind,
               circuitConfig: e.circuitConfig,
               conductor: e.cable
@@ -899,6 +909,9 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
     },
   })),
 );
+
+/** Alias para compatibilidade reversa com referências legado/Vite */
+export const useUnifiedStore = useUnifiedProjectStore;
 
 // ── Ponte não destrutiva Diagrama → ProjectStore ────────────────────────────
 

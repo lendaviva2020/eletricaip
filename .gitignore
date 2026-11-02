@@ -18,6 +18,8 @@ dist-ssr
 
 # Saída do build (nitro/Vercel) — gerada por `bun run build`
 .vercel/
+dist-edge/
+data/
 
 # Environment files - secrets must stay local and must never be sent to GitHub
 .env
@@ -45,3 +47,6 @@ supabase/**/.temp/
 *.sw?
 .aider*
 .agents/
+
+# Bun cache
+.bun-cache/

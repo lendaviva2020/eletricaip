@@ -1,0 +1,70 @@
+# ELÉTRICAI INDUSTRIAL OS — EDGE GATEWAY SYSTEMD SERVICE UNIT
+# Hardened Linux Daemon Service for Industrial Edge Computing (x86_64 and ARM64)
+# Standards: IEC 62443-4-2 (EDR 2.1, EDR 3.1), NIST SP 800-82 Rev. 3, CIS Linux Benchmark
+#
+# RECOMMENDED FILE SYSTEM PERMISSIONS & OWNERSHIP:
+#   /opt/eletricai/bin/eletricai-edge-daemon    mode 0755  root:root
+#   /etc/eletricai/gateway.json                 mode 0640  root:eletricai
+#   /etc/eletricai/certs/                       mode 0700  eletricai:eletricai
+#   /var/lib/eletricai/                         mode 0750  eletricai:eletricai
+#   /var/log/eletricai/                         mode 0750  eletricai:eletricai
+
+[Unit]
+Description=ElétricAi Master Edge Gateway Industrial Daemon
+Documentation=https://docs.eletricai.com/edge/architecture
+After=network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+
+[Service]
+Type=simple
+User=eletricai
+Group=eletricai
+WorkingDirectory=/var/lib/eletricai
+
+# Executable launch via standalone Bun runtime or compiled native standalone binary
+ExecStart=/usr/local/bin/bun run /opt/eletricai/edge/index.ts --config /etc/eletricai/gateway.json
+# Alternative launch for self-contained compiled binary (no Node/Bun dependency):
+# ExecStart=/opt/eletricai/bin/eletricai-edge-daemon-linux-x64 --config /etc/eletricai/gateway.json
+
+Restart=always
+RestartSec=5s
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+# Resource Constraints & Cgroup Quotas
+MemoryHigh=450M
+MemoryMax=512M
+CPUQuota=200%
+
+# Security Hardening & Sandboxing (IEC 62443 Least Privilege)
+ProtectSystem=strict
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictRealtime=true
+MemoryDenyWriteExecute=false
+LockPersonality=true
+
+# Dedicated Writable Storage & Logging Paths
+ReadWritePaths=/var/lib/eletricai /var/log/eletricai /etc/eletricai/certs
+ReadOnlyPaths=/etc/eletricai /opt/eletricai
+
+# File Descriptors & Process Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Environment & Logging
+Environment=NODE_ENV=production
+Environment=ELETRICAI_EDGE_CONFIG=/etc/eletricai/gateway.json
+Environment=ELETRICAI_LOG_LEVEL=info
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=eletricai-edge
+
+[Install]
+WantedBy=multi-user.target

@@ -20,7 +20,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start:edge": "bun run src/edge-daemon/index.ts",
+    "build:edge": "bun build src/edge-daemon/index.ts --target=node --outfile=dist-edge/eletricai-edge-daemon.js",
+    "build:edge:compile:linux-x64": "bun build --compile --target=bun-linux-x64 src/edge-daemon/index.ts --outfile=dist-edge/eletricai-edge-daemon-linux-x64",
+    "build:edge:compile:linux-arm64": "bun build --compile --target=bun-linux-arm64 src/edge-daemon/index.ts --outfile=dist-edge/eletricai-edge-daemon-linux-arm64",
+    "build:edge:all": "bun run build:edge && bun run build:edge:compile:linux-x64 && bun run build:edge:compile:linux-arm64"
   },
   "dependencies": {
     "@fontsource-variable/ibm-plex-sans": "^5.3.0",

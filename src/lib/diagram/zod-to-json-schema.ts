@@ -95,7 +95,12 @@ export function buildPatchJsonSchema(): FlatSchema {
           sheet: z.enum(["unifilar", "multifilar", "ladder"]),
           source: z.string(),
           target: z.string(),
+          sourcePort: z.string().optional(),
+          targetPort: z.string().optional(),
           kind: z.enum(["power", "signal", "pipe", "ground"]),
+          circuitConfig: z
+            .enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"])
+            .optional(),
         }),
       ),
       removeNodeIds: z.array(z.string()),

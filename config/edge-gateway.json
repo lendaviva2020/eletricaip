@@ -1,0 +1,93 @@
+{
+  "gatewayId": "egw_lab_commissioning_01",
+  "organizationId": "org_eletricai_industrial",
+  "plantId": "plant_ete_matriz",
+  "stationId": "station_edge_rack_01",
+  "version": "3.1.0-industrial",
+  "storage": {
+    "dbPath": "./data/buffer/outbox.db",
+    "maxSamples": 100000,
+    "maxDiskBytes": 262144000,
+    "synchronous": "NORMAL",
+    "saturationPolicy": "DROP_OLDEST_NON_CRITICAL"
+  },
+  "logging": {
+    "level": "info",
+    "logDir": "./logs",
+    "console": true
+  },
+  "healthServer": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 9090
+  },
+  "cloud": {
+    "endpoint": "https://api.eletricai.com/v1/edge/sync",
+    "syncIntervalMs": 1000
+  },
+  "drivers": [
+    {
+      "id": "drv_opcua_substation",
+      "protocol": "OPC_UA",
+      "connectionId": "conn_opc_01",
+      "enabled": true,
+      "opcua": {
+        "endpointUrl": "opc.tcp://127.0.0.1:48401",
+        "securityPolicy": "Basic256Sha256",
+        "securityMode": "SignAndEncrypt"
+      }
+    },
+    {
+      "id": "drv_modbus_pumping",
+      "protocol": "MODBUS_TCP",
+      "connectionId": "conn_modbus_01",
+      "enabled": true,
+      "modbus": {
+        "host": "127.0.0.1",
+        "port": 50201,
+        "unitId": 1
+      }
+    },
+    {
+      "id": "drv_sparkplug_sensors",
+      "protocol": "MQTT_SPARKPLUG_B",
+      "connectionId": "conn_sparkplug_01",
+      "enabled": true,
+      "sparkplug": {
+        "brokerUrl": "mqtts://127.0.0.1:8883",
+        "clientId": "egw_client_01",
+        "groupId": "Planta_ETE",
+        "edgeNodeId": "Node_Saneamento"
+      }
+    }
+  ],
+  "tagMappings": [
+    {
+      "driverId": "drv_opcua_substation",
+      "sourceAddress": "ns=2;s=TRAFO01.CorrenteL1",
+      "targetTagName": "TR-01_CORRENTE_L1",
+      "projectId": "proj_ete_01",
+      "equipmentId": "eq_trafo_01",
+      "dataType": "REAL",
+      "engineeringUnit": "A"
+    },
+    {
+      "driverId": "drv_modbus_pumping",
+      "sourceAddress": "40001",
+      "targetTagName": "B-01_PRESSAO_DESCARGA",
+      "projectId": "proj_ete_01",
+      "equipmentId": "eq_bomba_b01",
+      "dataType": "REAL",
+      "engineeringUnit": "bar"
+    },
+    {
+      "driverId": "drv_sparkplug_sensors",
+      "sourceAddress": "Sensors/NivelTanque01",
+      "targetTagName": "TK-01_NIVEL",
+      "projectId": "proj_ete_01",
+      "equipmentId": "eq_tanque_tk01",
+      "dataType": "REAL",
+      "engineeringUnit": "%"
+    }
+  ]
+}

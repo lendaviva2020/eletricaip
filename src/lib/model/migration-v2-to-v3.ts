@@ -42,6 +42,7 @@ import {
   type TagDataType,
   type UnifiedProjectDoc,
 } from "./unified-schema";
+import { resolveTerminalCode } from "@/lib/diagram/connection/connection-engine";
 
 export function createEmptyUnifiedDoc(partialMeta?: Partial<ProjectMetadata>): UnifiedProjectDoc {
   const now = new Date().toISOString();
@@ -541,12 +542,21 @@ export function upgradeSnapshotV2ToV3(
       if (e.sheet === "unifilar") {
         const fromEqId = base.views.unifilar.nodes[e.source]?.equipmentId ?? e.source;
         const toEqId = base.views.unifilar.nodes[e.target]?.equipmentId ?? e.target;
+        const srcNode = rawDiagram.nodes[e.source];
+        const tgtNode = rawDiagram.nodes[e.target];
+        const fromCode = srcNode
+          ? resolveTerminalCode(srcNode, e.sourcePort, "source")
+          : (e.sourcePort || "out");
+        const toCode = tgtNode
+          ? resolveTerminalCode(tgtNode, e.targetPort, "target")
+          : (e.targetPort || "in");
+
         const conn: ElectricalConnection = {
           id: e.id,
           fromEquipmentId: fromEqId,
-          fromTerminalId: e.sourcePort || `${fromEqId}:out`,
+          fromTerminalId: `${fromEqId}:${fromCode}`,
           toEquipmentId: toEqId,
-          toTerminalId: e.targetPort || `${toEqId}:in`,
+          toTerminalId: `${toEqId}:${toCode}`,
           kind: e.kind,
           circuitConfig: e.circuitConfig,
           conductor: e.cable

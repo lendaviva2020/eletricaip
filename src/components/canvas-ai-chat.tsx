@@ -243,9 +243,12 @@ export function CanvasAiChat() {
           setMsgs((m) => {
             const c = [...m];
             const title = t("aiChat.patchAppliedTitle");
+            const reportSummary = res.report?.summary
+              ? `\n\n⚡ **Relatório de Conectividade:**\n${res.report.summary}`
+              : "";
             c[c.length - 1] = {
               role: "ai",
-              text: `**${title}**\n\n${rationale ?? ""}\n\n• +${addNodes.length} ${isEn ? "nodes" : "nós"} · +${addEdges.length} edges\n• ~${updateNodes.length} updates · −${removeNodeIds.length} ${isEn ? "nodes" : "nós"} / −${removeEdgeIds.length} edges`,
+              text: `**${title}**\n\n${rationale ?? ""}\n\n• +${addNodes.length} ${isEn ? "nodes" : "nós"} · +${addEdges.length} conexões elétricas\n• ~${updateNodes.length} updates · −${removeNodeIds.length} ${isEn ? "nodes" : "nós"} / −${removeEdgeIds.length} edges${reportSummary}`,
               patchApplied: true,
             };
             return c;

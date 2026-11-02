@@ -863,88 +863,90 @@ export function RungGrid() {
   return (
     <div className="flex h-full flex-col bg-background text-foreground select-none overflow-hidden font-sans">
       {/* ─────────────────────────────────────────────────────────────────────────────
-          1. BARRA SUPERIOR (TOPBAR PROFISSIONAL LADDER) - IDÊNTICA À IMAGEM 1
+          1. BARRA SUPERIOR (TOPBAR PROFISSIONAL LADDER)
          ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="h-10 border-b border-border bg-card/60 px-3 flex items-center justify-between gap-3 shrink-0 overflow-x-auto scrollbar-none">
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="font-display text-xs font-bold tracking-wider text-foreground uppercase flex items-center gap-1.5 whitespace-nowrap">
-            <span className="text-primary font-black text-sm">ELÉTRICAI</span> — LADDER PROFISSIONAL
-          </span>
-
-          {/* Abas de Projeto e Ações de Histórico */}
-          <div className="flex items-center gap-2 ml-2 border-l border-border/60 pl-2">
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded bg-background border border-border text-[11px] font-mono text-foreground font-medium shadow-xs">
-              <span>PROJETO_BOMBAS_E_ESTACAO_TRATAMENTO.ladder</span>
-            </div>
-
-            {/* Ações de Desfazer, Refazer, Copiar, Colar e Excluir */}
-            <div className="flex items-center gap-0.5">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={undo}
-                disabled={undoStack.length === 0}
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-20"
-                title="Desfazer (Ctrl+Z)"
-                data-testid="ladder-undo-btn"
-              >
-                <ArrowUUpLeft className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={redo}
-                disabled={redoStack.length === 0}
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-20"
-                title="Refazer (Ctrl+Y)"
-                data-testid="ladder-redo-btn"
-              >
-                <ArrowUUpRight className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={copySelected}
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                title="Copiar Selecionado (Ctrl+C)"
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={paste}
-                disabled={!clipboard}
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-20"
-                title="Colar (Ctrl+V)"
-              >
-                <ClipboardText className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={!selectedTarget?.elementId && !selected}
-                onClick={() => {
-                  if (selectedTarget?.elementId && selectedTarget.rungId) {
-                    deleteElement(selectedTarget.rungId, selectedTarget.elementId);
-                  } else if (selected) {
-                    removeRung(selected);
-                  }
-                }}
-                className="h-7 w-7 p-0 text-destructive hover:bg-destructive/20 disabled:opacity-20"
-                title="Excluir Instrução ou Rede Selecionada (Del / Backspace)"
-                data-testid="ladder-delete-btn"
-              >
-                <Trash className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
+      <div
+        className="h-10 border-b border-border bg-card/60 px-3 flex items-center flex-nowrap overflow-x-auto whitespace-nowrap gap-2 scroll-smooth shrink-0 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-zinc-700/80 [&::-webkit-scrollbar-thumb]:rounded-sm [&::-webkit-scrollbar-track]:bg-transparent [scrollbar-width:thin] [scrollbar-color:#3f3f46_transparent]"
+        onWheel={(e) => {
+          if (e.deltaY !== 0) {
+            e.currentTarget.scrollLeft += e.deltaY;
+          }
+        }}
+      >
+        {/* Nome do Arquivo */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-background border border-border text-[11px] font-mono text-foreground font-medium shadow-xs shrink-0">
+          <span className="shrink-0">PROJETO_BOMBAS_E_ESTACAO_TRATAMENTO.ladder</span>
         </div>
+
+        {/* Ações de Desfazer, Refazer, Copiar, Colar e Excluir */}
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={undo}
+            disabled={undoStack.length === 0}
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-20 shrink-0"
+            title="Desfazer (Ctrl+Z)"
+            data-testid="ladder-undo-btn"
+          >
+            <ArrowUUpLeft className="h-3.5 w-3.5 shrink-0" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={redo}
+            disabled={redoStack.length === 0}
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-20 shrink-0"
+            title="Refazer (Ctrl+Y)"
+            data-testid="ladder-redo-btn"
+          >
+            <ArrowUUpRight className="h-3.5 w-3.5 shrink-0" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={copySelected}
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
+            title="Copiar Selecionado (Ctrl+C)"
+          >
+            <Copy className="h-3.5 w-3.5 shrink-0" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={paste}
+            disabled={!clipboard}
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground disabled:opacity-20 shrink-0"
+            title="Colar (Ctrl+V)"
+          >
+            <ClipboardText className="h-3.5 w-3.5 shrink-0" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!selectedTarget?.elementId && !selected}
+            onClick={() => {
+              if (selectedTarget?.elementId && selectedTarget.rungId) {
+                deleteElement(selectedTarget.rungId, selectedTarget.elementId);
+              } else if (selected) {
+                removeRung(selected);
+              }
+            }}
+            className="h-7 w-7 p-0 text-destructive hover:bg-destructive/20 disabled:opacity-20 shrink-0"
+            title="Excluir Instrução ou Rede Selecionada (Del / Backspace)"
+            data-testid="ladder-delete-btn"
+          >
+            <Trash className="h-3.5 w-3.5 shrink-0" />
+          </Button>
+        </div>
+
+        {/* Divisor */}
+        <div className="h-4 w-px bg-border/60 shrink-0 mx-0.5" />
 
         {/* Controles de Simulação ao Vivo */}
         <div className="flex items-center gap-1.5 shrink-0">
           <div
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-mono font-semibold ${
+            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-mono font-semibold shrink-0 ${
               simulationStatus === "running"
                 ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-400"
                 : simulationStatus === "paused"
@@ -953,7 +955,7 @@ export function RungGrid() {
             }`}
           >
             <span
-              className={`h-2 w-2 rounded-full ${
+              className={`h-2 w-2 rounded-full shrink-0 ${
                 simulationStatus === "running"
                   ? "bg-emerald-400 animate-pulse"
                   : simulationStatus === "paused"
@@ -961,7 +963,7 @@ export function RungGrid() {
                     : "bg-muted-foreground/50"
               }`}
             />
-            <span>
+            <span className="shrink-0">
               {simulationStatus === "running"
                 ? "Simulação Ativa"
                 : simulationStatus === "paused"
@@ -971,9 +973,9 @@ export function RungGrid() {
           </div>
 
           {emergencyLatched ? (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-mono font-semibold bg-rose-950/60 border-rose-500/50 text-rose-300 animate-pulse">
-              <Octagon className="h-3 w-3 text-rose-400" />
-              <span>E-STOP ATUADO</span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-mono font-semibold bg-rose-950/60 border-rose-500/50 text-rose-300 animate-pulse shrink-0">
+              <Octagon className="h-3 w-3 text-rose-400 shrink-0" />
+              <span className="shrink-0">E-STOP ATUADO</span>
               <Button
                 size="sm"
                 variant="outline"
@@ -982,7 +984,7 @@ export function RungGrid() {
                   rearmEmergency();
                   toast.info("Emergência desarmada. Pressione RUN para iniciar.");
                 }}
-                className="h-5 px-1.5 text-[10px] bg-rose-900/80 hover:bg-rose-800 text-rose-100 border-rose-600 ml-1"
+                className="h-5 px-1.5 text-[10px] bg-rose-900/80 hover:bg-rose-800 text-rose-100 border-rose-600 ml-1 shrink-0"
                 title="Rearmar Parada de Emergência"
               >
                 Rearmar
@@ -1000,11 +1002,11 @@ export function RungGrid() {
                 });
                 toast.error("PARADA DE EMERGÊNCIA ACIONADA! Execução interrompida.");
               }}
-              className="h-7 px-2 text-xs font-semibold gap-1 bg-rose-950/60 hover:bg-rose-900/60 border-rose-500/40 text-rose-400"
+              className="h-7 px-2 text-xs font-semibold gap-1 bg-rose-950/60 hover:bg-rose-900/60 border-rose-500/40 text-rose-400 shrink-0"
               title="Acionar Parada de Emergência (E-STOP)"
             >
-              <Octagon className="h-3.5 w-3.5 text-rose-400" />
-              <span>E-STOP</span>
+              <Octagon className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+              <span className="shrink-0">E-STOP</span>
             </Button>
           )}
 
@@ -1021,11 +1023,11 @@ export function RungGrid() {
                 }
                 setSimulationStatus("running");
               }}
-              className="h-7 px-2.5 text-xs font-semibold gap-1 bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-500/40 text-emerald-400"
+              className="h-7 px-2.5 text-xs font-semibold gap-1 bg-emerald-950/60 hover:bg-emerald-900/60 border-emerald-500/40 text-emerald-400 shrink-0"
               title="Iniciar / Retomar Ciclos Ladder"
             >
-              <Play className="h-3 w-3 fill-current" />
-              <span>RUN</span>
+              <Play className="h-3 w-3 fill-current shrink-0" />
+              <span className="shrink-0">RUN</span>
             </Button>
           ) : (
             <Button
@@ -1034,11 +1036,11 @@ export function RungGrid() {
               onClick={() => {
                 setSimulationStatus("paused");
               }}
-              className="h-7 px-2.5 text-xs font-semibold gap-1 bg-amber-950/60 hover:bg-amber-900/60 border-amber-500/40 text-amber-300"
+              className="h-7 px-2.5 text-xs font-semibold gap-1 bg-amber-950/60 hover:bg-amber-900/60 border-amber-500/40 text-amber-300 shrink-0"
               title="Pausar Ciclos Ladder"
             >
-              <Pause className="h-3 w-3 fill-current" />
-              <span>PAUSA</span>
+              <Pause className="h-3 w-3 fill-current shrink-0" />
+              <span className="shrink-0">PAUSA</span>
             </Button>
           )}
 
@@ -1048,11 +1050,11 @@ export function RungGrid() {
             onClick={() => {
               setSimulationStatus("stopped");
             }}
-            className="h-7 px-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30"
+            className="h-7 px-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 shrink-0"
             title="Parar Execução"
           >
-            <Square className="h-3 w-3 fill-current" />
-            <span className="hidden sm:inline">STOP</span>
+            <Square className="h-3 w-3 fill-current shrink-0" />
+            <span className="shrink-0">STOP</span>
           </Button>
 
           <Button
@@ -1063,10 +1065,10 @@ export function RungGrid() {
               useEditorStore.getState().resetSimulationState();
               toast.success("Estado das variáveis e temporizadores redefinido.");
             }}
-            className="h-7 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+            className="h-7 px-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0"
             title="Redefinir Estado (Reset de Temporizadores/Contadores)"
           >
-            <ArrowCounterClockwise className="h-3.5 w-3.5" />
+            <ArrowCounterClockwise className="h-3.5 w-3.5 shrink-0" />
           </Button>
 
           <Button
@@ -1074,23 +1076,23 @@ export function RungGrid() {
             variant="ghost"
             onClick={() => scanRungs(rungs)}
             disabled={running}
-            className="h-7 px-2 text-xs"
+            className="h-7 px-2 text-xs shrink-0"
             title="Avançar 1 Ciclo (Step)"
           >
-            <SkipForward className="h-3.5 w-3.5" />
+            <SkipForward className="h-3.5 w-3.5 shrink-0" />
           </Button>
 
-          <div className="font-mono text-[10px] px-2 py-0.5 rounded bg-muted/60 border border-border/40 text-muted-foreground">
-            Tscan: <span className="text-foreground font-semibold">{tScan}ms</span>
+          <div className="font-mono text-[10px] px-2 py-0.5 rounded bg-muted/60 border border-border/40 text-muted-foreground shrink-0">
+            Tscan: <span className="text-foreground font-semibold shrink-0">{tScan}ms</span>
           </div>
 
           {/* Perfil de Linguagem / Fabricante */}
-          <div className="hidden lg:flex items-center gap-1 text-[11px] font-sans border-l border-border/60 pl-3">
-            <span className="text-muted-foreground text-[10px]">Perfil:</span>
+          <div className="flex items-center gap-1 text-[11px] font-sans border-l border-border/60 pl-2 shrink-0">
+            <span className="text-muted-foreground text-[10px] shrink-0">Perfil:</span>
             <select
               value={profile}
               onChange={(e) => setProfile(e.target.value as LadderProfile)}
-              className="bg-transparent border-0 font-medium text-xs text-foreground cursor-pointer outline-none"
+              className="bg-transparent border-0 font-medium text-xs text-foreground cursor-pointer outline-none shrink-0"
             >
               <option value="generic" className="bg-popover text-popover-foreground">
                 CLP Genérico / IEC 61131-3
@@ -1108,10 +1110,10 @@ export function RungGrid() {
             size="sm"
             variant="ghost"
             onClick={() => setShowST((v) => !v)}
-            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
             title="Ver Código Structured Text / IL"
           >
-            <CodeBlock className="h-3.5 w-3.5" />
+            <CodeBlock className="h-3.5 w-3.5 shrink-0" />
           </Button>
         </div>
       </div>

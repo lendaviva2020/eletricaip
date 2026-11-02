@@ -6,10 +6,12 @@ import {
   EdgeKindSchema,
   NodeKind,
   NodeParamsSchema,
+  type NodeParams,
   PositionSchema,
 } from "@/lib/diagram/schema";
 import type { PlcProject } from "@/lib/plc/types";
 import type { MotorNameplate, TwinMapping } from "@/lib/digital-twin-store";
+import { getCanonicalTerminalsForEquipment } from "@/lib/diagram/connection/terminal-library";
 
 export const UNIFIED_SCHEMA_VERSION = 3 as const;
 
@@ -476,77 +478,9 @@ export function defaultPhasesForKind(kind: NodeKind | string, poles?: number): P
 export function defaultTerminalsForEquipment(
   equipmentId: string,
   kind: NodeKind | string,
+  params?: NodeParams,
 ): CanonicalTerminal[] {
-  const mk = (
-    code: string,
-    terminalKind: CanonicalTerminal["kind"],
-    direction: CanonicalTerminal["direction"] = "bidirectional",
-  ): CanonicalTerminal => ({
-    id: `${equipmentId}:${code}`,
-    code,
-    kind: terminalKind,
-    direction,
-  });
-
-  switch (kind) {
-    case "contactor":
-      return [
-        mk("1/L1", "L1", "in"),
-        mk("2/T1", "L1", "out"),
-        mk("3/L2", "L2", "in"),
-        mk("4/T2", "L2", "out"),
-        mk("5/L3", "L3", "in"),
-        mk("6/T3", "L3", "out"),
-        mk("13", "aux_no", "in"),
-        mk("14", "aux_no", "out"),
-        mk("A1", "control_supply", "in"),
-        mk("A2", "control_supply", "out"),
-      ];
-    case "breaker":
-    case "fuse":
-    case "disconnector":
-      return [
-        mk("1/L1", "L1", "in"),
-        mk("2/T1", "L1", "out"),
-        mk("3/L2", "L2", "in"),
-        mk("4/T2", "L2", "out"),
-        mk("5/L3", "L3", "in"),
-        mk("6/T3", "L3", "out"),
-      ];
-    case "rcd":
-      return [
-        mk("1/L1", "L1", "in"),
-        mk("2/T1", "L1", "out"),
-        mk("3/L2", "L2", "in"),
-        mk("4/T2", "L2", "out"),
-        mk("5/L3", "L3", "in"),
-        mk("6/T3", "L3", "out"),
-        mk("N_IN", "N", "in"),
-        mk("N_OUT", "N", "out"),
-      ];
-    case "relay":
-      return [
-        mk("1/L1", "L1", "in"),
-        mk("2/T1", "L1", "out"),
-        mk("3/L2", "L2", "in"),
-        mk("4/T2", "L2", "out"),
-        mk("5/L3", "L3", "in"),
-        mk("6/T3", "L3", "out"),
-        mk("95", "aux_nc", "in"),
-        mk("96", "aux_nc", "out"),
-        mk("97", "aux_no", "in"),
-        mk("98", "aux_no", "out"),
-      ];
-    case "motor":
-      return [
-        mk("U1", "L1", "in"),
-        mk("V1", "L2", "in"),
-        mk("W1", "L3", "in"),
-        mk("PE", "PE", "in"),
-      ];
-    default:
-      return [mk("in", "L1", "in"), mk("out", "L1", "out")];
-  }
+  return getCanonicalTerminalsForEquipment(equipmentId, kind as NodeKind, params);
 }
 
 export function computeEquipmentStudyHash(

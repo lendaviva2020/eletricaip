@@ -26,6 +26,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       source: "ErrorBoundary",
       componentStack: info.componentStack,
     });
+    console.error("[ErrorBoundary ORIGINAL EXCEPTION]", {
+      name: error?.name,
+      message: error?.message,
+      stack: error?.stack,
+      cause: (error as Error & { cause?: unknown })?.cause,
+    });
     console.error("[ErrorBoundary]", captured.message, info.componentStack);
     this.props.onError?.(error, info);
   }

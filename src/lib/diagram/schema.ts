@@ -137,7 +137,7 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
     voltage_V: z.number().positive().default(380),
     current_A: z.number().positive().optional(),
     fla_A: z.number().positive().optional(),
-    startMethod: z.enum(["DOL", "SOFT", "VFD"]).default("DOL"),
+    startMethod: z.enum(["DOL", "SOFT", "VFD", "STAR_DELTA"]).default("DOL"),
   }),
   z.object({
     kind: z.literal("load"),

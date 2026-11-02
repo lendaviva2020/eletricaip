@@ -1,0 +1,162 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Hardware Safety Interlock (Read-Only Status)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "eletricai_edge_is_physical_control_allowed",
+          "legendFormat": "Physical Control Allowed"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "STRICT READ-ONLY (BLOCKED)", "color": "green" } } },
+            { "type": "value", "options": { "1": { "text": "PHYSICAL CONTROL ACTIVE (UNSAFE)", "color": "red" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "title": "Gateway Process Uptime",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "eletricai_edge_uptime_seconds",
+          "legendFormat": "Uptime"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "title": "Pending Cloud Uploads (Backlog)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "eletricai_edge_outbox_pending",
+          "legendFormat": "Pending Samples"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1000 },
+              { "color": "red", "value": 5000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "title": "Oldest Buffered Sample Age",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "eletricai_edge_outbox_oldest_age_seconds",
+          "legendFormat": "Age"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "red", "value": 600 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "title": "Store-and-Forward Outbox Dynamics (WAL Mode)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "eletricai_edge_outbox_total_stored", "legendFormat": "Total Stored" },
+        { "expr": "eletricai_edge_outbox_pending", "legendFormat": "Pending" },
+        { "expr": "eletricai_edge_outbox_in_flight", "legendFormat": "In Flight" },
+        { "expr": "eletricai_edge_outbox_acknowledged", "legendFormat": "Acknowledged" },
+        { "expr": "eletricai_edge_outbox_dropped_saturation", "legendFormat": "Dropped Saturation" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth"
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "title": "Local SQLite Disk Usage",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "eletricai_edge_outbox_disk_bytes", "legendFormat": "Disk Bytes Used" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15
+          }
+        }
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["eletricai", "edge", "scada", "industrial-os"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m"] },
+  "timezone": "browser",
+  "title": "ElétricAi Master Edge Gateway — Industrial Bench Observability",
+  "uid": "eletricai-edge-gw-bench",
+  "version": 1
+}
