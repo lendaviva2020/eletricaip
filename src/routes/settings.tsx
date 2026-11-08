@@ -20,6 +20,7 @@ import {
   Plug,
   SignOut,
   HardDrives,
+  Pulse,
 } from "@phosphor-icons/react";
 import { LogoutButton } from "@/components/auth/logout-dialog";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
@@ -220,6 +221,13 @@ function SettingsPage() {
               desc="Status, telemetria, certificados mTLS, saúde e atualizações remotas de múltiplos gateways"
               to="/settings/edge-fleet"
               badge="Gate 3.5"
+            />
+            <SettingsLinkCard
+              icon={Pulse}
+              title="Centro de Operações Industriais (NOC/EOC)"
+              desc="Observabilidade transversal, confiabilidade de pipeline, matriz de saúde e gestão de incidentes"
+              to="/settings/observability"
+              badge="Gate 3.7"
             />
           </div>
           <Card className="mt-3">

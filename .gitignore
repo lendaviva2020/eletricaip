@@ -50,3 +50,10 @@ supabase/**/.temp/
 
 # Bun cache
 .bun-cache/
+
+# Ephemeral browser & Playwright authentication states
+auth-state.json
+auth-state*.json
+playwright/.auth/
+.playwright/
+

@@ -1,7 +1,7 @@
 // Spreadsheets Exporter (Excel .xlsx and CSV) for Industrial Engineering Dossier
 // Uses 'xlsx' for rich multi-sheet engineering workbooks and standard CSV formats.
 
-import * as XLSX from "xlsx";
+import { XLSX } from "@/lib/security/safe-xlsx";
 import type { CompleteEngineeringDossier } from "./types";
 import { BOM_GROUP_NAMES } from "./types";
 

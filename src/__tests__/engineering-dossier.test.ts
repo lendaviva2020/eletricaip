@@ -21,7 +21,7 @@ import { generateEngineeringDossierPdf } from "@/lib/dossier/pdf-builder";
 import { buildDossierExcelWorkbook, buildBomCsv } from "@/lib/dossier/export-spreadsheets";
 import { assembleCompleteDossier } from "@/lib/dossier/dossier.functions";
 import type { ProjectSnapshot } from "@/lib/projects.functions";
-import * as XLSX from "xlsx";
+import { XLSX } from "@/lib/security/safe-xlsx";
 
 function createMockIndustrialSnapshot(): ProjectSnapshot {
   return {

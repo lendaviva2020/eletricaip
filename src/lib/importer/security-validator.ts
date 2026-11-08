@@ -204,7 +204,9 @@ export function scanObjectForSecurityViolations(
 }
 
 /**
- * Validação rigorosa contra XML External Entity (XXE) e DTD Injection.
+ * Validação rigorosa contra XML External Entity (XXE), DTD Injection e vetores de
+ * @xmldom/xmldom (CVE-2026-83605 DoS de atributos quadráticos, CVE-2026-83607/83608
+ * injeção em Processing Instructions / CDATA, CVE-2026-83613..83619 injeção de atributos).
  */
 export function validateXmlSecurity(xmlString: string): SecurityCheckResult {
   const violations: string[] = [];
@@ -235,6 +237,33 @@ export function validateXmlSecurity(xmlString: string): SecurityCheckResult {
     const msg = "XInclude não é suportado por motivos de segurança.";
     violations.push(msg);
     issues.push({ id: "xxe-xinclude-prohibited", message: msg });
+  }
+
+  // CVE-2026-83607: Processing instructions além do cabeçalho <?xml ...?> são proibidas
+  const piMatches = xmlString.matchAll(/<\?([a-zA-Z0-9_-]+)([\s\S]*?)\?>/g);
+  for (const pi of piMatches) {
+    const target = (pi[1] ?? "").toLowerCase();
+    const body = pi[2] ?? "";
+    if (target !== "xml" || /<\?|\?>|<script/i.test(body)) {
+      const msg = `Processing Instruction XML suspeita ou não permitida (<?${target}?>) bloqueada (CVE-2026-83607).`;
+      violations.push(msg);
+      issues.push({ id: "xml-pi-injection", message: msg });
+      break;
+    }
+  }
+
+  // CVE-2026-83605: Limite de atributos por elemento para prevenir DoS quadrático na validação de atributos
+  const tagMatches = xmlString.matchAll(/<[a-zA-Z0-9_:-]+(\s+[^<>]+?)?>/g);
+  for (const tag of tagMatches) {
+    const attrSegment = tag[1];
+    if (!attrSegment) continue;
+    const attrCount = (attrSegment.match(/=/g) ?? []).length;
+    if (attrCount > 64) {
+      const msg = `Elemento XML excede o limite máximo de 64 atributos (${attrCount} encontrados) — proteção contra DoS (CVE-2026-83605).`;
+      violations.push(msg);
+      issues.push({ id: "xml-attribute-dos", message: msg });
+      break;
+    }
   }
 
   const isSafe = violations.length === 0;

@@ -6,15 +6,25 @@ import { parseJsonBundle, type JsonAdapterResult } from "./json-adapter";
 import { validatePayloadSize } from "../security-validator";
 import type { ImportIssue, ImporterLimits } from "../types";
 
+const FORBIDDEN_YAML_KEYS = new Set(["__proto__", "constructor", "prototype", "<<"]);
+
 /**
  * Parser determinístico e seguro para subconjunto de YAML (chave: valor, listas '-', indentação).
- * Não suporta tags customizadas (!<tag>), proíbe referências circulares e execução.
+ * Não suporta tags customizadas (!<tag>), proíbe âncoras/aliases (&anchor, *alias — CVE-2026-84375),
+ * referências circulares, Prototype Pollution e execução.
  */
 export function safeParseYaml(yamlText: string): unknown {
   // 1. Proibir tags personalizadas ou executáveis do YAML
   if (/!\w+/g.test(yamlText)) {
     throw new Error(
       "Tags customizadas do YAML (!tag) são estritamente proibidas por motivos de segurança.",
+    );
+  }
+
+  // 2. Proibir âncoras (&anchor), aliases (*alias) e merge keys (<<:) — proteção contra Billion Laughs / DoS (CVE-2026-84375)
+  if (/(?:^|\s)[&*][a-zA-Z0-9_-]+/m.test(yamlText) || /(?:^|\s)<<\s*:/m.test(yamlText)) {
+    throw new Error(
+      "Âncoras, aliases (&/*) e merge keys (<<:) do YAML são proibidos (proteção contra DoS / Billion Laughs).",
     );
   }
 
@@ -35,6 +45,11 @@ export function safeParseYaml(yamlText: string): unknown {
     while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
       stack.pop();
     }
+    if (stack.length > 20) {
+      throw new Error(
+        "Profundidade máxima de aninhamento YAML excedida (limite: 20 níveis).",
+      );
+    }
     const currentParent = stack[stack.length - 1].obj;
 
     // Item de lista: "- valor" ou "- chave: valor"
@@ -52,6 +67,11 @@ export function safeParseYaml(yamlText: string): unknown {
 
         const [k, ...vParts] = itemContent.split(":");
         const kClean = k.trim();
+        if (FORBIDDEN_YAML_KEYS.has(kClean.toLowerCase())) {
+          throw new Error(
+            `Propriedade proibida detectada no YAML ("${kClean}") — proteção contra Prototype Pollution.`,
+          );
+        }
         const vClean = vParts.join(":").trim();
         if (vClean) {
           objItem[kClean] = parseYamlScalar(vClean);
@@ -70,6 +90,11 @@ export function safeParseYaml(yamlText: string): unknown {
     const colonIdx = content.indexOf(":");
     if (colonIdx > 0) {
       const key = content.substring(0, colonIdx).trim();
+      if (FORBIDDEN_YAML_KEYS.has(key.toLowerCase())) {
+        throw new Error(
+          `Propriedade proibida detectada no YAML ("${key}") — proteção contra Prototype Pollution.`,
+        );
+      }
       const valStr = content.substring(colonIdx + 1).trim();
 
       if (valStr) {

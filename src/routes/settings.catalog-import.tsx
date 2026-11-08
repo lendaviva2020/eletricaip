@@ -110,14 +110,12 @@ function CatalogImportPage() {
         });
         records = result.data ?? [];
       } else {
-        const XLSX = await import("xlsx");
+        const { safeReadXlsxWorkbook, safeSheetToJson } = await import("@/lib/security/safe-xlsx");
         const buffer = await file.arrayBuffer();
-        const wb = XLSX.read(buffer, { type: "array" });
+        const wb = safeReadXlsxWorkbook(buffer);
         const first = wb.SheetNames[0];
         if (!first) throw new Error("Planilha vazia");
-        records = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[first]!, {
-          defval: "",
-        });
+        records = safeSheetToJson(wb.Sheets[first]!);
       }
       const mapped = records.map(mapRecord);
       if (!mapped.length) throw new Error("Nenhuma linha encontrada no arquivo");

@@ -44,6 +44,7 @@ import { Route as SettingsDiagnosticsRouteImport } from './routes/settings.diagn
 import { Route as SettingsEdgeFleetRouteImport } from './routes/settings.edge-fleet'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
+import { Route as SettingsObservabilityRouteImport } from './routes/settings.observability'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsProtocolsRouteImport } from './routes/settings.protocols'
 import { Route as SettingsRateLimitsRouteImport } from './routes/settings.rate-limits'
@@ -233,6 +234,11 @@ const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsObservabilityRoute = SettingsObservabilityRouteImport.update({
+  id: '/observability',
+  path: '/observability',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsProfileRoute = SettingsProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -330,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/settings/edge-fleet': typeof SettingsEdgeFleetRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/observability': typeof SettingsObservabilityRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/protocols': typeof SettingsProtocolsRoute
   '/settings/rate-limits': typeof SettingsRateLimitsRoute
@@ -379,6 +386,7 @@ export interface FileRoutesByTo {
   '/settings/edge-fleet': typeof SettingsEdgeFleetRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/observability': typeof SettingsObservabilityRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/protocols': typeof SettingsProtocolsRoute
   '/settings/rate-limits': typeof SettingsRateLimitsRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/settings/edge-fleet': typeof SettingsEdgeFleetRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/observability': typeof SettingsObservabilityRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/protocols': typeof SettingsProtocolsRoute
   '/settings/rate-limits': typeof SettingsRateLimitsRoute
@@ -480,6 +489,7 @@ export interface FileRouteTypes {
     | '/settings/edge-fleet'
     | '/settings/integrations'
     | '/settings/notifications'
+    | '/settings/observability'
     | '/settings/profile'
     | '/settings/protocols'
     | '/settings/rate-limits'
@@ -529,6 +539,7 @@ export interface FileRouteTypes {
     | '/settings/edge-fleet'
     | '/settings/integrations'
     | '/settings/notifications'
+    | '/settings/observability'
     | '/settings/profile'
     | '/settings/protocols'
     | '/settings/rate-limits'
@@ -578,6 +589,7 @@ export interface FileRouteTypes {
     | '/settings/edge-fleet'
     | '/settings/integrations'
     | '/settings/notifications'
+    | '/settings/observability'
     | '/settings/profile'
     | '/settings/protocols'
     | '/settings/rate-limits'
@@ -871,6 +883,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsNotificationsRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/observability': {
+      id: '/settings/observability'
+      path: '/observability'
+      fullPath: '/settings/observability'
+      preLoaderRoute: typeof SettingsObservabilityRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/profile': {
       id: '/settings/profile'
       path: '/profile'
@@ -993,6 +1012,7 @@ interface SettingsRouteChildren {
   SettingsEdgeFleetRoute: typeof SettingsEdgeFleetRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
+  SettingsObservabilityRoute: typeof SettingsObservabilityRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   SettingsProtocolsRoute: typeof SettingsProtocolsRoute
   SettingsRateLimitsRoute: typeof SettingsRateLimitsRoute
@@ -1011,6 +1031,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsEdgeFleetRoute: SettingsEdgeFleetRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
+  SettingsObservabilityRoute: SettingsObservabilityRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   SettingsProtocolsRoute: SettingsProtocolsRoute,
   SettingsRateLimitsRoute: SettingsRateLimitsRoute,
