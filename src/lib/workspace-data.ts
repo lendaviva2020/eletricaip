@@ -1,7 +1,16 @@
 // Workspace data — shared types for the industrial workspace
 
 export type WorkspaceMode =
-  "unifilar" | "multifilar" | "ladder" | "fbd" | "scada" | "twin" | "plc" | "sim" | "alarms";
+  | "unifilar"
+  | "multifilar"
+  | "ladder"
+  | "fbd"
+  | "scada"
+  | "twin"
+  | "plc"
+  | "sim"
+  | "alarms"
+  | "studio";
 
 export type ConsoleTab =
   | "Logs"
@@ -28,6 +37,7 @@ export const MODES: { id: WorkspaceMode; label: string; hint: string }[] = [
   { id: "plc", label: "PLC", hint: "Config" },
   { id: "sim", label: "Simulação", hint: "Runtime" },
   { id: "alarms", label: "Alarmes", hint: "ISA-18.2" },
+  { id: "studio", label: "Studio IEC", hint: "CODESYS Parity" },
 ];
 
 export const CONSOLE_TABS: ConsoleTab[] = [
