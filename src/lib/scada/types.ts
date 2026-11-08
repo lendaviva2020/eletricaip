@@ -37,11 +37,12 @@ export type TagDataType = "BOOL" | "INT" | "REAL" | "STRING" | "TIME";
 export type ProtocolDriver =
   "SIMULATION" | "INTERNAL_RUNTIME" | "OPC_UA" | "MODBUS_TCP" | "MQTT" | "IMPORTED";
 
-// ── GATE 3.4: Provenance Classification (ISA-101 Visual Truth Model) ──
+// ── GATE 3.4 / 3.6: Provenance Classification (ISA-101 Visual Truth Model) ──
 export type DataSourceProvenance =
   | "PHYSICAL_DATA"
   | "INTERNAL_RUNTIME"
   | "SIMULATED_DATA"
+  | "CALCULATED_DATA"
   | "FORCED_DATA"
   | "STALE_DATA"
   | "BAD_QUALITY"
@@ -49,20 +50,25 @@ export type DataSourceProvenance =
 
 /**
  * Resolves the unequivocal provenance classification of a process variable.
- * Enforces rule: Never present simulated or stale data as physical measurements.
+ * Enforces rule: Never present simulated, calculated, forced, or stale data as physical measurements.
  */
 export function resolveTagProvenance(
   quality: TagQuality,
   driver: ProtocolDriver,
   forced?: boolean,
   isSimulated?: boolean,
+  options?: { isCalculated?: boolean; hasValidPhysicalSource?: boolean },
 ): DataSourceProvenance {
   if (forced) return "FORCED_DATA";
   if (quality === "NOT_CONNECTED") return "NOT_CONNECTED";
   if (quality === "STALE") return "STALE_DATA";
   if (quality === "BAD") return "BAD_QUALITY";
   if (isSimulated || driver === "SIMULATION") return "SIMULATED_DATA";
-  if (driver === "OPC_UA" || driver === "MODBUS_TCP" || driver === "MQTT") return "PHYSICAL_DATA";
+  if (options?.isCalculated) return "CALCULATED_DATA";
+  if (driver === "OPC_UA" || driver === "MODBUS_TCP" || driver === "MQTT") {
+    if (options?.hasValidPhysicalSource === false) return "NOT_CONNECTED";
+    return "PHYSICAL_DATA";
+  }
   return "INTERNAL_RUNTIME";
 }
 

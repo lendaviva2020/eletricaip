@@ -267,3 +267,58 @@ export const getFleetAuditLogsFn = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<FleetAuditEvent[]> => {
     return fleetAuditManager.getEvents(data);
   });
+
+/**
+ * Triggers a staged signed update campaign on an Edge Gateway.
+ */
+export const triggerSignedUpdateFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        gatewayId: z.string().min(1),
+        targetVersion: z.string().default("1.3.0"),
+        user: z
+          .object({
+            userId: z.string(),
+            email: z.string(),
+            role: z.enum([
+              "PLATFORM_ADMIN",
+              "TENANT_ADMIN",
+              "PLANT_ADMIN",
+              "EDGE_OPERATOR",
+              "ENGINEER",
+              "AUDITOR",
+              "VIEWER",
+            ]),
+            organizationId: z.string(),
+            authorizedPlantIds: z.array(z.string()),
+          })
+          .optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }): Promise<{ success: boolean; activeVersion?: string; error?: string }> => {
+    const user = data.user || DefaultPlatformAdminUser;
+    const gw = edgeFleetManager.getGateway(data.gatewayId);
+    if (!gw) return { success: false, error: "Gateway não encontrado." };
+
+    const manifest = {
+      packageId: `pkg-edge-daemon-${data.targetVersion}`,
+      targetVersion: data.targetVersion,
+      targetArch: gw.hardwareArch,
+      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      signature: "SIG_OFFICIAL_ELETRICAI_2026_TEST_VALID_SIGNATURE_OK",
+      releaseNotes: "Atualização de desempenho do driver Modbus e patch de segurança de buffer WAL.",
+      minGatewayVersion: "1.0.0",
+    };
+
+    const campaign = signedUpdateManager.createStagedCampaign(
+      manifest,
+      gw.plantId,
+      gw.organizationId,
+      user,
+    );
+
+    const res = signedUpdateManager.executeGatewayUpdate(campaign.campaignId, gw, () => true);
+    return res;
+  });

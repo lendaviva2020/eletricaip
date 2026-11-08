@@ -67,6 +67,7 @@ export function ScadaTagsView() {
     PHYSICAL_DATA: { label: "FÍSICO", cls: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" },
     INTERNAL_RUNTIME: { label: "RUNTIME", cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
     SIMULATED_DATA: { label: "SIMULADO", cls: "bg-purple-500/15 text-purple-400 border-purple-500/30" },
+    CALCULATED_DATA: { label: "CALCULADO", cls: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30" },
     FORCED_DATA: { label: "FORÇADO", cls: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
     STALE_DATA: { label: "STALE", cls: "bg-orange-500/15 text-orange-400 border-orange-500/30" },
     BAD_QUALITY: { label: "BAD", cls: "bg-red-500/15 text-red-400 border-red-500/40" },

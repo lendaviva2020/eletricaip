@@ -1,7 +1,7 @@
 // ELÉTRICAI INDUSTRIAL OS — EDGE FLEET MANAGEMENT DASHBOARD (GATE 3.5)
 // Centralized multi-tenant gateway monitoring, telemetry, certificates, remote config & signed updates
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   HardDrives,
   Cpu,
@@ -24,13 +24,18 @@ import {
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { edgeFleetManager } from "@/lib/edge/fleet-manager";
-import { fleetCertificateManager } from "@/lib/edge/fleet-certificates";
-import { remoteConfigManager } from "@/lib/edge/remote-config";
-import { signedUpdateManager } from "@/lib/edge/signed-updates";
-import { fleetAuditManager } from "@/lib/edge/fleet-audit";
+import {
+  getFleetGatewaysFn,
+  getFleetMetricsFn,
+  revokeGatewayCertificateFn,
+  rollbackRemoteConfigFn,
+  getFleetAuditLogsFn,
+  triggerSignedUpdateFn,
+} from "@/lib/edge/fleet.functions";
 import type {
   FleetGatewaySummary,
+  FleetMetricsSummary,
+  FleetAuditEvent,
   EdgeOperationalState,
   FleetUserContext,
   EdgeHardwareArch,
@@ -44,6 +49,22 @@ const CurrentUser: FleetUserContext = {
   authorizedPlantIds: ["plant_ete_central", "plant_subestacao_138kv", "plant_usina_rj"],
 };
 
+const INITIAL_FLEET_METRICS: FleetMetricsSummary = {
+  totalGateways: 0,
+  onlineGateways: 0,
+  offlineGateways: 0,
+  degradedGateways: 0,
+  maintenanceGateways: 0,
+  revokedGateways: 0,
+  certificatesExpiringSoon: 0,
+  totalPendingSamples: 0,
+  averageCpuPercent: 0,
+  averageMemoryPercent: 0,
+  activeAlarmsCount: 0,
+  versionDistribution: {},
+  protocolDistribution: {},
+};
+
 export function EdgeFleetDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState<string>("ALL");
@@ -53,94 +74,139 @@ export function EdgeFleetDashboard() {
   const [activeTab, setActiveTab] = useState<"TELEMETRY" | "CONFIG" | "CERTS" | "UPDATES" | "AUDIT">("TELEMETRY");
   const [refreshNonce, setRefreshNonce] = useState(0);
 
-  // Load live gateways and metrics
-  const gateways = useMemo(() => {
-    return edgeFleetManager.getFleetGateways(CurrentUser, {
-      operationalState: selectedState !== "ALL" ? (selectedState as EdgeOperationalState) : undefined,
-      plantId: selectedPlant !== "ALL" ? selectedPlant : undefined,
-      hardwareArch: selectedArch !== "ALL" ? (selectedArch as EdgeHardwareArch) : undefined,
-      searchQuery: searchQuery || undefined,
-    });
+  const [gateways, setGateways] = useState<FleetGatewaySummary[]>([]);
+  const [metrics, setMetrics] = useState<FleetMetricsSummary>(INITIAL_FLEET_METRICS);
+  const [auditLogs, setAuditLogs] = useState<FleetAuditEvent[]>([]);
+
+  // Load live gateways and metrics via Server Functions
+  useEffect(() => {
+    let active = true;
+    getFleetGatewaysFn({
+      data: {
+        user: CurrentUser,
+        filter: {
+          operationalState: selectedState !== "ALL" ? (selectedState as EdgeOperationalState) : undefined,
+          plantId: selectedPlant !== "ALL" ? selectedPlant : undefined,
+          hardwareArch: selectedArch !== "ALL" ? (selectedArch as EdgeHardwareArch) : undefined,
+          searchQuery: searchQuery || undefined,
+        },
+      },
+    })
+      .then((res) => {
+        if (active && res) setGateways(res);
+      })
+      .catch((err) => console.error("Falha ao buscar gateways da frota:", err));
+
+    getFleetMetricsFn({ data: { user: CurrentUser } })
+      .then((res) => {
+        if (active && res) setMetrics(res);
+        else if (active) setMetrics(INITIAL_FLEET_METRICS);
+      })
+      .catch((err) => console.error("Falha ao buscar métricas da frota:", err));
+
+    return () => {
+      active = false;
+    };
   }, [selectedState, selectedPlant, selectedArch, searchQuery, refreshNonce]);
 
-  const metrics = useMemo(() => {
-    return edgeFleetManager.getFleetMetrics(CurrentUser);
-  }, [refreshNonce]);
+  // Load audit trail when AUDIT tab is opened
+  useEffect(() => {
+    if (activeTab !== "AUDIT" || !selectedGateway) return;
+    let active = true;
+    getFleetAuditLogsFn({ data: { gatewayId: selectedGateway.gatewayId } })
+      .then((res) => {
+        if (active && res) setAuditLogs(res);
+      })
+      .catch((err) => console.error("Falha ao carregar auditoria do gateway:", err));
+
+    return () => {
+      active = false;
+    };
+  }, [activeTab, selectedGateway?.gatewayId, refreshNonce]);
 
   const plants = useMemo(() => {
     const set = new Set<string>();
-    edgeFleetManager.getFleetGateways(CurrentUser).forEach((g) => set.add(g.plantId));
+    gateways.forEach((g) => set.add(g.plantId));
     return Array.from(set);
-  }, [refreshNonce]);
+  }, [gateways]);
 
   const handleRefresh = () => {
     setRefreshNonce((n) => n + 1);
     toast.success("Telemetria da frota atualizada em tempo real.");
   };
 
-  const handleRevoke = (gw: FleetGatewaySummary) => {
+  const handleRevoke = async (gw: FleetGatewaySummary) => {
     const reason = "Revogação administrativa manual pelo console de segurança.";
-    const ok = fleetCertificateManager.revokeCertificate(
-      gw.gatewayId,
-      reason,
-      CurrentUser,
-      gw.organizationId,
-      gw.plantId,
-    );
-    if (ok) {
-      toast.error(`Gateway ${gw.name} revogado com sucesso. Acesso mTLS bloqueado.`);
-      setRefreshNonce((n) => n + 1);
-      if (selectedGateway?.gatewayId === gw.gatewayId) {
-        setSelectedGateway(edgeFleetManager.getGateway(gw.gatewayId) || null);
-      }
-    }
-  };
-
-  const handleRollbackConfig = (gw: FleetGatewaySummary) => {
-    const res = remoteConfigManager.rollbackConfig(
-      gw.gatewayId,
-      CurrentUser,
-      gw.organizationId,
-      gw.plantId,
-    );
-    if (res.success) {
-      toast.success(`Configuração restaurada com sucesso para v${res.activeConfigVersion} (LKGC).`);
-      setRefreshNonce((n) => n + 1);
-    } else {
-      toast.error(`Falha no rollback: ${res.error}`);
-    }
-  };
-
-  const handleSimulateUpdate = (gw: FleetGatewaySummary) => {
     try {
-      const manifest = {
-        packageId: "pkg-edge-daemon-1.3.0",
-        targetVersion: "1.3.0",
-        targetArch: gw.hardwareArch,
-        sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        signature: "SIG_OFFICIAL_ELETRICAI_2026_TEST_VALID_SIGNATURE_OK",
-        releaseNotes: "Atualização de desempenho do driver Modbus e patch de segurança de buffer WAL.",
-        minGatewayVersion: "1.0.0",
-      };
-
-      const campaign = signedUpdateManager.createStagedCampaign(
-        manifest,
-        gw.plantId,
-        gw.organizationId,
-        CurrentUser,
-      );
-
-      const res = signedUpdateManager.executeGatewayUpdate(campaign.campaignId, gw, () => true);
-      if (res.success) {
-        gw.softwareVersion = res.activeVersion;
-        gw.updateState = "UP_TO_DATE";
-        toast.success(`Gateway ${gw.name} atualizado com sucesso para versão ${res.activeVersion}!`);
+      const res = await revokeGatewayCertificateFn({
+        data: {
+          gatewayId: gw.gatewayId,
+          reason,
+          user: CurrentUser,
+          organizationId: gw.organizationId,
+          plantId: gw.plantId,
+        },
+      });
+      if (res?.success) {
+        toast.error(`Gateway ${gw.name} revogado com sucesso. Acesso mTLS bloqueado.`);
         setRefreshNonce((n) => n + 1);
-      } else {
-        toast.error(`Atualização falhou: ${res.error}`);
+        if (selectedGateway?.gatewayId === gw.gatewayId) {
+          setSelectedGateway((prev) =>
+            prev ? { ...prev, isRevoked: true, operationalState: "REVOKED" } : null,
+          );
+        }
       }
     } catch (err: any) {
-      toast.error(`Erro: ${err.message}`);
+      toast.error(`Falha na revogação: ${err?.message || "Erro desconhecido"}`);
+    }
+  };
+
+  const handleRollbackConfig = async (gw: FleetGatewaySummary) => {
+    try {
+      const res = (await rollbackRemoteConfigFn({
+        data: {
+          gatewayId: gw.gatewayId,
+          user: CurrentUser,
+          organizationId: gw.organizationId,
+          plantId: gw.plantId,
+        },
+      })) as { success: boolean; activeConfigVersion?: number; error?: string };
+
+      if (res?.success) {
+        toast.success(`Configuração restaurada com sucesso para v${res.activeConfigVersion} (LKGC).`);
+        setRefreshNonce((n) => n + 1);
+      } else {
+        toast.error(`Falha no rollback: ${res?.error || "Erro desconhecido"}`);
+      }
+    } catch (err: any) {
+      toast.error(`Falha no rollback: ${err?.message || "Erro desconhecido"}`);
+    }
+  };
+
+  const handleSimulateUpdate = async (gw: FleetGatewaySummary) => {
+    try {
+      const res = await triggerSignedUpdateFn({
+        data: {
+          gatewayId: gw.gatewayId,
+          targetVersion: "1.3.0",
+          user: CurrentUser,
+        },
+      });
+      if (res?.success) {
+        gw.softwareVersion = res.activeVersion || "1.3.0";
+        gw.updateState = "UP_TO_DATE";
+        toast.success(`Gateway ${gw.name} atualizado com sucesso para versão ${res.activeVersion || "1.3.0"}!`);
+        setRefreshNonce((n) => n + 1);
+        if (selectedGateway?.gatewayId === gw.gatewayId) {
+          setSelectedGateway((prev) =>
+            prev ? { ...prev, softwareVersion: res.activeVersion || "1.3.0", updateState: "UP_TO_DATE" } : null,
+          );
+        }
+      } else {
+        toast.error(`Atualização falhou: ${res?.error || "Erro desconhecido"}`);
+      }
+    } catch (err: any) {
+      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
     }
   };
 
@@ -686,7 +752,7 @@ export function EdgeFleetDashboard() {
                     Trilha de Auditoria Criptográfica (SHA-256 Enchained)
                   </h4>
                   <div className="space-y-2">
-                    {fleetAuditManager.getEvents({ gatewayId: selectedGateway.gatewayId }).map((ev) => (
+                    {auditLogs.map((ev) => (
                       <div key={ev.id} className="bg-zinc-950 p-3 rounded border border-zinc-800 font-mono text-[11px] space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-blue-400">{ev.eventType}</span>
@@ -696,6 +762,11 @@ export function EdgeFleetDashboard() {
                         <div className="text-[10px] text-zinc-600 truncate">Hash: {ev.tamperProofHash}</div>
                       </div>
                     ))}
+                    {auditLogs.length === 0 && (
+                      <div className="text-zinc-500 font-mono text-xs py-4 text-center">
+                        Nenhum evento de auditoria registrado para este gateway.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

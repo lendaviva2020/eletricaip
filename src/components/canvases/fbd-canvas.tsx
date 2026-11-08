@@ -74,18 +74,21 @@ const FbdBlockNode = memo(function FbdBlockNode({ data }: { data: FbdNodeData })
   const live = useContext(FbdLiveContext)[nodeId ?? ""];
   const setFbdAll = useEditorStore((s) => s.setFbdAll);
   const eno = live?.ENO;
-  const onParamChange = (key: string, val: string) => {
-    if (!nodeId) return;
-    setFbdAll(
-      (prev) =>
-        prev.map((n) =>
-          n.id === nodeId
-            ? { ...n, data: { ...n.data, params: { ...n.data.params, [key]: val } } }
-            : n,
-        ),
-      (prevEdges) => prevEdges,
-    );
-  };
+  const onParamChange = useCallback(
+    (key: string, val: string) => {
+      if (!nodeId) return;
+      setFbdAll(
+        (prev) =>
+          prev.map((n) =>
+            n.id === nodeId
+              ? { ...n, data: { ...n.data, params: { ...n.data.params, [key]: val } } }
+              : n,
+          ),
+        (prevEdges) => prevEdges,
+      );
+    },
+    [nodeId, setFbdAll],
+  );
 
   return (
     <div className="rounded border border-primary/40 bg-card/95 min-w-[160px] shadow-lg overflow-hidden glass-strong">
@@ -201,10 +204,11 @@ const SNAP_GRID: [number, number] = [20, 20];
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1 };
 const PRO_OPTIONS = { hideAttribution: true };
 
-const staticNodeTypes: NodeTypes = {
+export const FBD_NODE_TYPES: NodeTypes = Object.freeze({
   fbdBlock: FbdBlockNode,
-};
-const staticEdgeTypes: EdgeTypes = {};
+});
+export const FBD_EDGE_TYPES: EdgeTypes = Object.freeze({});
+export const EMPTY_LIVE_OUTPUTS = Object.freeze({});
 
 function FbdCanvasInner() {
   const nodes = useEditorStore((s) => s.fbdNodes);
@@ -212,10 +216,17 @@ function FbdCanvasInner() {
   const setFbdAll = useEditorStore((s) => s.setFbdAll);
   const { fitView } = useReactFlow();
 
+  const nodeTypes = useMemo(() => FBD_NODE_TYPES, []);
+  const edgeTypes = useMemo(() => FBD_EDGE_TYPES, []);
+
   const [stCode, setStCode] = useState("");
   const [showStPanel, setShowStPanel] = useState(false);
   const [showEngine, setShowEngine] = useState(true);
   const engine = useFbdEngine();
+  const liveOutputs = useMemo(
+    () => engine.live?.outputs ?? EMPTY_LIVE_OUTPUTS,
+    [engine.live?.outputs],
+  );
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const hasFittedInitialNodes = useRef(false);
@@ -344,20 +355,20 @@ function FbdCanvasInner() {
     [nodes, setFbdAll],
   );
 
-  const exportST = () => {
+  const exportST = useCallback(() => {
     const blob = new Blob([stCode], { type: "text/plain;charset=utf-8" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "NexusMind_Compiled_FBD.txt";
     link.click();
-  };
+  }, [stCode]);
 
-  const deleteSelected = () => {
+  const deleteSelected = useCallback(() => {
     setFbdAll(
       (prevNodes) => prevNodes.filter((n) => !n.selected),
       (prevEdges) => prevEdges.filter((e) => !e.selected),
     );
-  };
+  }, [setFbdAll]);
 
   const handleExportImage = useCallback(
     async (format: "png" | "svg") => {
@@ -398,6 +409,12 @@ function FbdCanvasInner() {
     },
     [nodes],
   );
+
+  const handleInit = useCallback((instance: { fitView: (opts?: any) => void }) => {
+    if (nodes.length > 0) {
+      instance.fitView({ padding: 0.2 });
+    }
+  }, [nodes.length]);
 
   return (
     <div
@@ -462,7 +479,7 @@ function FbdCanvasInner() {
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
-        <FbdLiveContext.Provider value={engine.live?.outputs ?? {}}>
+        <FbdLiveContext.Provider value={liveOutputs}>
           <ReactFlow
             style={{ width: "100%", height: "100%" }}
             nodes={nodes}
@@ -470,8 +487,8 @@ function FbdCanvasInner() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            nodeTypes={staticNodeTypes}
-            edgeTypes={staticEdgeTypes}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             snapToGrid
             snapGrid={SNAP_GRID}
             defaultViewport={DEFAULT_VIEWPORT}
@@ -484,11 +501,7 @@ function FbdCanvasInner() {
             panOnDrag={true}
             onError={handleRfError}
             proOptions={PRO_OPTIONS}
-            onInit={(instance) => {
-              if (nodes.length > 0) {
-                instance.fitView({ padding: 0.2 });
-              }
-            }}
+            onInit={handleInit}
             onlyRenderVisibleElements={true}
           >
             <Background color="var(--color-border)" gap={20} size={1} />
