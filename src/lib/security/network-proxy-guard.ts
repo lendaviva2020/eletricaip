@@ -63,8 +63,11 @@ export function parseAndNormalizeIp(rawInput: string): ParsedIpInfo {
   }
 
   // Reject whitespace or control characters
-  if (/[\s\x00-\x1f\x7f]/.test(trimmed)) {
-    throw new Error("IP address contains invalid whitespace or control characters.");
+  for (let i = 0; i < trimmed.length; i++) {
+    const code = trimmed.charCodeAt(i);
+    if (code <= 0x20 || code === 0x7f) {
+      throw new Error("IP address contains invalid whitespace or control characters.");
+    }
   }
 
   // Check IPv4 first if it contains dots and no colons
@@ -125,9 +128,7 @@ export function parseAndNormalizeIp(rawInput: string): ParsedIpInfo {
     wasIpv4Mapped: false,
     isLoopback: canonical6 === "::1",
     isPrivate:
-      canonical6.startsWith("fc") ||
-      canonical6.startsWith("fd") ||
-      canonical6.startsWith("fe80:"),
+      canonical6.startsWith("fc") || canonical6.startsWith("fd") || canonical6.startsWith("fe80:"),
   };
 }
 
@@ -162,8 +163,7 @@ export function isIpInTrustedCidr(rawIp: string, cidrOrIp: string): boolean {
   if (!trimmedCidr.includes("/")) {
     const parsedTarget = parseAndNormalizeIp(trimmedCidr);
     return (
-      parsedIp.family === parsedTarget.family &&
-      parsedIp.canonicalIp === parsedTarget.canonicalIp
+      parsedIp.family === parsedTarget.family && parsedIp.canonicalIp === parsedTarget.canonicalIp
     );
   }
 

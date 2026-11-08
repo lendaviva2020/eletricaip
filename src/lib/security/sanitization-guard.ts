@@ -165,9 +165,7 @@ export function sanitizeIndustrialHtml(
 
   const maxBytes = options.maxInputBytes ?? 262_144; // 256 KB default limit
   if (new TextEncoder().encode(dirtyInput).byteLength > maxBytes) {
-    throw new RangeError(
-      `HTML input exceeds maximum allowed byte length (${maxBytes} bytes).`,
-    );
+    throw new RangeError(`HTML input exceeds maximum allowed byte length (${maxBytes} bytes).`);
   }
 
   const stripTemplates = options.stripTemplateExpressions ?? true;
@@ -175,8 +173,14 @@ export function sanitizeIndustrialHtml(
   // Pre-strip declarative shadow DOM templates and raw template expressions
   let preCleaned = dirtyInput
     .replace(DECLARATIVE_SHADOW_DOM_PATTERN, "")
-    .replace(/<(script|style|iframe|object|embed|animate|set|mpath|foreignobject)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
-    .replace(/<(script|style|iframe|object|embed|animate|set|mpath|foreignobject)\b[^>]*\/?>/gi, "");
+    .replace(
+      /<(script|style|iframe|object|embed|animate|set|mpath|foreignobject)\b[^>]*>[\s\S]*?<\/\1>/gi,
+      "",
+    )
+    .replace(
+      /<(script|style|iframe|object|embed|animate|set|mpath|foreignobject)\b[^>]*\/?>/gi,
+      "",
+    );
   if (stripTemplates) {
     preCleaned = scrubTemplateExpressionsRecursive(preCleaned);
   }
@@ -193,12 +197,12 @@ export function sanitizeIndustrialHtml(
         FORBID_TAGS: FORBIDDEN_SMIL_TAGS,
         FORBID_ATTR: FORBIDDEN_SMIL_ATTRIBUTES,
       }) as string)
-    : preCleaned
-        .replace(/\s(?:on[a-z]+|attributename|values|xlink:href)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+    : preCleaned.replace(
+        /\s(?:on[a-z]+|attributename|values|xlink:href)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,
+        "",
+      );
 
-  const postCleaned = stripTemplates
-    ? scrubTemplateExpressionsRecursive(sanitized)
-    : sanitized;
+  const postCleaned = stripTemplates ? scrubTemplateExpressionsRecursive(sanitized) : sanitized;
 
   return postCleaned;
 }

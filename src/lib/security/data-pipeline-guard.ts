@@ -395,10 +395,7 @@ export function verifyLedgerAgainstExternalAnchors(
       };
     }
 
-    if (
-      matchingEvent.eventId !== anchor.eventId ||
-      matchingEvent.eventHash !== anchor.eventHash
-    ) {
+    if (matchingEvent.eventId !== anchor.eventId || matchingEvent.eventHash !== anchor.eventHash) {
       return {
         intact: false,
         compromiseType: "PRIVILEGED_RECOMPUTATION_OR_SUBSTITUTION_DETECTED",

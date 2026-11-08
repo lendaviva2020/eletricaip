@@ -126,9 +126,7 @@ export function parseSafeSpreadsheetBuffer(
   });
 
   if (performance.now() - startMs > maxProcessingTimeMs) {
-    throw new Error(
-      `Spreadsheet parsing exceeded time budget (${maxProcessingTimeMs} ms).`,
-    );
+    throw new Error(`Spreadsheet parsing exceeded time budget (${maxProcessingTimeMs} ms).`);
   }
 
   const firstSheetName = wb.SheetNames[0];

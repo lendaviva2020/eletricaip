@@ -252,11 +252,7 @@ export class IsolatedMcpSessionRegistry {
     return task;
   }
 
-  enqueueNotification(
-    targetSessionId: string,
-    notificationId: string,
-    message: string,
-  ): void {
+  enqueueNotification(targetSessionId: string, notificationId: string, message: string): void {
     const session = this.sessions.get(targetSessionId);
     if (!session) {
       throw new Error(`Unknown target MCP session: ${targetSessionId}`);
@@ -278,9 +274,7 @@ export class IsolatedMcpSessionRegistry {
       requestingClientId,
       requestingOrgId,
     );
-    const owned = session.notifications.filter(
-      (n) => n.targetSessionId === requestingSessionId,
-    );
+    const owned = session.notifications.filter((n) => n.targetSessionId === requestingSessionId);
     session.notifications = [];
     return owned;
   }
@@ -294,10 +288,7 @@ export class IsolatedMcpSessionRegistry {
     if (!session) {
       throw new Error(`MCP session not found: ${sessionId}`);
     }
-    if (
-      session.clientId !== clientId ||
-      session.organizationId !== organizationId
-    ) {
+    if (session.clientId !== clientId || session.organizationId !== organizationId) {
       throw new Error(
         `MCP_SESSION_HIJACK_BLOCKED: session '${sessionId}' belongs to another client or tenant.`,
       );
