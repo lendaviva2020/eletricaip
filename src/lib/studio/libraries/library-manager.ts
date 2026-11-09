@@ -87,37 +87,93 @@ export class SemVer {
     return { major: parts[0], minor: parts[1], patch: parts[2] };
   }
 
+  public static compare(
+    a: { major: number; minor: number; patch: number },
+    b: { major: number; minor: number; patch: number }
+  ): number {
+    if (a.major !== b.major) return a.major - b.major;
+    if (a.minor !== b.minor) return a.minor - b.minor;
+    return a.patch - b.patch;
+  }
+
   public static satisfies(version: string, range: string): boolean {
     const v = this.parse(version);
     if (!v) return false;
 
     const trimmedRange = range.trim();
-    if (trimmedRange === "*" || trimmedRange === "") return true;
+    if (trimmedRange === "*" || trimmedRange === "" || trimmedRange === "latest") return true;
 
-    if (trimmedRange.startsWith("^")) {
-      const target = this.parse(trimmedRange.slice(1));
+    // Suporte a faixas com hífen: "1.0.0 - 2.0.0"
+    if (trimmedRange.includes(" - ")) {
+      const [minStr, maxStr] = trimmedRange.split(" - ").map((s) => s.trim());
+      const min = this.parse(minStr);
+      const max = this.parse(maxStr);
+      if (!min || !max) return false;
+      return this.compare(v, min) >= 0 && this.compare(v, max) <= 0;
+    }
+
+    // Suporte a cláusulas múltiplas: ">=1.0.0 <2.0.0"
+    if (trimmedRange.includes(" ") && !trimmedRange.includes(" - ")) {
+      const parts = trimmedRange.split(/\s+/).filter(Boolean);
+      return parts.every((p) => this.satisfiesSingle(v, p));
+    }
+
+    return this.satisfiesSingle(v, trimmedRange);
+  }
+
+  private static satisfiesSingle(
+    v: { major: number; minor: number; patch: number },
+    clause: string
+  ): boolean {
+    const trimmed = clause.trim();
+    if (trimmed === "*" || trimmed === "") return true;
+
+    if (trimmed.startsWith("^")) {
+      const target = this.parse(trimmed.slice(1));
       if (!target) return false;
+      // Regra SemVer para versões 0.x (0.1.0 e 0.2.0 são incompatíveis sob ^)
+      if (target.major === 0) {
+        if (target.minor === 0) {
+          return v.major === 0 && v.minor === 0 && v.patch === target.patch;
+        }
+        return v.major === 0 && v.minor === target.minor && v.patch >= target.patch;
+      }
       return v.major === target.major && (v.minor > target.minor || (v.minor === target.minor && v.patch >= target.patch));
     }
 
-    if (trimmedRange.startsWith("~")) {
-      const target = this.parse(trimmedRange.slice(1));
+    if (trimmed.startsWith("~")) {
+      const target = this.parse(trimmed.slice(1));
       if (!target) return false;
       return v.major === target.major && v.minor === target.minor && v.patch >= target.patch;
     }
 
-    if (trimmedRange.startsWith(">=")) {
-      const target = this.parse(trimmedRange.slice(2));
-      if (!target) return false;
-      if (v.major > target.major) return true;
-      if (v.major === target.major && v.minor > target.minor) return true;
-      return v.major === target.major && v.minor === target.minor && v.patch >= target.patch;
+    if (trimmed.startsWith(">=")) {
+      const target = this.parse(trimmed.slice(2));
+      return target ? this.compare(v, target) >= 0 : false;
     }
 
-    // Comparação exata
-    const target = this.parse(trimmedRange);
-    if (!target) return false;
-    return v.major === target.major && v.minor === target.minor && v.patch === target.patch;
+    if (trimmed.startsWith(">")) {
+      const target = this.parse(trimmed.slice(1));
+      return target ? this.compare(v, target) > 0 : false;
+    }
+
+    if (trimmed.startsWith("<=")) {
+      const target = this.parse(trimmed.slice(2));
+      return target ? this.compare(v, target) <= 0 : false;
+    }
+
+    if (trimmed.startsWith("<")) {
+      const target = this.parse(trimmed.slice(1));
+      return target ? this.compare(v, target) < 0 : false;
+    }
+
+    if (trimmed.startsWith("=")) {
+      const target = this.parse(trimmed.slice(1));
+      return target ? this.compare(v, target) === 0 : false;
+    }
+
+    const target = this.parse(trimmed);
+    return target ? this.compare(v, target) === 0 : false;
   }
 }
 
@@ -304,6 +360,15 @@ export class IndustrialLibraryManager {
       }
 
       if (processedLibs.has(targetName)) {
+        const existing = processedLibs.get(targetName)!;
+        if (!SemVer.satisfies(existing.version, item.version)) {
+          diagnostics.push({
+            code: "ERR_VERSION_CONFLICT",
+            severity: "ERROR",
+            libraryName: targetName,
+            message: `Conflito de versão na dependência transitiva '${targetName}': versão já resolvida ${existing.version} é incompatível com o requisito '${item.version}'.`,
+          });
+        }
         continue;
       }
 

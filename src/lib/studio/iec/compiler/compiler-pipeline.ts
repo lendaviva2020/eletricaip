@@ -6,9 +6,12 @@
 import { StParser } from "../parser/st-parser";
 import { StSemanticAnalyzer } from "../parser/st-semantic";
 import type { IndustrialProject, POU, CompilationResult, CompilerDiagnostic } from "../../canonical/types";
-import type { CompiledProjectIR, IRBlock, IRInstruction } from "./intermediate-representation";
+import type { CompiledProjectIR, CompiledTask, IRBlock, IRInstruction } from "./intermediate-representation";
 import type { Statement, Expression, BinaryExpression } from "../parser/st-ast";
 import { generateUuid as uuidv4 } from "../../canonical/uuid";
+import { LadderEngine } from "../languages/ladder-engine";
+import { FBDEngine } from "../languages/fbd-engine";
+import { ILEngine } from "../languages/il-engine";
 
 export class IECCompilerPipeline {
   /**
@@ -76,12 +79,20 @@ export class IECCompilerPipeline {
           }
         }
       } else if (pou.language === "LD") {
-        // Compila rungs do Ladder
-        const block = this.generateIRFromLadder(pou);
+        // Compila rungs do Ladder com suporte a branches
+        const rungs = pou.networks.flatMap((n) => n.rungs);
+        const block = LadderEngine.ladderToIR(pou.name, rungs);
         irBlocks[pou.name] = block;
       } else if (pou.language === "FBD") {
-        // Compila blocos do FBD
-        const block = this.generateIRFromFBD(pou);
+        // Compila nós e conexões do FBD com ordenação topológica e propagação
+        const nodes = pou.networks.flatMap((n) => n.fbdNodes);
+        const conns = pou.networks.flatMap((n) => n.fbdConnections);
+        const block = FBDEngine.fbdToIR(pou.name, nodes, conns);
+        irBlocks[pou.name] = block;
+      } else if (pou.language === "IL") {
+        // Compila Instruction List (IL) com acumulador CR
+        const ilSource = pou.rawSourceST || (pou as any).sourceST || "";
+        const block = ILEngine.ilToIR(pou.name, ilSource);
         irBlocks[pou.name] = block;
       } else if (pou.language === "SFC") {
         // Compila grafo SFC
@@ -90,17 +101,36 @@ export class IECCompilerPipeline {
       }
     }
 
-    // 3. Mapeia a ordem das tarefas
+    // 3. Mapeia a ordem das tarefas e metadados completos
     const tasksOrder: { taskName: string; pouNames: string[]; intervalMs: number }[] = [];
+    const compiledTasks: CompiledTask[] = [];
+
     for (const task of project.taskConfigurations) {
       if (task.enabled) {
-        const pouNames = task.pouIds
-          .map((id) => project.pous.find((p) => p.id === id)?.name)
-          .filter((name): name is string => Boolean(name));
+        const tAny = task as any;
+        const pouNames = task.pouIds && task.pouIds.length > 0
+          ? task.pouIds
+              .map((id) => project.pous.find((p) => p.id === id)?.name)
+              .filter((name): name is string => Boolean(name))
+          : tAny.pouNames || [];
+
         tasksOrder.push({
           taskName: task.name,
           pouNames,
           intervalMs: task.intervalMs,
+        });
+
+        compiledTasks.push({
+          id: task.id,
+          name: task.name,
+          type: task.type,
+          priority: task.priority,
+          intervalMs: task.intervalMs,
+          watchdogEnabled: tAny.watchdogEnabled ?? true,
+          watchdogMs: task.watchdogMs,
+          watchdogSensitivity: task.watchdogSensitivity ?? 1,
+          pouNames,
+          triggerEventVariable: tAny.triggerEventVariable || task.eventTriggerTagId,
         });
       }
     }
@@ -127,6 +157,7 @@ export class IECCompilerPipeline {
       blocks: irBlocks,
       globalVariables,
       tasksOrder,
+      tasks: compiledTasks,
     };
 
     return {

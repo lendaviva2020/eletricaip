@@ -53,7 +53,10 @@ export class ModbusProtocolEngine {
   /**
    * Valida e decodifica um frame Modbus TCP (MBAP + PDU)
    */
-  public static parseModbusTCPFrame(frame: Uint8Array): {
+  public static parseModbusTCPFrame(
+    frame: Uint8Array,
+    options: { allowVirtualWrite?: boolean } = {}
+  ): {
     transactionId: number;
     protocolId: number;
     length: number;
@@ -76,9 +79,9 @@ export class ModbusProtocolEngine {
       throw new Error(`Protocol ID deve ser 0x0000 para Modbus TCP, recebido 0x${protocolId.toString(16)}.`);
     }
 
-    // Barreira de escrita física
-    if ([5, 6, 15, 16].includes(functionCode) && IS_PHYSICAL_CONTROL_ALLOWED) {
-      throw new Error("VIOLAÇÃO DE SEGURANÇA: Escrita Modbus em hardware físico bloqueada.");
+    // Barreira ativa de segurança física (IS_PHYSICAL_CONTROL_ALLOWED = false)
+    if ([5, 6, 15, 16].includes(functionCode) && !options.allowVirtualWrite && !IS_PHYSICAL_CONTROL_ALLOWED) {
+      throw new Error("[SAFETY_VIOLATION] Physical write blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
     }
 
     return {
@@ -93,6 +96,13 @@ export class ModbusProtocolEngine {
         dataBytes: frame.slice(12),
       },
     };
+  }
+
+  /**
+   * Bloqueio incondicional de envio de comando de escrita física
+   */
+  public static sendPhysicalWrite(pdu: ModbusRequestPDU): never {
+    throw new Error("[SAFETY_VIOLATION] Physical write blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
   }
 
   /**
@@ -119,11 +129,8 @@ export class ModbusProtocolEngine {
       };
     }
 
-    // Escrita em Registrador Único (FC06)
+    // Escrita em Registrador Único (FC06) em memória virtual de simulação
     if (fc === 6) {
-      if (IS_PHYSICAL_CONTROL_ALLOWED) {
-        throw new Error("VIOLAÇÃO DE SEGURANÇA: Escrita direta em equipamento físico bloqueada.");
-      }
       virtualHoldingRegisters.set(pdu.startingAddress, pdu.quantityOrValue);
       return {
         functionCode: fc,
@@ -198,6 +205,13 @@ export class OPCUAProtocolEngine {
     }
     return { value: node.value, statusCode: "Good", timestamp: new Date().toISOString() };
   }
+
+  /**
+   * Bloqueio incondicional de escrita em nós físicos reais via OPC UA
+   */
+  public static writeNode(nodeIdStr: string, value: any): never {
+    throw new Error("[SAFETY_VIOLATION] Physical write blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
+  }
 }
 
 // ============================================================================
@@ -236,8 +250,8 @@ export class SparkplugBProtocolEngine {
     }
 
     const messageType = segments[2] as any;
-    if (["NCMD", "DCMD"].includes(messageType) && IS_PHYSICAL_CONTROL_ALLOWED) {
-      throw new Error("VIOLAÇÃO DE SEGURANÇA: Comandos Sparkplug B para equipamentos físicos são barrados.");
+    if (["NCMD", "DCMD"].includes(messageType) && !IS_PHYSICAL_CONTROL_ALLOWED) {
+      throw new Error("[SAFETY_VIOLATION] Sparkplug B command blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
     }
 
     return {
@@ -258,5 +272,15 @@ export class SparkplugBProtocolEngine {
       metrics,
       seq: sequenceNumber % 256, // Sparkplug B seq é 0-255 circular
     };
+  }
+}
+
+// ============================================================================
+// 4. Barreira de Comandos MQTT
+// ============================================================================
+
+export class MQTTProtocolEngine {
+  public static publishCommand(topic: string, payload: any): never {
+    throw new Error("[SAFETY_VIOLATION] MQTT command publish blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
   }
 }

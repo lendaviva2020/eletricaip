@@ -291,39 +291,155 @@ export class ProjectComparisonEngine {
   }
 
   /**
+   * Three-Way Merge Engine (Base, Mine, Theirs)
+   * Resolução automática de alterações não conflitantes e detecção precisa de conflitos.
+   */
+  public static threeWayMerge(
+    base: IndustrialProject,
+    mine: IndustrialProject,
+    theirs: IndustrialProject
+  ): {
+    mergedProject: IndustrialProject;
+    conflicts: MergeConflict[];
+    hasConflicts: boolean;
+    appliedChangesCount: number;
+  } {
+    const conflicts: MergeConflict[] = [];
+    let totalApplied = 0;
+
+    const deepEqual = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
+
+    const mergeCollection = <T extends { id: string; name?: string }>(
+      entityType: string,
+      baseList: T[],
+      mineList: T[],
+      theirsList: T[]
+    ): T[] => {
+      const baseMap = new Map(baseList.map((x) => [x.id, x]));
+      const mineMap = new Map(mineList.map((x) => [x.id, x]));
+      const theirsMap = new Map(theirsList.map((x) => [x.id, x]));
+
+      const allIds = new Set<string>([
+        ...baseMap.keys(),
+        ...mineMap.keys(),
+        ...theirsMap.keys(),
+      ]);
+
+      const result: T[] = [];
+
+      for (const id of allIds) {
+        const inBase = baseMap.get(id);
+        const inMine = mineMap.get(id);
+        const inTheirs = theirsMap.get(id);
+
+        if (inBase && inMine && inTheirs) {
+          if (deepEqual(inMine, inTheirs)) {
+            result.push(JSON.parse(JSON.stringify(inMine)));
+          } else if (deepEqual(inMine, inBase) && !deepEqual(inTheirs, inBase)) {
+            result.push(JSON.parse(JSON.stringify(inTheirs)));
+            totalApplied++;
+          } else if (!deepEqual(inMine, inBase) && deepEqual(inTheirs, inBase)) {
+            result.push(JSON.parse(JSON.stringify(inMine)));
+            totalApplied++;
+          } else {
+            conflicts.push({
+              entityType,
+              entityId: id,
+              entityName: inMine.name || inTheirs.name || inBase.name || id,
+              baseValue: inBase,
+              sourceValue: inMine,
+              targetValue: inTheirs,
+              resolution: "ACCEPT_SOURCE",
+            });
+            result.push(JSON.parse(JSON.stringify(inMine)));
+          }
+        } else if (inBase && !inMine && inTheirs) {
+          if (deepEqual(inTheirs, inBase)) {
+            totalApplied++;
+          } else {
+            conflicts.push({
+              entityType,
+              entityId: id,
+              entityName: inTheirs.name || inBase.name || id,
+              baseValue: inBase,
+              sourceValue: null,
+              targetValue: inTheirs,
+              resolution: "ACCEPT_SOURCE",
+            });
+          }
+        } else if (inBase && inMine && !inTheirs) {
+          if (deepEqual(inMine, inBase)) {
+            totalApplied++;
+          } else {
+            conflicts.push({
+              entityType,
+              entityId: id,
+              entityName: inMine.name || inBase.name || id,
+              baseValue: inBase,
+              sourceValue: inMine,
+              targetValue: null,
+              resolution: "ACCEPT_SOURCE",
+            });
+            result.push(JSON.parse(JSON.stringify(inMine)));
+          }
+        } else if (inBase && !inMine && !inTheirs) {
+          totalApplied++;
+        } else if (!inBase && inMine && !inTheirs) {
+          result.push(JSON.parse(JSON.stringify(inMine)));
+          totalApplied++;
+        } else if (!inBase && !inMine && inTheirs) {
+          result.push(JSON.parse(JSON.stringify(inTheirs)));
+          totalApplied++;
+        } else if (!inBase && inMine && inTheirs) {
+          if (deepEqual(inMine, inTheirs)) {
+            result.push(JSON.parse(JSON.stringify(inMine)));
+          } else {
+            conflicts.push({
+              entityType,
+              entityId: id,
+              entityName: inMine.name || inTheirs.name || id,
+              baseValue: null,
+              sourceValue: inMine,
+              targetValue: inTheirs,
+              resolution: "ACCEPT_SOURCE",
+            });
+            result.push(JSON.parse(JSON.stringify(inMine)));
+          }
+        }
+      }
+
+      return result;
+    };
+
+    const mergedProject: IndustrialProject = JSON.parse(JSON.stringify(mine));
+    mergedProject.pous = mergeCollection("POU", base.pous, mine.pous, theirs.pous);
+    mergedProject.tags = mergeCollection("TAG", base.tags, mine.tags, theirs.tags);
+    mergedProject.taskConfigurations = mergeCollection("TASK", base.taskConfigurations, mine.taskConfigurations, theirs.taskConfigurations);
+    mergedProject.devices = mergeCollection("DEVICE", base.devices, mine.devices, theirs.devices);
+    mergedProject.alarmDefinitions = mergeCollection("ALARM", base.alarmDefinitions, mine.alarmDefinitions, theirs.alarmDefinitions);
+    mergedProject.dataTypes = mergeCollection("DATATYPE", base.dataTypes || [], mine.dataTypes || [], theirs.dataTypes || []);
+    mergedProject.recipeDefinitions = mergeCollection("RECIPE", base.recipeDefinitions || [], mine.recipeDefinitions || [], theirs.recipeDefinitions || []);
+    mergedProject.updatedAt = new Date().toISOString();
+
+    return {
+      mergedProject,
+      conflicts,
+      hasConflicts: conflicts.length > 0,
+      appliedChangesCount: totalApplied,
+    };
+  }
+
+  /**
    * Mesclagem automática de alterações não conflitantes entre dois projetos
    */
   public static mergeNonConflicting(
     base: IndustrialProject,
     modified: IndustrialProject
   ): { mergedProject: IndustrialProject; conflicts: MergeConflict[] } {
-    const merged: IndustrialProject = JSON.parse(JSON.stringify(base));
-    const conflicts: MergeConflict[] = [];
-
-    // Adiciona novos POUs que não existiam na base
-    const basePouIds = new Set(base.pous.map((p) => p.id));
-    for (const pou of modified.pous) {
-      if (!basePouIds.has(pou.id)) {
-        merged.pous.push(JSON.parse(JSON.stringify(pou)));
-      }
-    }
-
-    // Adiciona novas Tags
-    const baseTagIds = new Set(base.tags.map((t) => t.id));
-    for (const tag of modified.tags) {
-      if (!baseTagIds.has(tag.id)) {
-        merged.tags.push(JSON.parse(JSON.stringify(tag)));
-      }
-    }
-
-    // Adiciona novas Tarefas
-    const baseTaskIds = new Set(base.taskConfigurations.map((t) => t.id));
-    for (const task of modified.taskConfigurations) {
-      if (!baseTaskIds.has(task.id)) {
-        merged.taskConfigurations.push(JSON.parse(JSON.stringify(task)));
-      }
-    }
-
-    return { mergedProject: merged, conflicts };
+    const result = this.threeWayMerge(base, base, modified);
+    return {
+      mergedProject: result.mergedProject,
+      conflicts: result.conflicts,
+    };
   }
 }

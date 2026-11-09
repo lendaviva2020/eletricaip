@@ -54,7 +54,7 @@ export class ControllerFleetManager {
 
     for (const [id, ctrl] of this.controllers.entries()) {
       const twin = this.twinStates.get(id);
-      const runtimeChecksum = twin?.observedState?.checksum || "UNKNOWN";
+      const runtimeChecksum = String(twin?.observedState?.checksum || "UNKNOWN");
       const isTwinInSync = runtimeChecksum === projectCompiledChecksum;
 
       let status: "ONLINE" | "OFFLINE" | "DRIFT_DETECTED" | "FAULT" = "ONLINE";
@@ -70,8 +70,16 @@ export class ControllerFleetManager {
         ipAddress: ctrl.ipAddress,
         firmwareVersion: ctrl.firmwareVersion,
         status,
-        cpuUsagePct: twin ? Math.min(100, Math.max(0, 15 + Math.random() * 20)) : 0,
-        memoryUsagePct: twin ? 42.5 : 0,
+        cpuUsagePct: twin
+          ? typeof (twin.observedState as any)?.cpuUsagePct === "number"
+            ? (twin.observedState as any).cpuUsagePct
+            : 24.5
+          : 0,
+        memoryUsagePct: twin
+          ? typeof (twin.observedState as any)?.memoryUsagePct === "number"
+            ? (twin.observedState as any).memoryUsagePct
+            : 42.5
+          : 0,
         runtimeChecksum,
         isTwinInSync,
         lastSyncTimestamp: twin?.lastSyncTimestamp || new Date().toISOString(),

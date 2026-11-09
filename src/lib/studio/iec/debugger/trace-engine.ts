@@ -10,6 +10,7 @@ import { TraceConfiguration, TraceChannel } from "../../canonical/types";
 export interface TraceSample {
   timestampMs: number;
   values: Record<string, number | boolean>;
+  isTriggerSample?: boolean;
 }
 
 export class TraceOscilloscopeEngine {
@@ -68,11 +69,15 @@ export class TraceOscilloscopeEngine {
 
       if (this.evaluateTriggerCondition(getVarValue)) {
         this.isTriggered = true;
+        sample.isTriggerSample = true;
         // Transfere o buffer de pré-disparo para o buffer principal
         this.buffer.push(...this.preTriggerBuffer);
         this.preTriggerBuffer = [];
       }
     } else {
+      if (this.config.triggerCondition === "CONTINUOUS" && this.buffer.length === 0) {
+        sample.isTriggerSample = true;
+      }
       this.buffer.push(sample);
       if (this.buffer.length >= this.config.bufferDepthSamples) {
         // Buffer cheio -> encerra aquisição

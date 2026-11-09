@@ -11,6 +11,12 @@ import { z } from "zod";
  * proibindo incondicionalmente comandos de escrita ou controle sobre equipamentos físicos reais.
  */
 export const IS_PHYSICAL_CONTROL_ALLOWED = false as const;
+export const isPhysicalControlAllowed = false as const;
+export const SAFETY_CONFIG = Object.freeze({
+  IS_PHYSICAL_CONTROL_ALLOWED: false as const,
+  isPhysicalControlAllowed: false as const,
+  OPERATIONAL_MODE: "OBSERVATIONAL_ONLY" as const,
+});
 
 export const UUIDSchema = z.string().uuid();
 export type UUID = z.infer<typeof UUIDSchema>;
@@ -18,6 +24,22 @@ export type UUID = z.infer<typeof UUIDSchema>;
 // ----------------------------------------------------------------------------
 // 1. Tipos de Dados Industriais (IEC 61131-3 Elementary & Composite Data Types)
 // ----------------------------------------------------------------------------
+export const IECPrimitiveValueSchema = z.union([
+  z.boolean(),
+  z.number(),
+  z.string(),
+  z.null(),
+]);
+export type IECPrimitiveValue = z.infer<typeof IECPrimitiveValueSchema>;
+
+export const IECValueSchema = z.union([
+  z.boolean(),
+  z.number(),
+  z.string(),
+  z.array(z.union([z.boolean(), z.number(), z.string()])),
+  z.record(z.union([z.boolean(), z.number(), z.string(), z.null()])),
+]);
+export type IECValue = z.infer<typeof IECValueSchema>;
 export const ElementaryDataTypeSchema = z.enum([
   "BOOL",
   "SINT",
@@ -57,7 +79,7 @@ export const DataTypeFieldSchema = z.object({
   id: UUIDSchema,
   name: z.string().min(1),
   type: z.string().min(1),
-  defaultValue: z.any().optional(),
+  defaultValue: IECValueSchema.optional(),
   comment: z.string().default(""),
 });
 export type DataTypeField = z.infer<typeof DataTypeFieldSchema>;
@@ -101,7 +123,7 @@ export const PLCVariableSchema = z.object({
   scope: VariableScopeSchema,
   dataType: z.string().min(1), // Elementary ou UDT
   address: z.string().optional(), // ex: %IX0.0, %QW100, %MD50
-  initialValue: z.any().optional(),
+  initialValue: IECValueSchema.optional(),
   constant: z.boolean().default(false),
   retain: z.boolean().default(false),
   comment: z.string().default(""),
@@ -121,10 +143,28 @@ export const GlobalVariableListSchema = z.object({
 export type GlobalVariableList = z.infer<typeof GlobalVariableListSchema>;
 
 // ----------------------------------------------------------------------------
-// 3. Tags de Engenharia e Unidades
+// 3. Tags de Engenharia, Qualidade e Proveniência (ISA-18.2 / OPC UA)
 // ----------------------------------------------------------------------------
-export const TagQualitySchema = z.enum(["GOOD", "UNCERTAIN", "BAD", "SIMULATED", "FORCED"]);
+export const TagQualitySchema = z.enum([
+  "GOOD",
+  "UNCERTAIN",
+  "BAD",
+  "STALE",
+  "NOT_CONNECTED",
+  "SIMULATED",
+  "FORCED",
+]);
 export type TagQuality = z.infer<typeof TagQualitySchema>;
+
+export const TagProvenanceSchema = z.enum([
+  "SIMULATED",
+  "FORCED",
+  "CALCULATED",
+  "RUNTIME",
+  "PHYSICAL_READ_ONLY",
+  "UNKNOWN",
+]);
+export type TagProvenance = z.infer<typeof TagProvenanceSchema>;
 
 export const TagSchema = z.object({
   id: UUIDSchema,
@@ -136,11 +176,12 @@ export const TagSchema = z.object({
   dataType: ElementaryDataTypeSchema,
   engineeringUnit: z.string().default(""),
   description: z.string().default(""),
-  initialValue: z.any().optional(),
-  currentValue: z.any().optional(),
+  initialValue: IECValueSchema.optional(),
+  currentValue: IECValueSchema.optional(),
   quality: TagQualitySchema.default("GOOD"),
+  provenance: TagProvenanceSchema.optional(),
   isForced: z.boolean().default(false), // Apenas no simulador
-  forcedValue: z.any().optional(),
+  forcedValue: IECValueSchema.optional(),
   historyEnabled: z.boolean().default(true),
   sampleIntervalMs: z.number().int().positive().default(1000),
   gatewayId: UUIDSchema.optional(),
@@ -189,8 +230,8 @@ export const HardwareModuleSchema = z.object({
   partNumber: z.string().default(""),
   channelsCount: z.number().int().nonnegative().default(0),
   channels: z.array(IOChannelSchema).default([]),
-  hardwareParameters: z.record(z.any()).default({}),
-  diagnostics: z.record(z.any()).default({}),
+  hardwareParameters: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
+  diagnostics: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
 });
 export type HardwareModule = z.infer<typeof HardwareModuleSchema>;
 
@@ -314,7 +355,7 @@ export const LadderElementSchema = z.object({
   symbolName: z.string().default(""),
   negated: z.boolean().default(false),
   blockName: z.string().optional(),
-  params: z.record(z.any()).default({}),
+  params: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
 });
 export type LadderElement = z.infer<typeof LadderElementSchema>;
 
@@ -333,8 +374,8 @@ export const FBDPinSchema = z.object({
   name: z.string().min(1),
   dataType: z.string().default("BOOL"),
   isInput: z.boolean(),
-  defaultValue: z.any().optional(),
-  currentValue: z.any().optional(),
+  defaultValue: IECValueSchema.optional(),
+  currentValue: IECValueSchema.optional(),
 });
 export type FBDPin = z.infer<typeof FBDPinSchema>;
 
@@ -495,7 +536,7 @@ export const HMIWidgetSchema = z.object({
   height: z.number().default(40),
   bindingTagId: UUIDSchema.optional(),
   bindingVariableId: UUIDSchema.optional(),
-  properties: z.record(z.any()).default({}),
+  properties: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
   securityRoleRequired: z.string().default("OPERATOR"),
 });
 export type HMIWidget = z.infer<typeof HMIWidgetSchema>;
@@ -542,7 +583,7 @@ export const RecipeParameterSchema = z.object({
   id: UUIDSchema,
   targetTagId: UUIDSchema,
   parameterName: z.string().min(1),
-  targetValue: z.any(),
+  targetValue: IECValueSchema,
   unit: z.string().default(""),
 });
 export type RecipeParameter = z.infer<typeof RecipeParameterSchema>;
@@ -689,7 +730,7 @@ export const SimulationScenarioSchema = z.object({
     z.object({
       timeOffsetMs: z.number().nonnegative(),
       tagId: UUIDSchema,
-      simulatedValue: z.any(),
+      simulatedValue: IECValueSchema,
     }),
   ).default([]),
 });
@@ -790,9 +831,9 @@ export type DigitalTwinSyncStatus = z.infer<typeof DigitalTwinSyncStatusSchema>;
 
 export const DigitalTwinStateSchema = z.object({
   deviceId: UUIDSchema,
-  observedState: z.record(z.any()).default({}),
-  declaredState: z.record(z.any()).default({}),
-  inferredState: z.record(z.any()).default({}),
+  observedState: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
+  declaredState: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
+  inferredState: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
   lastSyncTimestamp: z.string().default(() => new Date().toISOString()),
   syncStatus: DigitalTwinSyncStatusSchema.default("SYNCHRONIZED"),
   driftDetails: z.array(z.string()).default([]),
@@ -824,12 +865,18 @@ export const DiffChangeKindSchema = z.enum([
 ]);
 export type DiffChangeKind = z.infer<typeof DiffChangeKindSchema>;
 
+export const PropertyDiffSchema = z.object({
+  oldValue: z.union([z.string(), z.number(), z.boolean(), z.null(), z.undefined()]).optional(),
+  newValue: z.union([z.string(), z.number(), z.boolean(), z.null(), z.undefined()]).optional(),
+});
+export type PropertyDiff = z.infer<typeof PropertyDiffSchema>;
+
 export const ProjectDiffItemSchema = z.object({
   entityId: UUIDSchema,
   entityType: z.string(),
   entityName: z.string(),
   changeKind: DiffChangeKindSchema,
-  propertyDiffs: z.record(z.object({ oldValue: z.any(), newValue: z.any() })).default({}),
+  propertyDiffs: z.record(PropertyDiffSchema).default({}),
   description: z.string(),
 });
 export type ProjectDiffItem = z.infer<typeof ProjectDiffItemSchema>;

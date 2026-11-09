@@ -149,5 +149,43 @@ describe("Milestone 7: HMI, SCADA, ISA-18.2 Alarms Lifecycle & Recipe Engine", (
 
     expect(res.appliedCount).toBe(1);
     expect(tag1.currentValue).toBe(350.0);
+    expect(res.tagsUpdated[0].previousValue).toBe(100.0);
+  });
+
+  it("Garante atomicidade na aplicação de receitas: falha na validação impede qualquer escrita", () => {
+    const tag1: Tag = {
+      id: "tag-val-1",
+      tenantId: "t1",
+      projectId: "p1",
+      code: "V1",
+      name: "Valvula1",
+      dataType: "REAL",
+      currentValue: 10.0,
+      initialValue: 10.0,
+      quality: "GOOD",
+      engineeringUnit: "%",
+      description: "",
+      isForced: false,
+      historyEnabled: false,
+      sampleIntervalMs: 1000,
+    };
+
+    const invalidRecipe: RecipeDefinition = {
+      id: "rec-invalid",
+      projectId: "p1",
+      name: "Receita_Com_Erro",
+      productCode: "ERR",
+      parameters: [
+        { id: "p1", targetTagId: tag1.id, parameterName: "Valvula1", targetValue: 50.0, unit: "%" },
+        { id: "p2", targetTagId: "tag-inexistente", parameterName: "NaoExiste", targetValue: 99.0, unit: "bar" },
+      ],
+    };
+
+    const manager = new IndustrialRecipeManager([invalidRecipe]);
+    const tags = [tag1];
+
+    expect(() => manager.applyRecipe(invalidRecipe.id, tags)).toThrow(/\[RECIPE_ATOMIC_ERROR\]/);
+    // Garante que tag1 não foi modificada
+    expect(tag1.currentValue).toBe(10.0);
   });
 });

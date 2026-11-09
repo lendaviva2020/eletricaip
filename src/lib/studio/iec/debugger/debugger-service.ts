@@ -10,6 +10,7 @@
 
 import { CompiledProjectIR, IRInstruction, IRBlock } from "../compiler/intermediate-representation";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "../../canonical/types";
+import { evaluateSafeCondition } from "../../studio-store";
 
 export interface BreakpointDefinition {
   id: string;
@@ -227,9 +228,8 @@ export class InteractiveDebuggerService {
   }
 
   public forceVariable(name: string, value: any): void {
-    if (IS_PHYSICAL_CONTROL_ALLOWED) {
-      throw new Error("VIOLAÇÃO DE SEGURANÇA: Escrita direta em hardware físico é bloqueada.");
-    }
+    // Invariante de Segurança: Forcing afeta APENAS a memória virtual de simulação.
+    // NUNCA transmite para hardware físico real (IS_PHYSICAL_CONTROL_ALLOWED = false).
     this.forcedMemory[name] = value;
     this.memory[name] = value;
     const w = this.watches.get(name);
@@ -259,6 +259,13 @@ export class InteractiveDebuggerService {
 
     const bp = this.breakpoints.get(`${loc.pouName}:${loc.sourceLine}`);
     if (bp && bp.enabled) {
+      if (bp.conditionST && bp.conditionST.trim().length > 0) {
+        // Avaliação segura da condição do breakpoint
+        const condMet = evaluateSafeCondition(bp.conditionST, (name) => this.getVariableValue(name));
+        if (!condMet) {
+          return false;
+        }
+      }
       bp.hitCount++;
       this.lastHitBreakpoint = bp;
       return true;

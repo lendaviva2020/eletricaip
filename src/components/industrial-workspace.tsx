@@ -250,7 +250,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
                     {mode === "plc" && <PlcCanvas />}
                     {mode === "sim" && <SimCanvas />}
                     {mode === "alarms" && <AlarmsCanvas />}
-                    {mode === "studio" && <EngineeringStudio />}
+                    {mode === "studio" && <EngineeringStudio projectId={projectId} />}
                   </Suspense>
                 </ClientOnly>
               </ErrorBoundary>

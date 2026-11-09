@@ -238,8 +238,9 @@ export interface AppliedRecipeResult {
   recipeId: string;
   recipeName: string;
   appliedCount: number;
-  tagsUpdated: { tagId: string; parameterName: string; targetValue: any }[];
+  tagsUpdated: { tagId: string; parameterName: string; targetValue: any; previousValue?: any }[];
   timestamp: string;
+  appliedBy?: string;
 }
 
 export class IndustrialRecipeManager {
@@ -256,32 +257,103 @@ export class IndustrialRecipeManager {
   }
 
   /**
-   * Aplica a receita ao conjunto de tags do projeto em memória virtual
+   * Valida previamente todos os parâmetros da receita contra as tags do projeto
    */
-  public applyRecipe(recipeId: string, tags: Tag[]): AppliedRecipeResult {
-    if (IS_PHYSICAL_CONTROL_ALLOWED) {
-      throw new Error("VIOLAÇÃO DE SEGURANÇA: Aplicação em hardware físico não autorizada.");
-    }
-
+  public validateRecipe(recipeId: string, tags: Tag[]): { isValid: boolean; errors: string[] } {
     const recipe = this.recipes.get(recipeId);
     if (!recipe) {
-      throw new Error(`Receita com ID '${recipeId}' não encontrada.`);
+      return { isValid: false, errors: [`Receita com ID '${recipeId}' não encontrada.`] };
     }
 
     const tagMap = new Map(tags.map((t) => [t.id, t]));
-    const updated: { tagId: string; parameterName: string; targetValue: any }[] = [];
+    const errors: string[] = [];
 
     for (const param of recipe.parameters) {
       const tag = tagMap.get(param.targetTagId);
-      if (tag) {
-        tag.currentValue = param.targetValue;
-        tag.quality = "GOOD";
-        updated.push({
-          tagId: tag.id,
-          parameterName: param.parameterName,
-          targetValue: param.targetValue,
-        });
+      if (!tag) {
+        errors.push(`Parâmetro '${param.parameterName}': Tag alvo '${param.targetTagId}' não encontrada no projeto.`);
+        continue;
       }
+
+      // Validação de tipo de dado
+      if (typeof param.targetValue === "number" && !["REAL", "LREAL", "INT", "DINT", "UINT", "WORD", "DWORD"].includes(tag.dataType)) {
+        errors.push(`Parâmetro '${param.parameterName}': incompatibilidade de tipo. Valor numérico fornecido para tag do tipo ${tag.dataType}.`);
+      } else if (typeof param.targetValue === "boolean" && tag.dataType !== "BOOL") {
+        errors.push(`Parâmetro '${param.parameterName}': incompatibilidade de tipo. Valor booleano fornecido para tag do tipo ${tag.dataType}.`);
+      }
+
+      // Validação de limites (se definidos no parâmetro)
+      const pAny = param as any;
+      if (typeof param.targetValue === "number") {
+        if (pAny.minValue !== undefined && param.targetValue < pAny.minValue) {
+          errors.push(`Parâmetro '${param.parameterName}': valor ${param.targetValue} abaixo do mínimo permitido (${pAny.minValue}).`);
+        }
+        if (pAny.maxValue !== undefined && param.targetValue > pAny.maxValue) {
+          errors.push(`Parâmetro '${param.parameterName}': valor ${param.targetValue} acima do máximo permitido (${pAny.maxValue}).`);
+        }
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  }
+
+  /**
+   * Cria uma receita a partir do snapshot do estado atual das tags
+   */
+  public createSnapshotRecipe(
+    id: string,
+    projectId: string,
+    name: string,
+    productCode: string,
+    tags: Tag[]
+  ): RecipeDefinition {
+    const recipe: RecipeDefinition = {
+      id,
+      projectId,
+      name,
+      productCode,
+      parameters: tags.map((t, idx) => ({
+        id: `param-${idx + 1}`,
+        targetTagId: t.id,
+        parameterName: t.name,
+        targetValue: t.currentValue ?? t.initialValue ?? 0,
+        unit: t.engineeringUnit,
+      })),
+    };
+    this.registerRecipe(recipe);
+    return recipe;
+  }
+
+  /**
+   * Aplica a receita atomicamente ao conjunto de tags do projeto em memória virtual
+   */
+  public applyRecipe(recipeId: string, tags: Tag[], appliedBy: string = "Operador_Engenharia"): AppliedRecipeResult {
+    // Validação estrita antes da escrita atômica
+    const validation = this.validateRecipe(recipeId, tags);
+    if (!validation.isValid) {
+      throw new Error(`[RECIPE_ATOMIC_ERROR] Falha de validação da receita: ${validation.errors.join("; ")}`);
+    }
+
+    const recipe = this.recipes.get(recipeId)!;
+    const tagMap = new Map(tags.map((t) => [t.id, t]));
+    const updated: { tagId: string; parameterName: string; targetValue: any; previousValue?: any }[] = [];
+
+    // Aplicação atômica em memória virtual
+    for (const param of recipe.parameters) {
+      const tag = tagMap.get(param.targetTagId)!;
+      const previousValue = tag.currentValue;
+      tag.currentValue = param.targetValue;
+      tag.quality = "GOOD";
+      tag.provenance = "SIMULATED";
+      updated.push({
+        tagId: tag.id,
+        parameterName: param.parameterName,
+        targetValue: param.targetValue,
+        previousValue,
+      });
     }
 
     return {
@@ -290,6 +362,7 @@ export class IndustrialRecipeManager {
       appliedCount: updated.length,
       tagsUpdated: updated,
       timestamp: new Date().toISOString(),
+      appliedBy,
     };
   }
 }

@@ -4,6 +4,8 @@
 // ============================================================================
 
 import { generateUuid as uuidv4 } from "./uuid";
+import { sha256 } from "../../diagnostics/crypto-hash";
+import type { UnifiedProjectDoc, CanonicalTag } from "@/lib/model/unified-schema";
 import {
   type IndustrialProject,
   type Controller,
@@ -31,10 +33,13 @@ export class CanonicalProjectService {
   /**
    * Cria um projeto industrial vazio com estrutura mínima inicial.
    */
-  public static createEmptyProject(name: string, tenantId?: string): IndustrialProject {
-    const projId = uuidv4();
+  public static createEmptyProject(name: string, tenantId?: string, projectId?: string): IndustrialProject {
+    const projId = projectId || uuidv4();
     const tId = tenantId || uuidv4();
     const ctrlId = uuidv4();
+    const cpuModId = uuidv4();
+    const diModId = uuidv4();
+    const doModId = uuidv4();
 
     const defaultController: Controller = {
       id: ctrlId,
@@ -47,7 +52,7 @@ export class CanonicalProjectService {
       firmwareVersion: "3.5.20.0",
       rackModules: [
         {
-          id: uuidv4(),
+          id: cpuModId,
           controllerId: ctrlId,
           slotNumber: 0,
           catalogKey: "cpu-virtual-x64",
@@ -59,7 +64,7 @@ export class CanonicalProjectService {
           diagnostics: { status: "ONLINE_SIMULATED", temperatureC: 42 },
         },
         {
-          id: uuidv4(),
+          id: diModId,
           controllerId: ctrlId,
           slotNumber: 1,
           catalogKey: "di-16-24vdc",
@@ -68,7 +73,7 @@ export class CanonicalProjectService {
           channelsCount: 16,
           channels: Array.from({ length: 16 }, (_, i) => ({
             id: uuidv4(),
-            moduleId: uuidv4(),
+            moduleId: diModId,
             channelIndex: i,
             name: `DI_${i}`,
             direction: "DIGITAL_INPUT",
@@ -85,7 +90,7 @@ export class CanonicalProjectService {
           diagnostics: { status: "OK" },
         },
         {
-          id: uuidv4(),
+          id: doModId,
           controllerId: ctrlId,
           slotNumber: 2,
           catalogKey: "do-16-24vdc",
@@ -94,7 +99,7 @@ export class CanonicalProjectService {
           channelsCount: 16,
           channels: Array.from({ length: 16 }, (_, i) => ({
             id: uuidv4(),
-            moduleId: uuidv4(),
+            moduleId: doModId,
             channelIndex: i,
             name: `DO_${i}`,
             direction: "DIGITAL_OUTPUT",
@@ -134,7 +139,7 @@ export class CanonicalProjectService {
 
     defaultController.taskConfigurations = [mainTask.id];
 
-    return {
+    const initialProject: IndustrialProject = {
       id: projId,
       tenantId: tId,
       name,
@@ -146,7 +151,7 @@ export class CanonicalProjectService {
           commitMessage: "Projeto inicial criado",
           author: "Lead Automation Engineer",
           timestamp: new Date().toISOString(),
-          checksumSha256: "INITIAL_CREATION",
+          checksumSha256: "0000000000000000000000000000000000000000000000000000000000000000",
         },
       ],
       createdAt: new Date().toISOString(),
@@ -174,6 +179,185 @@ export class CanonicalProjectService {
       simulationScenarios: [],
       diagnosticEvents: [],
     };
+
+    const checksum = this.computeDeterministicChecksum(initialProject);
+    initialProject.versionsHistory[0].checksumSha256 = checksum;
+    return initialProject;
+  }
+
+  /**
+   * Calcula o hash criptográfico SHA-256 determinístico e canônico do projeto.
+   * Não é sensível à ordenação incidental de chaves e campos temporais variáveis.
+   */
+  public static computeDeterministicChecksum(project: IndustrialProject): string {
+    const canonicalPayload = {
+      id: project.id,
+      tenantId: project.tenantId,
+      name: project.name,
+      activeVersion: project.activeVersion,
+      controllers: (project.controllers || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        vendor: c.vendor,
+        model: c.model,
+        rackModules: (c.rackModules || []).map((m) => ({
+          id: m.id,
+          slotNumber: m.slotNumber,
+          catalogKey: m.catalogKey,
+          name: m.name,
+          channels: (m.channels || []).map((ch) => ({
+            id: ch.id,
+            moduleId: ch.moduleId,
+            channelIndex: ch.channelIndex,
+            name: ch.name,
+            direction: ch.direction,
+            iecAddress: ch.iecAddress,
+            mappedTagId: ch.mappedTagId,
+          })),
+        })),
+      })),
+      pous: (project.pous || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        pouType: p.pouType,
+        language: p.language,
+        sourceST: (p as any).sourceST || p.rawSourceST || "",
+        variables: (p.variables || []).map((v) => ({
+          id: v.id,
+          name: v.name,
+          scope: v.scope,
+          dataType: v.dataType,
+          initialValue: v.initialValue,
+        })),
+      })),
+      tags: (project.tags || []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        code: t.code,
+        dataType: t.dataType,
+        initialValue: t.initialValue,
+        quality: t.quality,
+        provenance: t.provenance,
+      })),
+      taskConfigurations: (project.taskConfigurations || []).map((tk) => ({
+        id: tk.id,
+        name: tk.name,
+        type: tk.type,
+        priority: tk.priority,
+        intervalMs: tk.intervalMs,
+        watchdogMs: tk.watchdogMs,
+        pouNames: (tk as any).pouNames || (tk.pouIds || []),
+      })),
+      alarmDefinitions: (project.alarmDefinitions || []).map((a) => ({
+        id: a.id,
+        name: a.name,
+        tagId: a.tagId,
+        condition: a.condition,
+        threshold: a.threshold,
+        severity: a.severity,
+      })),
+      recipeDefinitions: (project.recipeDefinitions || []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        productCode: r.productCode,
+        parameters: r.parameters,
+      })),
+      libraryReferences: (project.libraryReferences || []).map((lib) => ({
+        id: lib.id,
+        name: lib.name,
+        version: lib.version,
+      })),
+    };
+    return sha256(JSON.stringify(canonicalPayload));
+  }
+
+  /**
+   * Converte o documento unificado do workspace (SSOT) em um IndustrialProject canônico.
+   */
+  public static fromUnifiedDoc(doc: UnifiedProjectDoc): IndustrialProject {
+    const project = this.createEmptyProject(doc.metadata.name, undefined, doc.metadata.id);
+    project.name = doc.metadata.name;
+    project.activeVersion = doc.metadata.revision;
+
+    // Converte tags canônicas do modelo unificado
+    const canonicalTags: Tag[] = Object.values(doc.engineering.tags || {}).map((ct) => ({
+      id: ct.id,
+      tenantId: project.tenantId,
+      projectId: project.id,
+      equipmentId: ct.linkedEquipmentId,
+      name: ct.name,
+      code: ct.address || ct.name,
+      dataType: (ct.dataType || "BOOL") as any,
+      engineeringUnit: ct.unit || "",
+      description: ct.description || "",
+      initialValue: ct.initialValue ?? false,
+      currentValue: ct.initialValue ?? false,
+      quality: "GOOD",
+      provenance: "RUNTIME",
+      isForced: ct.forced ?? false,
+      historyEnabled: true,
+      sampleIntervalMs: 1000,
+      protocolAddress: ct.address,
+    }));
+
+    if (canonicalTags.length > 0) {
+      project.tags = canonicalTags;
+    }
+
+    // Converte dispositivos e equipamentos unifilares
+    const equipments = (doc.engineering as any).equipments || (doc.engineering as any).equipment || {};
+    const devices: Device[] = Object.values(equipments).map((eq: any) => ({
+      id: eq.id,
+      tenantId: project.tenantId,
+      projectId: project.id,
+      name: eq.displayName || eq.tagCode || eq.name || "Device",
+      kind: eq.category === "plc_module" ? "CONTROLLER" : "FIELD_INSTRUMENT",
+      protocol: "MODBUS_TCP",
+      address: eq.tagCode || eq.address || "0",
+      status: "CONFIGURED",
+    }));
+
+    if (devices.length > 0) {
+      project.devices = devices;
+    }
+
+    project.updatedAt = doc.metadata.updatedAt || new Date().toISOString();
+    project.dependencyGraph = this.rebuildDependencyGraph(project);
+    const checksum = this.computeDeterministicChecksum(project);
+    project.versionsHistory[0].checksumSha256 = checksum;
+    return project;
+  }
+
+  /**
+   * Sincroniza tags e metadados do IndustrialProject canônico de volta para o UnifiedProjectDoc.
+   */
+  public static syncToUnifiedDoc(project: IndustrialProject, currentDoc: UnifiedProjectDoc): UnifiedProjectDoc {
+    const nextDoc: UnifiedProjectDoc = JSON.parse(JSON.stringify(currentDoc));
+    nextDoc.metadata.name = project.name;
+    nextDoc.metadata.revision = project.activeVersion;
+    nextDoc.metadata.updatedAt = new Date().toISOString();
+
+    for (const t of project.tags) {
+      nextDoc.engineering.tags[t.id] = {
+        id: t.id,
+        name: t.name,
+        dataType: (t.dataType as any) || "BOOL",
+        area: t.protocolAddress?.startsWith("%I")
+          ? "I"
+          : t.protocolAddress?.startsWith("%Q")
+          ? "Q"
+          : "M",
+        address: t.protocolAddress || (t.dataType === "BOOL" ? `%MX_${t.name}` : `%MD_${t.name}`),
+        unit: t.engineeringUnit,
+        initialValue: (t.initialValue as any) ?? false,
+        forced: t.isForced,
+        retentive: false,
+        description: t.description,
+        linkedEquipmentId: t.equipmentId,
+      };
+    }
+
+    return nextDoc;
   }
 
   /**
@@ -727,8 +911,10 @@ END_PROGRAM`,
       },
     ];
 
-    // Reconstruir grafo de dependências canônico
+    // Reconstruir grafo de dependências canônico e atualizar checksum
     proj.dependencyGraph = this.rebuildDependencyGraph(proj);
+    const sampleChecksum = this.computeDeterministicChecksum(proj);
+    proj.versionsHistory[0].checksumSha256 = sampleChecksum;
 
     return proj;
   }
@@ -850,6 +1036,7 @@ END_PROGRAM`,
     const pouIds = new Set(project.pous.map((p) => p.id));
     const brokenTagReferences: string[] = [];
     const brokenPouReferences: string[] = [];
+    const brokenVariableReferences: string[] = [];
     const unmappedIOChannels: string[] = [];
 
     // Checar HMI
@@ -868,6 +1055,15 @@ END_PROGRAM`,
       }
     }
 
+    // Checar Receitas
+    for (const rec of project.recipeDefinitions) {
+      for (const param of rec.parameters) {
+        if (!tagIds.has(param.targetTagId)) {
+          brokenTagReferences.push(`Recipe '${rec.name}', Parameter '${param.parameterName}' references non-existent Tag ID ${param.targetTagId}`);
+        }
+      }
+    }
+
     // Checar Task Configuration
     for (const task of project.taskConfigurations) {
       for (const pId of task.pouIds) {
@@ -881,6 +1077,17 @@ END_PROGRAM`,
     for (const ctrl of project.controllers) {
       for (const mod of ctrl.rackModules) {
         for (const ch of mod.channels) {
+          // Integridade referencial estrita de Hardware: channel.moduleId DEVE ser o ID do módulo pai
+          if (ch.moduleId !== mod.id) {
+            brokenVariableReferences.push(
+              `Hardware Integrity Error: Module '${mod.name}' (${mod.id}) contains Channel '${ch.name}' with mismatched moduleId '${ch.moduleId}'`
+            );
+          }
+          if (ch.mappedTagId && !tagIds.has(ch.mappedTagId)) {
+            brokenTagReferences.push(
+              `Channel '${ch.name}' (${ch.iecAddress}) references non-existent Tag ID ${ch.mappedTagId}`
+            );
+          }
           if (!ch.mappedTagId && !ch.mappedVariableId) {
             unmappedIOChannels.push(`Module '${mod.name}', Channel '${ch.name}' (${ch.iecAddress}) is unmapped.`);
           }
@@ -888,10 +1095,15 @@ END_PROGRAM`,
       }
     }
 
+    const isValid =
+      brokenTagReferences.length === 0 &&
+      brokenPouReferences.length === 0 &&
+      brokenVariableReferences.length === 0;
+
     return {
-      isValid: brokenTagReferences.length === 0 && brokenPouReferences.length === 0,
+      isValid,
       brokenTagReferences,
-      brokenVariableReferences: [],
+      brokenVariableReferences,
       brokenPouReferences,
       unmappedIOChannels,
       cyclicDependencies: [],

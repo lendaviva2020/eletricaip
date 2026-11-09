@@ -16,6 +16,7 @@ import {
   HMIWidget,
   AlarmDefinition,
   RecipeDefinition,
+  TraceConfiguration,
   ProtocolConfiguration,
   X509Certificate,
   DigitalTwinState,
@@ -346,6 +347,133 @@ END_PROGRAM`,
       implementedInterfaces: [],
     };
 
+    // POU 3: FBD - Proteção de Sobrecorrente
+    const fbdPinIn1Id = uuidv4();
+    const fbdPinIn2Id = uuidv4();
+    const fbdPinOutMulId = uuidv4();
+    const fbdPinGtIn1Id = uuidv4();
+    const fbdPinGtIn2Id = uuidv4();
+    const fbdPinOutGtId = uuidv4();
+    const fbdNodeMulId = uuidv4();
+    const fbdNodeGtId = uuidv4();
+
+    const pouFBD: POU = {
+      id: uuidv4(),
+      tenantId,
+      projectId: projId,
+      name: "PRG_Protection_FBD",
+      pouType: "PROGRAM",
+      language: "FBD",
+      comment: "Proteção de sobrecorrente e medição de potência em FBD",
+      variables: [],
+      rawSourceST: "",
+      networks: [
+        {
+          id: uuidv4(),
+          number: 1,
+          label: "NW_PROTECTION",
+          comment: "Escalação de Corrente e Comparação com Limite",
+          language: "FBD",
+          stSource: "",
+          fbdNodes: [
+            {
+              id: fbdNodeMulId,
+              name: "MUL",
+              blockType: "MUL",
+              x: 100,
+              y: 80,
+              inputs: [
+                { id: fbdPinIn1Id, name: "IN1", dataType: "REAL", isInput: true, defaultValue: 10 },
+                { id: fbdPinIn2Id, name: "IN2", dataType: "REAL", isInput: true, defaultValue: 2 },
+              ],
+              outputs: [
+                { id: fbdPinOutMulId, name: "OUT", dataType: "REAL", isInput: false },
+              ],
+            },
+            {
+              id: fbdNodeGtId,
+              name: "GT",
+              blockType: "GT",
+              x: 350,
+              y: 80,
+              inputs: [
+                { id: fbdPinGtIn1Id, name: "IN1", dataType: "REAL", isInput: true },
+                { id: fbdPinGtIn2Id, name: "IN2", dataType: "REAL", isInput: true, defaultValue: 15 },
+              ],
+              outputs: [
+                { id: fbdPinOutGtId, name: "OUT", dataType: "BOOL", isInput: false },
+              ],
+            },
+          ],
+          fbdConnections: [
+            {
+              id: uuidv4(),
+              fromNodeId: fbdNodeMulId,
+              fromPinId: fbdPinOutMulId,
+              toNodeId: fbdNodeGtId,
+              toPinId: fbdPinGtIn1Id,
+            },
+          ],
+          sfcSteps: [],
+          sfcTransitions: [],
+          rungs: [],
+        },
+      ],
+      actions: [],
+      methods: [],
+      properties: [],
+      implementedInterfaces: [],
+    };
+
+    // POU 4: SFC - Sequenciador de Estados de Operação da Estação
+    const sfcStepInitId = uuidv4();
+    const sfcStepPreChargeId = uuidv4();
+    const sfcStepRunningId = uuidv4();
+    const sfcStepStoppingId = uuidv4();
+    const sfcStepStoppedId = uuidv4();
+
+    const pouSFC: POU = {
+      id: uuidv4(),
+      tenantId,
+      projectId: projId,
+      name: "PRG_Sequencer_SFC",
+      pouType: "PROGRAM",
+      language: "SFC",
+      comment: "Sequência de partida e parada da estação em SFC",
+      variables: [],
+      rawSourceST: "",
+      networks: [
+        {
+          id: uuidv4(),
+          number: 1,
+          label: "SFC_NET_01",
+          comment: "Init -> PreCharge -> Running -> Stopping -> Stopped",
+          language: "SFC",
+          stSource: "",
+          fbdNodes: [],
+          fbdConnections: [],
+          sfcSteps: [
+            { id: sfcStepInitId, stepNumber: 1, name: "Init", isInitial: true, isActive: true, timeInStepMs: 0, actions: [], x: 100, y: 50 },
+            { id: sfcStepPreChargeId, stepNumber: 2, name: "PreCharge", isInitial: false, isActive: false, timeInStepMs: 0, actions: [], x: 100, y: 150 },
+            { id: sfcStepRunningId, stepNumber: 3, name: "Running", isInitial: false, isActive: false, timeInStepMs: 0, actions: [], x: 100, y: 250 },
+            { id: sfcStepStoppingId, stepNumber: 4, name: "Stopping", isInitial: false, isActive: false, timeInStepMs: 0, actions: [], x: 100, y: 350 },
+            { id: sfcStepStoppedId, stepNumber: 5, name: "Stopped", isInitial: false, isActive: false, timeInStepMs: 0, actions: [], x: 100, y: 450 },
+          ],
+          sfcTransitions: [
+            { id: uuidv4(), fromStepIds: [sfcStepInitId], toStepIds: [sfcStepPreChargeId], conditionST: "TRUE", isSatisfied: false, x: 100, y: 100 },
+            { id: uuidv4(), fromStepIds: [sfcStepPreChargeId], toStepIds: [sfcStepRunningId], conditionST: "TRUE", isSatisfied: false, x: 100, y: 200 },
+            { id: uuidv4(), fromStepIds: [sfcStepRunningId], toStepIds: [sfcStepStoppingId], conditionST: "bStopReq", isSatisfied: false, x: 100, y: 300 },
+            { id: uuidv4(), fromStepIds: [sfcStepStoppingId], toStepIds: [sfcStepStoppedId], conditionST: "TRUE", isSatisfied: false, x: 100, y: 400 },
+          ],
+          rungs: [],
+        },
+      ],
+      actions: [],
+      methods: [],
+      properties: [],
+      implementedInterfaces: [],
+    };
+
     // 6. Configurações de Tarefas (Cyclic, Event, Freewheeling)
     const taskFastCyclic: TaskConfiguration = {
       id: uuidv4(),
@@ -360,6 +488,22 @@ END_PROGRAM`,
       jitterMs: 0,
       isOverrun: false,
       pouIds: [pouST.id, pouLD.id],
+      enabled: true,
+    };
+
+    const taskFast2ms: TaskConfiguration = {
+      id: uuidv4(),
+      controllerId: ctrlId,
+      name: "FastTask_2ms",
+      type: "CYCLIC",
+      priority: 0,
+      intervalMs: 2,
+      watchdogMs: 10,
+      watchdogSensitivity: 1,
+      cycleTimeActualMs: 0,
+      jitterMs: 0,
+      isOverrun: false,
+      pouIds: [pouFBD.id],
       enabled: true,
     };
 
@@ -380,7 +524,7 @@ END_PROGRAM`,
       enabled: true,
     };
 
-    mainController.taskConfigurations = [taskFastCyclic.id, taskEventEstop.id];
+    mainController.taskConfigurations = [taskFastCyclic.id, taskFast2ms.id, taskEventEstop.id];
 
     // 7. Alarmes ISA-18.2
     const alarmTankHigh: AlarmDefinition = {
@@ -432,11 +576,11 @@ END_PROGRAM`,
       ],
     };
 
-    // 9. Receita de Processo
+    // 9. Receitas de Processo
     const recipeNormalFlow: RecipeDefinition = {
       id: uuidv4(),
       projectId: projId,
-      name: "Receita_Vazao_Nominal",
+      name: "Receita_A_Nominal",
       productCode: "REC-PUMP-01",
       parameters: [
         {
@@ -449,7 +593,41 @@ END_PROGRAM`,
       ],
     };
 
-    // 10. Certificado X.509 e Digital Twin
+    const recipeHighDemand: RecipeDefinition = {
+      id: uuidv4(),
+      projectId: projId,
+      name: "Receita_B_AltaDemanda",
+      productCode: "REC-PUMP-02",
+      parameters: [
+        {
+          id: uuidv4(),
+          targetTagId: tagTankLevel.id,
+          parameterName: "Setpoint_Nivel_Alvo",
+          targetValue: 85.0,
+          unit: "%",
+        },
+      ],
+    };
+
+    // 10. Trace Osciloscópio Multicanal
+    const traceCfg: TraceConfiguration = {
+      id: uuidv4(),
+      projectId: projId,
+      name: "Trace_Elevatoria",
+      bufferDepthSamples: 200,
+      sampleIntervalMs: 10,
+      triggerCondition: "THRESHOLD",
+      triggerTagId: tagTankLevel.id,
+      triggerThreshold: 75.0,
+      preTriggerSamples: 40,
+      channels: [
+        { id: uuidv4(), tagId: tagTankLevel.id, name: tagTankLevel.name, color: "#00E5FF", minDisplay: 0, maxDisplay: 100 },
+        { id: uuidv4(), tagId: tagPumpRun.id, name: tagPumpRun.name, color: "#00E676", minDisplay: 0, maxDisplay: 1 },
+        { id: uuidv4(), tagId: tagActivePowerKW.id, name: tagActivePowerKW.name, color: "#FFD600", minDisplay: 0, maxDisplay: 100 },
+      ],
+    };
+
+    // 11. Certificado X.509 e Digital Twin
     const certOpcUa: X509Certificate = {
       id: uuidv4(),
       controllerId: ctrlId,
@@ -493,15 +671,15 @@ END_PROGRAM`,
       controllers: [mainController],
       applications: [],
       devices: [],
-      taskConfigurations: [taskFastCyclic, taskEventEstop],
-      pous: [pouST, pouLD],
+      taskConfigurations: [taskFastCyclic, taskFast2ms, taskEventEstop],
+      pous: [pouST, pouLD, pouFBD, pouSFC],
       dataTypes: [],
       globalVariableLists: [],
       tags: [tagEStop, tagTankLevel, tagPumpRun, tagActivePowerKW],
       hmiPages: [hmiOverviewPage],
       alarmDefinitions: [alarmTankHigh],
       trendDefinitions: [],
-      recipeDefinitions: [recipeNormalFlow],
+      recipeDefinitions: [recipeNormalFlow, recipeHighDemand],
       protocolConfigurations: [],
       motionAxes: [],
       motionGroups: [],
@@ -537,7 +715,7 @@ END_PROGRAM`,
           description: "Placeholder para biblioteca padrão",
         },
       ],
-      traceConfigurations: [],
+      traceConfigurations: [traceCfg],
       certificates: [certOpcUa],
       digitalTwinStates: [twinState],
       rbacPermissions: [],

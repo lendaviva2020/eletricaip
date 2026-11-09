@@ -31,6 +31,15 @@ export type IROpCode =
   | "RETURN"
   | "NOP";
 
+export interface IRSourceMapping {
+  pouName: string;
+  language?: "ST" | "LD" | "FBD" | "SFC" | "IL";
+  networkNumber?: number;
+  sourceLine?: number;
+  nodeId?: string;
+  blockType?: string;
+}
+
 export interface IRInstruction {
   op: IROpCode;
   arg1?: any;
@@ -39,6 +48,7 @@ export interface IRInstruction {
   dest?: string;
   sourceLine?: number;
   label?: string;
+  sourceMapping?: IRSourceMapping;
 }
 
 export interface IRBlock {
@@ -47,8 +57,22 @@ export interface IRBlock {
   localVariables: Record<string, any>;
 }
 
+export interface CompiledTask {
+  id: string;
+  name: string;
+  type: "CYCLIC" | "FREEWHEELING" | "EVENT" | "STATUS_TRIGGERED" | "EXTERNAL_EVENT";
+  priority: number;
+  intervalMs: number;
+  watchdogEnabled: boolean;
+  watchdogMs: number;
+  watchdogSensitivity: number;
+  pouNames: string[];
+  triggerEventVariable?: string;
+}
+
 export interface CompiledProjectIR {
   blocks: Record<string, IRBlock>;
   globalVariables: Record<string, any>;
   tasksOrder: { taskName: string; pouNames: string[]; intervalMs: number }[];
+  tasks?: CompiledTask[];
 }

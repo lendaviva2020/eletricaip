@@ -26,9 +26,14 @@ import {
   FileCode,
   CaretUp,
   CaretDown,
+  FloppyDisk,
 } from "@phosphor-icons/react";
 
-export const EngineeringStudio: React.FC = () => {
+export interface EngineeringStudioProps {
+  projectId?: string | null;
+}
+
+export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId = null }) => {
   const {
     project,
     activePouId,
@@ -39,7 +44,15 @@ export const EngineeringStudio: React.FC = () => {
     compilationResult,
     loadSampleProject,
     validateProjectIntegrity,
+    isDirty,
+    persistenceState,
+    saveProject,
+    initProject,
   } = useStudioStore();
+
+  React.useEffect(() => {
+    initProject(projectId);
+  }, [projectId, initProject]);
 
   const [bottomDockTab, setBottomDockTab] = useState<"SIMULATION" | "BUILD" | "INTEGRITY">(
     "SIMULATION"
@@ -74,14 +87,33 @@ export const EngineeringStudio: React.FC = () => {
             <span className="font-bold text-xs tracking-wide text-zinc-100 flex items-center gap-1.5">
               ELÉTRICAI INDUSTRIAL OS <span className="text-zinc-500 font-normal">|</span> CODESYS PARITY STUDIO
             </span>
-            <span className="text-[10px] text-zinc-400 font-mono">
-              Projeto: {project.name} (v{project.activeVersion})
+            <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-2">
+              <span>Projeto: {project.name} (v{project.activeVersion})</span>
+              {isDirty && (
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] border border-amber-500/30">
+                  Modificado
+                </span>
+              )}
             </span>
           </div>
         </div>
 
         {/* Ações Centrais de Engenharia */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => saveProject()}
+            disabled={persistenceState === "saving"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border transition-colors shadow-sm ${
+              isDirty
+                ? "bg-amber-600/30 text-amber-200 border-amber-500/60 hover:bg-amber-600/50"
+                : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+            }`}
+            title="Salvar projeto e persistir no SSOT do workspace"
+          >
+            <FloppyDisk className={`w-4 h-4 ${isDirty ? "text-amber-400" : "text-emerald-400"}`} weight="bold" />
+            {persistenceState === "saving" ? "Salvando..." : isDirty ? "Salvar *" : "Salvo"}
+          </button>
+
           <button
             onClick={loadSampleProject}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors border border-zinc-700"

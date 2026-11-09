@@ -48,22 +48,34 @@ export class FBDEngine {
       }
     }
 
-    // Se houver nós isolados ou não alcançados, adiciona-os ao final
-    for (const n of nodes) {
-      if (!sorted.includes(n)) sorted.push(n);
+    // Diagnóstico estrito de ciclos inválidos:
+    if (sorted.length < nodes.length) {
+      const unreached = nodes.filter((n) => !sorted.includes(n));
+      const hasCyclicEdge = connections.some(
+        (c) => unreached.some((u) => u.id === c.fromNodeId) && unreached.some((u) => u.id === c.toNodeId)
+      );
+      if (hasCyclicEdge) {
+        throw new Error(
+          `FBD_CIRCULAR_DEPENDENCY: Ciclo inválido detectado entre os blocos: ${unreached.map((n) => n.name).join(", ")}`
+        );
+      }
+      // Apenas nós puramente isolados (sem conexões) são anexados
+      for (const n of unreached) {
+        sorted.push(n);
+      }
     }
 
     return sorted;
   }
 
   /**
-   * Executa a avaliação da rede de nós FBD
+   * Executa a avaliação da rede de nós FBD com propagação em cascata topo-abaixo determinística
    */
   public static evaluateNetwork(nodes: FBDNode[], connections: FBDConnection[], ctx: FBDEvaluationContext): void {
     const sorted = this.sortNodesTopologically(nodes, connections);
     const pinValues = new Map<string, any>();
 
-    // Inicializa valores com base nas variáveis do contexto
+    // Inicializa valores padrão
     for (const n of sorted) {
       for (const pin of n.inputs) {
         if (pin.defaultValue !== undefined) {
@@ -72,16 +84,15 @@ export class FBDEngine {
       }
     }
 
-    // Propaga conexões
-    for (const conn of connections) {
-      if (pinValues.has(conn.fromPinId)) {
-        pinValues.set(conn.toPinId, pinValues.get(conn.fromPinId));
-      }
-    }
-
-    // Executa blocos
+    // Executa blocos em ordem topológica e propaga os resultados calculados para nós a jusante
     for (const node of sorted) {
-      const inVals = node.inputs.map((p) => pinValues.get(p.id));
+      const inVals = node.inputs.map((pin) => {
+        if (pinValues.has(pin.id)) return pinValues.get(pin.id);
+        const ctxVal = ctx.getVariable(pin.name);
+        if (ctxVal !== undefined) return ctxVal;
+        return pin.defaultValue !== undefined ? pin.defaultValue : false;
+      });
+
       let outVal: any = false;
 
       switch (node.blockType.toUpperCase()) {
@@ -130,39 +141,108 @@ export class FBDEngine {
       }
 
       if (node.outputs.length > 0) {
-        pinValues.set(node.outputs[0].id, outVal);
+        for (const outPin of node.outputs) {
+          pinValues.set(outPin.id, outVal);
+          // Propaga imediatamente o valor calculado para os pinos de entrada conectados
+          for (const conn of connections) {
+            if (conn.fromPinId === outPin.id) {
+              pinValues.set(conn.toPinId, outVal);
+            }
+          }
+        }
         ctx.setVariable(node.name, outVal);
       }
     }
   }
 
   /**
-   * Converte a rede de nós FBD em Bloco IR Executável
+   * Converte a rede de nós FBD em Bloco IR Executável com encadeamento real de conexões
    */
   public static fbdToIR(pouName: string, nodes: FBDNode[], connections: FBDConnection[]): IRBlock {
     const instructions: IRInstruction[] = [];
     const localVariables: Record<string, any> = {};
     const sorted = this.sortNodesTopologically(nodes, connections);
 
+    const incomingMap = new Map<string, { fromNodeName: string; fromPinId: string }>();
+    for (const c of connections) {
+      const fromNode = nodes.find((n) => n.id === c.fromNodeId);
+      if (fromNode) {
+        incomingMap.set(c.toPinId, { fromNodeName: fromNode.name, fromPinId: c.fromPinId });
+      }
+    }
+
     for (const node of sorted) {
       const outReg = `_fbd_${node.name}`;
       localVariables[node.name] = 0;
 
-      if (node.blockType === "AND" || node.blockType === "OR" || node.blockType === "ADD" || node.blockType === "SUB") {
-        const inReg1 = `_in1_${node.name}`;
-        const inReg2 = `_in2_${node.name}`;
-        instructions.push({ op: "LOAD_CONST", arg1: node.inputs[0]?.defaultValue ?? 0, dest: inReg1 });
-        instructions.push({ op: "LOAD_CONST", arg1: node.inputs[1]?.defaultValue ?? 0, dest: inReg2 });
-        instructions.push({ op: node.blockType as any, arg1: inReg1, arg2: inReg2, dest: outReg });
-        instructions.push({ op: "STORE_VAR", arg1: node.name, arg2: outReg });
-      } else if (node.blockType === "TON") {
+      const inRegs: string[] = [];
+      node.inputs.forEach((pin, idx) => {
+        const inReg = `_in_${node.name}_${idx}`;
+        const incoming = incomingMap.get(pin.id);
+        if (incoming) {
+          instructions.push({
+            op: "LOAD_VAR",
+            arg1: `_fbd_${incoming.fromNodeName}`,
+            dest: inReg,
+            sourceMapping: { pouName, language: "FBD", nodeId: node.id, blockType: node.blockType },
+          });
+        } else if (pin.defaultValue !== undefined) {
+          instructions.push({
+            op: "LOAD_CONST",
+            arg1: pin.defaultValue,
+            dest: inReg,
+            sourceMapping: { pouName, language: "FBD", nodeId: node.id, blockType: node.blockType },
+          });
+        } else {
+          instructions.push({
+            op: "LOAD_VAR",
+            arg1: pin.name,
+            dest: inReg,
+            sourceMapping: { pouName, language: "FBD", nodeId: node.id, blockType: node.blockType },
+          });
+        }
+        inRegs.push(inReg);
+      });
+
+      const bType = node.blockType.toUpperCase();
+      if (bType === "NOT") {
+        instructions.push({
+          op: "NOT",
+          arg1: inRegs[0] ?? true,
+          dest: outReg,
+          sourceMapping: { pouName, language: "FBD", nodeId: node.id, blockType: node.blockType },
+        });
+      } else if (["AND", "OR", "XOR", "ADD", "SUB", "MUL", "DIV", "GT", "GE", "LT", "LE", "EQ"].includes(bType)) {
+        instructions.push({
+          op: bType as any,
+          arg1: inRegs[0] ?? 0,
+          arg2: inRegs[1] ?? 0,
+          dest: outReg,
+          sourceMapping: { pouName, language: "FBD", nodeId: node.id, blockType: node.blockType },
+        });
+      } else if (bType === "TON" || bType === "TOF") {
         instructions.push({
           op: "CALL_FB",
-          arg1: "TON",
-          arg2: { IN: node.inputs[0]?.currentValue ?? false, PT: node.inputs[1]?.defaultValue ?? "T#5s" },
-          dest: node.name,
+          arg1: bType,
+          arg2: { IN: inRegs[0], PT: node.inputs[1]?.defaultValue ?? "T#5s" },
+          dest: outReg,
+          sourceMapping: { pouName, language: "FBD", nodeId: node.id, blockType: node.blockType },
+        });
+      } else {
+        instructions.push({
+          op: "LOAD_VAR",
+          arg1: inRegs[0],
+          dest: outReg,
+          sourceMapping: { pouName, language: "FBD", nodeId: node.id, blockType: node.blockType },
         });
       }
+
+      instructions.push({
+        op: "STORE_VAR",
+        arg1: node.name,
+        arg2: outReg,
+        sourceMapping: { pouName, language: "FBD", nodeId: node.id, blockType: node.blockType },
+      });
     }
 
     instructions.push({ op: "RETURN" });
