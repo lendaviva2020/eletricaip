@@ -67,7 +67,16 @@ export class IndustrialIncidentManager {
     timestamp: number;
     investigationStage?: IncidentInvestigationStage;
   }): IncidentAuditEntry {
-    const { incident, fromStatus, toStatus, actor, note, resolution, timestamp, investigationStage } = params;
+    const {
+      incident,
+      fromStatus,
+      toStatus,
+      actor,
+      note,
+      resolution,
+      timestamp,
+      investigationStage,
+    } = params;
     const previousHash =
       incident.auditTrail.length > 0
         ? incident.auditTrail[incident.auditTrail.length - 1].tamperProofHash
@@ -108,7 +117,10 @@ export class IndustrialIncidentManager {
    * Abre um novo incidente operacional ou correlaciona e incrementa deduplicação
    * caso a mesma falha já esteja aberta para o mesmo componente.
    */
-  public reportIncident(params: CreateIncidentParams): { incident: IndustrialIncident; isNew: boolean } {
+  public reportIncident(params: CreateIncidentParams): {
+    incident: IndustrialIncident;
+    isNew: boolean;
+  } {
     const now = params.detectedAt ?? Date.now();
     const firstObservedAt = params.firstObservedAt ?? now;
     // Chave de deduplicação: mesmo tenant + planta + componente + categoria + severidade
@@ -132,7 +144,8 @@ export class IndustrialIncidentManager {
 
     // Criação de Novo Incidente
     const incidentId = `inc_${now}_${Math.random().toString(36).substring(2, 8)}`;
-    const correlationId = params.correlationId || `corr_${params.sourceComponentId}_${Math.floor(now / 60000)}`;
+    const correlationId =
+      params.correlationId || `corr_${params.sourceComponentId}_${Math.floor(now / 60000)}`;
 
     const initialTransition: IncidentAuditEntry = {
       transitionId: `trans_${now}_0`,
@@ -180,7 +193,9 @@ export class IndustrialIncidentManager {
       affectedComponents: [params.sourceComponentId],
       rejectedHypotheses: [],
       recommendedRunbooks: [],
-      timelineEvents: [`[${new Date(firstObservedAt).toISOString()}] Primeiro sinal observado em ${params.sourceComponentId}`],
+      timelineEvents: [
+        `[${new Date(firstObservedAt).toISOString()}] Primeiro sinal observado em ${params.sourceComponentId}`,
+      ],
     };
 
     this.incidents.set(incidentId, incident);
@@ -200,7 +215,8 @@ export class IndustrialIncidentManager {
     if (params.actor.role === "VIEWER") {
       return {
         success: false,
-        error: "RBAC_FORBIDDEN: Papel VIEWER possui acesso estritamente somente leitura e não pode alterar incidentes.",
+        error:
+          "RBAC_FORBIDDEN: Papel VIEWER possui acesso estritamente somente leitura e não pode alterar incidentes.",
       };
     }
 
@@ -212,7 +228,8 @@ export class IndustrialIncidentManager {
     if (incident.status === "CLOSED") {
       return {
         success: false,
-        error: "INCIDENT_ALREADY_CLOSED: Incidentes com status CLOSED não podem receber novas transições.",
+        error:
+          "INCIDENT_ALREADY_CLOSED: Incidentes com status CLOSED não podem receber novas transições.",
       };
     }
 
@@ -224,7 +241,8 @@ export class IndustrialIncidentManager {
     if (toStatus === "RESOLVED" && !params.resolution) {
       return {
         success: false,
-        error: "RESOLUTION_REQUIRED: Para resolver um incidente, o registro da causa raiz e resolução é obrigatório.",
+        error:
+          "RESOLUTION_REQUIRED: Para resolver um incidente, o registro da causa raiz e resolução é obrigatório.",
       };
     }
 
@@ -304,7 +322,10 @@ export class IndustrialIncidentManager {
     }
 
     const now = params.timestampMs ?? Date.now();
-    const diagIds = new Set([...(incident.associatedDiagnostics ?? []), ...params.diagnostics.map((d) => d.diagnosticId)]);
+    const diagIds = new Set([
+      ...(incident.associatedDiagnostics ?? []),
+      ...params.diagnostics.map((d) => d.diagnosticId),
+    ]);
     incident.associatedDiagnostics = Array.from(diagIds);
 
     const runbookIds = new Set(incident.recommendedRunbooks ?? []);
@@ -498,7 +519,11 @@ export class IndustrialIncidentManager {
     incident.investigationResult = params.investigationResult;
     incident.investigationStage = "MITIGATION_RECORDED";
 
-    if (incident.status !== "MITIGATED" && incident.status !== "RESOLVED" && incident.status !== "CLOSED") {
+    if (
+      incident.status !== "MITIGATED" &&
+      incident.status !== "RESOLVED" &&
+      incident.status !== "CLOSED"
+    ) {
       const prevStatus = incident.status;
       incident.status = "MITIGATED";
       this.appendChainedAuditEntry({
@@ -632,7 +657,10 @@ export class IndustrialIncidentManager {
           }
         }
         effectiveHealthyCount = uniqueSamples.length;
-        if (uniqueSamples.length < params.samples.length && uniqueSamples.length < requiredSamples) {
+        if (
+          uniqueSamples.length < params.samples.length &&
+          uniqueSamples.length < requiredSamples
+        ) {
           rejectionReasonCode = "DUPLICATE_SAMPLES_INSUFFICIENT_UNIQUE_COUNT";
         }
 
@@ -745,7 +773,10 @@ export class IndustrialIncidentManager {
   /**
    * Valida a integridade da cadeia de custódia e auditoria do incidente.
    */
-  public verifyIncidentAuditIntegrity(incidentId: string): { isValid: boolean; brokenAtIndex?: number } {
+  public verifyIncidentAuditIntegrity(incidentId: string): {
+    isValid: boolean;
+    brokenAtIndex?: number;
+  } {
     const incident = this.incidents.get(incidentId);
     if (!incident) return { isValid: false };
 

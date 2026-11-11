@@ -112,6 +112,8 @@ export const en: TranslationCatalog = {
       simHint: "Runtime",
       alarms: "Alarms",
       alarmsHint: "ISA-18.2",
+      studio: "Studio IEC",
+      studioHint: "CODESYS Parity",
     },
     console: {
       logs: "Logs",

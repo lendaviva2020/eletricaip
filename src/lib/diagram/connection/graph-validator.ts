@@ -245,10 +245,10 @@ export function validateElectricalTopology(doc: DiagramDoc): TopologyValidationR
   );
 
   for (const load of loadNodes) {
-    let visited = new Set<string>();
+    const visited = new Set<string>();
     let currentId = load.id;
-    let pathEquipments: string[] = [load.id];
-    let pathEdges: string[] = [];
+    const pathEquipments: string[] = [load.id];
+    const pathEdges: string[] = [];
     let isConnectedToSource = false;
     let interruptionReason: string | undefined;
 

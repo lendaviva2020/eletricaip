@@ -342,9 +342,12 @@ describe("GATE 2.5 — FASE 2 & FASE 3: Tag Runtime Hardening & Deadband Decoupl
         totalSamplesReceived++;
 
         let raw: number;
-        if (i === 20) raw = 71.5; // Step change 1 (+1.5%)
-        else if (i === 50) raw = 68.0; // Step change 2 (-3.5%)
-        else if (i === 80) raw = 74.0; // Step change 3 (+6.0%)
+        if (i === 20)
+          raw = 71.5; // Step change 1 (+1.5%)
+        else if (i === 50)
+          raw = 68.0; // Step change 2 (-3.5%)
+        else if (i === 80)
+          raw = 74.0; // Step change 3 (+6.0%)
         else {
           // Ripple around latest baseline
           const noise = ((i % 5) - 2) * 0.04; // between -0.08% and +0.08%
@@ -369,7 +372,8 @@ describe("GATE 2.5 — FASE 2 & FASE 3: Tag Runtime Hardening & Deadband Decoupl
         }
       }
 
-      const reductionPercentage = ((totalSamplesReceived - totalSamplesStored) / totalSamplesReceived) * 100;
+      const reductionPercentage =
+        ((totalSamplesReceived - totalSamplesStored) / totalSamplesReceived) * 100;
 
       // Expect reduction to exceed the 65% target (typically > 85%)
       expect(totalSamplesReceived).toBe(100);

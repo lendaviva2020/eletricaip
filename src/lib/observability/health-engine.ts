@@ -4,12 +4,7 @@
 // Standards: IEC 62443, NIST SP 800-82 Rev. 3, ISO 13374 (Condition Monitoring)
 // =============================================================================
 
-import type {
-  ComponentHealthSnapshot,
-  ComponentType,
-  HealthSeverity,
-  HealthState,
-} from "./types";
+import type { ComponentHealthSnapshot, ComponentType, HealthSeverity, HealthState } from "./types";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "./types";
 
 export interface HealthThresholdProfile {
@@ -148,7 +143,10 @@ export class IndustrialHealthEngine {
         reasonCode: "HTTP_5XX_OUTAGE",
         evidenceReference: `Servidor retornou código HTTP ${params.httpStatusCode || 503}.`,
         source: "HEALTH_PROBE",
-        metricValues: { httpStatusCode: params.httpStatusCode ?? null, latencyMs: params.latencyMs },
+        metricValues: {
+          httpStatusCode: params.httpStatusCode ?? null,
+          latencyMs: params.latencyMs,
+        },
         evaluationWindowMs: 60_000,
         thresholdVersion: this.thresholds.version,
       });
@@ -166,7 +164,8 @@ export class IndustrialHealthEngine {
         state: "DEGRADED",
         severity: "MEDIUM",
         reasonCode: "EXTERNAL_DEPENDENCY_DEGRADED",
-        evidenceReference: "Serviço Cloud operacional, porém dependência externa upstream reportou indisponibilidade.",
+        evidenceReference:
+          "Serviço Cloud operacional, porém dependência externa upstream reportou indisponibilidade.",
         source: "HEALTH_PROBE",
         metricValues: { externalDependencyFailure: true, latencyMs: params.latencyMs },
         evaluationWindowMs: 60_000,
@@ -214,10 +213,17 @@ export class IndustrialHealthEngine {
     }
 
     // 6. Saudável com histerese
-    return this.applyHysteresisRecovery(componentId, "CLOUD_SERVICE", params.tenantId, params.plantId, now, {
-      latencyMs: params.latencyMs,
-      httpStatusCode: params.httpStatusCode ?? 200,
-    });
+    return this.applyHysteresisRecovery(
+      componentId,
+      "CLOUD_SERVICE",
+      params.tenantId,
+      params.plantId,
+      now,
+      {
+        latencyMs: params.latencyMs,
+        httpStatusCode: params.httpStatusCode ?? 200,
+      },
+    );
   }
 
   /**
@@ -275,7 +281,8 @@ export class IndustrialHealthEngine {
         state: "NOT_INSTRUMENTED",
         severity: "LOW",
         reasonCode: "HARDWARE_METRICS_UNAVAILABLE",
-        evidenceReference: "Agente Edge em execução, porém métricas de SO (CPU/Memória) não são expostas pelo host.",
+        evidenceReference:
+          "Agente Edge em execução, porém métricas de SO (CPU/Memória) não são expostas pelo host.",
         source: "HEARTBEAT",
         metricValues: { isInstrumented: false },
         evaluationWindowMs: 60_000,
@@ -364,7 +371,11 @@ export class IndustrialHealthEngine {
     }
 
     // 6. Recursos de Hardware em saturação crítica
-    if (params.diskPercent !== null && params.diskPercent !== undefined && params.diskPercent >= this.thresholds.diskCriticalPercent) {
+    if (
+      params.diskPercent !== null &&
+      params.diskPercent !== undefined &&
+      params.diskPercent >= this.thresholds.diskCriticalPercent
+    ) {
       return this.commitSnapshot({
         componentId,
         componentType: "EDGE_GATEWAY",
@@ -383,7 +394,11 @@ export class IndustrialHealthEngine {
       });
     }
 
-    if (params.memoryPercent !== null && params.memoryPercent !== undefined && params.memoryPercent >= this.thresholds.memoryCriticalPercent) {
+    if (
+      params.memoryPercent !== null &&
+      params.memoryPercent !== undefined &&
+      params.memoryPercent >= this.thresholds.memoryCriticalPercent
+    ) {
       return this.commitSnapshot({
         componentId,
         componentType: "EDGE_GATEWAY",
@@ -403,7 +418,11 @@ export class IndustrialHealthEngine {
     }
 
     // 7. Desvio de Relógio (Clock Drift)
-    if (params.clockDriftMs !== null && params.clockDriftMs !== undefined && Math.abs(params.clockDriftMs) > this.thresholds.maxClockDriftMs) {
+    if (
+      params.clockDriftMs !== null &&
+      params.clockDriftMs !== undefined &&
+      Math.abs(params.clockDriftMs) > this.thresholds.maxClockDriftMs
+    ) {
       return this.commitSnapshot({
         componentId,
         componentType: "EDGE_GATEWAY",
@@ -423,12 +442,19 @@ export class IndustrialHealthEngine {
     }
 
     // 8. Saudável
-    return this.applyHysteresisRecovery(componentId, "EDGE_GATEWAY", params.tenantId, params.plantId, now, {
-      cpuPercent: params.cpuPercent,
-      memoryPercent: params.memoryPercent,
-      diskPercent: params.diskPercent,
-      heartbeatAgeMs,
-    });
+    return this.applyHysteresisRecovery(
+      componentId,
+      "EDGE_GATEWAY",
+      params.tenantId,
+      params.plantId,
+      now,
+      {
+        cpuPercent: params.cpuPercent,
+        memoryPercent: params.memoryPercent,
+        diskPercent: params.diskPercent,
+        heartbeatAgeMs,
+      },
+    );
   }
 
   /**
@@ -501,11 +527,18 @@ export class IndustrialHealthEngine {
       });
     }
 
-    return this.applyHysteresisRecovery(componentId, compType, params.tenantId, params.plantId, now, {
-      isConnected: true,
-      reconnectCount: params.reconnectCount,
-      responseTimeMs: params.responseTimeMs ?? 0,
-    });
+    return this.applyHysteresisRecovery(
+      componentId,
+      compType,
+      params.tenantId,
+      params.plantId,
+      now,
+      {
+        isConnected: true,
+        reconnectCount: params.reconnectCount,
+        responseTimeMs: params.responseTimeMs ?? 0,
+      },
+    );
   }
 
   /**
@@ -555,7 +588,8 @@ export class IndustrialHealthEngine {
         state: "DEGRADED",
         severity: "HIGH",
         reasonCode: "TAG_QUALITY_BAD",
-        evidenceReference: "Amostra recebida com qualidade BAD (falha no sensor ou erro de conversão analógica).",
+        evidenceReference:
+          "Amostra recebida com qualidade BAD (falha no sensor ou erro de conversão analógica).",
         source: "TELEMETRY_PIPELINE",
         metricValues: { quality: "BAD" },
         evaluationWindowMs: 60_000,
@@ -575,7 +609,8 @@ export class IndustrialHealthEngine {
         state: "HEALTHY",
         severity: "INFO",
         reasonCode: "DEADBAND_UNCHANGED",
-        evidenceReference: "Valor estável dentro da faixa de histerese/deadband configurada. Equipamento saudável.",
+        evidenceReference:
+          "Valor estável dentro da faixa de histerese/deadband configurada. Equipamento saudável.",
         source: "TELEMETRY_PIPELINE",
         metricValues: { deadbandSuppressed: true },
         evaluationWindowMs: 60_000,
@@ -606,10 +641,17 @@ export class IndustrialHealthEngine {
       });
     }
 
-    return this.applyHysteresisRecovery(componentId, "INDUSTRIAL_EQUIPMENT", params.tenantId, params.plantId, now, {
-      quality: params.sampleQuality,
-      dataAgeMs,
-    });
+    return this.applyHysteresisRecovery(
+      componentId,
+      "INDUSTRIAL_EQUIPMENT",
+      params.tenantId,
+      params.plantId,
+      now,
+      {
+        quality: params.sampleQuality,
+        dataAgeMs,
+      },
+    );
   }
 
   /**
@@ -669,7 +711,10 @@ export class IndustrialHealthEngine {
     });
   }
 
-  private checkActiveMaintenance(componentId: string, now: number): RegisteredMaintenanceWindow | null {
+  private checkActiveMaintenance(
+    componentId: string,
+    now: number,
+  ): RegisteredMaintenanceWindow | null {
     const window = this.maintenanceWindows.get(componentId);
     if (!window) return null;
     if (now >= window.startTime && now <= window.endTime) {
@@ -697,7 +742,10 @@ export class IndustrialHealthEngine {
     return this.snapshots.get(componentId);
   }
 
-  public getAllSnapshots(filter?: { tenantId?: string; plantId?: string }): ComponentHealthSnapshot[] {
+  public getAllSnapshots(filter?: {
+    tenantId?: string;
+    plantId?: string;
+  }): ComponentHealthSnapshot[] {
     let list = Array.from(this.snapshots.values());
     if (filter?.tenantId) {
       list = list.filter((s) => s.tenantId === filter.tenantId);

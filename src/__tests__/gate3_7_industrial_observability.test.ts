@@ -844,6 +844,8 @@ describe("Gate 3.7 — Industrial Observability & Reliability (40 Mandatory Scen
   it("Cenário 40: BLOQUEIO PERMANENTE DE CONTROLE FÍSICO — IS_PHYSICAL_CONTROL_ALLOWED estritamente falso", () => {
     expect(IS_PHYSICAL_CONTROL_ALLOWED).toBe(false);
     // Garantia de imutabilidade em tempo de execução
-    expect(Object.isFrozen(IS_PHYSICAL_CONTROL_ALLOWED) || IS_PHYSICAL_CONTROL_ALLOWED === false).toBe(true);
+    expect(
+      Object.isFrozen(IS_PHYSICAL_CONTROL_ALLOWED) || IS_PHYSICAL_CONTROL_ALLOWED === false,
+    ).toBe(true);
   });
 });

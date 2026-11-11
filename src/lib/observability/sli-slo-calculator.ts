@@ -4,11 +4,7 @@
 // Standards: SRE Google Handbook, IEEE 762 (Power Plant Availability), IEC 62443
 // =============================================================================
 
-import type {
-  SloDefinition,
-  SloMeasurement,
-  SloTargetService,
-} from "./types";
+import type { SloDefinition, SloMeasurement, SloTargetService } from "./types";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "./types";
 
 export const DEFAULT_SLO_DEFINITIONS: Record<SloTargetService, SloDefinition> = {

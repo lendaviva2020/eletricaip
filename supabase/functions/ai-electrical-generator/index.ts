@@ -1,12 +1,28 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikee, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  Vary: "Origin",
-};
+function buildCorsHeaders(req: Request): Record<string, string> {
+  const configured = (Deno.env.get("ALLOWED_ORIGINS") ?? Deno.env.get("PUBLIC_APP_URL") ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const allowed = new Set<string>([
+    ...configured,
+    "https://eletricaip.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ]);
+  const origin = req.headers.get("Origin") ?? "";
+  const matchedOrigin = allowed.has(origin)
+    ? origin
+    : configured[0] ?? "https://eletricaip.vercel.app";
+  return {
+    "Access-Control-Allow-Origin": matchedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
 
 interface ElectricalGenerationRequest {
   project_id: string;
@@ -152,6 +168,7 @@ interface ElectricalGenerationResponse {
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.1-pro-preview";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const SYSTEM_PROMPT = `Você é um Engenheiro Eletricista Sênior especializado em projetos industriais brasileiros.
@@ -176,10 +193,13 @@ async function callGemini(prompt: string, systemPrompt: string): Promise<any> {
     throw new Error("GEMINI_API_KEY ausente nos secrets do Supabase");
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": GEMINI_API_KEY,
+    },
     body: JSON.stringify({
       system_instruction: {
         parts: [{ text: systemPrompt }],
@@ -253,13 +273,48 @@ async function getProjectDiagram(supabase: any, projectId: string) {
 }
 
 async function generateElectricalProject(
+  supabaseUser: ReturnType<typeof createClient>,
+  adminSupabase: ReturnType<typeof createClient>,
+  userId: string,
   req: ElectricalGenerationRequest,
 ): Promise<ElectricalGenerationResponse> {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  // 1. Verificar posse do tenant e papel ativo do usuário autenticado
+  const { data: membership, error: membershipErr } = await adminSupabase
+    .from("tenant_memberships")
+    .select("role")
+    .eq("tenant_id", req.tenant_id)
+    .eq("user_id", userId)
+    .maybeSingle();
 
-  const project = await getProjectData(supabase, req.project_id);
-  const aiConfig = await getAiConfig(supabase, req.tenant_id);
-  const diagram = await getProjectDiagram(supabase, req.project_id);
+  if (membershipErr || !membership?.role || membership.role === "viewer") {
+    throw Object.assign(new Error("Forbidden: Permissão insuficiente para este tenant."), {
+      statusCode: 403,
+    });
+  }
+
+  // 2. Carregar projeto via cliente escopado ao usuário (RLS) e conferir tenant_id
+  const project = await getProjectData(supabaseUser, req.project_id);
+  if (project.tenant_id !== req.tenant_id) {
+    throw Object.assign(new Error("Forbidden: Projeto não pertence ao tenant especificado."), {
+      statusCode: 403,
+    });
+  }
+
+  // 3. Consumir créditos de IA no servidor antes da chamada externa
+  const { error: creditErr } = await adminSupabase.rpc("consume_ai_credits_for_user", {
+    p_user_id: userId,
+    p_operation: "ai_electrical_generator",
+  });
+  if (creditErr) {
+    const msg = creditErr.message || "";
+    if (msg.includes("insufficient_credits") || msg.includes("quota")) {
+      throw Object.assign(new Error("Créditos de IA insuficientes."), { statusCode: 402 });
+    }
+    throw new Error("Falha ao validar cota de créditos de IA.");
+  }
+
+  const aiConfig = await getAiConfig(supabaseUser, req.tenant_id);
+  const diagram = await getProjectDiagram(supabaseUser, req.project_id);
 
   const prompt = `
 GERAR PROJETO ELÉTRICO INDUSTRIAL COMPLETO
@@ -324,14 +379,14 @@ NÃO INCLUA MARKDOWN OU TEXTO LIVRE FORA DO JSON.`;
     };
   }
 
-  // Salvar resultado no banco
-  const { error: saveError } = await supabase.from("electrical_simulation_results").insert({
+  // Salvar resultado no banco usando o cliente escopado ao usuário (RLS ativo)
+  const { error: saveError } = await supabaseUser.from("electrical_simulation_results").insert({
     project_id: req.project_id,
-    simulation_type: "full_project",
+    simulation_type: req.generation_type || "full_project",
     standard: "NBR_5410",
     input_data: req.input_data,
     results: aiResponse.data,
-    computation_time_ms: 0, // TODO: medir
+    computation_time_ms: 0,
   });
 
   if (saveError) {
@@ -342,6 +397,8 @@ NÃO INCLUA MARKDOWN OU TEXTO LIVRE FORA DO JSON.`;
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -354,10 +411,35 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const bearerMatch = /^Bearer\s+([^\s,]+)$/i.exec(authHeader.trim());
+    if (!bearerMatch || !SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+      return new Response(JSON.stringify({ success: false, errors: ["Unauthorized"] }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${bearerMatch[1]}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabaseUser.auth.getUser(bearerMatch[1]);
+
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ success: false, errors: ["Unauthorized"] }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = (await req.json()) as ElectricalGenerationRequest;
 
     // Validações básicas
-    if (!body.project_id || !body.tenant_id) {
+    if (!body?.project_id || !body?.tenant_id) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -367,20 +449,31 @@ Deno.serve(async (req) => {
       );
     }
 
-    const result = await generateElectricalProject(body);
+    const adminSupabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const result = await generateElectricalProject(supabaseUser, adminSupabase, user.id, body);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("AI Electrical Generator error:", err);
+    const statusCode =
+      typeof (err as { statusCode?: unknown })?.statusCode === "number"
+        ? (err as { statusCode: number }).statusCode
+        : 500;
+    const publicMessage =
+      statusCode === 402 || statusCode === 403
+        ? (err as Error).message
+        : "Erro interno ao gerar projeto elétrico com IA.";
     return new Response(
       JSON.stringify({
         success: false,
-        errors: [err instanceof Error ? err.message : String(err)],
+        errors: [publicMessage],
       }),
       {
-        status: 500,
+        status: statusCode,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );

@@ -201,8 +201,14 @@ describe("GATE 3.4 — Cloud–Edge–Physical Systems Architecture Consolidatio
 
   // ── Critério 2: Duas Plantas Independentes no Mesmo Tenant ──
   it("Critério 2: Duas plantas independentes — Gateways de plantas distintas mantêm segregação", () => {
-    const authPlanta1 = registry.authenticateGateway(gwA1_Identity.gatewayId, "token_secret_alpha_sp_01");
-    const authPlanta2 = registry.authenticateGateway(gwA2_Identity.gatewayId, "token_secret_alpha_rj_02");
+    const authPlanta1 = registry.authenticateGateway(
+      gwA1_Identity.gatewayId,
+      "token_secret_alpha_sp_01",
+    );
+    const authPlanta2 = registry.authenticateGateway(
+      gwA2_Identity.gatewayId,
+      "token_secret_alpha_rj_02",
+    );
 
     expect(authPlanta1.gateway?.organizationId).toBe(tenantA_Id);
     expect(authPlanta2.gateway?.organizationId).toBe(tenantA_Id);

@@ -5,7 +5,11 @@ import { IECCompilerPipeline } from "../iec/compiler/compiler-pipeline";
 import { MultiTypeTaskManager } from "../iec/task/task-manager";
 import { InteractiveDebuggerService } from "../iec/debugger/debugger-service";
 import { TraceOscilloscopeEngine } from "../iec/debugger/trace-engine";
-import { ISA18AlarmLifecycleEngine, HMIScadaBridge, IndustrialRecipeManager } from "../scada/hmi-scada-bridge";
+import {
+  ISA18AlarmLifecycleEngine,
+  HMIScadaBridge,
+  IndustrialRecipeManager,
+} from "../scada/hmi-scada-bridge";
 import { ProjectComparisonEngine } from "../comparison/project-comparison";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "../canonical/types";
 
@@ -57,8 +61,12 @@ describe("Milestone 10: Transversal E2E Plant Scenario & Comprehensive Validatio
 
     // Passo 7: Configuração de Tarefas (MainTask, FastTask, EventTask)
     expect(project.taskConfigurations.length).toBe(3);
-    const mainTask = project.taskConfigurations.find((t) => t.type === "CYCLIC" && t.intervalMs === 10)!;
-    const fastTask = project.taskConfigurations.find((t) => t.type === "CYCLIC" && t.intervalMs === 2)!;
+    const mainTask = project.taskConfigurations.find(
+      (t) => t.type === "CYCLIC" && t.intervalMs === 10,
+    )!;
+    const fastTask = project.taskConfigurations.find(
+      (t) => t.type === "CYCLIC" && t.intervalMs === 2,
+    )!;
     const eventTask = project.taskConfigurations.find((t) => t.type === "EVENT")!;
     expect(mainTask).toBeDefined();
     expect(fastTask).toBeDefined();
@@ -152,7 +160,11 @@ describe("Milestone 10: Transversal E2E Plant Scenario & Comprehensive Validatio
     // Faceplate HMI
     const tagMap = new Map(project.tags.map((t) => [t.id, t]));
     const motorWidget = project.hmiPages[0].widgets.find((w) => w.type === "MOTOR_SYMBOL")!;
-    const faceplateMotor = HMIScadaBridge.resolveWidgetState(motorWidget, tagMap, alarmEngine.getActiveAlarms());
+    const faceplateMotor = HMIScadaBridge.resolveWidgetState(
+      motorWidget,
+      tagMap,
+      alarmEngine.getActiveAlarms(),
+    );
     expect(faceplateMotor.statusText).toBe("PARADO");
 
     // Passo 14: Gestão de Receitas Industriais (Snapshot, Validação e Aplicação Atômica)
@@ -198,6 +210,8 @@ describe("Milestone 10: Transversal E2E Plant Scenario & Comprehensive Validatio
     const mergeRes = ProjectComparisonEngine.threeWayMerge(project, modifiedMine, modifiedTheirs);
     expect(mergeRes.hasConflicts).toBe(false);
     expect(mergeRes.mergedProject.tags[0].name).toBe("EmergencyStop_Subestacao_Local");
-    expect(mergeRes.mergedProject.taskConfigurations.some((t) => t.name === "RemoteDiagnosticsTask")).toBe(true);
+    expect(
+      mergeRes.mergedProject.taskConfigurations.some((t) => t.name === "RemoteDiagnosticsTask"),
+    ).toBe(true);
   });
 });

@@ -56,9 +56,36 @@ describe("IoT ingest rate limiting", () => {
     const json = await response.json();
     expect(json).toMatchObject({ ok: true, persisted: true });
 
-    expect(checkRateLimit).toHaveBeenCalledTimes(1);
+    expect(checkRateLimit).toHaveBeenCalledTimes(2);
     const keyId = createHash("sha256").update(apiKey).digest("hex");
-    expect(checkRateLimit).toHaveBeenCalledWith("iot", keyId);
+    expect(checkRateLimit).toHaveBeenNthCalledWith(1, "iot", "ip:unknown_ip");
+    expect(checkRateLimit).toHaveBeenNthCalledWith(2, "iot", `key:${keyId}`);
+  });
+
+  it("enforces pre-auth IP rate limiting even when rotating arbitrary invalid API keys", async () => {
+    vi.mocked(checkRateLimit).mockResolvedValue({
+      allowed: false,
+      retryAfterSeconds: 30,
+      remaining: 0,
+      limit: 120,
+      bypassed: false,
+      source: "upstash",
+    });
+
+    const req = new Request("http://localhost/api/public/iot/ingest", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-real-ip": "203.0.113.55",
+        Authorization: "Bearer rotated_key_without_valid_secret",
+      },
+      body: JSON.stringify(validBody),
+    });
+
+    const response = await postHandler({ request: req });
+    expect(response.status).toBe(429);
+    expect(checkRateLimit).toHaveBeenCalledWith("iot", "ip:203.0.113.55");
+    expect(supabaseAdmin.rpc).not.toHaveBeenCalled();
   });
 
   it("returns 429 with Retry-After when the rate limiter blocks the api key", async () => {

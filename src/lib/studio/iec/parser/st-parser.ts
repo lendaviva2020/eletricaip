@@ -148,7 +148,10 @@ export class StParser {
     let isRetain = false;
     let isConstant = false;
 
-    while (this.peek().type === "KEYWORD" && (this.peek().value === "RETAIN" || this.peek().value === "CONSTANT")) {
+    while (
+      this.peek().type === "KEYWORD" &&
+      (this.peek().value === "RETAIN" || this.peek().value === "CONSTANT")
+    ) {
       const kw = this.advance().value;
       if (kw === "RETAIN") isRetain = true;
       if (kw === "CONSTANT") isConstant = true;
@@ -268,7 +271,12 @@ export class StParser {
     const elsifClauses: ElsifClause[] = [];
     const elseStatements: Statement[] = [];
 
-    while (!this.isAtEnd() && !this.checkKeyword("ELSIF") && !this.checkKeyword("ELSE") && !this.checkKeyword("END_IF")) {
+    while (
+      !this.isAtEnd() &&
+      !this.checkKeyword("ELSIF") &&
+      !this.checkKeyword("ELSE") &&
+      !this.checkKeyword("END_IF")
+    ) {
       const s = this.parseStatement();
       if (s) thenStatements.push(s);
     }
@@ -278,7 +286,12 @@ export class StParser {
       const elsifCond = this.parseExpression();
       this.consumeKeyword("THEN", "Esperado 'THEN' após condição ELSIF");
       const stmts: Statement[] = [];
-      while (!this.isAtEnd() && !this.checkKeyword("ELSIF") && !this.checkKeyword("ELSE") && !this.checkKeyword("END_IF")) {
+      while (
+        !this.isAtEnd() &&
+        !this.checkKeyword("ELSIF") &&
+        !this.checkKeyword("ELSE") &&
+        !this.checkKeyword("END_IF")
+      ) {
         const s = this.parseStatement();
         if (s) stmts.push(s);
       }
@@ -321,7 +334,13 @@ export class StParser {
       }
       this.consumePunctuation(":", "Esperado ':' após valores de CASE");
       const stmts: Statement[] = [];
-      while (!this.isAtEnd() && !this.checkKeyword("ELSE") && !this.checkKeyword("END_CASE") && this.peek().type !== "INT_LITERAL" && this.peek().type !== "IDENTIFIER") {
+      while (
+        !this.isAtEnd() &&
+        !this.checkKeyword("ELSE") &&
+        !this.checkKeyword("END_CASE") &&
+        this.peek().type !== "INT_LITERAL" &&
+        this.peek().type !== "IDENTIFIER"
+      ) {
         const s = this.parseStatement();
         if (s) stmts.push(s);
       }
@@ -514,15 +533,33 @@ export class StParser {
     // Literais
     if (tok.type === "INT_LITERAL") {
       this.advance();
-      return { type: "LITERAL_EXPR", literalType: "INT", value: parseInt(tok.value, 10), raw: tok.raw, loc };
+      return {
+        type: "LITERAL_EXPR",
+        literalType: "INT",
+        value: parseInt(tok.value, 10),
+        raw: tok.raw,
+        loc,
+      };
     }
     if (tok.type === "REAL_LITERAL") {
       this.advance();
-      return { type: "LITERAL_EXPR", literalType: "REAL", value: parseFloat(tok.value), raw: tok.raw, loc };
+      return {
+        type: "LITERAL_EXPR",
+        literalType: "REAL",
+        value: parseFloat(tok.value),
+        raw: tok.raw,
+        loc,
+      };
     }
     if (tok.type === "BOOL_LITERAL") {
       this.advance();
-      return { type: "LITERAL_EXPR", literalType: "BOOL", value: tok.value === "TRUE", raw: tok.raw, loc };
+      return {
+        type: "LITERAL_EXPR",
+        literalType: "BOOL",
+        value: tok.value === "TRUE",
+        raw: tok.raw,
+        loc,
+      };
     }
     if (tok.type === "STRING_LITERAL") {
       this.advance();

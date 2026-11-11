@@ -7,7 +7,24 @@ import { supabase } from "./client";
 export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
   async ({ next }) => {
     const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
+    let token = data.session?.access_token;
+
+    // Dev bypass é estritamente restrito a ambiente de desenvolvimento local
+    // Em build de produção (import.meta.env.DEV === false ou NODE_ENV === 'production'),
+    // esta ramificação é permanentemente inerte e não anexa tokens virtuais.
+    const isDevAllowed =
+      Boolean(import.meta.env?.DEV) &&
+      (typeof process === "undefined" || process.env?.NODE_ENV !== "production");
+
+    if (
+      !token &&
+      isDevAllowed &&
+      typeof window !== "undefined" &&
+      localStorage.getItem("eletricai.dev-auth-bypass") === "true"
+    ) {
+      token = "dev-access-token";
+    }
+
     return next({
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });

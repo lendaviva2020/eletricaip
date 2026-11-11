@@ -18,7 +18,7 @@ export const DeviceTreeView: React.FC = () => {
   const controller = project.controllers[0];
 
   const [selectedModuleId, setSelectedModuleId] = useState<string>(
-    controller?.rackModules[0]?.id || ""
+    controller?.rackModules[0]?.id || "",
   );
 
   const selectedModule = controller?.rackModules.find((m) => m.id === selectedModuleId);
@@ -87,7 +87,13 @@ export const DeviceTreeView: React.FC = () => {
                 }`}
               >
                 <div className="p-2 rounded bg-black/40 border border-zinc-800 mt-0.5">
-                  {getModuleIcon(module.catalogKey.includes("DI") ? "DIGITAL_INPUT" : module.catalogKey.includes("DO") ? "DIGITAL_OUTPUT" : "CPU")}
+                  {getModuleIcon(
+                    module.catalogKey.includes("DI")
+                      ? "DIGITAL_INPUT"
+                      : module.catalogKey.includes("DO")
+                        ? "DIGITAL_OUTPUT"
+                        : "CPU",
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -151,12 +157,12 @@ export const DeviceTreeView: React.FC = () => {
                           if (ch.direction.includes("INPUT")) {
                             processVal = String(
                               scheduler.inputProcessImage[ch.iecAddress] ??
-                                (mappedTag ? mappedTag.currentValue : "0")
+                                (mappedTag ? mappedTag.currentValue : "0"),
                             );
                           } else {
                             processVal = String(
                               scheduler.outputProcessImage[ch.iecAddress] ??
-                                (mappedTag ? mappedTag.currentValue : "0")
+                                (mappedTag ? mappedTag.currentValue : "0"),
                             );
                           }
                         }

@@ -5,8 +5,18 @@
 
 import { StParser } from "../parser/st-parser";
 import { StSemanticAnalyzer } from "../parser/st-semantic";
-import type { IndustrialProject, POU, CompilationResult, CompilerDiagnostic } from "../../canonical/types";
-import type { CompiledProjectIR, CompiledTask, IRBlock, IRInstruction } from "./intermediate-representation";
+import type {
+  IndustrialProject,
+  POU,
+  CompilationResult,
+  CompilerDiagnostic,
+} from "../../canonical/types";
+import type {
+  CompiledProjectIR,
+  CompiledTask,
+  IRBlock,
+  IRInstruction,
+} from "./intermediate-representation";
 import type { Statement, Expression, BinaryExpression } from "../parser/st-ast";
 import { generateUuid as uuidv4 } from "../../canonical/uuid";
 import { LadderEngine } from "../languages/ladder-engine";
@@ -74,7 +84,11 @@ export class IECCompilerPipeline {
           // Se não houver erros fatais, gera as instruções IR
           const hasFatal = diagnostics.some((d) => d.pouId === pou.id && d.severity === "ERROR");
           if (!hasFatal) {
-            const block = this.generateIRFromST(pou.name, parseRes.ast.body, semantic.getSymbolTable());
+            const block = this.generateIRFromST(
+              pou.name,
+              parseRes.ast.body,
+              semantic.getSymbolTable(),
+            );
             irBlocks[pou.name] = block;
           }
         }
@@ -108,11 +122,12 @@ export class IECCompilerPipeline {
     for (const task of project.taskConfigurations) {
       if (task.enabled) {
         const tAny = task as any;
-        const pouNames = task.pouIds && task.pouIds.length > 0
-          ? task.pouIds
-              .map((id) => project.pous.find((p) => p.id === id)?.name)
-              .filter((name): name is string => Boolean(name))
-          : tAny.pouNames || [];
+        const pouNames =
+          task.pouIds && task.pouIds.length > 0
+            ? task.pouIds
+                .map((id) => project.pous.find((p) => p.id === id)?.name)
+                .filter((name): name is string => Boolean(name))
+            : tAny.pouNames || [];
 
         tasksOrder.push({
           taskName: task.name,
@@ -143,7 +158,10 @@ export class IECCompilerPipeline {
       compiledAt: new Date().toISOString(),
       compilerVersion: "1.0.0-IEC61131-3",
       diagnostics,
-      irBytecodeSize: Object.keys(irBlocks).reduce((acc, k) => acc + irBlocks[k].instructions.length, 0),
+      irBytecodeSize: Object.keys(irBlocks).reduce(
+        (acc, k) => acc + irBlocks[k].instructions.length,
+        0,
+      ),
     };
 
     if (hasErrors) {
@@ -170,7 +188,11 @@ export class IECCompilerPipeline {
   // --------------------------------------------------------------------------
   // Geradores de IR
   // --------------------------------------------------------------------------
-  private static generateIRFromST(pouName: string, statements: Statement[], symbols: Map<string, any>): IRBlock {
+  private static generateIRFromST(
+    pouName: string,
+    statements: Statement[],
+    symbols: Map<string, any>,
+  ): IRBlock {
     const instructions: IRInstruction[] = [];
     const localVariables: Record<string, any> = {};
 
@@ -186,7 +208,12 @@ export class IECCompilerPipeline {
     const compileExpression = (expr: Expression): string => {
       if (expr.type === "LITERAL_EXPR") {
         const t = nextTemp();
-        instructions.push({ op: "LOAD_CONST", arg1: expr.value, dest: t, sourceLine: expr.loc.line });
+        instructions.push({
+          op: "LOAD_CONST",
+          arg1: expr.value,
+          dest: t,
+          sourceLine: expr.loc.line,
+        });
         return t;
       }
       if (expr.type === "IDENTIFIER_EXPR") {
@@ -226,7 +253,12 @@ export class IECCompilerPipeline {
       if (expr.type === "UNARY_EXPR") {
         const opReg = compileExpression(expr.operand);
         const dest = nextTemp();
-        instructions.push({ op: expr.operator === "NOT" ? "NOT" : "SUB", arg1: opReg, dest, sourceLine: expr.loc.line });
+        instructions.push({
+          op: expr.operator === "NOT" ? "NOT" : "SUB",
+          arg1: opReg,
+          dest,
+          sourceLine: expr.loc.line,
+        });
         return dest;
       }
       return nextTemp();
@@ -236,14 +268,24 @@ export class IECCompilerPipeline {
       if (stmt.type === "ASSIGNMENT_STMT") {
         const valReg = compileExpression(stmt.value);
         if (stmt.target.type === "IDENTIFIER_EXPR") {
-          instructions.push({ op: "STORE_VAR", arg1: stmt.target.name, arg2: valReg, sourceLine: stmt.loc.line });
+          instructions.push({
+            op: "STORE_VAR",
+            arg1: stmt.target.name,
+            arg2: valReg,
+            sourceLine: stmt.loc.line,
+          });
         }
       } else if (stmt.type === "IF_STMT") {
         const condReg = compileExpression(stmt.condition);
         const elseLabel = nextLabel("L_ELSE");
         const endLabel = nextLabel("L_ENDIF");
 
-        instructions.push({ op: "JUMP_IF_FALSE", arg1: condReg, arg2: elseLabel, sourceLine: stmt.loc.line });
+        instructions.push({
+          op: "JUMP_IF_FALSE",
+          arg1: condReg,
+          arg2: elseLabel,
+          sourceLine: stmt.loc.line,
+        });
         for (const s of stmt.thenStatements) compileStatement(s);
         instructions.push({ op: "JUMP", arg1: endLabel });
 
@@ -273,8 +315,13 @@ export class IECCompilerPipeline {
     for (const net of pou.networks) {
       for (const rung of net.rungs) {
         // Avaliação sequencial de rungs: AND de contatos, atribuição em bobinas
-        let lastResultReg = "_rung_pwr";
-        instructions.push({ op: "LOAD_CONST", arg1: true, dest: lastResultReg, sourceLine: rung.number });
+        const lastResultReg = "_rung_pwr";
+        instructions.push({
+          op: "LOAD_CONST",
+          arg1: true,
+          dest: lastResultReg,
+          sourceLine: rung.number,
+        });
 
         for (const elem of rung.elements) {
           if (elem.type === "CONTACT_NO" || elem.type === "CONTACT_NC") {
@@ -284,7 +331,12 @@ export class IECCompilerPipeline {
             if (elem.negated || elem.type === "CONTACT_NC") {
               instructions.push({ op: "NOT", arg1: valReg, dest: valReg });
             }
-            instructions.push({ op: "AND", arg1: lastResultReg, arg2: valReg, dest: lastResultReg });
+            instructions.push({
+              op: "AND",
+              arg1: lastResultReg,
+              arg2: valReg,
+              dest: lastResultReg,
+            });
           } else if (elem.type.startsWith("COIL")) {
             const sym = elem.symbolName || "BOOL_OUT";
             instructions.push({ op: "STORE_VAR", arg1: sym, arg2: lastResultReg });
@@ -308,7 +360,10 @@ export class IECCompilerPipeline {
           instructions.push({
             op: "CALL_FB",
             arg1: "TON",
-            arg2: { IN: node.inputs[0]?.currentValue ?? false, PT: node.inputs[1]?.defaultValue ?? "T#5s" },
+            arg2: {
+              IN: node.inputs[0]?.currentValue ?? false,
+              PT: node.inputs[1]?.defaultValue ?? "T#5s",
+            },
             dest: node.name,
           });
         }

@@ -197,7 +197,12 @@ describe("GATE 2B — Deterministic Alarm Engine (ISA-18.2)", () => {
 
     // 2. Operator Acknowledges while still active
     virtualTime += 5000;
-    const ackEvt = engine.acknowledgeAlarm(inst.id, "OPERADOR_1", "Em análise pela equipe elétrica", virtualTime);
+    const ackEvt = engine.acknowledgeAlarm(
+      inst.id,
+      "OPERADOR_1",
+      "Em análise pela equipe elétrica",
+      virtualTime,
+    );
     expect(ackEvt).not.toBeNull();
     expect(ackEvt?.transition).toBe("ACKNOWLEDGE");
     expect(ackEvt?.newAckState).toBe("ACKNOWLEDGED");
@@ -361,7 +366,13 @@ describe("GATE 2B — Deterministic Alarm Engine (ISA-18.2)", () => {
     engine.registerDefinition(alarmDef);
 
     // Operator suppresses for 30 minutes
-    engine.suppressAlarm("alm_suppress", "Manutenção preventiva de campo", 30 * 60 * 1000, "ENGENHEIRO", virtualTime);
+    engine.suppressAlarm(
+      "alm_suppress",
+      "Manutenção preventiva de campo",
+      30 * 60 * 1000,
+      "ENGENHEIRO",
+      virtualTime,
+    );
 
     const tag: ScadaTagDefinition = {
       id: "tag_sup",

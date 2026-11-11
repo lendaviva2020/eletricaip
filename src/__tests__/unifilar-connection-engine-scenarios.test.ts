@@ -20,7 +20,7 @@ import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 describe("UNIFILAR CONNECTION ENGINE — CENÁRIOS DE ENGENHARIA ELÉTRICA (A a J)", () => {
   // TESTE A — ALIMENTAÇÃO TRIFÁSICA
   it("CENÁRIO A — Alimentação Trifásica: Fonte -> Proteção Geral -> Barramento -> Disjuntores Derivados -> Cargas", () => {
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     const nTrafo = makeNode({
       id: "n_trafo",
@@ -152,7 +152,7 @@ describe("UNIFILAR CONNECTION ENGINE — CENÁRIOS DE ENGENHARIA ELÉTRICA (A a 
 
   // TESTE B — MOTOR COM PARTIDA DIRETA
   it("CENÁRIO B — Motor com Partida Direta: Alimentação -> QF01 -> Contator KM01 -> Relé Térmico RT01 -> Motor M01", () => {
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     const nQf = makeNode({
       id: "n_qf01",
@@ -227,7 +227,7 @@ describe("UNIFILAR CONNECTION ENGINE — CENÁRIOS DE ENGENHARIA ELÉTRICA (A a 
 
   // TESTE C — INVERSOR DE FREQUÊNCIA
   it("CENÁRIO C — Inversor de Frequência: Alimentação -> QF02 -> Inversor INV01 -> Motor M02", () => {
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     const nQf = makeNode({
       id: "n_qf02",
@@ -301,7 +301,7 @@ describe("UNIFILAR CONNECTION ENGINE — CENÁRIOS DE ENGENHARIA ELÉTRICA (A a 
 
   // TESTE E — DERIVAÇÕES MÚLTIPLAS EM BARRAMENTO (8 CIRCUITOS)
   it("CENÁRIO E — Derivações Múltiplas: Barramento principal conecta 8 circuitos derivados com derivações explícitas", () => {
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     const nBusbar = makeNode({
       id: "n_bus_main",
@@ -341,7 +341,7 @@ describe("UNIFILAR CONNECTION ENGINE — CENÁRIOS DE ENGENHARIA ELÉTRICA (A a 
 
   // TESTE F — CIRCUITO INCOMPLETO
   it("CENÁRIO F — Circuito Incompleto: Remoção de conexão bloqueia status COMPLETE e aponta nó exato", () => {
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     const nQf = makeNode({
       id: "n_qf01",
@@ -371,7 +371,7 @@ describe("UNIFILAR CONNECTION ENGINE — CENÁRIOS DE ENGENHARIA ELÉTRICA (A a 
 
   // TESTE G — TERMINAL INVÁLIDO
   it("CENÁRIO G — Terminal Inválido: Detecta e sinaliza aresta para nós órfãos ou auto-laço", () => {
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     const nQf = makeNode({
       id: "n_qf01",
@@ -399,7 +399,7 @@ describe("UNIFILAR CONNECTION ENGINE — CENÁRIOS DE ENGENHARIA ELÉTRICA (A a 
 
   // TESTE H — CRUZAMENTO DE CONDUTORES
   it("CENÁRIO H — Cruzamento de Condutores: Linhas visuais sem junção explícita não criam netlist em comum", () => {
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     // Circuito 1: nA1 -> nB1
     const nA1 = makeNode({
@@ -465,7 +465,7 @@ describe("UNIFILAR CONNECTION ENGINE — CENÁRIOS DE ENGENHARIA ELÉTRICA (A a 
 
   // TESTE I — PERSISTÊNCIA CANÔNICA
   it("CENÁRIO I — Persistência: Diagrama converte para conexões canônicas estáveis no UnifiedProjectStore", () => {
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     const nQf = makeNode({
       id: "n_qf",
@@ -507,7 +507,7 @@ describe("UNIFILAR CONNECTION ENGINE — CENÁRIOS DE ENGENHARIA ELÉTRICA (A a 
 
   // TESTE J — CONVERSÃO UNIFILAR / MULTIFILAR
   it("CENÁRIO J — Conversão Unifilar/Multifilar: Preserva a mesma topologia e correspondência biunívoca", () => {
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     const nQf = makeNode({
       id: "n_qf",

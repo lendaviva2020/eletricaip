@@ -123,7 +123,9 @@ export class PersistentEdgeOutbox {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_outbox_idempotency ON outbox_samples(gateway_id, tag_name, source_timestamp);
     `);
 
-    const maxSeqRow = this.db.query("SELECT MAX(sequence_number) as max_seq, COUNT(*) as total FROM outbox_samples;").get() as { max_seq: number | null; total: number | null };
+    const maxSeqRow = this.db
+      .query("SELECT MAX(sequence_number) as max_seq, COUNT(*) as total FROM outbox_samples;")
+      .get() as { max_seq: number | null; total: number | null };
     this.sequenceCounter = maxSeqRow?.max_seq ?? 0;
     this.currentActiveCount = maxSeqRow?.total ?? 0;
   }
@@ -135,11 +137,11 @@ export class PersistentEdgeOutbox {
         id, sequence_number, project_id, organization_id, plant_id, gateway_id, connection_id,
         tag_name, value, raw_sample_value, quality, source, source_timestamp,
         edge_received_at, delivery_state, attempts, is_delayed_replay, criticality
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 0, 0, ?);`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 0, 0, ?);`,
     );
 
     this.countStmt = this.db.prepare(
-      "SELECT COUNT(*) as total FROM outbox_samples WHERE delivery_state IN ('PENDING', 'IN_FLIGHT');"
+      "SELECT COUNT(*) as total FROM outbox_samples WHERE delivery_state IN ('PENDING', 'IN_FLIGHT');",
     );
 
     // Prioritize non-critical records first when dropping under quota saturation
@@ -147,7 +149,7 @@ export class PersistentEdgeOutbox {
       `SELECT id FROM outbox_samples
        WHERE delivery_state = 'PENDING'
        ORDER BY CASE WHEN criticality = 'CRITICAL' THEN 1 ELSE 0 END ASC, sequence_number ASC
-       LIMIT 1;`
+       LIMIT 1;`,
     );
 
     this.deleteByIdStmt = this.db.prepare("DELETE FROM outbox_samples WHERE id = ?;");
@@ -262,7 +264,7 @@ export class PersistentEdgeOutbox {
           this.isDegraded = true;
           this.lastDegradationReason = `CRITICAL_EVENT_PERSISTENCE_FAILED: Falha na persistência física do alarme/evento (${err?.message ?? "Falha de disco"}).`;
           throw new Error(
-            `CRITICAL_EVENT_PERSISTENCE_FAILED: Falha na persistência física de evento crítico no SQLite WAL: ${err?.message ?? "Falha de disco"}`
+            `CRITICAL_EVENT_PERSISTENCE_FAILED: Falha na persistência física de evento crítico no SQLite WAL: ${err?.message ?? "Falha de disco"}`,
           );
         }
         return null;
@@ -380,12 +382,14 @@ export class PersistentEdgeOutbox {
     const now = Date.now();
 
     if (this.useNativeSqlite && this.db) {
-      const rows = this.db.query(
-        `SELECT * FROM outbox_samples
+      const rows = this.db
+        .query(
+          `SELECT * FROM outbox_samples
          WHERE delivery_state = 'PENDING'
          ORDER BY sequence_number ASC
-         LIMIT ?;`
-      ).all(batchSize) as any[];
+         LIMIT ?;`,
+        )
+        .all(batchSize) as any[];
 
       if (rows.length === 0) return [];
 
@@ -398,7 +402,7 @@ export class PersistentEdgeOutbox {
              attempts = attempts + 1,
              last_attempt_at = ?
          WHERE id IN (${placeholders});`,
-        [now, ...ids]
+        [now, ...ids],
       );
 
       return rows.map((r) => ({
@@ -449,7 +453,7 @@ export class PersistentEdgeOutbox {
       const placeholders = sampleIds.map(() => "?").join(",");
       const res = this.db.run(
         `DELETE FROM outbox_samples WHERE id IN (${placeholders});`,
-        sampleIds
+        sampleIds,
       );
       this.acknowledgedCount += res.changes;
       this.currentActiveCount = Math.max(0, this.currentActiveCount - res.changes);
@@ -512,14 +516,23 @@ export class PersistentEdgeOutbox {
     }
 
     if (this.useNativeSqlite && this.db) {
-      const counts = this.db.query(`
+      const counts = this.db
+        .query(
+          `
         SELECT
           COUNT(*) as total,
           SUM(CASE WHEN delivery_state = 'PENDING' THEN 1 ELSE 0 END) as pending,
           SUM(CASE WHEN delivery_state = 'IN_FLIGHT' THEN 1 ELSE 0 END) as in_flight,
           MIN(CASE WHEN delivery_state = 'PENDING' THEN edge_received_at ELSE NULL END) as oldest_ts
         FROM outbox_samples;
-      `).get() as { total: number; pending: number | null; in_flight: number | null; oldest_ts: number | null };
+      `,
+        )
+        .get() as {
+        total: number;
+        pending: number | null;
+        in_flight: number | null;
+        oldest_ts: number | null;
+      };
 
       const totalSamplesStored = counts?.total ?? 0;
       const pendingUploadCount = counts?.pending ?? 0;
@@ -584,7 +597,9 @@ export class PersistentEdgeOutbox {
     const capacityPercent = (this.memoryEntries.size / this.maxSamples) * 100;
     const isNearLimit = capacityPercent >= this.warnThresholdPercent;
     const isNearCapacity80Percent = capacityPercent >= 80;
-    const oldestAgeSeconds = oldestTimestamp ? Math.max(0, Math.floor((Date.now() - oldestTimestamp) / 1000)) : 0;
+    const oldestAgeSeconds = oldestTimestamp
+      ? Math.max(0, Math.floor((Date.now() - oldestTimestamp) / 1000))
+      : 0;
 
     return {
       totalSamplesStored: this.memoryEntries.size,
@@ -646,4 +661,3 @@ export class PersistentEdgeOutbox {
     this.acknowledgedCount = 0;
   }
 }
-

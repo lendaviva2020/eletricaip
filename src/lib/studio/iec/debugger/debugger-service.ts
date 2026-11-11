@@ -3,7 +3,7 @@
  * Paridade com as capacidades de depuração online do CODESYS V3.5:
  * Breakpoints condicionais, execução passo a passo (Step In/Over/Out),
  * Tabela de inspeção de variáveis (Watch Table) com histórico e Forcing isolado.
- * 
+ *
  * Invariante de Segurança:
  * IS_PHYSICAL_CONTROL_ALLOWED = false
  */
@@ -42,7 +42,7 @@ export class InteractiveDebuggerService {
   private currentPou: string = "";
   private currentInstructionIdx: number = 0;
   private callStack: { pouName: string; returnIdx: number }[] = [];
-  
+
   // Memória de variáveis do runtime
   private memory: Record<string, any> = {};
   private forcedMemory: Record<string, any> = {};
@@ -101,7 +101,11 @@ export class InteractiveDebuggerService {
   // Gerenciamento de Breakpoints
   // ==========================================================================
 
-  public setBreakpoint(pouName: string, sourceLine: number, conditionST?: string): BreakpointDefinition {
+  public setBreakpoint(
+    pouName: string,
+    sourceLine: number,
+    conditionST?: string,
+  ): BreakpointDefinition {
     const id = `${pouName}:${sourceLine}`;
     const bp: BreakpointDefinition = {
       id,
@@ -169,7 +173,10 @@ export class InteractiveDebuggerService {
     if (inst && inst.op === "CALL_FB") {
       const targetPou = String(inst.arg1);
       if (this.ir.blocks[targetPou]) {
-        this.callStack.push({ pouName: this.currentPou, returnIdx: this.currentInstructionIdx + 1 });
+        this.callStack.push({
+          pouName: this.currentPou,
+          returnIdx: this.currentInstructionIdx + 1,
+        });
         this.currentPou = targetPou;
         this.currentInstructionIdx = 0;
         this.updateWatches();
@@ -261,7 +268,9 @@ export class InteractiveDebuggerService {
     if (bp && bp.enabled) {
       if (bp.conditionST && bp.conditionST.trim().length > 0) {
         // Avaliação segura da condição do breakpoint
-        const condMet = evaluateSafeCondition(bp.conditionST, (name) => this.getVariableValue(name));
+        const condMet = evaluateSafeCondition(bp.conditionST, (name) =>
+          this.getVariableValue(name),
+        );
         if (!condMet) {
           return false;
         }
@@ -306,13 +315,16 @@ export class InteractiveDebuggerService {
         }
         break;
       case "ADD":
-        if (inst.dest) this.memory[inst.dest] = Number(getVal(inst.arg1)) + Number(getVal(inst.arg2));
+        if (inst.dest)
+          this.memory[inst.dest] = Number(getVal(inst.arg1)) + Number(getVal(inst.arg2));
         break;
       case "SUB":
-        if (inst.dest) this.memory[inst.dest] = Number(getVal(inst.arg1)) - Number(getVal(inst.arg2));
+        if (inst.dest)
+          this.memory[inst.dest] = Number(getVal(inst.arg1)) - Number(getVal(inst.arg2));
         break;
       case "MUL":
-        if (inst.dest) this.memory[inst.dest] = Number(getVal(inst.arg1)) * Number(getVal(inst.arg2));
+        if (inst.dest)
+          this.memory[inst.dest] = Number(getVal(inst.arg1)) * Number(getVal(inst.arg2));
         break;
       case "DIV":
         if (inst.dest) {
@@ -321,13 +333,15 @@ export class InteractiveDebuggerService {
         }
         break;
       case "AND":
-        if (inst.dest) this.memory[inst.dest] = Boolean(getVal(inst.arg1)) && Boolean(getVal(inst.arg2));
+        if (inst.dest)
+          this.memory[inst.dest] = Boolean(getVal(inst.arg1)) && Boolean(getVal(inst.arg2));
         break;
       case "OR":
-        if (inst.dest) this.memory[inst.dest] = Boolean(getVal(inst.arg1)) || Boolean(getVal(inst.arg2));
+        if (inst.dest)
+          this.memory[inst.dest] = Boolean(getVal(inst.arg1)) || Boolean(getVal(inst.arg2));
         break;
       case "NOT":
-        if (inst.dest) this.memory[inst.dest] = !Boolean(getVal(inst.arg1));
+        if (inst.dest) this.memory[inst.dest] = !getVal(inst.arg1);
         break;
       case "EQ":
         if (inst.dest) this.memory[inst.dest] = getVal(inst.arg1) === getVal(inst.arg2);
@@ -336,21 +350,23 @@ export class InteractiveDebuggerService {
         if (inst.dest) this.memory[inst.dest] = getVal(inst.arg1) !== getVal(inst.arg2);
         break;
       case "GT":
-        if (inst.dest) this.memory[inst.dest] = Number(getVal(inst.arg1)) > Number(getVal(inst.arg2));
+        if (inst.dest)
+          this.memory[inst.dest] = Number(getVal(inst.arg1)) > Number(getVal(inst.arg2));
         break;
       case "LT":
-        if (inst.dest) this.memory[inst.dest] = Number(getVal(inst.arg1)) < Number(getVal(inst.arg2));
+        if (inst.dest)
+          this.memory[inst.dest] = Number(getVal(inst.arg1)) < Number(getVal(inst.arg2));
         break;
       case "JUMP":
         this.jumpToLabel(inst.arg1);
         break;
       case "JUMP_IF_FALSE":
-        if (!Boolean(getVal(inst.arg1))) {
+        if (!getVal(inst.arg1)) {
           this.jumpToLabel(inst.arg2);
         }
         break;
       case "JUMP_IF_TRUE":
-        if (Boolean(getVal(inst.arg1))) {
+        if (getVal(inst.arg1)) {
           this.jumpToLabel(inst.arg2);
         }
         break;

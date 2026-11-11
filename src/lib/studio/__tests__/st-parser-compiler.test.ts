@@ -165,7 +165,10 @@ describe("IEC 61131-3 Semantic Analyzer & Type Safety", () => {
 
 describe("IEC Compiler Pipeline & IR Bytecode Generation", () => {
   it("should compile a canonical project into executable intermediate representation (IR)", () => {
-    const project = IndustrialProjectService.createSampleIndustrialProject("tenant-test", "Test Project");
+    const project = IndustrialProjectService.createSampleIndustrialProject(
+      "tenant-test",
+      "Test Project",
+    );
     const result = IECCompilerPipeline.compile(project);
 
     expect(result.success).toBe(true);

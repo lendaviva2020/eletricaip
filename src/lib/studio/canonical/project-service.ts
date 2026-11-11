@@ -33,7 +33,11 @@ export class CanonicalProjectService {
   /**
    * Cria um projeto industrial vazio com estrutura mínima inicial.
    */
-  public static createEmptyProject(name: string, tenantId?: string, projectId?: string): IndustrialProject {
+  public static createEmptyProject(
+    name: string,
+    tenantId?: string,
+    projectId?: string,
+  ): IndustrialProject {
     const projId = projectId || uuidv4();
     const tId = tenantId || uuidv4();
     const ctrlId = uuidv4();
@@ -246,7 +250,7 @@ export class CanonicalProjectService {
         priority: tk.priority,
         intervalMs: tk.intervalMs,
         watchdogMs: tk.watchdogMs,
-        pouNames: (tk as any).pouNames || (tk.pouIds || []),
+        pouNames: (tk as any).pouNames || tk.pouIds || [],
       })),
       alarmDefinitions: (project.alarmDefinitions || []).map((a) => ({
         id: a.id,
@@ -305,7 +309,8 @@ export class CanonicalProjectService {
     }
 
     // Converte dispositivos e equipamentos unifilares
-    const equipments = (doc.engineering as any).equipments || (doc.engineering as any).equipment || {};
+    const equipments =
+      (doc.engineering as any).equipments || (doc.engineering as any).equipment || {};
     const devices: Device[] = Object.values(equipments).map((eq: any) => ({
       id: eq.id,
       tenantId: project.tenantId,
@@ -331,7 +336,10 @@ export class CanonicalProjectService {
   /**
    * Sincroniza tags e metadados do IndustrialProject canônico de volta para o UnifiedProjectDoc.
    */
-  public static syncToUnifiedDoc(project: IndustrialProject, currentDoc: UnifiedProjectDoc): UnifiedProjectDoc {
+  public static syncToUnifiedDoc(
+    project: IndustrialProject,
+    currentDoc: UnifiedProjectDoc,
+  ): UnifiedProjectDoc {
     const nextDoc: UnifiedProjectDoc = JSON.parse(JSON.stringify(currentDoc));
     nextDoc.metadata.name = project.name;
     nextDoc.metadata.revision = project.activeVersion;
@@ -345,8 +353,8 @@ export class CanonicalProjectService {
         area: t.protocolAddress?.startsWith("%I")
           ? "I"
           : t.protocolAddress?.startsWith("%Q")
-          ? "Q"
-          : "M",
+            ? "Q"
+            : "M",
         address: t.protocolAddress || (t.dataType === "BOOL" ? `%MX_${t.name}` : `%MD_${t.name}`),
         unit: t.engineeringUnit,
         initialValue: (t.initialValue as any) ?? false,
@@ -364,7 +372,10 @@ export class CanonicalProjectService {
    * Cria o projeto de exemplo com fluxo completo ponta a ponta:
    * UNIFILAR → DEVICE TREE → TAG → LADDER → FBD → ST → SFC → SIMULATOR → HMI/SCADA → ALARMS
    */
-  public static createSampleIndustrialProject(name: string = "Estacao_Elevatoria_Canonica", tenantId?: string): IndustrialProject {
+  public static createSampleIndustrialProject(
+    name: string = "Estacao_Elevatoria_Canonica",
+    tenantId?: string,
+  ): IndustrialProject {
     const proj = this.createEmptyProject(name, tenantId);
     const ctrl = proj.controllers[0];
     const task = proj.taskConfigurations[0];
@@ -1043,7 +1054,9 @@ END_PROGRAM`,
     for (const page of project.hmiPages) {
       for (const w of page.widgets) {
         if (w.bindingTagId && !tagIds.has(w.bindingTagId)) {
-          brokenTagReferences.push(`HMI Page '${page.name}', Widget '${w.name}' binds to non-existent Tag ID ${w.bindingTagId}`);
+          brokenTagReferences.push(
+            `HMI Page '${page.name}', Widget '${w.name}' binds to non-existent Tag ID ${w.bindingTagId}`,
+          );
         }
       }
     }
@@ -1059,7 +1072,9 @@ END_PROGRAM`,
     for (const rec of project.recipeDefinitions) {
       for (const param of rec.parameters) {
         if (!tagIds.has(param.targetTagId)) {
-          brokenTagReferences.push(`Recipe '${rec.name}', Parameter '${param.parameterName}' references non-existent Tag ID ${param.targetTagId}`);
+          brokenTagReferences.push(
+            `Recipe '${rec.name}', Parameter '${param.parameterName}' references non-existent Tag ID ${param.targetTagId}`,
+          );
         }
       }
     }
@@ -1080,16 +1095,18 @@ END_PROGRAM`,
           // Integridade referencial estrita de Hardware: channel.moduleId DEVE ser o ID do módulo pai
           if (ch.moduleId !== mod.id) {
             brokenVariableReferences.push(
-              `Hardware Integrity Error: Module '${mod.name}' (${mod.id}) contains Channel '${ch.name}' with mismatched moduleId '${ch.moduleId}'`
+              `Hardware Integrity Error: Module '${mod.name}' (${mod.id}) contains Channel '${ch.name}' with mismatched moduleId '${ch.moduleId}'`,
             );
           }
           if (ch.mappedTagId && !tagIds.has(ch.mappedTagId)) {
             brokenTagReferences.push(
-              `Channel '${ch.name}' (${ch.iecAddress}) references non-existent Tag ID ${ch.mappedTagId}`
+              `Channel '${ch.name}' (${ch.iecAddress}) references non-existent Tag ID ${ch.mappedTagId}`,
             );
           }
           if (!ch.mappedTagId && !ch.mappedVariableId) {
-            unmappedIOChannels.push(`Module '${mod.name}', Channel '${ch.name}' (${ch.iecAddress}) is unmapped.`);
+            unmappedIOChannels.push(
+              `Module '${mod.name}', Channel '${ch.name}' (${ch.iecAddress}) is unmapped.`,
+            );
           }
         }
       }
@@ -1112,4 +1129,3 @@ END_PROGRAM`,
 }
 
 export const IndustrialProjectService = CanonicalProjectService;
-

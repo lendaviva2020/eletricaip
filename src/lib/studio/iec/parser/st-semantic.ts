@@ -339,6 +339,18 @@ export class StSemanticAnalyzer {
   }
 
   private isIntegerType(type: string): boolean {
-    return ["SINT", "INT", "DINT", "LINT", "USINT", "UINT", "UDINT", "ULINT", "BYTE", "WORD", "DWORD"].includes(type);
+    return [
+      "SINT",
+      "INT",
+      "DINT",
+      "LINT",
+      "USINT",
+      "UINT",
+      "UDINT",
+      "ULINT",
+      "BYTE",
+      "WORD",
+      "DWORD",
+    ].includes(type);
   }
 }

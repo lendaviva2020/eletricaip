@@ -11,7 +11,10 @@ describe("GATE 3.2D — SQLite Durability, Criticality-Aware Quota & WAL Sync", 
 
   beforeEach(() => {
     testDir = fs.mkdtempSync(path.join(os.tmpdir(), "eletricai-durability-"));
-    dbPath = path.join(testDir, `outbox_crit_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.db`);
+    dbPath = path.join(
+      testDir,
+      `outbox_crit_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.db`,
+    );
   });
 
   afterEach(async () => {

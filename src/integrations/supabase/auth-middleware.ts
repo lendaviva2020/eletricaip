@@ -45,6 +45,24 @@ export interface ActiveSessionContext extends AuthContext {
   isSessionConfirmedActive: true;
 }
 
+/**
+ * Valida se o bypass de desenvolvimento local é estritamente permitido.
+ * Requisitos de segurança Gate 4.2.1:
+ * 1. O bypass somente pode existir em ambiente local de desenvolvimento ou teste.
+ * 2. Em produção (process.env.NODE_ENV === "production"), é permanentemente desabilitado.
+ * 3. Falha fechado: se NODE_ENV for indefinido, ausente ou diferente de 'development'/'test', rejeita.
+ */
+export function isDevAuthAllowed(): boolean {
+  if (process.env.VERCEL_ENV === "production") {
+    return false;
+  }
+  const env = process.env.NODE_ENV;
+  if (!env || env === "production") {
+    return false;
+  }
+  return env === "development" || env === "test";
+}
+
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
     const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = getServerSupabasePublicEnv();
@@ -71,11 +89,12 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       throw new Response("Unauthorized: No authorization header provided", { status: 401 });
     }
 
-    if (!authHeader.startsWith("Bearer ")) {
-      throw new Response("Unauthorized: Only Bearer tokens are supported", { status: 401 });
+    const bearerMatch = /^Bearer\s+([^\s,]+)$/i.exec(authHeader.trim());
+    if (!bearerMatch) {
+      throw new Response("Unauthorized: Invalid or unsupported authorization header", { status: 401 });
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = bearerMatch[1];
     if (!token) {
       throw new Response("Unauthorized: No token provided", { status: 401 });
     }
@@ -93,14 +112,26 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       },
     });
 
-    // Verificação do JWT tolerante ao tipo de chave do projeto:
-    // 1) JWKS (chaves assimétricas ES256/RS256) — sem round-trip por invocação;
-    // 2) segredo legado compartilhado (HS256) quando SUPABASE_JWT_SECRET existir;
-    // 3) fallback final para auth.getUser(token) — garante que nenhuma
-    //    incompatibilidade de assinatura derrube TODAS as rotas autenticadas.
     let userId: string | undefined;
     let claims: Record<string, unknown> = {};
     let sessionId: string | undefined;
+
+    if (token === "dev-access-token") {
+      if (!isDevAuthAllowed()) {
+        console.warn("[Security] Tentativa de dev-access-token rejeitada em ambiente de produção.");
+        throw new Response(
+          "Unauthorized: Development bypass tokens are permanently forbidden in production",
+          { status: 401 },
+        );
+      }
+      userId = "00000000-0000-4000-a000-000000000001";
+      claims = {
+        role: "authenticated",
+        email: "auditor@eletricai.com",
+        isDevBypass: true,
+      };
+      sessionId = "dev-session-id";
+    }
 
     const applyPayload = (payload: Record<string, unknown>) => {
       userId = typeof payload.sub === "string" ? payload.sub : undefined;
@@ -114,32 +145,45 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
 
     const issuer = `${SUPABASE_URL.replace(/\/$/, "")}/auth/v1`;
 
-    try {
-      const { payload } = await jwtVerify(token, getJwks(SUPABASE_URL), { issuer });
-      applyPayload(payload as Record<string, unknown>);
-    } catch {
-      const legacySecret = process.env["SUPABASE_JWT_SECRET"];
-      if (legacySecret) {
-        try {
-          const { payload } = await jwtVerify(token, new TextEncoder().encode(legacySecret), {
-            issuer,
-          });
-          applyPayload(payload as Record<string, unknown>);
-        } catch {
-          /* cai no fallback remoto abaixo */
+    if (!userId) {
+      try {
+        const { payload } = await jwtVerify(token, getJwks(SUPABASE_URL), {
+          issuer,
+          audience: "authenticated",
+          algorithms: ["ES256", "RS256"],
+        });
+        if (payload["role"] !== "authenticated") {
+          throw new Error("Invalid token role claim");
         }
-      }
+        applyPayload(payload as Record<string, unknown>);
+      } catch {
+        const legacySecret = process.env["SUPABASE_JWT_SECRET"];
+        if (legacySecret) {
+          try {
+            const { payload } = await jwtVerify(token, new TextEncoder().encode(legacySecret), {
+              issuer,
+              audience: "authenticated",
+              algorithms: ["HS256"],
+            });
+            if (payload["role"] === "authenticated") {
+              applyPayload(payload as Record<string, unknown>);
+            }
+          } catch {
+            /* cai no fallback remoto abaixo */
+          }
+        }
 
-      if (!userId) {
-        const { data, error } = await supabase.auth.getUser(token);
-        if (error || !data.user) {
-          throw new Response("Unauthorized: Invalid token", { status: 401 });
+        if (!userId) {
+          const { data, error } = await supabase.auth.getUser(token);
+          if (error || !data.user) {
+            throw new Response("Unauthorized: Invalid token", { status: 401 });
+          }
+          userId = data.user.id;
+          claims = {
+            ...((data.user.app_metadata as Record<string, unknown> | undefined) ?? {}),
+            email: data.user.email,
+          };
         }
-        userId = data.user.id;
-        claims = {
-          ...((data.user.app_metadata as Record<string, unknown> | undefined) ?? {}),
-          email: data.user.email,
-        };
       }
     }
 

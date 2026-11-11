@@ -54,10 +54,12 @@ const demoHistoricalSamples: HistoricalSample[] = [];
 
 /**
  * Validates whether the authenticated user has access to the specified project.
+ * Enforces multi-tenant isolation and rejects read-only `viewer` mutations when requireWrite is set.
  */
 async function authorizeProjectAccess(
   authCtx: AuthContext,
   projectId: string,
+  options?: { requireWrite?: boolean },
 ): Promise<{ tenantId: string; projectName: string }> {
   const { supabase, userId } = authCtx;
   if (!userId) {
@@ -75,7 +77,8 @@ async function authorizeProjectAccess(
     .maybeSingle();
 
   if (pErr) {
-    throw new Error(`DB_ERROR: ${pErr.message}`);
+    console.error("[scada.functions] project lookup error:", pErr.message);
+    throw new Error("DB_ERROR: Falha ao verificar permissão do projeto.");
   }
 
   if (!project) {
@@ -105,7 +108,21 @@ async function authorizeProjectAccess(
     );
   }
 
+  if (options?.requireWrite && !isOwner && (!membership?.role || membership.role === "viewer")) {
+    throw new Error(
+      "FORBIDDEN: Usuários com papel viewer não têm permissão de escrita operacional no SCADA.",
+    );
+  }
+
   return { tenantId: project.tenant_id, projectName: project.name };
+}
+
+function parseSafeIsoTimestamp(input: string | number): string {
+  const epoch = typeof input === "number" ? input : Date.parse(input);
+  if (!Number.isFinite(epoch)) {
+    throw new Error("INVALID_TIMESTAMP: Timestamp inválido na amostra SCADA.");
+  }
+  return new Date(epoch).toISOString();
 }
 
 /**
@@ -265,7 +282,7 @@ export const ingestTagSamplesBatch = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<{ inserted: number; success: boolean }> => {
     const authCtx = context as unknown as AuthContext;
-    await authorizeProjectAccess(authCtx, data.projectId);
+    await authorizeProjectAccess(authCtx, data.projectId, { requireWrite: true });
 
     if (data.samples.length === 0) {
       return { inserted: 0, success: true };
@@ -280,7 +297,8 @@ export const ingestTagSamplesBatch = createServerFn({ method: "POST" })
           value: s.value,
           quality: (s.quality as TagQuality) || "GOOD",
           source: (s.source as ProtocolDriver) || "SIMULATION",
-          sampledAt: typeof s.sampledAt === "number" ? s.sampledAt : new Date(s.sampledAt).getTime(),
+          sampledAt:
+            typeof s.sampledAt === "number" ? s.sampledAt : new Date(s.sampledAt).getTime(),
           receivedAt: Date.now(),
         });
       }
@@ -292,10 +310,7 @@ export const ingestTagSamplesBatch = createServerFn({ method: "POST" })
 
     const { supabase } = authCtx;
     const rows = data.samples.map((s) => {
-      const sampledAtIso =
-        typeof s.sampledAt === "number"
-          ? new Date(s.sampledAt).toISOString()
-          : new Date(s.sampledAt).toISOString();
+      const sampledAtIso = parseSafeIsoTimestamp(s.sampledAt);
 
       return {
         project_id: data.projectId,
@@ -333,143 +348,140 @@ export const queryHistorianRange = createServerFn({ method: "POST" })
       })
       .parse(d),
   )
-  .handler(
-    async ({
-      data,
-      context,
-    }): Promise<Record<string, HistorianAggregateResult>> => {
-      const authCtx = context as unknown as AuthContext;
-      await authorizeProjectAccess(authCtx, data.projectId);
+  .handler(async ({ data, context }): Promise<Record<string, HistorianAggregateResult>> => {
+    const authCtx = context as unknown as AuthContext;
+    await authorizeProjectAccess(authCtx, data.projectId);
 
-      const startEpoch = new Date(data.startTime).getTime();
-      const endEpoch = new Date(data.endTime).getTime();
+    const startEpoch = Date.parse(data.startTime);
+    const endEpoch = Date.parse(data.endTime);
+    if (!Number.isFinite(startEpoch) || !Number.isFinite(endEpoch) || startEpoch > endEpoch) {
+      throw new Error("INVALID_RANGE: Intervalo startTime/endTime inválido.");
+    }
 
-      let rawRows: Array<{
-        tag_name: string;
-        value: number;
-        quality: string;
-        sampled_at: string;
-      }> = [];
+    let rawRows: Array<{
+      tag_name: string;
+      value: number;
+      quality: string;
+      sampled_at: string;
+    }> = [];
 
-      if (data.projectId === DEMO_ETE_PROJECT_ID) {
-        rawRows = demoHistoricalSamples
-          .filter((s) => {
-            const t = typeof s.sampledAt === "number" ? s.sampledAt : new Date(s.sampledAt).getTime();
-            const matchesTag = data.tagNames.length === 0 || data.tagNames.includes(s.tagName);
-            return matchesTag && t >= startEpoch && t <= endEpoch;
-          })
-          .map((s) => ({
-            tag_name: s.tagName,
-            value: s.value,
-            quality: s.quality,
-            sampled_at: new Date(s.sampledAt).toISOString(),
-          }));
-      } else {
-        const { supabase } = authCtx;
-        let query = supabase
-          .from("tag_samples")
-          .select("tag_name, value, quality, sampled_at")
-          .eq("project_id", data.projectId)
-          .gte("sampled_at", new Date(startEpoch).toISOString())
-          .lte("sampled_at", new Date(endEpoch).toISOString())
-          .order("sampled_at", { ascending: true })
-          .limit(data.limit);
+    if (data.projectId === DEMO_ETE_PROJECT_ID) {
+      rawRows = demoHistoricalSamples
+        .filter((s) => {
+          const t = typeof s.sampledAt === "number" ? s.sampledAt : new Date(s.sampledAt).getTime();
+          const matchesTag = data.tagNames.length === 0 || data.tagNames.includes(s.tagName);
+          return matchesTag && t >= startEpoch && t <= endEpoch;
+        })
+        .map((s) => ({
+          tag_name: s.tagName,
+          value: s.value,
+          quality: s.quality,
+          sampled_at: new Date(s.sampledAt).toISOString(),
+        }));
+    } else {
+      const { supabase } = authCtx;
+      let query = supabase
+        .from("tag_samples")
+        .select("tag_name, value, quality, sampled_at")
+        .eq("project_id", data.projectId)
+        .gte("sampled_at", new Date(startEpoch).toISOString())
+        .lte("sampled_at", new Date(endEpoch).toISOString())
+        .order("sampled_at", { ascending: true })
+        .limit(data.limit);
 
-        if (data.tagNames.length > 0) {
-          query = query.in("tag_name", data.tagNames);
-        }
-
-        const { data: rows, error } = await query;
-        if (error) {
-          throw new Error(`HISTORIAN_QUERY_ERROR: ${error.message}`);
-        }
-        rawRows = (rows as typeof rawRows) || [];
+      if (data.tagNames.length > 0) {
+        query = query.in("tag_name", data.tagNames);
       }
 
-      // Group and calculate statistics
-      const grouped: Record<string, typeof rawRows> = {};
-      for (const row of rawRows) {
-        if (!grouped[row.tag_name]) {
-          grouped[row.tag_name] = [];
-        }
-        grouped[row.tag_name].push(row);
+      const { data: rows, error } = await query;
+      if (error) {
+        throw new Error(`HISTORIAN_QUERY_ERROR: ${error.message}`);
+      }
+      rawRows = (rows as typeof rawRows) || [];
+    }
+
+    // Group and calculate statistics
+    const grouped: Record<string, typeof rawRows> = {};
+    for (const row of rawRows) {
+      if (!grouped[row.tag_name]) {
+        grouped[row.tag_name] = [];
+      }
+      grouped[row.tag_name].push(row);
+    }
+
+    const results: Record<string, HistorianAggregateResult> = {};
+
+    for (const [tagName, items] of Object.entries(grouped)) {
+      if (items.length === 0) continue;
+
+      let min = Number.MAX_VALUE;
+      let max = -Number.MAX_VALUE;
+      let sum = 0;
+      const validValues: number[] = [];
+      const samplePoints: Array<{ timestamp: number; value: number; quality: TagQuality }> = [];
+
+      for (const item of items) {
+        const t = new Date(item.sampled_at).getTime();
+        const v = item.value;
+        const q = (item.quality as TagQuality) || "GOOD";
+
+        if (v < min) min = v;
+        if (v > max) max = v;
+        sum += v;
+        validValues.push(v);
+
+        samplePoints.push({ timestamp: t, value: v, quality: q });
       }
 
-      const results: Record<string, HistorianAggregateResult> = {};
+      const avg = sum / validValues.length;
+      const variance =
+        validValues.reduce((acc, curr) => acc + Math.pow(curr - avg, 2), 0) / validValues.length;
+      const stdDev = Math.sqrt(variance);
 
-      for (const [tagName, items] of Object.entries(grouped)) {
-        if (items.length === 0) continue;
+      // Optional downsampling into uniform minute buckets
+      let finalSamples = samplePoints;
+      if (data.downsampleMinutes && data.downsampleMinutes > 0) {
+        const bucketMs = data.downsampleMinutes * 60 * 1000;
+        const bucketMap = new Map<number, { sum: number; count: number; quality: TagQuality }>();
 
-        let min = Number.MAX_VALUE;
-        let max = -Number.MAX_VALUE;
-        let sum = 0;
-        const validValues: number[] = [];
-        const samplePoints: Array<{ timestamp: number; value: number; quality: TagQuality }> = [];
-
-        for (const item of items) {
-          const t = new Date(item.sampled_at).getTime();
-          const v = item.value;
-          const q = (item.quality as TagQuality) || "GOOD";
-
-          if (v < min) min = v;
-          if (v > max) max = v;
-          sum += v;
-          validValues.push(v);
-
-          samplePoints.push({ timestamp: t, value: v, quality: q });
-        }
-
-        const avg = sum / validValues.length;
-        const variance =
-          validValues.reduce((acc, curr) => acc + Math.pow(curr - avg, 2), 0) /
-          validValues.length;
-        const stdDev = Math.sqrt(variance);
-
-        // Optional downsampling into uniform minute buckets
-        let finalSamples = samplePoints;
-        if (data.downsampleMinutes && data.downsampleMinutes > 0) {
-          const bucketMs = data.downsampleMinutes * 60 * 1000;
-          const bucketMap = new Map<number, { sum: number; count: number; quality: TagQuality }>();
-
-          for (const sp of samplePoints) {
-            const bucketKey = Math.floor(sp.timestamp / bucketMs) * bucketMs;
-            const existing = bucketMap.get(bucketKey);
-            if (existing) {
-              existing.sum += sp.value;
-              existing.count += 1;
-              if (sp.quality !== "GOOD") existing.quality = sp.quality;
-            } else {
-              bucketMap.set(bucketKey, { sum: sp.value, count: 1, quality: sp.quality });
-            }
+        for (const sp of samplePoints) {
+          const bucketKey = Math.floor(sp.timestamp / bucketMs) * bucketMs;
+          const existing = bucketMap.get(bucketKey);
+          if (existing) {
+            existing.sum += sp.value;
+            existing.count += 1;
+            if (sp.quality !== "GOOD") existing.quality = sp.quality;
+          } else {
+            bucketMap.set(bucketKey, { sum: sp.value, count: 1, quality: sp.quality });
           }
-
-          finalSamples = Array.from(bucketMap.entries())
-            .map(([ts, b]) => ({
-              timestamp: ts,
-              value: Math.round((b.sum / b.count) * 100) / 100,
-              quality: b.quality,
-            }))
-            .sort((a, b) => a.timestamp - b.timestamp);
         }
 
-        results[tagName] = {
-          tagName,
-          unit: "",
-          source: "INTERNAL_RUNTIME",
-          sampleCount: items.length,
-          min: min === Number.MAX_VALUE ? 0 : Math.round(min * 100) / 100,
-          max: max === -Number.MAX_VALUE ? 0 : Math.round(max * 100) / 100,
-          avg: Math.round(avg * 100) / 100,
-          stdDev: Math.round(stdDev * 100) / 100,
-          firstTimestamp: samplePoints[0]?.timestamp ?? startEpoch,
-          lastTimestamp: samplePoints[samplePoints.length - 1]?.timestamp ?? endEpoch,
-          samples: finalSamples,
-        };
+        finalSamples = Array.from(bucketMap.entries())
+          .map(([ts, b]) => ({
+            timestamp: ts,
+            value: Math.round((b.sum / b.count) * 100) / 100,
+            quality: b.quality,
+          }))
+          .sort((a, b) => a.timestamp - b.timestamp);
       }
 
-      return results;
-    },
-  );
+      results[tagName] = {
+        tagName,
+        unit: "",
+        source: "INTERNAL_RUNTIME",
+        sampleCount: items.length,
+        min: min === Number.MAX_VALUE ? 0 : Math.round(min * 100) / 100,
+        max: max === -Number.MAX_VALUE ? 0 : Math.round(max * 100) / 100,
+        avg: Math.round(avg * 100) / 100,
+        stdDev: Math.round(stdDev * 100) / 100,
+        firstTimestamp: samplePoints[0]?.timestamp ?? startEpoch,
+        lastTimestamp: samplePoints[samplePoints.length - 1]?.timestamp ?? endEpoch,
+        samples: finalSamples,
+      };
+    }
+
+    return results;
+  });
 
 /**
  * Saves/updates alarm definitions in alarm_configs table.
@@ -505,7 +517,7 @@ export const saveProjectAlarmConfigs = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<{ success: boolean; count: number }> => {
     const authCtx = context as unknown as AuthContext;
-    await authorizeProjectAccess(authCtx, data.projectId);
+    await authorizeProjectAccess(authCtx, data.projectId, { requireWrite: true });
 
     if (data.projectId === DEMO_ETE_PROJECT_ID) {
       return { success: true, count: data.configs.length };
@@ -515,16 +527,25 @@ export const saveProjectAlarmConfigs = createServerFn({ method: "POST" })
     for (const c of data.configs) {
       const cat = c.alarmClass.toLowerCase();
       const validCategory: "process" | "equipment" | "safety" | "communication" =
-        cat === "equipment" ? "equipment" :
-        cat === "safety_indication" || cat === "safety" ? "safety" :
-        cat === "communication" ? "communication" : "process";
+        cat === "equipment"
+          ? "equipment"
+          : cat === "safety_indication" || cat === "safety"
+            ? "safety"
+            : cat === "communication"
+              ? "communication"
+              : "process";
 
       const sev = c.severity.toLowerCase();
       const validSeverity: "critical" | "high" | "medium" | "low" | "info" =
-        sev === "critical" ? "critical" :
-        sev === "high" || sev === "warning" ? "high" :
-        sev === "medium" ? "medium" :
-        sev === "low" ? "low" : "info";
+        sev === "critical"
+          ? "critical"
+          : sev === "high" || sev === "warning"
+            ? "high"
+            : sev === "medium"
+              ? "medium"
+              : sev === "low"
+                ? "low"
+                : "info";
 
       const payload = {
         project_id: data.projectId,
@@ -582,7 +603,7 @@ export const recordAlarmHistoryBatch = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<{ success: boolean; inserted: number }> => {
     const authCtx = context as unknown as AuthContext;
-    await authorizeProjectAccess(authCtx, data.projectId);
+    await authorizeProjectAccess(authCtx, data.projectId, { requireWrite: true });
 
     if (data.projectId === DEMO_ETE_PROJECT_ID) {
       return { success: true, inserted: data.alarms.length };
@@ -592,16 +613,25 @@ export const recordAlarmHistoryBatch = createServerFn({ method: "POST" })
     const rows = data.alarms.map((a) => {
       const sev = a.severity.toLowerCase();
       const validSeverity: "critical" | "high" | "medium" | "low" | "info" =
-        sev === "critical" ? "critical" :
-        sev === "high" || sev === "warning" ? "high" :
-        sev === "medium" ? "medium" :
-        sev === "low" ? "low" : "info";
+        sev === "critical"
+          ? "critical"
+          : sev === "high" || sev === "warning"
+            ? "high"
+            : sev === "medium"
+              ? "medium"
+              : sev === "low"
+                ? "low"
+                : "info";
 
       const st = a.state.toLowerCase();
       const validState: "active" | "acknowledged" | "cleared" | "suppressed" =
-        st.includes("ack") && !st.includes("unack") ? "acknowledged" :
-        st.includes("clear") ? "cleared" :
-        st.includes("shelv") || st.includes("suppress") ? "suppressed" : "active";
+        st.includes("ack") && !st.includes("unack")
+          ? "acknowledged"
+          : st.includes("clear")
+            ? "cleared"
+            : st.includes("shelv") || st.includes("suppress")
+              ? "suppressed"
+              : "active";
 
       return {
         project_id: data.projectId,
@@ -651,7 +681,9 @@ export const recordScadaAuditEvent = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<{ success: boolean; chainHash: string }> => {
     const authCtx = context as unknown as AuthContext;
-    const { tenantId } = await authorizeProjectAccess(authCtx, data.projectId);
+    const { tenantId } = await authorizeProjectAccess(authCtx, data.projectId, {
+      requireWrite: true,
+    });
 
     if (data.projectId === DEMO_ETE_PROJECT_ID) {
       const mockHash = crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
@@ -727,7 +759,9 @@ export const verifyProjectAuditChain = createServerFn({ method: "POST" })
     const { supabase } = authCtx;
     const { data: logs, error } = await supabase
       .from("audit_logs")
-      .select("id, tenant_id, user_id, action, resource_id, resource_type, details, previous_hash, chain_hash, created_at")
+      .select(
+        "id, tenant_id, user_id, action, resource_id, resource_type, details, previous_hash, chain_hash, created_at",
+      )
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: true })
       .limit(data.limit);
@@ -786,16 +820,52 @@ export const generateOperationalReportData = createServerFn({ method: "POST" })
 
     if (data.reportType === "ALARM_PARETO") {
       tableData.push(
-        { rank: 1, tag: "M-01_CORRENTE", description: "Sobrecarga Corrente Alta Motor M-01", count: 14, pct: 38.8, totalDurationMin: 45 },
-        { rank: 2, tag: "P-01_VAZAO", description: "Vazão Baixa Sucção Bomba P-01", count: 9, pct: 25.0, totalDurationMin: 28 },
-        { rank: 3, tag: "M-01_TEMP", description: "Temperatura Mancal Elevada M-01", count: 6, pct: 16.6, totalDurationMin: 18 },
-        { rank: 4, tag: "COMM_GATEWAY", description: "Timeout Comunicação CLP / Modbus", count: 4, pct: 11.1, totalDurationMin: 8 },
-        { rank: 5, tag: "E-STOP_CIRCUIT", description: "Disparo Botão E-Stop Virtual", count: 3, pct: 8.5, totalDurationMin: 5 },
+        {
+          rank: 1,
+          tag: "M-01_CORRENTE",
+          description: "Sobrecarga Corrente Alta Motor M-01",
+          count: 14,
+          pct: 38.8,
+          totalDurationMin: 45,
+        },
+        {
+          rank: 2,
+          tag: "P-01_VAZAO",
+          description: "Vazão Baixa Sucção Bomba P-01",
+          count: 9,
+          pct: 25.0,
+          totalDurationMin: 28,
+        },
+        {
+          rank: 3,
+          tag: "M-01_TEMP",
+          description: "Temperatura Mancal Elevada M-01",
+          count: 6,
+          pct: 16.6,
+          totalDurationMin: 18,
+        },
+        {
+          rank: 4,
+          tag: "COMM_GATEWAY",
+          description: "Timeout Comunicação CLP / Modbus",
+          count: 4,
+          pct: 11.1,
+          totalDurationMin: 8,
+        },
+        {
+          rank: 5,
+          tag: "E-STOP_CIRCUIT",
+          description: "Disparo Botão E-Stop Virtual",
+          count: 3,
+          pct: 8.5,
+          totalDurationMin: 5,
+        },
       );
       metrics.totalAlarmEvents = 36;
       metrics.topAlarmSharePct = "38.8%";
       metrics.totalDowntimeMinutes = 104;
-      summary = "Pareto de alarmes indica que 63.8% dos eventos concentram-se no Motor M-01 e Bomba P-01.";
+      summary =
+        "Pareto de alarmes indica que 63.8% dos eventos concentram-se no Motor M-01 e Bomba P-01.";
     } else if (data.reportType === "ENERGY_CONSUMPTION") {
       metrics.totalEnergyKwh = 1428.5;
       metrics.peakDemandKw = 285.2;
@@ -809,27 +879,71 @@ export const generateOperationalReportData = createServerFn({ method: "POST" })
         { period: "16:00 - 20:00", activePowerKw: 228.4, energyKwh: 913.6, powerFactor: 0.94 },
         { period: "20:00 - 24:00", activePowerKw: 168.3, energyKwh: 673.2, powerFactor: 0.96 },
       );
-      summary = "Consumo integrado por regra dos trapézios com fator de potência médio de 0.94 atendendo às metas tarifárias.";
+      summary =
+        "Consumo integrado por regra dos trapézios com fator de potência médio de 0.94 atendendo às metas tarifárias.";
     } else if (data.reportType === "EQUIPMENT_AVAILABILITY") {
       metrics.overallAvailabilityPct = 98.2;
       metrics.totalRunningHours = 168;
       metrics.totalTrips = 2;
       tableData.push(
-        { equipment: "M-01", name: "Motor Principal M-01", runningHours: 165.2, stops: 1, availabilityPct: 98.3, status: "OPERACIONAL" },
-        { equipment: "P-01", name: "Bomba Centrífuga P-01", runningHours: 164.8, stops: 1, availabilityPct: 98.1, status: "OPERACIONAL" },
-        { equipment: "TR-01", name: "Transformador 500kVA", runningHours: 168.0, stops: 0, availabilityPct: 100.0, status: "OPERACIONAL" },
+        {
+          equipment: "M-01",
+          name: "Motor Principal M-01",
+          runningHours: 165.2,
+          stops: 1,
+          availabilityPct: 98.3,
+          status: "OPERACIONAL",
+        },
+        {
+          equipment: "P-01",
+          name: "Bomba Centrífuga P-01",
+          runningHours: 164.8,
+          stops: 1,
+          availabilityPct: 98.1,
+          status: "OPERACIONAL",
+        },
+        {
+          equipment: "TR-01",
+          name: "Transformador 500kVA",
+          runningHours: 168.0,
+          stops: 0,
+          availabilityPct: 100.0,
+          status: "OPERACIONAL",
+        },
       );
-      summary = "Disponibilidade dos equipamentos principais acima de 98%, sem manutenções corretivas prolongadas no período.";
+      summary =
+        "Disponibilidade dos equipamentos principais acima de 98%, sem manutenções corretivas prolongadas no período.";
     } else {
       metrics.totalRecords = 42;
       metrics.systemStatus = "NORMAL";
       tableData.push(
-        { time: "08:00", operator: "Operador Industrial", event: "Início de Turno e Checagem Geral", status: "OK" },
-        { time: "10:15", operator: "Sistema SCADA", event: "Alarme de Corrente Alta M-01 (32.4A)", status: "ACK" },
-        { time: "10:22", operator: "Operador Industrial", event: "Retorno da Corrente a 26.1A", status: "CLEARED" },
-        { time: "16:00", operator: "Operador Industrial", event: "Passagem de Turno Operacional", status: "OK" },
+        {
+          time: "08:00",
+          operator: "Operador Industrial",
+          event: "Início de Turno e Checagem Geral",
+          status: "OK",
+        },
+        {
+          time: "10:15",
+          operator: "Sistema SCADA",
+          event: "Alarme de Corrente Alta M-01 (32.4A)",
+          status: "ACK",
+        },
+        {
+          time: "10:22",
+          operator: "Operador Industrial",
+          event: "Retorno da Corrente a 26.1A",
+          status: "CLEARED",
+        },
+        {
+          time: "16:00",
+          operator: "Operador Industrial",
+          event: "Passagem de Turno Operacional",
+          status: "OK",
+        },
       );
-      summary = "Diário de bordo operacional do SCADA com integridade da cadeia de auditoria validada.";
+      summary =
+        "Diário de bordo operacional do SCADA com integridade da cadeia de auditoria validada.";
     }
 
     return {

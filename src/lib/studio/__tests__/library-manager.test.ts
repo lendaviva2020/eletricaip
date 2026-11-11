@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  LibraryRegistry,
-  IndustrialLibraryManager,
-  SemVer,
-} from "../libraries/library-manager";
+import { LibraryRegistry, IndustrialLibraryManager, SemVer } from "../libraries/library-manager";
 import {
   registerIndustrialLibraries,
   FB_Overcurrent50_51,
@@ -40,7 +36,12 @@ describe("Milestone 2: Industrial Library Manager & 12 Libraries", () => {
       libraryReferences: [
         { name: "#Standard", version: "3.5.20.0", isPlaceholder: true, category: "STANDARD" },
         { name: "#SysTypes", version: "3.5.20.0", isPlaceholder: true, category: "SYSTEM" },
-        { name: "ElectricalProtection", version: "1.0.0", isPlaceholder: false, category: "APPLICATION" },
+        {
+          name: "ElectricalProtection",
+          version: "1.0.0",
+          isPlaceholder: false,
+          category: "APPLICATION",
+        },
       ],
     } as unknown as IndustrialProject;
 
@@ -84,7 +85,9 @@ describe("Milestone 2: Industrial Library Manager & 12 Libraries", () => {
 
     const mockProject = {
       controllers: [{ vendor: "GENERIC_IEC" }],
-      libraryReferences: [{ name: "LibA", version: "1.0.0", isPlaceholder: false, category: "USER" }],
+      libraryReferences: [
+        { name: "LibA", version: "1.0.0", isPlaceholder: false, category: "USER" },
+      ],
     } as unknown as IndustrialProject;
 
     const res = manager.resolveProjectLibraries(mockProject);
@@ -124,8 +127,8 @@ describe("Milestone 2: Industrial Library Manager & 12 Libraries", () => {
   });
 
   it("Executa partida estrela-triângulo com dwell anti-flashover", () => {
-    let state: any = "OFF";
-    let timer = 0;
+    const state: any = "OFF";
+    const timer = 0;
 
     // Comando de partida
     const s1 = FB_StarDeltaStarter.execute(true, false, false, 0.05, 0.02, 0.01, state, timer);
@@ -134,13 +137,31 @@ describe("Milestone 2: Industrial Library Manager & 12 Libraries", () => {
     expect(s1.deltaContactor).toBe(false);
 
     // Simula transição para DWELL após o tempo de estrela
-    const s2 = FB_StarDeltaStarter.execute(true, false, false, 0.05, 0.02, 0.06, s1.newState, s1.newTimer);
+    const s2 = FB_StarDeltaStarter.execute(
+      true,
+      false,
+      false,
+      0.05,
+      0.02,
+      0.06,
+      s1.newState,
+      s1.newTimer,
+    );
     expect(s2.newState).toBe("DWELL");
     expect(s2.starContactor).toBe(false);
     expect(s2.deltaContactor).toBe(false);
 
     // Simula transição para DELTA após o dwell
-    const s3 = FB_StarDeltaStarter.execute(true, false, false, 0.05, 0.02, 0.03, s2.newState, s2.newTimer);
+    const s3 = FB_StarDeltaStarter.execute(
+      true,
+      false,
+      false,
+      0.05,
+      0.02,
+      0.03,
+      s2.newState,
+      s2.newTimer,
+    );
     expect(s3.newState).toBe("DELTA");
     expect(s3.starContactor).toBe(false);
     expect(s3.deltaContactor).toBe(true);

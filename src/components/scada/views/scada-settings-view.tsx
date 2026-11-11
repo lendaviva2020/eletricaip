@@ -162,9 +162,7 @@ export function ScadaSettingsView() {
             <select
               value={rbacRole}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setRbacRole(
-                  e.target.value as "OPERATOR" | "ENGINEER" | "SUPERVISOR" | "ADMIN",
-                )
+                setRbacRole(e.target.value as "OPERATOR" | "ENGINEER" | "SUPERVISOR" | "ADMIN")
               }
               className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-white"
             >

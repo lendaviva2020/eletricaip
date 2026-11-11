@@ -115,7 +115,9 @@ describe("GATE 3.3D — Independent Bench MQTT Sparkplug B Interoperability & Co
       const resDdata = driver.handleIncomingMessage(ddataTopic, {
         timestamp: now + 500,
         seq: 3,
-        metrics: [{ name: "Active_Power_kW", value: 475.2, dataType: "Float", timestamp: now + 500 }],
+        metrics: [
+          { name: "Active_Power_kW", value: 475.2, dataType: "Float", timestamp: now + 500 },
+        ],
       });
 
       expect(resDdata.success).toBe(true);
@@ -161,29 +163,29 @@ describe("GATE 3.3D — Independent Bench MQTT Sparkplug B Interoperability & Co
       const dcmdTopic = `spBv1.0/${groupId}/DCMD/${edgeNodeId}/${deviceId}`;
 
       expect(() => driver.validateTopicAllowed(ncmdTopic)).toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Tópico de comando Sparkplug B.*não autorizado.*Comandos NCMD e DCMD bloqueados/
+        /PHYSICAL_CONTROL_BLOCKED: Tópico de comando Sparkplug B.*não autorizado.*Comandos NCMD e DCMD bloqueados/,
       );
 
       expect(() => driver.validateTopicAllowed(dcmdTopic)).toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Tópico de comando Sparkplug B.*não autorizado.*Comandos NCMD e DCMD bloqueados/
+        /PHYSICAL_CONTROL_BLOCKED: Tópico de comando Sparkplug B.*não autorizado.*Comandos NCMD e DCMD bloqueados/,
       );
 
-      await expect(
-        driver.publish(ncmdTopic, { command: "RESTART_INVERTER" })
-      ).rejects.toThrow(/PHYSICAL_CONTROL_BLOCKED/);
+      await expect(driver.publish(ncmdTopic, { command: "RESTART_INVERTER" })).rejects.toThrow(
+        /PHYSICAL_CONTROL_BLOCKED/,
+      );
     });
   });
 
   describe("3. Strict Read-Only Physical Safety (Deny-by-Default)", () => {
     it("sendCommand(), publishCommand() e write() rejeitam categoricamente", async () => {
       await expect(driver.sendCommand()).rejects.toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Envio ou execução de comandos Sparkplug B NCMD\/DCMD bloqueado/
+        /PHYSICAL_CONTROL_BLOCKED: Envio ou execução de comandos Sparkplug B NCMD\/DCMD bloqueado/,
       );
       await expect(driver.publishCommand()).rejects.toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Publicação de comandos Sparkplug B NCMD\/DCMD bloqueada/
+        /PHYSICAL_CONTROL_BLOCKED: Publicação de comandos Sparkplug B NCMD\/DCMD bloqueada/,
       );
       await expect(driver.write()).rejects.toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Sparkplug B bloqueada/
+        /PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Sparkplug B bloqueada/,
       );
     });
   });

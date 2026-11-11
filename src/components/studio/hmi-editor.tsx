@@ -23,7 +23,8 @@ export const HmiEditor: React.FC<HmiEditorProps> = ({ pageId }) => {
   // Obter valores simulados atuais
   const getTagValue = (tagName: string, defaultVal: any) => {
     if (forcedVariables[tagName] !== undefined) return forcedVariables[tagName];
-    if (scheduler?.globalVariables[tagName] !== undefined) return scheduler.globalVariables[tagName];
+    if (scheduler?.globalVariables[tagName] !== undefined)
+      return scheduler.globalVariables[tagName];
     const tag = project.tags.find((t) => t.name === tagName);
     return tag ? tag.currentValue : defaultVal;
   };

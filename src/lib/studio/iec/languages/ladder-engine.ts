@@ -59,7 +59,7 @@ export class LadderEngine {
           if (elem.type === "CONTACT_NO") {
             branchPower = branchPower && Boolean(ctx.getVariable(elem.symbolName));
           } else if (elem.type === "CONTACT_NC") {
-            branchPower = branchPower && !Boolean(ctx.getVariable(elem.symbolName));
+            branchPower = branchPower && !ctx.getVariable(elem.symbolName);
           } else if (elem.type === "COIL_STANDARD") {
             ctx.setVariable(elem.symbolName, branchPower || powerFlow);
           }
@@ -84,7 +84,12 @@ export class LadderEngine {
         arg1: true,
         dest: pwrReg,
         sourceLine: rung.number,
-        sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+        sourceMapping: {
+          pouName,
+          language: "LD",
+          networkNumber: rung.number,
+          sourceLine: rung.number,
+        },
       });
 
       // Avaliação de contatos da linha principal
@@ -96,7 +101,12 @@ export class LadderEngine {
             arg1: elem.symbolName,
             dest: varReg,
             sourceLine: rung.number,
-            sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+            sourceMapping: {
+              pouName,
+              language: "LD",
+              networkNumber: rung.number,
+              sourceLine: rung.number,
+            },
           });
           if (elem.type === "CONTACT_NC" || elem.negated) {
             instructions.push({
@@ -104,7 +114,12 @@ export class LadderEngine {
               arg1: varReg,
               dest: varReg,
               sourceLine: rung.number,
-              sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+              sourceMapping: {
+                pouName,
+                language: "LD",
+                networkNumber: rung.number,
+                sourceLine: rung.number,
+              },
             });
           }
           instructions.push({
@@ -113,7 +128,12 @@ export class LadderEngine {
             arg2: varReg,
             dest: pwrReg,
             sourceLine: rung.number,
-            sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+            sourceMapping: {
+              pouName,
+              language: "LD",
+              networkNumber: rung.number,
+              sourceLine: rung.number,
+            },
           });
         }
       }
@@ -128,7 +148,12 @@ export class LadderEngine {
             arg1: true,
             dest: branchPwr,
             sourceLine: rung.number,
-            sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+            sourceMapping: {
+              pouName,
+              language: "LD",
+              networkNumber: rung.number,
+              sourceLine: rung.number,
+            },
           });
 
           for (const elem of branch) {
@@ -139,7 +164,12 @@ export class LadderEngine {
                 arg1: elem.symbolName,
                 dest: bVarReg,
                 sourceLine: rung.number,
-                sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+                sourceMapping: {
+                  pouName,
+                  language: "LD",
+                  networkNumber: rung.number,
+                  sourceLine: rung.number,
+                },
               });
               if (elem.type === "CONTACT_NC" || elem.negated) {
                 instructions.push({
@@ -147,7 +177,12 @@ export class LadderEngine {
                   arg1: bVarReg,
                   dest: bVarReg,
                   sourceLine: rung.number,
-                  sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+                  sourceMapping: {
+                    pouName,
+                    language: "LD",
+                    networkNumber: rung.number,
+                    sourceLine: rung.number,
+                  },
                 });
               }
               instructions.push({
@@ -156,7 +191,12 @@ export class LadderEngine {
                 arg2: bVarReg,
                 dest: branchPwr,
                 sourceLine: rung.number,
-                sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+                sourceMapping: {
+                  pouName,
+                  language: "LD",
+                  networkNumber: rung.number,
+                  sourceLine: rung.number,
+                },
               });
             }
           }
@@ -167,7 +207,12 @@ export class LadderEngine {
             arg2: branchPwr,
             dest: pwrReg,
             sourceLine: rung.number,
-            sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+            sourceMapping: {
+              pouName,
+              language: "LD",
+              networkNumber: rung.number,
+              sourceLine: rung.number,
+            },
           });
         }
       }
@@ -180,7 +225,12 @@ export class LadderEngine {
             arg1: elem.symbolName,
             arg2: pwrReg,
             sourceLine: rung.number,
-            sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+            sourceMapping: {
+              pouName,
+              language: "LD",
+              networkNumber: rung.number,
+              sourceLine: rung.number,
+            },
           });
         } else if (elem.type === "COIL_NEGATED") {
           const negReg = `_neg_${elem.symbolName}`;
@@ -189,14 +239,24 @@ export class LadderEngine {
             arg1: pwrReg,
             dest: negReg,
             sourceLine: rung.number,
-            sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+            sourceMapping: {
+              pouName,
+              language: "LD",
+              networkNumber: rung.number,
+              sourceLine: rung.number,
+            },
           });
           instructions.push({
             op: "STORE_VAR",
             arg1: elem.symbolName,
             arg2: negReg,
             sourceLine: rung.number,
-            sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+            sourceMapping: {
+              pouName,
+              language: "LD",
+              networkNumber: rung.number,
+              sourceLine: rung.number,
+            },
           });
         } else if (elem.type === "COIL_SET") {
           const skipLabel = `_skip_set_${uuidv4().slice(0, 6)}`;
@@ -205,11 +265,26 @@ export class LadderEngine {
             arg1: pwrReg,
             arg2: skipLabel,
             sourceLine: rung.number,
-            sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+            sourceMapping: {
+              pouName,
+              language: "LD",
+              networkNumber: rung.number,
+              sourceLine: rung.number,
+            },
           });
           const tConst = `_t_true_${uuidv4().slice(0, 6)}`;
-          instructions.push({ op: "LOAD_CONST", arg1: true, dest: tConst, sourceLine: rung.number });
-          instructions.push({ op: "STORE_VAR", arg1: elem.symbolName, arg2: tConst, sourceLine: rung.number });
+          instructions.push({
+            op: "LOAD_CONST",
+            arg1: true,
+            dest: tConst,
+            sourceLine: rung.number,
+          });
+          instructions.push({
+            op: "STORE_VAR",
+            arg1: elem.symbolName,
+            arg2: tConst,
+            sourceLine: rung.number,
+          });
           instructions.push({ op: "NOP", label: skipLabel });
         } else if (elem.type === "COIL_RESET") {
           const skipLabel = `_skip_rst_${uuidv4().slice(0, 6)}`;
@@ -218,11 +293,26 @@ export class LadderEngine {
             arg1: pwrReg,
             arg2: skipLabel,
             sourceLine: rung.number,
-            sourceMapping: { pouName, language: "LD", networkNumber: rung.number, sourceLine: rung.number },
+            sourceMapping: {
+              pouName,
+              language: "LD",
+              networkNumber: rung.number,
+              sourceLine: rung.number,
+            },
           });
           const tConst = `_t_false_${uuidv4().slice(0, 6)}`;
-          instructions.push({ op: "LOAD_CONST", arg1: false, dest: tConst, sourceLine: rung.number });
-          instructions.push({ op: "STORE_VAR", arg1: elem.symbolName, arg2: tConst, sourceLine: rung.number });
+          instructions.push({
+            op: "LOAD_CONST",
+            arg1: false,
+            dest: tConst,
+            sourceLine: rung.number,
+          });
+          instructions.push({
+            op: "STORE_VAR",
+            arg1: elem.symbolName,
+            arg2: tConst,
+            sourceLine: rung.number,
+          });
           instructions.push({ op: "NOP", label: skipLabel });
         }
       }
@@ -258,7 +348,9 @@ export class LadderEngine {
         const branchExprs = rung.branches.map((b) => {
           const bContacts = b.filter((e) => e.type.startsWith("CONTACT"));
           return bContacts
-            .map((c) => (c.type === "CONTACT_NC" || c.negated ? `NOT ${c.symbolName}` : c.symbolName))
+            .map((c) =>
+              c.type === "CONTACT_NC" || c.negated ? `NOT ${c.symbolName}` : c.symbolName,
+            )
             .join(" AND ");
         });
         conditionExpr = `(${mainExpr} OR ${branchExprs.join(" OR ")})`;

@@ -194,7 +194,7 @@ describe("GATE 3.1 — Master Laboratory Interoperability & Commissioning Suite"
       (modbusDriver as any).holdingRegisters,
       100,
       "FLOAT32",
-      "BIG_ENDIAN"
+      "BIG_ENDIAN",
     );
     expect(Math.abs(valBe - testVal)).toBeLessThan(0.01);
 
@@ -204,7 +204,7 @@ describe("GATE 3.1 — Master Laboratory Interoperability & Commissioning Suite"
       (modbusDriver as any).holdingRegisters,
       102,
       "FLOAT32",
-      "WORD_SWAPPED"
+      "WORD_SWAPPED",
     );
     expect(Math.abs(valCdab - testVal)).toBeLessThan(0.01);
 
@@ -214,7 +214,7 @@ describe("GATE 3.1 — Master Laboratory Interoperability & Commissioning Suite"
       (modbusDriver as any).holdingRegisters,
       104,
       "FLOAT32",
-      "LITTLE_ENDIAN"
+      "LITTLE_ENDIAN",
     );
     expect(Math.abs(valDcba - testVal)).toBeLessThan(0.01);
 
@@ -224,7 +224,7 @@ describe("GATE 3.1 — Master Laboratory Interoperability & Commissioning Suite"
       (modbusDriver as any).holdingRegisters,
       106,
       "FLOAT32",
-      "BYTE_SWAPPED"
+      "BYTE_SWAPPED",
     );
     expect(Math.abs(valBadc - testVal)).toBeLessThan(0.01);
   });
@@ -232,39 +232,32 @@ describe("GATE 3.1 — Master Laboratory Interoperability & Commissioning Suite"
   it("3. GATE 3.1F — Sparkplug B Ciclo de Vida: NBIRTH, NDATA e transição para STALE no NDEATH", async () => {
     // Process NBIRTH
     const now = Date.now();
-    sparkplugDriver.handleIncomingMessage(
-      "spBv1.0/Planta_ETE/NBIRTH/Node_ETE",
-      {
-        timestamp: now,
-        metrics: [
-          { name: "bdSeq", dataType: "Int64", timestamp: now, value: 1 },
-          { name: "Sensors/NivelTanque01", dataType: "Float", timestamp: now, value: 65.0 },
-        ],
-      }
-    );
+    sparkplugDriver.handleIncomingMessage("spBv1.0/Planta_ETE/NBIRTH/Node_ETE", {
+      timestamp: now,
+      metrics: [
+        { name: "bdSeq", dataType: "Int64", timestamp: now, value: 1 },
+        { name: "Sensors/NivelTanque01", dataType: "Float", timestamp: now, value: 65.0 },
+      ],
+    });
 
     const metrics = sparkplugDriver.getKnownMetrics();
     expect(metrics.get("Sensors/NivelTanque01")?.value).toBe(65.0);
     expect(metrics.get("Sensors/NivelTanque01")?.quality).toBe("GOOD");
 
     // Process NDATA update
-    sparkplugDriver.handleIncomingMessage(
-      "spBv1.0/Planta_ETE/NDATA/Node_ETE",
-      {
-        timestamp: now + 100,
-        metrics: [{ name: "Sensors/NivelTanque01", dataType: "Float", timestamp: now + 100, value: 72.4 }],
-      }
-    );
+    sparkplugDriver.handleIncomingMessage("spBv1.0/Planta_ETE/NDATA/Node_ETE", {
+      timestamp: now + 100,
+      metrics: [
+        { name: "Sensors/NivelTanque01", dataType: "Float", timestamp: now + 100, value: 72.4 },
+      ],
+    });
     expect(metrics.get("Sensors/NivelTanque01")?.value).toBe(72.4);
 
     // Process NDEATH -> Quality must transition to STALE
-    sparkplugDriver.handleIncomingMessage(
-      "spBv1.0/Planta_ETE/NDEATH/Node_ETE",
-      {
-        timestamp: now + 200,
-        metrics: [{ name: "bdSeq", dataType: "Int64", timestamp: now + 200, value: 1 }],
-      }
-    );
+    sparkplugDriver.handleIncomingMessage("spBv1.0/Planta_ETE/NDEATH/Node_ETE", {
+      timestamp: now + 200,
+      metrics: [{ name: "bdSeq", dataType: "Int64", timestamp: now + 200, value: 1 }],
+    });
     expect(metrics.get("Sensors/NivelTanque01")?.quality).toBe("STALE");
   });
 

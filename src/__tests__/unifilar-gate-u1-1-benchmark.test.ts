@@ -25,7 +25,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
   // =========================================================================
   describe("SEÇÃO 1 — Desacoplamento Espacial & Estabilidade Topológica", () => {
     it("1.1 Movimentação drástica de coordenadas (x, y) não altera netlists nem terminais", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nQf = makeNode({
         id: "n_qf",
@@ -140,7 +140,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
   describe("SEÇÃO 2 — Matriz de Benchmark de 10 Projetos Canônicos", () => {
     // PROJETO A: QGBT INDUSTRIAL
     it("Projeto A — QGBT Industrial (Transformador, Proteção Geral, Barramento, 8 Derivações, Medição)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nTrafo = makeNode({
         id: "TR01",
@@ -247,7 +247,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
 
     // PROJETO B: PARTIDA DIRETA
     it("Projeto B — Partida Direta (Disjuntor, Contator, Relé Térmico, Motor, PE e Comando)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nQf = makeNode({
         id: "QF1",
@@ -336,7 +336,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
 
     // PROJETO C: REVERSÃO DE MOTOR
     it("Projeto C — Reversão de Motor (Proteção, Contatores Avanço KM1 / Reversão KM2, Relé, Motor)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nQf = makeNode({
         id: "QF_REV",
@@ -439,7 +439,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
 
     // PROJETO D: ESTRELA-TRIÂNGULO
     it("Projeto D — Estrela-Triângulo (Motor 6 Terminais U1-W1/U2-W2, Contatores K1, K2, K3)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nQf = makeNode({
         id: "QF_SD",
@@ -560,7 +560,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
 
     // PROJETO E: INVERSORES DE FREQUÊNCIA
     it("Projeto E — Inversor de Frequência (Disjuntor, VFD R/S/T -> U/V/W, Motor, PE e Comandos)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nQf = makeNode({
         id: "QF_VFD",
@@ -615,7 +615,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
 
     // PROJETO F: DISTRIBUIÇÃO EM BAIXA TENSÃO
     it("Projeto F — Distribuição (Transformador, QGBT, Quadros Secundários, Iluminação, Tomadas)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nTrafo = makeNode({
         id: "TR_DIST",
@@ -748,7 +748,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
 
     // PROJETO G: AUTOMAÇÃO 24 VCC
     it("Projeto G — Automação 24 VCC (Proteção CA, Fonte PSU, Barramentos +24V/0V, CLP, Sensores)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nQfCa = makeNode({
         id: "QF_PSU",
@@ -822,7 +822,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
 
     // PROJETO H: PARTIDA MULTIMOTOR
     it("Projeto H — Partida Multimotor (CCM 8 Ramais com Proteção e Comandos Independentes)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nCcm = makeNode({
         id: "CCM01",
@@ -914,7 +914,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
 
     // PROJETO I: DISTRIBUIÇÃO COM DERIVAÇÕES COMPLEXAS EM CASCATA
     it("Projeto I — Distribuição em Cascata (Barramento Principal -> Subquadro -> Derivações)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nQG = makeNode({
         id: "QG_SUB",
@@ -1027,7 +1027,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
 
     // PROJETO J: SISTEMA INDUSTRIAL INTEGRADO
     it("Projeto J — Sistema Industrial Integrado (Trafo, QGBT, CCM, VFD, Motores, Instrumentação, CLP)", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nTrafo = makeNode({
         id: "TR_IND",
@@ -1275,7 +1275,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
   // =========================================================================
   describe("SEÇÃO 3 — Bateria de Falhas Injetadas e Validação de Falsos Positivos", () => {
     it("Falha 1 — Conexão com Terminal Inexistente: Deve ser classificada e tratada", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nQf = makeNode({
         id: "QF",
         sheet: "unifilar",
@@ -1309,7 +1309,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falha 2 — Conexão Ausente: Carga sem alimentação a montante gera erro LOAD_WITHOUT_FEEDER", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nMot = makeNode({
         id: "MOT_ORPHAN",
         sheet: "unifilar",
@@ -1325,7 +1325,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falha 3 — Rede Isolada: Equipamento com grau 0 gera diagnóstico DISCONNECTED_EQUIPMENT", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nIso = makeNode({
         id: "QF_ISO",
         sheet: "unifilar",
@@ -1340,7 +1340,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falha 4 — Equipamento Órfão (Aresta para nó inexistente) gera ORPHAN_EDGE_REFERENCE e status INVALID", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nQf = makeNode({
         id: "QF_OK",
         sheet: "unifilar",
@@ -1363,7 +1363,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falha 5 — Conexão Duplicada: Emite aviso DUPLICATE_CONNECTION sem quebrar a topologia", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nQf = makeNode({
         id: "QF1",
         sheet: "unifilar",
@@ -1405,7 +1405,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falha 6 — Incompatibilidade de Domínios: Ligação direta de Força em comando sem conversão galvânica gera erro", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nTrafo = makeNode({
         id: "TR1",
         sheet: "unifilar",
@@ -1445,7 +1445,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falha 7 — Auto-laço (Self Loop): Equipamento em curto consigo mesmo gera erro INVALID_SELF_LOOP", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nQf = makeNode({
         id: "QF_LOOP",
         sheet: "unifilar",
@@ -1470,7 +1470,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falha 8 — Derivação Incompleta: Dispositivo com saída aberta emite aviso", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nQfMain = makeNode({
         id: "QG",
         sheet: "unifilar",
@@ -1507,7 +1507,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falha 9 — Junção Ausente / Caminho Interrompido: Carga sem chegada na fonte", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nKm = makeNode({
         id: "KM_SEM_FONTE",
         sheet: "unifilar",
@@ -1541,7 +1541,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falha 10 — Cruzamento sem Conexão: Linhas que se cruzam geometricamente NÃO geram netlist em comum", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nA1 = makeNode({
         id: "A1",
         sheet: "unifilar",
@@ -1600,7 +1600,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
     });
 
     it("Falsos Positivos — Terminais não utilizados legítimos (contatos auxiliares e reservas) NÃO geram erro fatal", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nQf = makeNode({
         id: "QF",
         sheet: "unifilar",
@@ -1658,7 +1658,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
   // =========================================================================
   describe("SEÇÃO 4 — Teste de Conversão e Equivalência Multifilar", () => {
     it("4.1 Desdobramento trifásico com neutro e terra preserva relações sem inventar conexões", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
 
       const nQf = makeNode({
         id: "QF_UNI",
@@ -1713,7 +1713,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
       const store = useUnifiedProjectStore.getState();
       store.resetUnifiedDoc({ name: "Benchmark Gate U1.1" });
 
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const nTrafo = makeNode({
         id: "TR_P",
         sheet: "unifilar",
@@ -1802,7 +1802,7 @@ describe("GATE U1.1 — HOMOLOGAÇÃO INDEPENDENTE DE TOPOLOGIA E BENCHMARK", ()
   // =========================================================================
   describe("SEÇÃO 6 — Medição de Desempenho e Tempos de Execução", () => {
     it("6.1 Executa Connection Engine, Netlist, Auto-Layout e Graph Validator em escala com tempos medidos", () => {
-      let doc = createEmptyDoc();
+      const doc = createEmptyDoc();
       const totalBranches = 20;
 
       const nTrafo = makeNode({

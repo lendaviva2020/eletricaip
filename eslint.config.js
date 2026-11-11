@@ -9,6 +9,9 @@ export default tseslint.config(
   {
     ignores: [
       "dist",
+      "dist-edge",
+      "test-results",
+      "playwright-report",
       ".output",
       ".vinxi",
       ".vercel",

@@ -180,9 +180,7 @@ export function calculateEnergyKwhTrapezoidal(
   const totalSpanHours = (lastTs - firstTs) / (1000 * 3600);
   const activeIntegrationHours = activeTimeMs / (1000 * 3600);
   const averagePowerKw =
-    activeIntegrationHours > 0
-      ? totalEnergyKwh / activeIntegrationHours
-      : peakDemandKw;
+    activeIntegrationHours > 0 ? totalEnergyKwh / activeIntegrationHours : peakDemandKw;
 
   return {
     totalEnergyKwh: Math.round(totalEnergyKwh * 10000) / 10000,

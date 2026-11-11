@@ -16,10 +16,7 @@ import type {
 import type { TagQuality, TagDataType } from "../../scada/types";
 
 export type OpcUaSecurityPolicy =
-  | "None"
-  | "Basic256Sha256"
-  | "Aes128_Sha256_RsaOaep"
-  | "Aes256_Sha256_RsaPss";
+  "None" | "Basic256Sha256" | "Aes128_Sha256_RsaOaep" | "Aes256_Sha256_RsaPss";
 
 export type OpcUaMessageSecurityMode = "None" | "Sign" | "SignAndEncrypt";
 
@@ -77,26 +74,34 @@ export class OpcUaClientDriver implements IndustrialDriver {
    * Hardware safety interlock: Physical actuation method calls and state-mutating operations are permanently blocked.
    */
   public async callMethod(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA Method Call bloqueada. Gateway opera exclusivamente em modo READ-ONLY.");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA Method Call bloqueada. Gateway opera exclusivamente em modo READ-ONLY.",
+    );
   }
 
   public async historyUpdate(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA HistoryUpdate bloqueada. Operações de modificação de histórico não são permitidas.");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA HistoryUpdate bloqueada. Operações de modificação de histórico não são permitidas.",
+    );
   }
 
   public async addNodes(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA AddNodes bloqueada. Alterações dinâmicas no Address Space são proibidas.");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA AddNodes bloqueada. Alterações dinâmicas no Address Space são proibidas.",
+    );
   }
 
   public async deleteNodes(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA DeleteNodes bloqueada. Alterações dinâmicas no Address Space são proibidas.");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA DeleteNodes bloqueada. Alterações dinâmicas no Address Space são proibidas.",
+    );
   }
 
   public validateService(serviceName: string): void {
     if (!ALLOWED_OPCUA_SERVICES.has(serviceName)) {
       this.diagnostics.requestsFailed++;
       throw new Error(
-        `PHYSICAL_CONTROL_BLOCKED: Serviço OPC UA [${serviceName}] não autorizado. Gateway opera sob política de negação por padrão (Permitidos exclusivamente Browse, Read e Subscriptions).`
+        `PHYSICAL_CONTROL_BLOCKED: Serviço OPC UA [${serviceName}] não autorizado. Gateway opera sob política de negação por padrão (Permitidos exclusivamente Browse, Read e Subscriptions).`,
       );
     }
   }
@@ -177,10 +182,7 @@ export class OpcUaClientDriver implements IndustrialDriver {
     this.diagnostics.requestsTotal++;
 
     // Security check: Reject insecure "None" in production configurations
-    if (
-      this.config.securityPolicy === "None" &&
-      process.env.NODE_ENV === "production"
-    ) {
+    if (this.config.securityPolicy === "None" && process.env.NODE_ENV === "production") {
       this.state = "ERROR";
       this.diagnostics.lastError =
         "SECURITY_VIOLATION: SecurityPolicy 'None' é rejeitada em conexões industriais de produção.";
@@ -368,7 +370,9 @@ export class OpcUaClientDriver implements IndustrialDriver {
     callback: SubscriptionCallback,
   ): Promise<string> {
     if (this.state !== "CONNECTED") {
-      throw new Error(`OPCUA_NOT_CONNECTED: Não é possível criar subscription no estado [${this.state}].`);
+      throw new Error(
+        `OPCUA_NOT_CONNECTED: Não é possível criar subscription no estado [${this.state}].`,
+      );
     }
 
     const subId = `sub_${crypto.randomUUID()}`;

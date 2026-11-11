@@ -159,7 +159,7 @@ export const SimulationMonitor: React.FC = () => {
                   : String(
                       scheduler?.globalVariables[tag.name] ??
                         scheduler?.inputProcessImage[tag.name] ??
-                        tag.currentValue
+                        tag.currentValue,
                     );
 
                 return (

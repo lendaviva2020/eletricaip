@@ -38,15 +38,20 @@ export const EdgeTelemetryBatchSchema = z.object({
  * Called directly by the Edge Gateway sync client via RPC/HTTP POST.
  */
 export const ingestEdgeTelemetryBatch = createServerFn({ method: "POST" })
-  .validator((d: unknown): { batch: EdgeTelemetryBatch; authToken?: string } => {
+  .validator((d: unknown): { batch: EdgeTelemetryBatch; authToken: string } => {
     return z
       .object({
         batch: EdgeTelemetryBatchSchema,
-        authToken: z.string().optional(),
+        authToken: z.string().min(1),
       })
       .parse(d);
   })
   .handler(async ({ data }): Promise<EdgeIngestAck> => {
     const res = cloudGatewayRegistry.processTelemetryBatch(data.batch, data.authToken);
+    if (!res.ack.success && (res.statusCode === 401 || res.statusCode === 403)) {
+      throw new Response(res.ack.error || "Unauthorized gateway credential", {
+        status: res.statusCode,
+      });
+    }
     return res.ack;
   });

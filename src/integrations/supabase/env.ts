@@ -8,7 +8,17 @@
 // Supabase esperado. Uma configuração de outro projeto (ex.: variável antiga
 // herdada de integração) gera erro claro em vez de ser usada silenciosamente.
 
-export const EXPECTED_SUPABASE_PROJECT_REF = "rvaaxvdimggztjxoktvy";
+const CONFIGURED_PROJECT_REF =
+  (typeof process !== "undefined" &&
+    process.env &&
+    (process.env["SUPABASE_PROJECT_REF"] || process.env["VITE_SUPABASE_PROJECT_REF"])?.trim()) ||
+  (typeof import.meta !== "undefined" &&
+    (
+      import.meta as unknown as { env?: Record<string, string | undefined> }
+    ).env?.VITE_SUPABASE_PROJECT_REF?.trim()) ||
+  "";
+
+export const EXPECTED_SUPABASE_PROJECT_REF = CONFIGURED_PROJECT_REF || "rvaaxvdimggztjxoktvy";
 
 const SUPABASE_URL_FALLBACK = `https://${EXPECTED_SUPABASE_PROJECT_REF}.supabase.co`;
 const SUPABASE_PUBLISHABLE_KEY_FALLBACK =

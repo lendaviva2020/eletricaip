@@ -4,7 +4,11 @@
 
 import { describe, it, expect, vi } from "vitest";
 import crypto from "node:crypto";
-import type { HistoricalSample, HistorianAggregateResult, ScadaReportType } from "@/lib/scada/types";
+import type {
+  HistoricalSample,
+  HistorianAggregateResult,
+  ScadaReportType,
+} from "@/lib/scada/types";
 
 describe("GATE 2C — Persistent Historian & Operational Reports", () => {
   it("1. Downsampling & Statistics: Agrega amostras em buckets e calcula Min, Max, Média e Desvio Padrão", () => {
@@ -12,12 +16,10 @@ describe("GATE 2C — Persistent Historian & Operational Reports", () => {
     const samples: HistoricalSample[] = [];
     const baseTime = 1700000000000;
     const values = [
-      26.0, 26.2, 26.4, 26.5, 26.8, 27.0, 27.2, 27.5, 28.0, 28.2,
-      28.5, 28.8, 29.0, 29.2, 29.5, 29.8, 30.0, 30.2, 30.5, 30.8,
-      31.0, 31.2, 31.5, 31.8, 32.0, 31.5, 31.0, 30.5, 30.0, 29.5,
-      29.0, 28.5, 28.0, 27.5, 27.0, 26.5, 26.2, 26.0, 25.8, 25.5,
-      25.4, 25.5, 25.8, 26.0, 26.2, 26.4, 26.5, 26.6, 26.7, 26.8,
-      26.9, 27.0, 27.1, 27.2, 27.3, 27.4, 27.5, 27.6, 27.8, 28.0,
+      26.0, 26.2, 26.4, 26.5, 26.8, 27.0, 27.2, 27.5, 28.0, 28.2, 28.5, 28.8, 29.0, 29.2, 29.5,
+      29.8, 30.0, 30.2, 30.5, 30.8, 31.0, 31.2, 31.5, 31.8, 32.0, 31.5, 31.0, 30.5, 30.0, 29.5,
+      29.0, 28.5, 28.0, 27.5, 27.0, 26.5, 26.2, 26.0, 25.8, 25.5, 25.4, 25.5, 25.8, 26.0, 26.2,
+      26.4, 26.5, 26.6, 26.7, 26.8, 26.9, 27.0, 27.1, 27.2, 27.3, 27.4, 27.5, 27.6, 27.8, 28.0,
     ];
 
     for (let i = 0; i < values.length; i++) {

@@ -139,7 +139,13 @@ describe("Milestone 7: HMI, SCADA, ISA-18.2 Alarms Lifecycle & Recipe Engine", (
       name: "Receita_Alta_Demanda",
       productCode: "PROD-A",
       parameters: [
-        { id: "p1", targetTagId: tag1.id, parameterName: "Vazao_Alvo", targetValue: 350.0, unit: "m3/h" },
+        {
+          id: "p1",
+          targetTagId: tag1.id,
+          parameterName: "Vazao_Alvo",
+          targetValue: 350.0,
+          unit: "m3/h",
+        },
       ],
     };
 
@@ -177,7 +183,13 @@ describe("Milestone 7: HMI, SCADA, ISA-18.2 Alarms Lifecycle & Recipe Engine", (
       productCode: "ERR",
       parameters: [
         { id: "p1", targetTagId: tag1.id, parameterName: "Valvula1", targetValue: 50.0, unit: "%" },
-        { id: "p2", targetTagId: "tag-inexistente", parameterName: "NaoExiste", targetValue: 99.0, unit: "bar" },
+        {
+          id: "p2",
+          targetTagId: "tag-inexistente",
+          parameterName: "NaoExiste",
+          targetValue: 99.0,
+          unit: "bar",
+        },
       ],
     };
 

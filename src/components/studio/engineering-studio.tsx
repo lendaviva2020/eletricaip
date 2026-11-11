@@ -55,7 +55,7 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
   }, [projectId, initProject]);
 
   const [bottomDockTab, setBottomDockTab] = useState<"SIMULATION" | "BUILD" | "INTEGRITY">(
-    "SIMULATION"
+    "SIMULATION",
   );
   const [isDockCollapsed, setIsDockCollapsed] = useState(false);
   const [integrityReport, setIntegrityReport] = useState<any>(null);
@@ -85,10 +85,13 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-xs tracking-wide text-zinc-100 flex items-center gap-1.5">
-              ELÉTRICAI INDUSTRIAL OS <span className="text-zinc-500 font-normal">|</span> CODESYS PARITY STUDIO
+              ELÉTRICAI INDUSTRIAL OS <span className="text-zinc-500 font-normal">|</span> CODESYS
+              PARITY STUDIO
             </span>
             <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-2">
-              <span>Projeto: {project.name} (v{project.activeVersion})</span>
+              <span>
+                Projeto: {project.name} (v{project.activeVersion})
+              </span>
               {isDirty && (
                 <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] border border-amber-500/30">
                   Modificado
@@ -110,7 +113,10 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
             }`}
             title="Salvar projeto e persistir no SSOT do workspace"
           >
-            <FloppyDisk className={`w-4 h-4 ${isDirty ? "text-amber-400" : "text-emerald-400"}`} weight="bold" />
+            <FloppyDisk
+              className={`w-4 h-4 ${isDirty ? "text-amber-400" : "text-emerald-400"}`}
+              weight="bold"
+            />
             {persistenceState === "saving" ? "Salvando..." : isDirty ? "Salvar *" : "Salvo"}
           </button>
 
@@ -167,7 +173,9 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
           <div className="h-9 border-b border-zinc-800 bg-[#141417] flex items-center px-2 gap-1 overflow-x-auto">
             {activePouId && currentPou && (
               <button
-                onClick={() => setActiveTab(currentPou.language === "SFC" ? "SFC_EDITOR" : "ST_EDITOR")}
+                onClick={() =>
+                  setActiveTab(currentPou.language === "SFC" ? "SFC_EDITOR" : "ST_EDITOR")
+                }
                 className={`flex items-center gap-2 px-3 py-1 rounded text-xs font-medium transition-colors ${
                   activeTab === "ST_EDITOR" || activeTab === "SFC_EDITOR"
                     ? "bg-[#18181b] text-indigo-300 border-t-2 border-indigo-500"
@@ -283,7 +291,9 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
                 >
                   <Hammer className="w-3.5 h-3.5 text-indigo-400" />
                   Build & Diagnósticos (
-                  {compilationResult?.diagnostics.filter((d) => d.severity === "ERROR").length || 0} erros)
+                  {compilationResult?.diagnostics.filter((d) => d.severity === "ERROR").length ||
+                    0}{" "}
+                  erros)
                 </button>
 
                 <button
@@ -307,7 +317,11 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
                 className="p-1 text-zinc-400 hover:text-zinc-200"
                 title={isDockCollapsed ? "Expandir Dock" : "Recolher Dock"}
               >
-                {isDockCollapsed ? <CaretUp className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />}
+                {isDockCollapsed ? (
+                  <CaretUp className="w-4 h-4" />
+                ) : (
+                  <CaretDown className="w-4 h-4" />
+                )}
               </button>
             </div>
 
@@ -323,7 +337,8 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
                         <div className="flex items-center gap-2 pb-2 border-b border-zinc-800 font-bold">
                           {compilationResult.success ? (
                             <span className="text-emerald-400 flex items-center gap-1.5">
-                              <CheckCircle className="w-4 h-4" /> COMPILAÇÃO IEC CONCLUÍDA COM SUCESSO
+                              <CheckCircle className="w-4 h-4" /> COMPILAÇÃO IEC CONCLUÍDA COM
+                              SUCESSO
                             </span>
                           ) : (
                             <span className="text-rose-400 flex items-center gap-1.5">
@@ -336,7 +351,9 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
                         </div>
 
                         {compilationResult.diagnostics.length === 0 ? (
-                          <div className="text-zinc-400 py-3">0 erros, 0 avisos. Bytecode IR pronto para execução.</div>
+                          <div className="text-zinc-400 py-3">
+                            0 erros, 0 avisos. Bytecode IR pronto para execução.
+                          </div>
                         ) : (
                           <div className="space-y-1.5 pt-2">
                             {compilationResult.diagnostics.map((d, i) => (
@@ -361,7 +378,8 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
                       </div>
                     ) : (
                       <div className="text-zinc-500 py-4 text-center">
-                        Nenhuma compilação executada recentemente. Clique em &quot;Build All&quot; para compilar.
+                        Nenhuma compilação executada recentemente. Clique em &quot;Build All&quot;
+                        para compilar.
                       </div>
                     )}
                   </div>
@@ -374,7 +392,8 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
                         <div className="flex items-center gap-2 pb-2 border-b border-zinc-800 font-bold">
                           {integrityReport.isValid ? (
                             <span className="text-emerald-400 flex items-center gap-1.5">
-                              <CheckCircle className="w-4 h-4" /> MODELO CANÔNICO 100% ÍNTEGRO (UUIDs VÁLIDOS)
+                              <CheckCircle className="w-4 h-4" /> MODELO CANÔNICO 100% ÍNTEGRO
+                              (UUIDs VÁLIDOS)
                             </span>
                           ) : (
                             <span className="text-rose-400 flex items-center gap-1.5">
@@ -396,7 +415,9 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
                             </div>
                           </div>
                           <div className="p-3 rounded bg-zinc-900/60 border border-zinc-800">
-                            <div className="text-zinc-400 text-[11px]">Canais E/S Não Mapeados:</div>
+                            <div className="text-zinc-400 text-[11px]">
+                              Canais E/S Não Mapeados:
+                            </div>
                             <div className="text-base font-bold text-zinc-100">
                               {integrityReport.unmappedIOChannels.length}
                             </div>

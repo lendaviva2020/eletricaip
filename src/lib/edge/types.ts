@@ -288,13 +288,7 @@ export type EdgeHardwareArch = "x86_64" | "arm64" | "armv7l" | "unknown";
 export type EdgeConnectivityState = "CONNECTED" | "DISCONNECTED" | "DEGRADED" | "UNKNOWN";
 
 export type EdgeOperationalState =
-  | "PROVISIONING"
-  | "ONLINE"
-  | "OFFLINE"
-  | "DEGRADED"
-  | "MAINTENANCE"
-  | "REVOKED"
-  | "UNKNOWN";
+  "PROVISIONING" | "ONLINE" | "OFFLINE" | "DEGRADED" | "MAINTENANCE" | "REVOKED" | "UNKNOWN";
 
 export interface EdgeStorageHealth {
   walSizeBytes: number;
@@ -324,11 +318,7 @@ export interface EdgeCertificateRecord {
 }
 
 export type EdgeUpdateState =
-  | "UP_TO_DATE"
-  | "UPDATE_AVAILABLE"
-  | "UPDATING"
-  | "UPDATE_FAILED"
-  | "ROLLED_BACK";
+  "UP_TO_DATE" | "UPDATE_AVAILABLE" | "UPDATING" | "UPDATE_FAILED" | "ROLLED_BACK";
 
 export interface FleetGatewaySummary {
   gatewayId: string;
@@ -457,4 +447,3 @@ export interface FleetAuditEvent {
   details: Record<string, any>;
   tamperProofHash: string;
 }
-

@@ -1,12 +1,7 @@
 // ELÉTRICAI — GATE 3.6 — Contrato de Tag: transformação raw → engenharia
 // Preserva o valor bruto e registra exatamente a transformação aplicada.
 
-import type {
-  GatewayTagSource,
-  IndustrialTag,
-  SampleQuality,
-  TagTransformation,
-} from "./types";
+import type { GatewayTagSource, IndustrialTag, SampleQuality, TagTransformation } from "./types";
 import { getUnitConversion } from "./units";
 
 export interface TransformResult {

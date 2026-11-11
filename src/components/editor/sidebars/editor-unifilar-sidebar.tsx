@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Cube,
   CaretDown,
@@ -227,22 +227,25 @@ export function EditorUnifilarSidebar() {
     setOpenSections((prev) => ({ ...prev, [sec]: !prev[sec] }));
   };
 
-  const filterBySearch = (defs: readonly VoltaiComponentDefinition[]) => {
-    if (!search.trim()) return defs;
-    const term = search.toLowerCase();
-    return defs.filter((c) => {
-      const meta = COMPONENT_METADATA[c.type];
-      return (
-        c.name.toLowerCase().includes(term) ||
-        c.type.toLowerCase().includes(term) ||
-        (c.tagPrefix && c.tagPrefix.toLowerCase().includes(term)) ||
-        (meta && meta.desc.toLowerCase().includes(term)) ||
-        (meta && meta.norm.toLowerCase().includes(term)) ||
-        (meta && meta.tag.toLowerCase().includes(term)) ||
-        c.category.toLowerCase().includes(term)
-      );
-    });
-  };
+  const filterBySearch = useCallback(
+    (defs: readonly VoltaiComponentDefinition[]) => {
+      if (!search.trim()) return defs;
+      const term = search.toLowerCase();
+      return defs.filter((c) => {
+        const meta = COMPONENT_METADATA[c.type];
+        return (
+          c.name.toLowerCase().includes(term) ||
+          c.type.toLowerCase().includes(term) ||
+          (c.tagPrefix && c.tagPrefix.toLowerCase().includes(term)) ||
+          (meta && meta.desc.toLowerCase().includes(term)) ||
+          (meta && meta.norm.toLowerCase().includes(term)) ||
+          (meta && meta.tag.toLowerCase().includes(term)) ||
+          c.category.toLowerCase().includes(term)
+        );
+      });
+    },
+    [search],
+  );
 
   const alimentacao = useMemo(
     () =>
@@ -259,7 +262,7 @@ export function EditorUnifilarSidebar() {
           );
         }),
       ),
-    [search],
+    [filterBySearch],
   );
 
   const protecao = useMemo(
@@ -280,7 +283,7 @@ export function EditorUnifilarSidebar() {
           );
         }),
       ),
-    [search],
+    [filterBySearch],
   );
 
   const manobra = useMemo(
@@ -299,7 +302,7 @@ export function EditorUnifilarSidebar() {
           );
         }),
       ),
-    [search],
+    [filterBySearch],
   );
 
   const cargas = useMemo(
@@ -317,7 +320,7 @@ export function EditorUnifilarSidebar() {
           );
         }),
       ),
-    [search],
+    [filterBySearch],
   );
 
   const automacao = useMemo(
@@ -335,7 +338,7 @@ export function EditorUnifilarSidebar() {
           );
         }),
       ),
-    [search],
+    [filterBySearch],
   );
 
   const instrumentacao = useMemo(
@@ -356,10 +359,10 @@ export function EditorUnifilarSidebar() {
           );
         }),
       ),
-    [search],
+    [filterBySearch],
   );
 
-  const todos = useMemo(() => filterBySearch(VOLTAI_COMPONENT_DEFINITIONS), [search]);
+  const todos = useMemo(() => filterBySearch(VOLTAI_COMPONENT_DEFINITIONS), [filterBySearch]);
 
   const totalResults =
     alimentacao.length +

@@ -318,8 +318,8 @@ export class EdgeFleetManager {
       operationalState === "ONLINE"
         ? "CONNECTED"
         : operationalState === "DEGRADED"
-        ? "DEGRADED"
-        : "DISCONNECTED";
+          ? "DEGRADED"
+          : "DISCONNECTED";
 
     const cert = fleetCertificateManager.getCertificate(gw.gatewayId) || gw.certificate;
 
@@ -429,7 +429,9 @@ export class EdgeFleetManager {
     fleetRbacEngine.assertCanPerformAction(user, "VIEW_FLEET");
 
     const now = Date.now();
-    let all = Array.from(this.gateways.values()).map((gw) => this.resolveGatewayWithLiveState(gw, now));
+    let all = Array.from(this.gateways.values()).map((gw) =>
+      this.resolveGatewayWithLiveState(gw, now),
+    );
 
     // Multi-tenant and plant boundary enforcement
     all = fleetRbacEngine.filterGatewaysForUser(all, user);
@@ -467,7 +469,10 @@ export class EdgeFleetManager {
    * Computes high-level aggregated fleet metrics for the dashboard.
    */
   public getFleetMetrics(user: FleetUserContext, targetOrgId?: string): FleetMetricsSummary {
-    const gateways = this.getFleetGateways(user, targetOrgId ? { organizationId: targetOrgId } : undefined);
+    const gateways = this.getFleetGateways(
+      user,
+      targetOrgId ? { organizationId: targetOrgId } : undefined,
+    );
 
     let online = 0;
     let offline = 0;

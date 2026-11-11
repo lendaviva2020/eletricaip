@@ -235,7 +235,8 @@ export function ScadaCommunicationView() {
               {gatewayTelemetry?.gatewayId || "egw_lab_ete_01"}
             </span>
             <span className="text-zinc-500 text-[9px]">
-              {gatewayTelemetry?.organizationId || "org_sp_industrial"} • {gatewayTelemetry?.plantId || "plant_ete_central"}
+              {gatewayTelemetry?.organizationId || "org_sp_industrial"} •{" "}
+              {gatewayTelemetry?.plantId || "plant_ete_central"}
             </span>
           </div>
 
@@ -245,17 +246,24 @@ export function ScadaCommunicationView() {
               {gatewayTelemetry?.bufferStatus?.pendingUploadCount ?? 0} pendentes
             </span>
             <span className="text-zinc-500 text-[9px]">
-              {gatewayTelemetry?.bufferStatus?.inFlightCount ?? 0} in-flight • Total: {gatewayTelemetry?.bufferStatus?.totalSamplesStored ?? 0}
+              {gatewayTelemetry?.bufferStatus?.inFlightCount ?? 0} in-flight • Total:{" "}
+              {gatewayTelemetry?.bufferStatus?.totalSamplesStored ?? 0}
             </span>
           </div>
 
           <div className="bg-zinc-900/80 rounded p-2 border border-zinc-800">
             <span className="text-zinc-500 block text-[10px]">Capacidade do Buffer:</span>
-            <span className={cn(
-              "font-bold block",
-              gatewayTelemetry?.bufferStatus?.isNearCapacity80Percent ? "text-amber-400" : "text-emerald-400"
-            )}>
-              {gatewayTelemetry?.bufferStatus?.isNearCapacity80Percent ? "≥ 80% (Alerta de Quota)" : "Nominal (< 80%)"}
+            <span
+              className={cn(
+                "font-bold block",
+                gatewayTelemetry?.bufferStatus?.isNearCapacity80Percent
+                  ? "text-amber-400"
+                  : "text-emerald-400",
+              )}
+            >
+              {gatewayTelemetry?.bufferStatus?.isNearCapacity80Percent
+                ? "≥ 80% (Alerta de Quota)"
+                : "Nominal (< 80%)"}
             </span>
             <span className="text-zinc-500 text-[9px]">Política: DROP_OLDEST_NON_CRITICAL</span>
           </div>
@@ -263,7 +271,9 @@ export function ScadaCommunicationView() {
           <div className="bg-zinc-900/80 rounded p-2 border border-zinc-800">
             <span className="text-zinc-500 block text-[10px]">Latência Cloud & Sync:</span>
             <span className="text-white font-bold block">
-              {gatewayTelemetry?.networkLatencyMs ? `${gatewayTelemetry.networkLatencyMs.toFixed(1)} ms` : "1.8 ms"}
+              {gatewayTelemetry?.networkLatencyMs
+                ? `${gatewayTelemetry.networkLatencyMs.toFixed(1)} ms`
+                : "1.8 ms"}
             </span>
             <span className="text-zinc-500 text-[9px]">
               Amostras Processadas: {gatewayTelemetry?.samplesProcessedTotal ?? 4210}

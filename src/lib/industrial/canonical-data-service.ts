@@ -90,7 +90,12 @@ export interface BatchIngestReport {
   ingestionTimestamp: number;
   ingestedSampleCount: number;
   deduplicatedSampleCount: number;
-  rejectedSamples: Array<{ tagId: string; sourceId: string; sequenceNumber: number; reason: string }>;
+  rejectedSamples: Array<{
+    tagId: string;
+    sourceId: string;
+    sequenceNumber: number;
+    reason: string;
+  }>;
   ingestedAlarmTransitions: number;
   deduplicatedAlarmTransitions: number;
   error?: string;
@@ -325,10 +330,7 @@ export class CanonicalIndustrialDataService {
   // ───────────────────────────────────────────────────────────────────────────
 
   public registerOrUpdateTag(
-    input: Omit<
-      z.input<typeof IndustrialTagSchema>,
-      "revision" | "configurationVersion"
-    > & {
+    input: Omit<z.input<typeof IndustrialTagSchema>, "revision" | "configurationVersion"> & {
       revision?: number;
       configurationVersion?: number;
     },
@@ -480,7 +482,10 @@ export class CanonicalIndustrialDataService {
     const parsed = CanonicalGatewaySchema.parse(input);
     this.assertPlantBelongsToTenant(parsed.tenantId, parsed.plantId);
     const existing = this.gateways.get(parsed.id);
-    if (existing && (existing.tenantId !== parsed.tenantId || existing.plantId !== parsed.plantId)) {
+    if (
+      existing &&
+      (existing.tenantId !== parsed.tenantId || existing.plantId !== parsed.plantId)
+    ) {
       throw new CanonicalIntegrityError(
         "IDENTITY_TRANSFER_FORBIDDEN",
         `Gateway '${parsed.id}' não pode mudar de tenant ou planta.`,
@@ -530,10 +535,7 @@ export class CanonicalIndustrialDataService {
 
     const tag = this.tags.get(parsed.tagId);
     if (!tag) {
-      throw new CanonicalIntegrityError(
-        "UNKNOWN_ENTITY",
-        `Tag '${parsed.tagId}' não cadastrada.`,
-      );
+      throw new CanonicalIntegrityError("UNKNOWN_ENTITY", `Tag '${parsed.tagId}' não cadastrada.`);
     }
     if (tag.tenantId !== parsed.tenantId) {
       throw new CanonicalIntegrityError(
@@ -548,7 +550,10 @@ export class CanonicalIndustrialDataService {
       );
     }
 
-    this.gatewayTagSources.set(this.sourceKey(parsed.gatewayId, parsed.tagId, parsed.sourceId), parsed);
+    this.gatewayTagSources.set(
+      this.sourceKey(parsed.gatewayId, parsed.tagId, parsed.sourceId),
+      parsed,
+    );
     return parsed;
   }
 
@@ -1202,8 +1207,7 @@ export class CanonicalIndustrialDataService {
     }
     this.assertUserAccessToPlant(user, occ.tenantId, occ.plantId, "VIEW_TELEMETRY");
 
-    const nextSeq =
-      occ.transitions.reduce((m, t) => Math.max(m, t.transitionSequence), 0) + 1;
+    const nextSeq = occ.transitions.reduce((m, t) => Math.max(m, t.transitionSequence), 0) + 1;
     occ.transitions.push({
       kind: "ACKNOWLEDGED",
       transitionSequence: nextSeq,

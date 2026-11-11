@@ -70,23 +70,34 @@ function isOpcuaEndpointAllowed(endpoint: string): boolean {
     return false;
   }
   if (!host) return false;
-  if (host === "simulation" || host.includes("simulation")) return true;
-  if (host === "localhost" || host.endsWith(".localhost")) return true; // dev/sim only
+  // Apenas host literal exato "simulation" libera o simulador em memória; bloqueia loopback/localhost/link-local.
+  if (host === "simulation") return true;
+  if (host === "localhost" || host.endsWith(".localhost")) return false;
   if (host.includes(":")) return false; // IPv6 literal
   const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
   if (ipv4) {
     const parts = ipv4.slice(1, 5).map((p) => Number(p));
     if (parts.some((p) => p < 0 || p > 255)) return false;
     const [a, b] = parts;
-    if (a === 127) return true; // local dev
-    if (a === 0 || (a === 169 && b === 254) || a >= 224) return false;
+    if (a === 127 || a === 0 || (a === 169 && b === 254) || a >= 224) return false;
     return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
   }
   if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host)) {
     return false;
   }
   const blocked = ["metadata.google.internal", "metadata.goog", "metadata", "instance-data"];
-  return !blocked.includes(host);
+  if (
+    blocked.includes(host) ||
+    host.endsWith(".internal") ||
+    host.endsWith(".nip.io") ||
+    host.endsWith(".sslip.io") ||
+    host.endsWith(".xip.io") ||
+    host.endsWith(".localtest.me") ||
+    /^(\d{1,3}\.){3}\d{1,3}\./.test(host)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 const ConnectSchema = z.object({
@@ -334,13 +345,14 @@ export const testOpcuaConnection = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    if (!data.endpoint.startsWith("opc.tcp://")) {
-      throw new Error("Endpoint deve iniciar com opc.tcp://");
+    if (!isOpcuaEndpointAllowed(data.endpoint)) {
+      throw new Error("Endpoint OPC-UA inválido ou bloqueado pela política de rede.");
     }
-    // Fase 7.1: a nuvem pública não alcança CLPs de fábrica. Apenas endpoints de
-    // simulação retornam sucesso (sempre marcado como simulado); conexão física
-    // exige um Edge Gateway local (node-opcua) e não é testada a partir daqui.
-    if (!data.endpoint.toLowerCase().includes("simulation")) {
+    const hostname = new URL(data.endpoint.trim().toLowerCase().replace("opc.tcp://", "http://"))
+      .hostname;
+    // Fase 7.1: a nuvem pública não alcança CLPs de fábrica. Apenas o host literal
+    // 'simulation' retorna sucesso (sempre marcado como simulado).
+    if (hostname !== "simulation") {
       throw new Error(
         "Conexão OPC-UA física indisponível na nuvem. Use o host 'simulation' ou configure um Edge Gateway local.",
       );

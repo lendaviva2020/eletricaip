@@ -4,7 +4,7 @@
 // (passo separado, fora deste escopo).
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireTenantAdmin } from "@/integrations/supabase/tenant-admin-middleware";
+import { requireActiveSession } from "@/integrations/supabase/auth-middleware";
 
 const numeric = z
   .union([z.number(), z.string()])
@@ -74,12 +74,19 @@ export interface ImportReport {
 const DEFAULT_CATEGORY = "Não classificado";
 
 export const importCatalogBatch = createServerFn({ method: "POST" })
-  .middleware([requireTenantAdmin])
+  .middleware([requireActiveSession])
   .inputValidator((data: unknown) => InputSchema.parse(data))
   .handler(async ({ data, context }): Promise<ImportReport> => {
-    const { userId } = context;
-    // Catálogo é global e sua RLS libera escrita só para platform admins;
-    // o caller já foi autorizado como owner/admin do tenant acima.
+    const { supabase, userId } = context;
+    // Catálogo é global: requer papel explícito de administrador da plataforma.
+    const { data: isPlatformAdmin, error: adminErr } = await supabase.rpc("is_platform_admin");
+    if (adminErr || !isPlatformAdmin) {
+      throw new Response(
+        "Forbidden: apenas administradores da plataforma podem importar itens no catálogo global.",
+        { status: 403 },
+      );
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const db = supabaseAdmin as unknown as {
       from: (t: string) => any;
@@ -206,5 +213,12 @@ export const importCatalogBatch = createServerFn({ method: "POST" })
   });
 
 export const canImportCatalog = createServerFn({ method: "POST" })
-  .middleware([requireTenantAdmin])
-  .handler(async ({ context }) => ({ allowed: true, role: context.tenantRole }));
+  .middleware([requireActiveSession])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data: isPlatformAdmin } = await supabase.rpc("is_platform_admin");
+    return {
+      allowed: Boolean(isPlatformAdmin),
+      role: isPlatformAdmin ? "platform_admin" : "denied",
+    };
+  });

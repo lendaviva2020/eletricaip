@@ -37,17 +37,8 @@ import type {
   FleetMetricsSummary,
   FleetAuditEvent,
   EdgeOperationalState,
-  FleetUserContext,
   EdgeHardwareArch,
 } from "@/lib/edge/types";
-
-const CurrentUser: FleetUserContext = {
-  userId: "usr_operator_admin",
-  email: "admin@eletricai.com",
-  role: "PLATFORM_ADMIN",
-  organizationId: "org_sp_industrial",
-  authorizedPlantIds: ["plant_ete_central", "plant_subestacao_138kv", "plant_usina_rj"],
-};
 
 const INITIAL_FLEET_METRICS: FleetMetricsSummary = {
   totalGateways: 0,
@@ -71,7 +62,9 @@ export function EdgeFleetDashboard() {
   const [selectedPlant, setSelectedPlant] = useState<string>("ALL");
   const [selectedArch, setSelectedArch] = useState<string>("ALL");
   const [selectedGateway, setSelectedGateway] = useState<FleetGatewaySummary | null>(null);
-  const [activeTab, setActiveTab] = useState<"TELEMETRY" | "CONFIG" | "CERTS" | "UPDATES" | "AUDIT">("TELEMETRY");
+  const [activeTab, setActiveTab] = useState<
+    "TELEMETRY" | "CONFIG" | "CERTS" | "UPDATES" | "AUDIT"
+  >("TELEMETRY");
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   const [gateways, setGateways] = useState<FleetGatewaySummary[]>([]);
@@ -83,9 +76,9 @@ export function EdgeFleetDashboard() {
     let active = true;
     getFleetGatewaysFn({
       data: {
-        user: CurrentUser,
         filter: {
-          operationalState: selectedState !== "ALL" ? (selectedState as EdgeOperationalState) : undefined,
+          operationalState:
+            selectedState !== "ALL" ? (selectedState as EdgeOperationalState) : undefined,
           plantId: selectedPlant !== "ALL" ? selectedPlant : undefined,
           hardwareArch: selectedArch !== "ALL" ? (selectedArch as EdgeHardwareArch) : undefined,
           searchQuery: searchQuery || undefined,
@@ -97,7 +90,7 @@ export function EdgeFleetDashboard() {
       })
       .catch((err) => console.error("Falha ao buscar gateways da frota:", err));
 
-    getFleetMetricsFn({ data: { user: CurrentUser } })
+    getFleetMetricsFn({})
       .then((res) => {
         if (active && res) setMetrics(res);
         else if (active) setMetrics(INITIAL_FLEET_METRICS);
@@ -122,7 +115,7 @@ export function EdgeFleetDashboard() {
     return () => {
       active = false;
     };
-  }, [activeTab, selectedGateway?.gatewayId, refreshNonce]);
+  }, [activeTab, selectedGateway, refreshNonce]);
 
   const plants = useMemo(() => {
     const set = new Set<string>();
@@ -142,7 +135,6 @@ export function EdgeFleetDashboard() {
         data: {
           gatewayId: gw.gatewayId,
           reason,
-          user: CurrentUser,
           organizationId: gw.organizationId,
           plantId: gw.plantId,
         },
@@ -166,14 +158,15 @@ export function EdgeFleetDashboard() {
       const res = (await rollbackRemoteConfigFn({
         data: {
           gatewayId: gw.gatewayId,
-          user: CurrentUser,
           organizationId: gw.organizationId,
           plantId: gw.plantId,
         },
       })) as { success: boolean; activeConfigVersion?: number; error?: string };
 
       if (res?.success) {
-        toast.success(`Configuração restaurada com sucesso para v${res.activeConfigVersion} (LKGC).`);
+        toast.success(
+          `Configuração restaurada com sucesso para v${res.activeConfigVersion} (LKGC).`,
+        );
         setRefreshNonce((n) => n + 1);
       } else {
         toast.error(`Falha no rollback: ${res?.error || "Erro desconhecido"}`);
@@ -189,17 +182,24 @@ export function EdgeFleetDashboard() {
         data: {
           gatewayId: gw.gatewayId,
           targetVersion: "1.3.0",
-          user: CurrentUser,
         },
       });
       if (res?.success) {
         gw.softwareVersion = res.activeVersion || "1.3.0";
         gw.updateState = "UP_TO_DATE";
-        toast.success(`Gateway ${gw.name} atualizado com sucesso para versão ${res.activeVersion || "1.3.0"}!`);
+        toast.success(
+          `Gateway ${gw.name} atualizado com sucesso para versão ${res.activeVersion || "1.3.0"}!`,
+        );
         setRefreshNonce((n) => n + 1);
         if (selectedGateway?.gatewayId === gw.gatewayId) {
           setSelectedGateway((prev) =>
-            prev ? { ...prev, softwareVersion: res.activeVersion || "1.3.0", updateState: "UP_TO_DATE" } : null,
+            prev
+              ? {
+                  ...prev,
+                  softwareVersion: res.activeVersion || "1.3.0",
+                  updateState: "UP_TO_DATE",
+                }
+              : null,
           );
         }
       } else {
@@ -225,7 +225,8 @@ export function EdgeFleetDashboard() {
             </span>
           </div>
           <p className="text-xs text-zinc-400 font-mono mt-1">
-            Monitoramento de múltiplos appliances industriais, telemetria de recursos, certificados mTLS e atualizações assinadas
+            Monitoramento de múltiplos appliances industriais, telemetria de recursos, certificados
+            mTLS e atualizações assinadas
           </p>
         </div>
 
@@ -250,7 +251,9 @@ export function EdgeFleetDashboard() {
         <div className="bg-zinc-950/80 border border-zinc-800 rounded-lg p-3 space-y-1">
           <span className="text-[11px] font-mono text-zinc-400 uppercase">Total Gateways</span>
           <div className="text-2xl font-bold font-mono text-white">{metrics.totalGateways}</div>
-          <span className="text-[10px] font-mono text-zinc-500">Distribuídos em {plants.length} plantas</span>
+          <span className="text-[10px] font-mono text-zinc-500">
+            Distribuídos em {plants.length} plantas
+          </span>
         </div>
 
         <div className="bg-zinc-950/80 border border-emerald-900/40 rounded-lg p-3 space-y-1">
@@ -258,7 +261,9 @@ export function EdgeFleetDashboard() {
             <span className="text-[11px] font-mono text-emerald-400 uppercase">Online</span>
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-300">{metrics.onlineGateways}</div>
+          <div className="text-2xl font-bold font-mono text-emerald-300">
+            {metrics.onlineGateways}
+          </div>
           <span className="text-[10px] font-mono text-zinc-500">Heartbeat ativo &lt; 30s</span>
         </div>
 
@@ -267,7 +272,9 @@ export function EdgeFleetDashboard() {
             <span className="text-[11px] font-mono text-zinc-400 uppercase">Offline</span>
             <span className="w-2 h-2 rounded-full bg-zinc-600" />
           </div>
-          <div className="text-2xl font-bold font-mono text-zinc-400">{metrics.offlineGateways}</div>
+          <div className="text-2xl font-bold font-mono text-zinc-400">
+            {metrics.offlineGateways}
+          </div>
           <span className="text-[10px] font-mono text-zinc-500">Sem heartbeat</span>
         </div>
 
@@ -276,7 +283,9 @@ export function EdgeFleetDashboard() {
             <span className="text-[11px] font-mono text-amber-400 uppercase">Degradados</span>
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
           </div>
-          <div className="text-2xl font-bold font-mono text-amber-300">{metrics.degradedGateways}</div>
+          <div className="text-2xl font-bold font-mono text-amber-300">
+            {metrics.degradedGateways}
+          </div>
           <span className="text-[10px] font-mono text-zinc-500">Alta carga / Buffer &gt; 90%</span>
         </div>
 
@@ -285,7 +294,9 @@ export function EdgeFleetDashboard() {
             <span className="text-[11px] font-mono text-rose-400 uppercase">Certs em Alerta</span>
             <ShieldWarning className="w-3.5 h-3.5 text-rose-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-rose-300">{metrics.certificatesExpiringSoon}</div>
+          <div className="text-2xl font-bold font-mono text-rose-300">
+            {metrics.certificatesExpiringSoon}
+          </div>
           <span className="text-[10px] font-mono text-zinc-500">Vencimento &lt; 30 dias</span>
         </div>
 
@@ -602,7 +613,9 @@ export function EdgeFleetDashboard() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 space-y-2">
-                      <span className="text-[11px] font-mono text-zinc-500 uppercase">Processador (CPU)</span>
+                      <span className="text-[11px] font-mono text-zinc-500 uppercase">
+                        Processador (CPU)
+                      </span>
                       <div className="text-2xl font-bold font-mono text-white">
                         {selectedGateway.health.cpuUsagePercent}%
                       </div>
@@ -612,7 +625,9 @@ export function EdgeFleetDashboard() {
                     </div>
 
                     <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 space-y-2">
-                      <span className="text-[11px] font-mono text-zinc-500 uppercase">Memória RAM</span>
+                      <span className="text-[11px] font-mono text-zinc-500 uppercase">
+                        Memória RAM
+                      </span>
                       <div className="text-2xl font-bold font-mono text-white">
                         {selectedGateway.health.memoryUsagePercent}%
                       </div>
@@ -622,32 +637,43 @@ export function EdgeFleetDashboard() {
                     </div>
 
                     <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 space-y-2">
-                      <span className="text-[11px] font-mono text-zinc-500 uppercase">Buffer SQLite WAL</span>
+                      <span className="text-[11px] font-mono text-zinc-500 uppercase">
+                        Buffer SQLite WAL
+                      </span>
                       <div className="text-2xl font-bold font-mono text-white">
                         {selectedGateway.storage.pendingSamplesCount.toLocaleString("pt-BR")}
                       </div>
                       <div className="text-[10px] font-mono text-zinc-400">
-                        Tamanho: {(selectedGateway.storage.walSizeBytes / (1024 * 1024)).toFixed(1)} MB
+                        Tamanho: {(selectedGateway.storage.walSizeBytes / (1024 * 1024)).toFixed(1)}{" "}
+                        MB
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 space-y-3 font-mono text-xs">
-                    <h4 className="font-bold text-white uppercase text-xs">Diagnóstico de Sincronização</h4>
+                    <h4 className="font-bold text-white uppercase text-xs">
+                      Diagnóstico de Sincronização
+                    </h4>
                     <div className="grid grid-cols-2 gap-2 text-zinc-300">
                       <div>
                         <span className="text-zinc-500">Último Heartbeat:</span>{" "}
-                        {selectedGateway.lastHeartbeatAt ? new Date(selectedGateway.lastHeartbeatAt).toLocaleTimeString() : "Nenhum"}
+                        {selectedGateway.lastHeartbeatAt
+                          ? new Date(selectedGateway.lastHeartbeatAt).toLocaleTimeString()
+                          : "Nenhum"}
                       </div>
                       <div>
                         <span className="text-zinc-500">Última Sincronização:</span>{" "}
-                        {selectedGateway.lastSyncAt ? new Date(selectedGateway.lastSyncAt).toLocaleTimeString() : "Nenhum"}
+                        {selectedGateway.lastSyncAt
+                          ? new Date(selectedGateway.lastSyncAt).toLocaleTimeString()
+                          : "Nenhum"}
                       </div>
                       <div>
-                        <span className="text-zinc-500">Versão de Software:</span> {selectedGateway.softwareVersion}
+                        <span className="text-zinc-500">Versão de Software:</span>{" "}
+                        {selectedGateway.softwareVersion}
                       </div>
                       <div>
-                        <span className="text-zinc-500">Versão do Protocolo:</span> {selectedGateway.protocolVersion}
+                        <span className="text-zinc-500">Versão do Protocolo:</span>{" "}
+                        {selectedGateway.protocolVersion}
                       </div>
                     </div>
                   </div>
@@ -671,15 +697,26 @@ export function EdgeFleetDashboard() {
                     </div>
 
                     <p className="text-xs text-zinc-400 font-mono">
-                      Todas as configurações são validadas localmente com verificação do intertravamento de segurança{" "}
+                      Todas as configurações são validadas localmente com verificação do
+                      intertravamento de segurança{" "}
                       <code className="text-amber-400">isPhysicalControlAllowed = false</code>.
                     </p>
 
                     <div className="bg-zinc-900 p-3 rounded font-mono text-xs text-zinc-300 space-y-1">
-                      <div><span className="text-zinc-500">Taxa de Varredura (Scan Rate):</span> 1000 ms</div>
-                      <div><span className="text-zinc-500">Limite de Buffer:</span> 10.000.000 amostras</div>
-                      <div><span className="text-zinc-500">Política de Saturação:</span> DROP_OLDEST_NON_CRITICAL</div>
-                      <div><span className="text-zinc-500">Retenção Offline:</span> 72 horas contínuas</div>
+                      <div>
+                        <span className="text-zinc-500">Taxa de Varredura (Scan Rate):</span> 1000
+                        ms
+                      </div>
+                      <div>
+                        <span className="text-zinc-500">Limite de Buffer:</span> 10.000.000 amostras
+                      </div>
+                      <div>
+                        <span className="text-zinc-500">Política de Saturação:</span>{" "}
+                        DROP_OLDEST_NON_CRITICAL
+                      </div>
+                      <div>
+                        <span className="text-zinc-500">Retenção Offline:</span> 72 horas contínuas
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -689,7 +726,9 @@ export function EdgeFleetDashboard() {
                 <div className="space-y-4">
                   <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 space-y-3 font-mono text-xs">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-white uppercase">Certificado mTLS do Gateway</h4>
+                      <h4 className="font-bold text-white uppercase">
+                        Certificado mTLS do Gateway
+                      </h4>
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         {selectedGateway.certificate.state}
                       </span>
@@ -698,20 +737,26 @@ export function EdgeFleetDashboard() {
                     <div className="space-y-1 text-zinc-300">
                       <div>
                         <span className="text-zinc-500">Fingerprint SHA-256:</span>
-                        <div className="text-[11px] text-blue-400 break-all">{selectedGateway.certificate.fingerprint}</div>
+                        <div className="text-[11px] text-blue-400 break-all">
+                          {selectedGateway.certificate.fingerprint}
+                        </div>
                       </div>
                       <div>
-                        <span className="text-zinc-500">Emitido em:</span> {new Date(selectedGateway.certificate.issuedAt).toLocaleString()}
+                        <span className="text-zinc-500">Emitido em:</span>{" "}
+                        {new Date(selectedGateway.certificate.issuedAt).toLocaleString()}
                       </div>
                       <div>
-                        <span className="text-zinc-500">Válido até:</span> {new Date(selectedGateway.certificate.expiresAt).toLocaleString()}
+                        <span className="text-zinc-500">Válido até:</span>{" "}
+                        {new Date(selectedGateway.certificate.expiresAt).toLocaleString()}
                       </div>
                     </div>
 
                     <div className="pt-3 border-t border-zinc-800 flex items-center justify-end gap-2">
                       <button
                         onClick={() => {
-                          toast.success("Solicitação de renovação com Proof of Possession submetida com sucesso.");
+                          toast.success(
+                            "Solicitação de renovação com Proof of Possession submetida com sucesso.",
+                          );
                         }}
                         className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold"
                       >
@@ -726,12 +771,18 @@ export function EdgeFleetDashboard() {
                 <div className="space-y-4">
                   <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 space-y-3 font-mono text-xs">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-white uppercase">Distribuição Assinada de Versões</h4>
-                      <span className="text-zinc-400">Versão instalada: {selectedGateway.softwareVersion}</span>
+                      <h4 className="font-bold text-white uppercase">
+                        Distribuição Assinada de Versões
+                      </h4>
+                      <span className="text-zinc-400">
+                        Versão instalada: {selectedGateway.softwareVersion}
+                      </span>
                     </div>
 
                     <p className="text-xs text-zinc-400">
-                      O processo de atualização verifica a assinatura criptográfica, a compatibilidade de arquitetura ({selectedGateway.hardwareArch}) e executa rollback automático se o teste de saúde falhar.
+                      O processo de atualização verifica a assinatura criptográfica, a
+                      compatibilidade de arquitetura ({selectedGateway.hardwareArch}) e executa
+                      rollback automático se o teste de saúde falhar.
                     </p>
 
                     <div className="pt-3 border-t border-zinc-800 flex items-center justify-end gap-2">
@@ -753,13 +804,22 @@ export function EdgeFleetDashboard() {
                   </h4>
                   <div className="space-y-2">
                     {auditLogs.map((ev) => (
-                      <div key={ev.id} className="bg-zinc-950 p-3 rounded border border-zinc-800 font-mono text-[11px] space-y-1">
+                      <div
+                        key={ev.id}
+                        className="bg-zinc-950 p-3 rounded border border-zinc-800 font-mono text-[11px] space-y-1"
+                      >
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-blue-400">{ev.eventType}</span>
-                          <span className="text-zinc-500">{new Date(ev.timestamp).toLocaleTimeString()}</span>
+                          <span className="text-zinc-500">
+                            {new Date(ev.timestamp).toLocaleTimeString()}
+                          </span>
                         </div>
-                        <div className="text-zinc-400">Ator: {ev.actor.email} ({ev.actor.role})</div>
-                        <div className="text-[10px] text-zinc-600 truncate">Hash: {ev.tamperProofHash}</div>
+                        <div className="text-zinc-400">
+                          Ator: {ev.actor.email} ({ev.actor.role})
+                        </div>
+                        <div className="text-[10px] text-zinc-600 truncate">
+                          Hash: {ev.tamperProofHash}
+                        </div>
                       </div>
                     ))}
                     {auditLogs.length === 0 && (

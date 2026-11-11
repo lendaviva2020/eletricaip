@@ -152,7 +152,8 @@ describe("GATE 3.1A — Autonomous Linux Edge Daemon Homologation", () => {
     const rawToken = "EGW-PROV-A1B2C3D4E5F67890";
     const rawAuth = "egw_sec_0123456789abcdef0123456789abcdef";
     const rawPass = 'password="super_secret_industrial_pass"';
-    const rawPem = "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----";
+    const rawPem =
+      "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----";
 
     const sanitizedToken = logger.redactSecrets(`Tentativa de uso de token ${rawToken}`);
     const sanitizedAuth = logger.redactSecrets(`Sessão autenticada com ${rawAuth}`);
@@ -186,7 +187,7 @@ describe("GATE 3.1A — Autonomous Linux Edge Daemon Homologation", () => {
       new Promise((resolve, reject) => {
         const req = http.get(`http://127.0.0.1:${currentPort}/healthz`, resolve);
         req.on("error", reject);
-      })
+      }),
     ).rejects.toThrow();
   });
 });

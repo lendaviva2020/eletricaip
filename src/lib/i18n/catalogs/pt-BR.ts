@@ -111,6 +111,8 @@ export const ptBR = {
       simHint: "Runtime",
       alarms: "Alarmes",
       alarmsHint: "ISA-18.2",
+      studio: "Studio IEC",
+      studioHint: "CODESYS Parity",
     },
     console: {
       logs: "Logs",

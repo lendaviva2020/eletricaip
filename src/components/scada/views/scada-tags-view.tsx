@@ -12,7 +12,11 @@ import {
   ArrowCounterClockwise,
 } from "@phosphor-icons/react";
 import { useScadaStore } from "@/lib/scada/scada-store";
-import { type ScadaTagDefinition, resolveTagProvenance, type DataSourceProvenance } from "@/lib/scada/types";
+import {
+  type ScadaTagDefinition,
+  resolveTagProvenance,
+  type DataSourceProvenance,
+} from "@/lib/scada/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -66,8 +70,14 @@ export function ScadaTagsView() {
   const PROV_BADGE_CONFIG: Record<DataSourceProvenance, { label: string; cls: string }> = {
     PHYSICAL_DATA: { label: "FÍSICO", cls: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" },
     INTERNAL_RUNTIME: { label: "RUNTIME", cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
-    SIMULATED_DATA: { label: "SIMULADO", cls: "bg-purple-500/15 text-purple-400 border-purple-500/30" },
-    CALCULATED_DATA: { label: "CALCULADO", cls: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30" },
+    SIMULATED_DATA: {
+      label: "SIMULADO",
+      cls: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+    },
+    CALCULATED_DATA: {
+      label: "CALCULADO",
+      cls: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+    },
     FORCED_DATA: { label: "FORÇADO", cls: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
     STALE_DATA: { label: "STALE", cls: "bg-orange-500/15 text-orange-400 border-orange-500/30" },
     BAD_QUALITY: { label: "BAD", cls: "bg-red-500/15 text-red-400 border-red-500/40" },
@@ -178,10 +188,20 @@ export function ScadaTagsView() {
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap">
                       {(() => {
-                        const prov = resolveTagProvenance(t.quality, t.driver, t.forced, t.isSimulated);
+                        const prov = resolveTagProvenance(
+                          t.quality,
+                          t.driver,
+                          t.forced,
+                          t.isSimulated,
+                        );
                         const badge = PROV_BADGE_CONFIG[prov];
                         return (
-                          <span className={cn("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border", badge.cls)}>
+                          <span
+                            className={cn(
+                              "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border",
+                              badge.cls,
+                            )}
+                          >
                             {badge.label}
                           </span>
                         );

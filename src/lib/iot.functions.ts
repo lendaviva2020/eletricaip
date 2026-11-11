@@ -278,9 +278,15 @@ export const getDashboardTelemetry = createServerFn({ method: "POST" })
     // Janela de tempo
     const since = new Date(Date.now() - data.hours * 60 * 60 * 1000).toISOString();
 
-    // Query tag_samples com ILIKE patterns
-    // Usamos or() para combinar múltiplos ILIKE
-    const orFilters = data.tagPatterns.map((p) => `tag_name.ilike.%${p}%`).join(",");
+    // Query tag_samples com ILIKE patterns sanitizados contra PostgREST filter injection
+    const sanitizedPatterns = data.tagPatterns
+      .map((p) => p.replace(/[^a-zA-Z0-9_.\-:[\]\s]/g, "").trim())
+      .filter((p) => p.length > 0)
+      .slice(0, 20);
+    if (sanitizedPatterns.length === 0) {
+      return { ok: true as const, series: {} };
+    }
+    const orFilters = sanitizedPatterns.map((p) => `tag_name.ilike.%${p}%`).join(",");
     const { data: samples, error: samplesError } = await supabase
       .from("tag_samples")
       .select("project_id, tag_name, value, sampled_at")

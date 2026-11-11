@@ -238,6 +238,10 @@ function createReferenceIndustrialProject(): LadderRung[] {
 }
 
 export function RungGrid() {
+  const removeRungRef = useRef<(id: string) => void>(() => {});
+  const deleteElementRef = useRef<(rungId: string, elementId: string) => void>(() => {});
+  const insertInstructionAtCursorRef = useRef<any>(null);
+
   const rungs = useEditorStore((s) => s.rungs);
   const setRungs = useEditorStore((s) => s.setRungs);
   const setRungsRuntime = useEditorStore((s) => s.setRungsRuntime);
@@ -422,7 +426,7 @@ export function RungGrid() {
         ...clipboard.instructionData,
         id: `inst-${Date.now()}`,
       };
-      insertInstructionAtCursor(targetRungId, newInst);
+      insertInstructionAtCursorRef.current?.(targetRungId, newInst);
       toast.success(`Instrução ${newInst.kind} (${newInst.operand}) colada.`);
     }
   }, [clipboard, selected, rungs, applyRungsWithHistory, select]);
@@ -517,6 +521,7 @@ export function RungGrid() {
     },
     [insertionPoint, applyRungsWithHistory],
   );
+  insertInstructionAtCursorRef.current = insertInstructionAtCursor;
 
   // Listener para evento customizado de inserção da biblioteca lateral
   useEffect(() => {
@@ -574,12 +579,12 @@ export function RungGrid() {
       if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedTarget?.elementId && selectedTarget.rungId) {
           e.preventDefault();
-          deleteElement(selectedTarget.rungId, selectedTarget.elementId);
+          deleteElementRef.current(selectedTarget.rungId, selectedTarget.elementId);
           return;
         }
         if (selected) {
           e.preventDefault();
-          removeRung(selected);
+          removeRungRef.current(selected);
           return;
         }
       }
@@ -587,7 +592,7 @@ export function RungGrid() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo, copySelected, paste, selectedTarget, selected, rungs]);
+  }, [undo, redo, copySelected, paste, selectedTarget, selected]);
 
   // Loop de Simulação Contínua do CLP (100ms)
   useEffect(() => {
@@ -666,6 +671,7 @@ export function RungGrid() {
     if (selected === id) select(null);
     toast.success("Rede removida.");
   };
+  removeRungRef.current = removeRung;
 
   const duplicateRung = (id: string) => {
     const original = rungs.find((r) => r.id === id);
@@ -831,6 +837,7 @@ export function RungGrid() {
     setSelectedTarget(null);
     toast.success("Elemento removido da rede.");
   };
+  deleteElementRef.current = deleteElement;
 
   // Edição de comentário / descrição de rede
   const startEditingComment = (rung: LadderRung) => {

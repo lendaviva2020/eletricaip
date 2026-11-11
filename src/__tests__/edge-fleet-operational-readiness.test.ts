@@ -72,11 +72,14 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
     authorizedPlantIds: ["plant_ete_sp", "plant_sub_sp"],
   };
 
+  const TEST_CONFIG_HMAC_KEY = "test_only_config_hmac_secret_gate43";
+  const TEST_RELEASE_HMAC_KEY = "test_only_release_hmac_secret_gate43";
+
   beforeEach(() => {
     fleetManager = new EdgeFleetManager();
     certManager = new FleetCertificateManager();
-    configManager = new RemoteConfigManager();
-    updateManager = new SignedUpdateManager();
+    configManager = new RemoteConfigManager(TEST_CONFIG_HMAC_KEY);
+    updateManager = new SignedUpdateManager(TEST_RELEASE_HMAC_KEY);
     auditManager = new FleetAuditManager();
     rbacEngine = new FleetRbacEngine();
   });
@@ -289,19 +292,26 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
   // Scenario 9: Configuração duplicada (idempotência / rejeição de versão repetida)
   // --------------------------------------------------------------------------
   it("Cenário 9: Configuração duplicada — rejeição de versão igual à ativa", () => {
-    const duplicateConfig: RemoteConfigPayload = {
+    const unsignedDup = {
       configVersion: 1, // Same as active
       gatewayId: "gw_lab_ete_01",
       author: "admin@eletricai.com",
       timestamp: Date.now(),
-      signature: "SIG_DUPLICATE_VERSION_TEST_001",
       scanRateMs: 500,
       authorizedEndpoints: ["192.168.1.10:502"],
       enabledTags: ["TAG01"],
       readProtocols: { modbus: { host: "192.168.1.10", port: 502, enabled: true } },
-      bufferLimits: { maxSamples: 50000, maxDiskMb: 500, saturationPolicy: "DROP_OLDEST_NON_CRITICAL" },
+      bufferLimits: {
+        maxSamples: 50000,
+        maxDiskMb: 500,
+        saturationPolicy: "DROP_OLDEST_NON_CRITICAL" as const,
+      },
       retentionPolicy: { maxAgeHours: 48 },
-      observability: { metricsIntervalMs: 5000, logLevel: "INFO" },
+      observability: { metricsIntervalMs: 5000, logLevel: "INFO" as const },
+    };
+    const duplicateConfig: RemoteConfigPayload = {
+      ...unsignedDup,
+      signature: configManager.generateConfigSignature(unsignedDup),
     };
 
     const result = configManager.proposeAndApplyConfig(
@@ -320,19 +330,26 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
   // --------------------------------------------------------------------------
   it("Cenário 10: Conflito de versão — rejeição de versão inferior à ativa", () => {
     // 1. Advance to version 2
-    const v2Config: RemoteConfigPayload = {
+    const unsignedV2 = {
       configVersion: 2,
       gatewayId: "gw_lab_ete_01",
       author: "admin@eletricai.com",
       timestamp: Date.now(),
-      signature: "SIG_V2_ADVANCE_TEST_001",
       scanRateMs: 500,
       authorizedEndpoints: ["192.168.1.10:502"],
       enabledTags: ["TAG01"],
       readProtocols: { modbus: { host: "192.168.1.10", port: 502, enabled: true } },
-      bufferLimits: { maxSamples: 50000, maxDiskMb: 500, saturationPolicy: "DROP_OLDEST_NON_CRITICAL" },
+      bufferLimits: {
+        maxSamples: 50000,
+        maxDiskMb: 500,
+        saturationPolicy: "DROP_OLDEST_NON_CRITICAL" as const,
+      },
       retentionPolicy: { maxAgeHours: 48 },
-      observability: { metricsIntervalMs: 5000, logLevel: "INFO" },
+      observability: { metricsIntervalMs: 5000, logLevel: "INFO" as const },
+    };
+    const v2Config: RemoteConfigPayload = {
+      ...unsignedV2,
+      signature: configManager.generateConfigSignature(unsignedV2),
     };
     const resAdvance = configManager.proposeAndApplyConfig(
       v2Config,
@@ -343,19 +360,26 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
     expect(resAdvance.success).toBe(true);
 
     // 2. Submit version 1 (which is lower than active version 2)
-    const oldConfig: RemoteConfigPayload = {
+    const unsignedOld = {
       configVersion: 1, // Lower than 2
       gatewayId: "gw_lab_ete_01",
       author: "admin@eletricai.com",
       timestamp: Date.now(),
-      signature: "SIG_OLD_VERSION_TEST_001",
       scanRateMs: 500,
       authorizedEndpoints: ["192.168.1.10:502"],
       enabledTags: ["TAG01"],
       readProtocols: {},
-      bufferLimits: { maxSamples: 50000, maxDiskMb: 500, saturationPolicy: "DROP_OLDEST_NON_CRITICAL" },
+      bufferLimits: {
+        maxSamples: 50000,
+        maxDiskMb: 500,
+        saturationPolicy: "DROP_OLDEST_NON_CRITICAL" as const,
+      },
       retentionPolicy: { maxAgeHours: 48 },
-      observability: { metricsIntervalMs: 5000, logLevel: "INFO" },
+      observability: { metricsIntervalMs: 5000, logLevel: "INFO" as const },
+    };
+    const oldConfig: RemoteConfigPayload = {
+      ...unsignedOld,
+      signature: configManager.generateConfigSignature(unsignedOld),
     };
 
     const result = configManager.proposeAndApplyConfig(
@@ -373,14 +397,17 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
   // Scenario 11: Atualização interrompida (abort campaign)
   // --------------------------------------------------------------------------
   it("Cenário 11: Atualização interrompida — aborto imediato de campanha pelo administrador", () => {
-    const manifest: SignedUpdateManifest = {
+    const unsignedManifest11 = {
       packageId: "pkg-edge-test-1.3.0",
       targetVersion: "1.3.0",
-      targetArch: "x86_64",
+      targetArch: "x86_64" as const,
       sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      signature: "SIG_TEST_VALID_SIGNATURE_OK_001",
       releaseNotes: "Patch de segurança",
       minGatewayVersion: "1.0.0",
+    };
+    const manifest: SignedUpdateManifest = {
+      ...unsignedManifest11,
+      signature: updateManager.signReleaseManifest(unsignedManifest11),
     };
 
     const campaign = updateManager.createStagedCampaign(
@@ -406,14 +433,17 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
   // Scenario 12: Rollback (automático após falha no health check)
   // --------------------------------------------------------------------------
   it("Cenário 12: Rollback automático — restaura versão anterior se o health check falhar", () => {
-    const manifest: SignedUpdateManifest = {
+    const unsignedManifest12 = {
       packageId: "pkg-edge-test-1.3.0",
       targetVersion: "1.3.0",
-      targetArch: "x86_64",
+      targetArch: "x86_64" as const,
       sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      signature: "SIG_TEST_VALID_SIGNATURE_OK_002",
       releaseNotes: "Atualização com falha simulada",
       minGatewayVersion: "1.0.0",
+    };
+    const manifest: SignedUpdateManifest = {
+      ...unsignedManifest12,
+      signature: updateManager.signReleaseManifest(unsignedManifest12),
     };
 
     const campaign = updateManager.createStagedCampaign(
@@ -466,16 +496,20 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
   // --------------------------------------------------------------------------
   it("Cenário 15: Recuperação de conectividade — novo heartbeat transita gateway para ONLINE", () => {
     const now = Date.now();
-    const res = fleetManager.postHeartbeat("gw_offline_demo", {
-      cpuUsagePercent: 20,
-      memoryUsagePercent: 35,
-      diskUsagePercent: 40,
-      walSizeBytes: 5 * 1024 * 1024,
-      pendingSamplesCount: 10,
-      maxCapacityBytes: 1024 * 1024 * 1024,
-      oldestSampleTimestampMs: now - 1000,
-      isDegraded: false,
-    }, now);
+    const res = fleetManager.postHeartbeat(
+      "gw_offline_demo",
+      {
+        cpuUsagePercent: 20,
+        memoryUsagePercent: 35,
+        diskUsagePercent: 40,
+        walSizeBytes: 5 * 1024 * 1024,
+        pendingSamplesCount: 10,
+        maxCapacityBytes: 1024 * 1024 * 1024,
+        oldestSampleTimestampMs: now - 1000,
+        isDegraded: false,
+      },
+      now,
+    );
 
     expect(res.success).toBe(true);
     expect(res.resolvedState).toBe("ONLINE");
@@ -512,19 +546,26 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
   // --------------------------------------------------------------------------
   it("Cenário 18: Preservação de LKGC — Rollback manual restaura versão estável", () => {
     // 1. Apply valid v2
-    const validV2: RemoteConfigPayload = {
+    const unsignedValidV2 = {
       configVersion: 2,
       gatewayId: "gw_lab_ete_01",
       author: "admin@eletricai.com",
       timestamp: Date.now(),
-      signature: "SIG_VALID_V2_TEST_001",
       scanRateMs: 2000,
       authorizedEndpoints: ["192.168.1.10:502"],
       enabledTags: ["TAG_A", "TAG_B"],
       readProtocols: { modbus: { host: "192.168.1.10", port: 502, enabled: true } },
-      bufferLimits: { maxSamples: 100000, maxDiskMb: 1000, saturationPolicy: "DROP_OLDEST_NON_CRITICAL" },
+      bufferLimits: {
+        maxSamples: 100000,
+        maxDiskMb: 1000,
+        saturationPolicy: "DROP_OLDEST_NON_CRITICAL" as const,
+      },
       retentionPolicy: { maxAgeHours: 72 },
-      observability: { metricsIntervalMs: 5000, logLevel: "INFO" },
+      observability: { metricsIntervalMs: 5000, logLevel: "INFO" as const },
+    };
+    const validV2: RemoteConfigPayload = {
+      ...unsignedValidV2,
+      signature: configManager.generateConfigSignature(unsignedValidV2),
     };
 
     const resV2 = configManager.proposeAndApplyConfig(
@@ -594,7 +635,11 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
       allowPhysicalControl: true, // Prohibited!
       writeEnabled: true, // Prohibited!
       readProtocols: {},
-      bufferLimits: { maxSamples: 10000, maxDiskMb: 100, saturationPolicy: "DROP_OLDEST_NON_CRITICAL" },
+      bufferLimits: {
+        maxSamples: 10000,
+        maxDiskMb: 100,
+        saturationPolicy: "DROP_OLDEST_NON_CRITICAL",
+      },
       retentionPolicy: { maxAgeHours: 24 },
       observability: { metricsIntervalMs: 5000, logLevel: "INFO" },
     };

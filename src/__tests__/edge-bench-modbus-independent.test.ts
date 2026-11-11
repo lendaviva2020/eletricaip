@@ -22,11 +22,11 @@ class IndependentMockModbusServer {
 
   private initRegisters(): void {
     // Coils (0x)
-    this.coils.set(0, true);  // Pump 1 Running
+    this.coils.set(0, true); // Pump 1 Running
     this.coils.set(1, false); // Valve 1 Open
 
     // Discrete Inputs (1x)
-    this.discreteInputs.set(0, true);  // E-STOP healthy (closed circuit)
+    this.discreteInputs.set(0, true); // E-STOP healthy (closed circuit)
     this.discreteInputs.set(1, false); // Thermal overload trip
 
     // Holding Registers (4x)
@@ -205,29 +205,34 @@ describe("GATE 3.3C — Independent Bench Modbus TCP Interoperability & Read-Onl
     it("valida limites de Unit ID e endereçamento emitindo exceções Modbus padronizadas", () => {
       // Unit ID inválido (0 = Broadcast, 248 = Reservado) -> Modbus Exception 0x03
       expect(() =>
-        driver.validateParameters({ unitId: 0, address: 10, area: "HOLDING_REGISTER" })
+        driver.validateParameters({ unitId: 0, address: 10, area: "HOLDING_REGISTER" }),
       ).toThrow(/MODBUS_INVALID_UNIT_ID.*Modbus Exception: 0x03/);
 
       expect(() =>
-        driver.validateParameters({ unitId: 248, address: 10, area: "HOLDING_REGISTER" })
+        driver.validateParameters({ unitId: 248, address: 10, area: "HOLDING_REGISTER" }),
       ).toThrow(/MODBUS_INVALID_UNIT_ID.*Modbus Exception: 0x03/);
 
       // Endereço inválido (<0 ou >65535) -> Modbus Exception 0x02
       expect(() =>
-        driver.validateParameters({ unitId: 1, address: -5, area: "HOLDING_REGISTER" })
+        driver.validateParameters({ unitId: 1, address: -5, area: "HOLDING_REGISTER" }),
       ).toThrow(/MODBUS_INVALID_ADDRESS.*Modbus Exception: 0x02/);
 
       expect(() =>
-        driver.validateParameters({ unitId: 1, address: 70000, area: "HOLDING_REGISTER" })
+        driver.validateParameters({ unitId: 1, address: 70000, area: "HOLDING_REGISTER" }),
       ).toThrow(/MODBUS_INVALID_ADDRESS.*Modbus Exception: 0x02/);
 
       // Quantidade máxima PDU excedida (>125 registradores, >2000 bits)
       expect(() =>
-        driver.validateParameters({ unitId: 1, address: 0, quantity: 126, area: "HOLDING_REGISTER" })
+        driver.validateParameters({
+          unitId: 1,
+          address: 0,
+          quantity: 126,
+          area: "HOLDING_REGISTER",
+        }),
       ).toThrow(/MODBUS_INVALID_QUANTITY.*excede o limite máximo PDU de 125/);
 
       expect(() =>
-        driver.validateParameters({ unitId: 1, address: 0, quantity: 2001, area: "COIL" })
+        driver.validateParameters({ unitId: 1, address: 0, quantity: 2001, area: "COIL" }),
       ).toThrow(/MODBUS_INVALID_QUANTITY.*excede o limite máximo PDU de 2000/);
     });
   });
@@ -238,20 +243,20 @@ describe("GATE 3.3C — Independent Bench Modbus TCP Interoperability & Read-Onl
 
       for (const fc of writeFCs) {
         expect(() => driver.validateFunctionCode(fc)).toThrow(
-          /PHYSICAL_CONTROL_BLOCKED.*Modbus Exception: 0x01 \(ILLEGAL_FUNCTION\)/
+          /PHYSICAL_CONTROL_BLOCKED.*Modbus Exception: 0x01 \(ILLEGAL_FUNCTION\)/,
         );
       }
     });
 
     it("writeCoil(), writeRegister() e write() rejeitam imediatamente", async () => {
       await expect(driver.writeCoil()).rejects.toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Modbus FC5\/FC15/
+        /PHYSICAL_CONTROL_BLOCKED: Modbus FC5\/FC15/,
       );
       await expect(driver.writeRegister()).rejects.toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Modbus FC6\/FC16/
+        /PHYSICAL_CONTROL_BLOCKED: Modbus FC6\/FC16/,
       );
       await expect(driver.write()).rejects.toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Modbus bloqueada/
+        /PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Modbus bloqueada/,
       );
     });
   });

@@ -18,7 +18,11 @@ import {
   resolveScadaProjectContext,
   listAccessibleScadaProjects,
 } from "@/lib/scada/scada.functions";
-import { DEMO_ETE_PROJECT_ID } from "@/lib/scada/demo-ete-seed";
+import {
+  DEMO_ETE_PROJECT_ID,
+  DEMO_ETE_PROJECT_NAME,
+  DEMO_ETE_TENANT_ID,
+} from "@/lib/scada/demo-ete-seed";
 import { syncUnifiedDocToScada } from "@/lib/scada/canonical-bridge";
 import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { Button } from "@/components/ui/button";
@@ -78,10 +82,22 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
 
   // 3. Effect: Synchronize resolved context with useScadaStore
   useEffect(() => {
-    if (!projectContext) {
-      if (!projectId) {
-        clearProjectContext();
-      }
+    if (!projectId) {
+      clearProjectContext();
+      return;
+    }
+
+    if (projectId === DEMO_ETE_PROJECT_ID) {
+      setProjectContext({
+        projectId: DEMO_ETE_PROJECT_ID,
+        tenantId: DEMO_ETE_TENANT_ID,
+        projectName: DEMO_ETE_PROJECT_NAME,
+        isDemo: true,
+      });
+      return;
+    }
+
+    if (!projectContext || !projectContext.project) {
       return;
     }
 
@@ -99,7 +115,7 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
 
     // Customer project: Check if unified store has matching document
     const unifiedDoc = useUnifiedProjectStore.getState().doc;
-    if (unifiedDoc && unifiedDoc.metadata.id === project.id) {
+    if (unifiedDoc && unifiedDoc.metadata?.id === project.id) {
       syncUnifiedDocToScada(unifiedDoc, project.tenantId);
     } else {
       setProjectContext({
@@ -112,7 +128,7 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
   }, [projectContext, projectId, setProjectContext, clearProjectContext]);
 
   // ── Render: Loading State ────────────────────────────────────────────────
-  if (projectId && isContextLoading) {
+  if (projectId && projectId !== DEMO_ETE_PROJECT_ID && isContextLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full w-full bg-[#080b11] text-foreground p-6">
         <CircleNotch className="w-10 h-10 text-primary animate-spin mb-4" />
@@ -127,7 +143,7 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
   }
 
   // ── Render: Security Error / Cross-tenant Rejection / Not Found ───────────
-  if (projectId && contextError) {
+  if (projectId && projectId !== DEMO_ETE_PROJECT_ID && contextError) {
     const errorMsg = contextError instanceof Error ? contextError.message : String(contextError);
     const isNotFound = errorMsg.includes("NOT_FOUND");
     const isForbidden = errorMsg.includes("FORBIDDEN");

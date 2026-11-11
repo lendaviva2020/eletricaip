@@ -410,11 +410,14 @@ function FbdCanvasInner() {
     [nodes],
   );
 
-  const handleInit = useCallback((instance: { fitView: (opts?: any) => void }) => {
-    if (nodes.length > 0) {
-      instance.fitView({ padding: 0.2 });
-    }
-  }, [nodes.length]);
+  const handleInit = useCallback(
+    (instance: { fitView: (opts?: any) => void }) => {
+      if (nodes.length > 0) {
+        instance.fitView({ padding: 0.2 });
+      }
+    },
+    [nodes.length],
+  );
 
   return (
     <div

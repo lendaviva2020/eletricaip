@@ -4,10 +4,7 @@
 // Standards: IEEE 1366, ISA-95, SRE Industrial Reliability Metrics
 // =============================================================================
 
-import type {
-  IndustrialIncident,
-  IndustrialReliabilityMetrics,
-} from "./types";
+import type { IndustrialIncident, IndustrialReliabilityMetrics } from "./types";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "./types";
 
 export interface CalculateReliabilityMetricsInput {
@@ -105,10 +102,15 @@ export class IndustrialReliabilityCalculator {
     // Regra obrigatória: Calcular MTBF apenas quando houver pelo menos 2 falhas fechadas na janela; caso contrário, retornar "INSUFFICIENT_DATA".
     let mtbfMs: number | "INSUFFICIENT_DATA" = "INSUFFICIENT_DATA";
     if (closedIncidents.length >= 2) {
-      const sortedClosed = [...closedIncidents].sort((a, b) => a.firstObservedAt - b.firstObservedAt);
+      const sortedClosed = [...closedIncidents].sort(
+        (a, b) => a.firstObservedAt - b.firstObservedAt,
+      );
       const intervals: number[] = [];
       for (let i = 0; i < sortedClosed.length - 1; i++) {
-        const prevEnd = sortedClosed[i].recoveredAt ?? sortedClosed[i].resolvedAt ?? sortedClosed[i].lastObservedAt;
+        const prevEnd =
+          sortedClosed[i].recoveredAt ??
+          sortedClosed[i].resolvedAt ??
+          sortedClosed[i].lastObservedAt;
         const nextStart = sortedClosed[i + 1].firstObservedAt;
         const uptimeBetween = Math.max(0, nextStart - prevEnd);
         intervals.push(uptimeBetween);
@@ -135,11 +137,16 @@ export class IndustrialReliabilityCalculator {
         : 0;
 
     // 6. Incident Frequency (por dia)
-    const windowDays = Math.max((input.windowEnd - input.windowStart) / (1000 * 60 * 60 * 24), 1 / 24);
+    const windowDays = Math.max(
+      (input.windowEnd - input.windowStart) / (1000 * 60 * 60 * 24),
+      1 / 24,
+    );
     const incidentFrequencyPerDay = Number((totalIncidentsInWindow / windowDays).toFixed(2));
 
     // 7. Percentage of Incidents with Confirmed Cause
-    const confirmedCauseNumerator = scopedIncidents.filter((inc) => Boolean(inc.confirmedCause)).length;
+    const confirmedCauseNumerator = scopedIncidents.filter((inc) =>
+      Boolean(inc.confirmedCause),
+    ).length;
     const confirmedCauseDenominator = totalIncidentsInWindow;
     const confirmedCausePercent =
       confirmedCauseDenominator > 0
@@ -156,14 +163,18 @@ export class IndustrialReliabilityCalculator {
     // 9. Incidents by Root Cause
     const incidentsByRootCause: Record<string, number> = {};
     for (const inc of scopedIncidents) {
-      const ruleKey = inc.confirmedCause?.ruleId ?? inc.probableCause?.ruleId ?? "UNCONFIRMED_CAUSE";
+      const ruleKey =
+        inc.confirmedCause?.ruleId ?? inc.probableCause?.ruleId ?? "UNCONFIRMED_CAUSE";
       incidentsByRootCause[ruleKey] = (incidentsByRootCause[ruleKey] ?? 0) + 1;
     }
 
     // 10. Most Affected Components
     const componentCounter = new Map<string, number>();
     for (const inc of scopedIncidents) {
-      componentCounter.set(inc.sourceComponentId, (componentCounter.get(inc.sourceComponentId) ?? 0) + 1);
+      componentCounter.set(
+        inc.sourceComponentId,
+        (componentCounter.get(inc.sourceComponentId) ?? 0) + 1,
+      );
     }
     const mostAffectedComponents = Array.from(componentCounter.entries())
       .map(([componentId, incidentCount]) => ({ componentId, incidentCount }))

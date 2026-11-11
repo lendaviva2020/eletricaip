@@ -9,7 +9,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { sha256 } from "@/lib/diagnostics/crypto-hash";
 import { FleetAuditManager } from "@/lib/edge/fleet-audit";
-import { FBD_NODE_TYPES, FBD_EDGE_TYPES, EMPTY_LIVE_OUTPUTS } from "@/components/canvases/fbd-canvas";
+import {
+  FBD_NODE_TYPES,
+  FBD_EDGE_TYPES,
+  EMPTY_LIVE_OUTPUTS,
+} from "@/components/canvases/fbd-canvas";
 
 describe("Gate 3.6.1 — Runtime Stabilization & Architectural Verification", () => {
   // ---------------------------------------------------------------------------
@@ -41,7 +45,8 @@ describe("Gate 3.6.1 — Runtime Stabilization & Architectural Verification", ()
     });
 
     it("valida caracteres UTF-8 e acentuação brasileira em strings industriais", () => {
-      const input = "Disjuntor Geral QGBT-01 — Operação Sob Carga — Subestação Primária 13.8kV — Corrente Térmica = 1250 A";
+      const input =
+        "Disjuntor Geral QGBT-01 — Operação Sob Carga — Subestação Primária 13.8kV — Corrente Térmica = 1250 A";
       const expected = createHash("sha256").update(input).digest("hex");
       const actual = sha256(input);
       expect(actual).toBe(expected);
@@ -187,7 +192,7 @@ describe("Gate 3.6.1 — Runtime Stabilization & Architectural Verification", ()
     it("garante que fleet-dashboard.tsx não faz import direto de node:crypto nem de managers de servidor", () => {
       const fileContent = readFileSync(
         resolve(__dirname, "../components/edge/fleet-dashboard.tsx"),
-        "utf-8"
+        "utf-8",
       );
 
       expect(fileContent).not.toContain('from "node:crypto"');
@@ -204,7 +209,7 @@ describe("Gate 3.6.1 — Runtime Stabilization & Architectural Verification", ()
     it("garante que canonical-data-service.ts não faz import de FleetAuditManager com node:crypto", () => {
       const fileContent = readFileSync(
         resolve(__dirname, "../lib/industrial/canonical-data-service.ts"),
-        "utf-8"
+        "utf-8",
       );
 
       expect(fileContent).not.toContain('from "@/lib/edge/fleet-audit"');
@@ -214,7 +219,7 @@ describe("Gate 3.6.1 — Runtime Stabilization & Architectural Verification", ()
     it("garante que fbd-canvas.tsx não importa módulos nativos de backend", () => {
       const fileContent = readFileSync(
         resolve(__dirname, "../components/canvases/fbd-canvas.tsx"),
-        "utf-8"
+        "utf-8",
       );
 
       expect(fileContent).not.toContain('from "node:crypto"');

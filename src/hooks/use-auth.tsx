@@ -279,44 +279,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const isDevAuth =
-      import.meta.env.DEV &&
-      typeof window !== "undefined" &&
-      (localStorage.getItem("eletricai.dev-auth-bypass") === "true" ||
-        new URLSearchParams(window.location.search).get("devAuth") === "1");
+    let isMounted = true;
 
-    if (isDevAuth) {
-      const mockUser: User = {
-        id: "00000000-0000-4000-a000-000000000001",
-        app_metadata: {},
-        user_metadata: { name: "Auditor Dev" },
-        aud: "authenticated",
-        created_at: new Date().toISOString(),
-        email: "auditor@eletricai.com",
-      };
-      setSession({
-        access_token: "dev-access-token",
-        refresh_token: "dev-refresh-token",
-        expires_in: 3600,
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-        token_type: "bearer",
-        user: mockUser,
-      });
+    // 1. Sempre prioriza a sessão real do Supabase
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) return;
+
+      if (data?.session) {
+        setSession(data.session);
+        setLoading(false);
+        if (data.session.user?.id) void bootstrapTenant(data.session.user.id);
+        return;
+      }
+
+      // 2. Se e somente se não houver sessão real e estiver estritamente em ambiente de desenvolvimento
+      const isDevAllowed =
+        Boolean(import.meta.env?.DEV) &&
+        (typeof process === "undefined" || process.env?.NODE_ENV !== "production");
+
+      const hasDevFlag =
+        typeof window !== "undefined" &&
+        (localStorage.getItem("eletricai.dev-auth-bypass") === "true" ||
+          new URLSearchParams(window.location.search).get("devAuth") === "1");
+
+      if (isDevAllowed && hasDevFlag) {
+        const mockUser: User = {
+          id: "00000000-0000-4000-a000-000000000001",
+          app_metadata: { isDevBypass: true },
+          user_metadata: { name: "Auditor Dev" },
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+          email: "auditor@eletricai.com",
+        };
+        setSession({
+          access_token: "dev-access-token",
+          refresh_token: "dev-refresh-token",
+          expires_in: 3600,
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          token_type: "bearer",
+          user: mockUser,
+        });
+        setLoading(false);
+        return;
+      }
+
       setLoading(false);
-      return;
-    }
+    });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (!isMounted) return;
       setSession(s);
       setLoading(false);
       if (s?.user?.id) void bootstrapTenant(s.user.id);
     });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-      if (data.session?.user?.id) void bootstrapTenant(data.session.user.id);
-    });
-    return () => sub.subscription.unsubscribe();
+
+    return () => {
+      isMounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, [bootstrapTenant]);
 
   return (

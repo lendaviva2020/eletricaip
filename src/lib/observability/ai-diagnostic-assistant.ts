@@ -128,7 +128,9 @@ export interface AiDiagnosticRequest {
  * 2. Nunca retorne status `COMPLETED` se não houver evidências verificáveis (`availableEvidence.length === 0`).
  * 3. Seja profundamente congelada (`deepCloneAndFreeze`) para impedir adulteração pós-geração.
  */
-export function validateAiDiagnosticOutput(rawAnalysis: AiDiagnosticAnalysis): AiDiagnosticAnalysis {
+export function validateAiDiagnosticOutput(
+  rawAnalysis: AiDiagnosticAnalysis,
+): AiDiagnosticAnalysis {
   const copy: AiDiagnosticAnalysis = {
     ...rawAnalysis,
     isConsultativeOnly: true,
@@ -143,7 +145,9 @@ export function validateAiDiagnosticOutput(rawAnalysis: AiDiagnosticAnalysis): A
       "DIAGNOSTIC_INCONCLUSIVE: Resposta rebaixada pelo validador de saída por ausência de referências de evidência.",
     ];
     if (copy.missingInformation.length === 0) {
-      copy.missingInformation = ["Referências de evidência verificáveis obrigatórias para conclusão diagnóstica"];
+      copy.missingInformation = [
+        "Referências de evidência verificáveis obrigatórias para conclusão diagnóstica",
+      ];
     }
   }
 
@@ -176,23 +180,33 @@ export class AiDiagnosticAssistant {
     }
     for (const d of req.deterministicDiagnostics) {
       if (d.tenantId !== req.tenantId) {
-        throw new Error("CROSS_TENANT_AI_ACCESS_FORBIDDEN: Diagnóstico determinístico pertence a outra organização.");
+        throw new Error(
+          "CROSS_TENANT_AI_ACCESS_FORBIDDEN: Diagnóstico determinístico pertence a outra organização.",
+        );
       }
     }
     if (req.impactAnalysis && req.impactAnalysis.tenantId !== req.tenantId) {
-      throw new Error("CROSS_TENANT_AI_ACCESS_FORBIDDEN: Grafo de impacto pertence a outra organização.");
+      throw new Error(
+        "CROSS_TENANT_AI_ACCESS_FORBIDDEN: Grafo de impacto pertence a outra organização.",
+      );
     }
     for (const evt of req.correlatedEvents ?? []) {
       if (evt.tenantId !== req.tenantId) {
-        throw new Error("CROSS_TENANT_AI_ACCESS_FORBIDDEN: Evento operacional pertence a outra organização.");
+        throw new Error(
+          "CROSS_TENANT_AI_ACCESS_FORBIDDEN: Evento operacional pertence a outra organização.",
+        );
       }
     }
     if (req.historianSummary && req.historianSummary.tenantId !== req.tenantId) {
-      throw new Error("CROSS_TENANT_AI_ACCESS_FORBIDDEN: Resumo do Historian pertence a outra organização.");
+      throw new Error(
+        "CROSS_TENANT_AI_ACCESS_FORBIDDEN: Resumo do Historian pertence a outra organização.",
+      );
     }
     for (const doc of req.ragDocuments ?? []) {
       if (doc.tenantId !== req.tenantId) {
-        throw new Error("CROSS_TENANT_AI_ACCESS_FORBIDDEN: Documento técnico RAG pertence a outra organização.");
+        throw new Error(
+          "CROSS_TENANT_AI_ACCESS_FORBIDDEN: Documento técnico RAG pertence a outra organização.",
+        );
       }
     }
   }
@@ -240,8 +254,12 @@ export class AiDiagnosticAssistant {
 
     for (const evt of req.correlatedEvents ?? []) {
       const safeEvtType = sanitizeField(evt.eventType);
-      const safeMetaMsg = evt.metadata?.rawMessage ? sanitizeField(String(evt.metadata.rawMessage)) : "";
-      const safeTagDesc = evt.metadata?.tagDescription ? sanitizeField(String(evt.metadata.tagDescription)) : "";
+      const safeMetaMsg = evt.metadata?.rawMessage
+        ? sanitizeField(String(evt.metadata.rawMessage))
+        : "";
+      const safeTagDesc = evt.metadata?.tagDescription
+        ? sanitizeField(String(evt.metadata.tagDescription))
+        : "";
       const safeEqDesc = evt.metadata?.equipmentDescription
         ? sanitizeField(String(evt.metadata.equipmentDescription))
         : "";
@@ -312,7 +330,9 @@ export class AiDiagnosticAssistant {
       ) {
         if (diag.ruleId !== "RULE_00_INSUFFICIENT_EVIDENCE") {
           hasConfirmedOrSuspected = true;
-          probableCauses.push(`${diag.primaryComponent}: ${sanitizeField(diag.hypothesis)} (${diag.diagnosticStatus})`);
+          probableCauses.push(
+            `${diag.primaryComponent}: ${sanitizeField(diag.hypothesis)} (${diag.diagnosticStatus})`,
+          );
         }
       }
 
@@ -350,7 +370,10 @@ export class AiDiagnosticAssistant {
     }
 
     const hasEmpiricalEvidenceRef = availableEvidence.some(
-      (e) => e.sourceType === "DIAGNOSTIC_RULE" || e.sourceType === "EVENT" || e.sourceType === "HISTORIAN",
+      (e) =>
+        e.sourceType === "DIAGNOSTIC_RULE" ||
+        e.sourceType === "EVENT" ||
+        e.sourceType === "HISTORIAN",
     );
 
     const isInsufficient =
@@ -358,12 +381,15 @@ export class AiDiagnosticAssistant {
       !hasEmpiricalEvidenceRef ||
       req.deterministicDiagnostics.length === 0 ||
       req.deterministicDiagnostics.every(
-        (d) => d.diagnosticStatus === "INCONCLUSIVE" || d.ruleId === "RULE_00_INSUFFICIENT_EVIDENCE",
+        (d) =>
+          d.diagnosticStatus === "INCONCLUSIVE" || d.ruleId === "RULE_00_INSUFFICIENT_EVIDENCE",
       );
 
     if (isInsufficient) {
       missingInformationSet.add("Telemetria determinística multi-condição do componente primário");
-      missingInformationSet.add("Confirmação de estado de conectividade do Edge Gateway e protocolo industrial");
+      missingInformationSet.add(
+        "Confirmação de estado de conectividade do Edge Gateway e protocolo industrial",
+      );
 
       return validateAiDiagnosticOutput({
         analysisId: `ai_diag_${req.tenantId}_${nowMs}`,
@@ -371,7 +397,9 @@ export class AiDiagnosticAssistant {
         tenantId: req.tenantId,
         plantId: req.plantId,
         questionAsked: sanitizedQuestion,
-        status: req.simulateAiServiceOutage ? "AI_SERVICE_UNAVAILABLE_FALLBACK" : "DIAGNOSTIC_INCONCLUSIVE",
+        status: req.simulateAiServiceOutage
+          ? "AI_SERVICE_UNAVAILABLE_FALLBACK"
+          : "DIAGNOSTIC_INCONCLUSIVE",
         observedFacts:
           observedFacts.length > 0
             ? observedFacts
@@ -381,7 +409,9 @@ export class AiDiagnosticAssistant {
           hypotheses.length > 0
             ? hypotheses
             : ["Evidência insuficiente para formular hipótese confirmada."],
-        probableCauses: ["DIAGNOSTIC_INCONCLUSIVE: Não há dados verificáveis suficientes para apontar causa provável."],
+        probableCauses: [
+          "DIAGNOSTIC_INCONCLUSIVE: Não há dados verificáveis suficientes para apontar causa provável.",
+        ],
         missingInformation: Array.from(missingInformationSet),
         recommendations:
           recommendations.length > 0

@@ -52,7 +52,10 @@ export class EdgeLogger {
       .replace(/egw_sec_[a-f0-9]+/gi, "[REDACTED_AUTH_TOKEN]")
       .replace(/password["']?\s*[:=]\s*["'][^"']+["']/gi, 'password="[REDACTED]"')
       .replace(/password["']?\s*[:=]\s*[^"',\s}]+/gi, 'password="[REDACTED]"')
-      .replace(/-----BEGIN[A-Z\s]+PRIVATE KEY-----[\s\S]+?-----END[A-Z\s]+PRIVATE KEY-----/g, "[REDACTED_PRIVATE_KEY]");
+      .replace(
+        /-----BEGIN[A-Z\s]+PRIVATE KEY-----[\s\S]+?-----END[A-Z\s]+PRIVATE KEY-----/g,
+        "[REDACTED_PRIVATE_KEY]",
+      );
   }
 
   private log(level: LogLevel, message: string, context?: Record<string, unknown>): void {
@@ -115,15 +118,21 @@ export const logger = new EdgeLogger();
  */
 export function maskSecrets(input: string): string {
   return input
-    .replace(/(?:password|authToken|token|secret|apiKey)["']?\s*[:=]\s*["'][^"']+["']/gi, (match) => {
-      const key = match.split(/[:=]/)[0];
-      return `${key}="***REDACTED***"`;
-    })
+    .replace(
+      /(?:password|authToken|token|secret|apiKey)["']?\s*[:=]\s*["'][^"']+["']/gi,
+      (match) => {
+        const key = match.split(/[:=]/)[0];
+        return `${key}="***REDACTED***"`;
+      },
+    )
     .replace(/(?:password|authToken|token|secret|apiKey)["']?\s*[:=]\s*[^"',\s}]+/gi, (match) => {
       const key = match.split(/[:=]/)[0];
       return `${key}="***REDACTED***"`;
     })
-    .replace(/-----BEGIN[A-Z\s]+PRIVATE KEY-----[\s\S]+?-----END[A-Z\s]+PRIVATE KEY-----/g, "***REDACTED***")
+    .replace(
+      /-----BEGIN[A-Z\s]+PRIVATE KEY-----[\s\S]+?-----END[A-Z\s]+PRIVATE KEY-----/g,
+      "***REDACTED***",
+    )
     .replace(/EGW-PROV-[A-F0-9]+/gi, "***REDACTED***")
     .replace(/egw_sec_[a-f0-9]+/gi, "***REDACTED***");
 }

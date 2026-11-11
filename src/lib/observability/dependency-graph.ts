@@ -43,7 +43,12 @@ export class IndustrialDependencyGraph {
   /**
    * Atualiza o estado de saúde de um nó existente no grafo.
    */
-  public updateNodeState(tenantId: string, plantId: string, componentId: string, state: HealthState): boolean {
+  public updateNodeState(
+    tenantId: string,
+    plantId: string,
+    componentId: string,
+    state: HealthState,
+  ): boolean {
     const key = this.nodeKey(tenantId, plantId, componentId);
     const node = this.nodes.get(key);
     if (!node) return false;
@@ -78,7 +83,9 @@ export class IndustrialDependencyGraph {
     }
 
     if (fromNode.tenantId !== toNode.tenantId || fromNode.plantId !== toNode.plantId) {
-      throw new Error("CROSS_BOUNDARY_DEPENDENCY_FORBIDDEN: Proibido conectar nós de diferentes organizações ou plantas.");
+      throw new Error(
+        "CROSS_BOUNDARY_DEPENDENCY_FORBIDDEN: Proibido conectar nós de diferentes organizações ou plantas.",
+      );
     }
 
     const edgeId = `dep_${params.tenantId}_${params.plantId}_${params.fromComponentId}__to__${params.toComponentId}`;
@@ -99,7 +106,11 @@ export class IndustrialDependencyGraph {
     return edge;
   }
 
-  public getNode(tenantId: string, plantId: string, componentId: string): DependencyNode | undefined {
+  public getNode(
+    tenantId: string,
+    plantId: string,
+    componentId: string,
+  ): DependencyNode | undefined {
     return this.nodes.get(this.nodeKey(tenantId, plantId, componentId));
   }
 
@@ -193,7 +204,11 @@ export class IndustrialDependencyGraph {
   /**
    * Retorna todos os provedores upstream dos quais `componentId` depende direta ou indiretamente.
    */
-  public getUpstreamAncestors(tenantId: string, plantId: string, componentId: string): DependencyNode[] {
+  public getUpstreamAncestors(
+    tenantId: string,
+    plantId: string,
+    componentId: string,
+  ): DependencyNode[] {
     const startKey = this.nodeKey(tenantId, plantId, componentId);
     if (!this.nodes.has(startKey)) return [];
 
@@ -245,7 +260,9 @@ export class IndustrialDependencyGraph {
     const dependentComponents: string[] = [];
     const propagationPaths: string[][] = [];
     const visitedDownstream = new Set<string>([originComponentId]);
-    const queue: Array<{ id: string; path: string[] }> = [{ id: originComponentId, path: [originComponentId] }];
+    const queue: Array<{ id: string; path: string[] }> = [
+      { id: originComponentId, path: [originComponentId] },
+    ];
 
     while (queue.length > 0) {
       const { id, path } = queue.shift()!;

@@ -24,8 +24,14 @@ export const listCatalog = createServerFn({ method: "POST" })
       .limit(data.limit);
     if (data.categoryId) q = q.eq("category_id", data.categoryId);
     if (data.search && data.search.trim()) {
-      const s = data.search.trim();
-      q = q.or(`part_number.ilike.%${s}%,commercial_name.ilike.%${s}%,description.ilike.%${s}%`);
+      // Remove metacaracteres PostgREST (vírgula, parênteses, aspas, asterisco, backslash)
+      const s = data.search
+        .trim()
+        .replace(/[,().\\*"'%_]/g, "")
+        .slice(0, 120);
+      if (s) {
+        q = q.or(`part_number.ilike.%${s}%,commercial_name.ilike.%${s}%,description.ilike.%${s}%`);
+      }
     }
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);

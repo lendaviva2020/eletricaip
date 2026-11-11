@@ -31,18 +31,67 @@ const PLAN_PRICE_BRL: Record<string, number> = {
   premium: 1000,
 };
 
-const ORIGIN_FALLBACK = process.env.PUBLIC_APP_URL || "https://app.lovable.dev";
+const ORIGIN_FALLBACK = process.env.PUBLIC_APP_URL || "https://eletricaip.vercel.app";
+
+function getAllowedOrigins(): Set<string> {
+  const configured = (process.env.ALLOWED_ORIGINS || process.env.PUBLIC_APP_URL || "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+  const origins = new Set<string>([
+    ORIGIN_FALLBACK.replace(/\/$/, ""),
+    "https://eletricaip.vercel.app",
+    ...configured,
+  ]);
+  if (process.env.NODE_ENV !== "production") {
+    origins.add("http://localhost:3000");
+    origins.add("http://127.0.0.1:3000");
+  }
+  return origins;
+}
 
 function originFromHeader(): string {
+  const fallback = (process.env.PUBLIC_APP_URL || ORIGIN_FALLBACK).replace(/\/$/, "");
   try {
-    const origin = getRequestHeader("origin") || process.env.PUBLIC_APP_URL || ORIGIN_FALLBACK;
-    if (origin === ORIGIN_FALLBACK && !process.env.PUBLIC_APP_URL) {
-      console.warn("[billing] PUBLIC_APP_URL not set; using fallback origin:", ORIGIN_FALLBACK);
+    const rawOrigin = getRequestHeader("origin")?.trim();
+    if (!rawOrigin) return fallback;
+    const parsed = new URL(rawOrigin);
+    const normalized = `${parsed.protocol}//${parsed.host}`.replace(/\/$/, "");
+    if (getAllowedOrigins().has(normalized)) {
+      return normalized;
     }
-    return origin;
+    console.warn("[billing] Ignored untrusted Origin header:", rawOrigin);
+    return fallback;
   } catch {
-    return process.env.PUBLIC_APP_URL || ORIGIN_FALLBACK;
+    return fallback;
   }
+}
+
+async function requireTenantBillingAdmin(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  userId: string,
+): Promise<string> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", userId)
+    .maybeSingle();
+  const tenantId = profile?.tenant_id;
+  if (!tenantId) throw new Error("no_tenant");
+
+  const { data: membership } = await supabase
+    .from("tenant_memberships")
+    .select("role")
+    .eq("tenant_id", tenantId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (membership?.role !== "owner" && membership?.role !== "admin") {
+    throw new Response("Forbidden: apenas owner ou admin pode alterar faturamento.", {
+      status: 403,
+    });
+  }
+  return tenantId;
 }
 
 async function isPlatformAdminUser(context: {
@@ -215,13 +264,7 @@ export const createStripeCheckout = createServerFn({ method: "POST" })
     if (!priceId) throw new Error(`billing_not_configured: missing ${priceEnv}`);
 
     const { supabase, userId, claims } = context;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tenant_id")
-      .eq("id", userId)
-      .maybeSingle();
-    const tenantId = profile?.tenant_id;
-    if (!tenantId) throw new Error("no_tenant");
+    const tenantId = await requireTenantBillingAdmin(supabase, userId);
 
     const origin = originFromHeader();
     const params = new URLSearchParams();
@@ -255,7 +298,7 @@ export const createStripeCheckout = createServerFn({ method: "POST" })
  * Requires MP_ACCESS_TOKEN secret.
  */
 export const createMpPreference = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .inputValidator((input) => z.object({ plan: z.enum(["basic", "pro", "premium"]) }).parse(input))
   .handler(async ({ data, context }) => {
     const token = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
@@ -265,13 +308,7 @@ export const createMpPreference = createServerFn({ method: "POST" })
       );
 
     const { supabase, userId, claims } = context;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tenant_id")
-      .eq("id", userId)
-      .maybeSingle();
-    const tenantId = profile?.tenant_id;
-    if (!tenantId) throw new Error("no_tenant");
+    const tenantId = await requireTenantBillingAdmin(supabase, userId);
 
     const origin = originFromHeader();
     const price = PLAN_PRICE_BRL[data.plan];
@@ -320,19 +357,13 @@ export const createMpPreference = createServerFn({ method: "POST" })
 
 /** Cancel current Stripe subscription (sets cancel_at_period_end=true). */
 export const cancelSubscription = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .handler(async ({ context }) => {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) throw new Error("billing_not_configured: missing STRIPE_SECRET_KEY");
 
     const { supabase, userId } = context;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tenant_id")
-      .eq("id", userId)
-      .maybeSingle();
-    const tenantId = profile?.tenant_id;
-    if (!tenantId) throw new Error("no_tenant");
+    const tenantId = await requireTenantBillingAdmin(supabase, userId);
 
     const supabaseAdmin = await loadAdmin();
     const { data: tenant } = await supabaseAdmin

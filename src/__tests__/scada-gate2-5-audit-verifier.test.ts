@@ -228,9 +228,7 @@ describe("GATE 2.5 — FASE 9: Cryptographic Audit Trail Verifier", () => {
   });
 
   it("6. Classificação Formal: Declaração transparente de limitações e limites regulatórios", () => {
-    expect(AUDIT_TRAIL_CLASSIFICATION.classification).toBe(
-      "DETECTABLE_HASH_CHAIN_APPEND_ONLY_LOG",
-    );
+    expect(AUDIT_TRAIL_CLASSIFICATION.classification).toBe("DETECTABLE_HASH_CHAIN_APPEND_ONLY_LOG");
     expect(AUDIT_TRAIL_CLASSIFICATION.hashAlgorithm).toBe("SHA-256");
     expect(AUDIT_TRAIL_CLASSIFICATION.tamperEvident).toBe(true);
     // Crucial engineering honesty: It is NOT hardware-anchored immutable

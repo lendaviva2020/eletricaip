@@ -20,7 +20,7 @@ export const SafetyPanel: React.FC = () => {
     ch1,
     ch2,
     discrepancyTimeMs,
-    maxToleranceMs
+    maxToleranceMs,
   );
 
   return (
@@ -52,7 +52,8 @@ export const SafetyPanel: React.FC = () => {
               Monitor de Discrepância de Canal Duplo (E-STOP Dual-Channel Loop)
             </h3>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Simulação de contatos de segurança redundantes e detecção de falha de cabeamento ou curto
+              Simulação de contatos de segurança redundantes e detecção de falha de cabeamento ou
+              curto
             </p>
           </div>
 

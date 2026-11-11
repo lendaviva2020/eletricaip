@@ -28,7 +28,8 @@ export class FleetAuditManager {
   public recordEvent(params: CreateFleetAuditEventParams): FleetAuditEvent {
     const timestamp = Date.now();
     const id = `aud_${timestamp}_${Math.random().toString(36).substring(2, 9)}`;
-    const correlationId = params.correlationId || `corr_${timestamp}_${Math.random().toString(36).substring(2, 7)}`;
+    const correlationId =
+      params.correlationId || `corr_${timestamp}_${Math.random().toString(36).substring(2, 7)}`;
     const details = params.details || {};
 
     const rawDataToHash = JSON.stringify({

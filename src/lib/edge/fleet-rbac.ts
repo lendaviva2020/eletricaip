@@ -1,7 +1,12 @@
 // ELÉTRICAI INDUSTRIAL OS — EDGE FLEET MULTI-TENANT RBAC ENGINE
 // Standards: IEC 62443-4-2, NIST SP 800-82 Rev. 3, ISO 27001
 
-import type { FleetRole, FleetUserContext, FleetGatewaySummary, RegisteredGatewayRecord } from "./types";
+import type {
+  FleetRole,
+  FleetUserContext,
+  FleetGatewaySummary,
+  RegisteredGatewayRecord,
+} from "./types";
 
 export type FleetAction =
   | "VIEW_FLEET"
@@ -21,7 +26,12 @@ export class FleetAuthorizationError extends Error {
   public action: FleetAction;
   public requiredRoles: FleetRole[];
 
-  constructor(message: string, action: FleetAction, requiredRoles: FleetRole[], statusCode: number = 403) {
+  constructor(
+    message: string,
+    action: FleetAction,
+    requiredRoles: FleetRole[],
+    statusCode: number = 403,
+  ) {
     super(message);
     this.name = "FleetAuthorizationError";
     this.action = action;
@@ -31,8 +41,24 @@ export class FleetAuthorizationError extends Error {
 }
 
 const ACTION_ROLE_MATRIX: Record<FleetAction, FleetRole[]> = {
-  VIEW_FLEET: ["PLATFORM_ADMIN", "TENANT_ADMIN", "PLANT_ADMIN", "EDGE_OPERATOR", "ENGINEER", "AUDITOR", "VIEWER"],
-  VIEW_TELEMETRY: ["PLATFORM_ADMIN", "TENANT_ADMIN", "PLANT_ADMIN", "EDGE_OPERATOR", "ENGINEER", "AUDITOR", "VIEWER"],
+  VIEW_FLEET: [
+    "PLATFORM_ADMIN",
+    "TENANT_ADMIN",
+    "PLANT_ADMIN",
+    "EDGE_OPERATOR",
+    "ENGINEER",
+    "AUDITOR",
+    "VIEWER",
+  ],
+  VIEW_TELEMETRY: [
+    "PLATFORM_ADMIN",
+    "TENANT_ADMIN",
+    "PLANT_ADMIN",
+    "EDGE_OPERATOR",
+    "ENGINEER",
+    "AUDITOR",
+    "VIEWER",
+  ],
   VIEW_AUDIT: ["PLATFORM_ADMIN", "TENANT_ADMIN", "PLANT_ADMIN", "AUDITOR"],
   PROPOSE_CONFIG: ["PLATFORM_ADMIN", "TENANT_ADMIN", "PLANT_ADMIN", "ENGINEER"],
   APPROVE_CONFIG: ["PLATFORM_ADMIN", "TENANT_ADMIN", "PLANT_ADMIN"],
@@ -52,7 +78,10 @@ export class FleetRbacEngine {
   public assertCanPerformAction(
     user: FleetUserContext,
     action: FleetAction,
-    targetGateway?: Pick<FleetGatewaySummary | RegisteredGatewayRecord, "organizationId" | "plantId" | "gatewayId">,
+    targetGateway?: Pick<
+      FleetGatewaySummary | RegisteredGatewayRecord,
+      "organizationId" | "plantId" | "gatewayId"
+    >,
   ): boolean {
     // 1. Role Capability Check
     const allowedRoles = ACTION_ROLE_MATRIX[action];
@@ -76,10 +105,13 @@ export class FleetRbacEngine {
         );
       }
 
-      // 3. Plant Boundary Check for Plant Admins
-      if (user.role === "PLANT_ADMIN" && !user.authorizedPlantIds.includes(targetGateway.plantId)) {
+      // 3. Plant Boundary Check for all plant-scoped roles
+      if (
+        user.role !== "TENANT_ADMIN" &&
+        !user.authorizedPlantIds.includes(targetGateway.plantId)
+      ) {
         throw new FleetAuthorizationError(
-          `CROSS_PLANT_DENIED: O administrador de planta não possui permissão sobre a planta '${targetGateway.plantId}'.`,
+          `CROSS_PLANT_DENIED: O usuário (${user.role}) não possui permissão sobre a planta '${targetGateway.plantId}'.`,
           action,
           allowedRoles,
           403,
@@ -103,7 +135,7 @@ export class FleetRbacEngine {
 
     let filtered = gateways.filter((g) => g.organizationId === user.organizationId);
 
-    if (user.role === "PLANT_ADMIN") {
+    if (user.role !== "TENANT_ADMIN") {
       filtered = filtered.filter((g) => user.authorizedPlantIds.includes(g.plantId));
     }
 

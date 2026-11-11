@@ -27,7 +27,8 @@ export interface FleetNodeStatus {
 }
 
 export type RBACAction = "READ" | "WRITE" | "SIMULATE" | "FORCE";
-export type RBACResourceType = "PROJECT" | "CONTROLLER" | "POU" | "TAG" | "ALARM" | "RECIPE" | "CERTIFICATE";
+export type RBACResourceType =
+  "PROJECT" | "CONTROLLER" | "POU" | "TAG" | "ALARM" | "RECIPE" | "CERTIFICATE";
 
 export class ControllerFleetManager {
   private controllers: Map<string, Controller> = new Map();
@@ -95,13 +96,14 @@ export class ControllerFleetManager {
   public static checkPermission(
     userRole: UserRole,
     resourceType: RBACResourceType,
-    action: RBACAction
+    action: RBACAction,
   ): boolean {
     if (userRole === "ADMIN" || userRole === "LEAD_ENGINEER") return true;
 
     if (userRole === "OPERATOR") {
       if (action === "READ" || action === "SIMULATE") return true;
-      if (action === "WRITE" && (resourceType === "ALARM" || resourceType === "RECIPE")) return true;
+      if (action === "WRITE" && (resourceType === "ALARM" || resourceType === "RECIPE"))
+        return true;
       return false;
     }
 

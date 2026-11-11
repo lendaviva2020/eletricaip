@@ -76,15 +76,21 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
    * Hardware safety interlock: Physical write operations are permanently blocked (Deny-by-Default).
    */
   public async writeCoil(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Modbus FC5/FC15 (Write Coil) bloqueado. Gateway opera exclusivamente em modo READ-ONLY. Modbus Exception 0x01 (ILLEGAL_FUNCTION).");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Modbus FC5/FC15 (Write Coil) bloqueado. Gateway opera exclusivamente em modo READ-ONLY. Modbus Exception 0x01 (ILLEGAL_FUNCTION).",
+    );
   }
 
   public async writeRegister(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Modbus FC6/FC16 (Write Register) bloqueado. Gateway opera exclusivamente em modo READ-ONLY. Modbus Exception 0x01 (ILLEGAL_FUNCTION).");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Modbus FC6/FC16 (Write Register) bloqueado. Gateway opera exclusivamente em modo READ-ONLY. Modbus Exception 0x01 (ILLEGAL_FUNCTION).",
+    );
   }
 
   public async write(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Modbus bloqueada. Gateway opera exclusivamente em modo READ-ONLY.");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Modbus bloqueada. Gateway opera exclusivamente em modo READ-ONLY.",
+    );
   }
 
   private state: EdgeConnectionState = "DISCONNECTED";
@@ -159,7 +165,7 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
     if (!ALLOWED_MODBUS_FUNCTION_CODES.has(fc)) {
       this.diagnostics.requestsFailed++;
       throw new Error(
-        `PHYSICAL_CONTROL_BLOCKED: Function Code Modbus [${fc}] não autorizado. Gateway opera sob política de negação por padrão (Permitidos exclusivamente FC1, FC2, FC3 e FC4). Modbus Exception: 0x01 (ILLEGAL_FUNCTION).`
+        `PHYSICAL_CONTROL_BLOCKED: Function Code Modbus [${fc}] não autorizado. Gateway opera sob política de negação por padrão (Permitidos exclusivamente FC1, FC2, FC3 e FC4). Modbus Exception: 0x01 (ILLEGAL_FUNCTION).`,
       );
     }
   }
@@ -175,25 +181,35 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
   }): void {
     const unitId = params.unitId ?? this.config.unitId ?? 1;
     if (unitId < 1 || unitId > 247) {
-      throw new Error(`MODBUS_INVALID_UNIT_ID: Unit ID [${unitId}] fora da faixa permitida (1-247). Modbus Exception: 0x03 (ILLEGAL_DATA_VALUE).`);
+      throw new Error(
+        `MODBUS_INVALID_UNIT_ID: Unit ID [${unitId}] fora da faixa permitida (1-247). Modbus Exception: 0x03 (ILLEGAL_DATA_VALUE).`,
+      );
     }
 
     if (params.address < 0 || params.address > 65535) {
-      throw new Error(`MODBUS_INVALID_ADDRESS: Endereço [${params.address}] fora dos limites (0-65535). Modbus Exception: 0x02 (ILLEGAL_DATA_ADDRESS).`);
+      throw new Error(
+        `MODBUS_INVALID_ADDRESS: Endereço [${params.address}] fora dos limites (0-65535). Modbus Exception: 0x02 (ILLEGAL_DATA_ADDRESS).`,
+      );
     }
 
     const qty = params.quantity ?? 1;
     if (qty < 1) {
-      throw new Error(`MODBUS_INVALID_QUANTITY: Quantidade deve ser maior ou igual a 1. Modbus Exception: 0x03 (ILLEGAL_DATA_VALUE).`);
+      throw new Error(
+        `MODBUS_INVALID_QUANTITY: Quantidade deve ser maior ou igual a 1. Modbus Exception: 0x03 (ILLEGAL_DATA_VALUE).`,
+      );
     }
 
     if (params.area === "COIL" || params.area === "DISCRETE_INPUT") {
       if (qty > 2000) {
-        throw new Error(`MODBUS_INVALID_QUANTITY: Quantidade de bits (${qty}) excede o limite máximo PDU de 2000.`);
+        throw new Error(
+          `MODBUS_INVALID_QUANTITY: Quantidade de bits (${qty}) excede o limite máximo PDU de 2000.`,
+        );
       }
     } else {
       if (qty > 125) {
-        throw new Error(`MODBUS_INVALID_QUANTITY: Quantidade de registradores (${qty}) excede o limite máximo PDU de 125.`);
+        throw new Error(
+          `MODBUS_INVALID_QUANTITY: Quantidade de registradores (${qty}) excede o limite máximo PDU de 125.`,
+        );
       }
     }
   }
@@ -253,13 +269,23 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
         break;
       }
       case "INPUT_REGISTER": {
-        rawValue = this.decodeRegisters(this.inputRegisters, regOffset, cfg.dataType, cfg.endianness);
+        rawValue = this.decodeRegisters(
+          this.inputRegisters,
+          regOffset,
+          cfg.dataType,
+          cfg.endianness,
+        );
         this.diagnostics.rxBytes += 11;
         break;
       }
       case "HOLDING_REGISTER":
       default: {
-        rawValue = this.decodeRegisters(this.holdingRegisters, regOffset, cfg.dataType, cfg.endianness);
+        rawValue = this.decodeRegisters(
+          this.holdingRegisters,
+          regOffset,
+          cfg.dataType,
+          cfg.endianness,
+        );
         this.diagnostics.rxBytes += 11;
         break;
       }
@@ -350,7 +376,12 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
       return r0 & 0xffff;
     }
 
-    if (dataType === "FLOAT32" || dataType === "INT32" || dataType === "UINT32" || dataType === "REAL") {
+    if (
+      dataType === "FLOAT32" ||
+      dataType === "INT32" ||
+      dataType === "UINT32" ||
+      dataType === "REAL"
+    ) {
       // Assemble 4 bytes according to endianness
       let b0: number, b1: number, b2: number, b3: number;
 
@@ -361,16 +392,28 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
 
       if (endianness === "BIG_ENDIAN") {
         // ABCD: r0=AB, r1=CD
-        b0 = r0Hi; b1 = r0Lo; b2 = r1Hi; b3 = r1Lo;
+        b0 = r0Hi;
+        b1 = r0Lo;
+        b2 = r1Hi;
+        b3 = r1Lo;
       } else if (endianness === "LITTLE_ENDIAN") {
         // DCBA: r1=CD (D, C), r0=AB (B, A)
-        b0 = r1Lo; b1 = r1Hi; b2 = r0Lo; b3 = r0Hi;
+        b0 = r1Lo;
+        b1 = r1Hi;
+        b2 = r0Lo;
+        b3 = r0Hi;
       } else if (endianness === "WORD_SWAPPED") {
         // CDAB: r1=CD, r0=AB
-        b0 = r1Hi; b1 = r1Lo; b2 = r0Hi; b3 = r0Lo;
+        b0 = r1Hi;
+        b1 = r1Lo;
+        b2 = r0Hi;
+        b3 = r0Lo;
       } else {
         // BADC (Byte Swapped)
-        b0 = r0Lo; b1 = r0Hi; b2 = r1Lo; b3 = r1Hi;
+        b0 = r0Lo;
+        b1 = r0Hi;
+        b2 = r1Lo;
+        b3 = r1Hi;
       }
 
       const buf = Buffer.from([b0, b1, b2, b3]);
@@ -400,7 +443,12 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
   /**
    * Encodes a 32-bit float into 2 holding registers in BIG_ENDIAN for testing.
    */
-  public setLabFloat32(area: ModbusArea, startAddress: number, val: number, endianness: ModbusEndianness = "BIG_ENDIAN"): void {
+  public setLabFloat32(
+    area: ModbusArea,
+    startAddress: number,
+    val: number,
+    endianness: ModbusEndianness = "BIG_ENDIAN",
+  ): void {
     const buf = Buffer.alloc(4);
     buf.writeFloatBE(val, 0);
 
@@ -431,10 +479,18 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
 
   private parseAddressString(addrStr: string): ModbusAddressConfig {
     if (addrStr.startsWith("COIL:")) {
-      return { area: "COIL", address: parseInt(addrStr.replace("COIL:", ""), 10), dataType: "BOOL" };
+      return {
+        area: "COIL",
+        address: parseInt(addrStr.replace("COIL:", ""), 10),
+        dataType: "BOOL",
+      };
     }
     if (addrStr.startsWith("DI:")) {
-      return { area: "DISCRETE_INPUT", address: parseInt(addrStr.replace("DI:", ""), 10), dataType: "BOOL" };
+      return {
+        area: "DISCRETE_INPUT",
+        address: parseInt(addrStr.replace("DI:", ""), 10),
+        dataType: "BOOL",
+      };
     }
     if (addrStr.startsWith("3x:") || addrStr.startsWith("3000")) {
       const num = parseInt(addrStr.replace(/^(3x:|3000)/, ""), 10);
@@ -442,7 +498,11 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
     }
 
     const rawNum = parseInt(addrStr.replace(/^(4x:|4000)/, ""), 10);
-    return { area: "HOLDING_REGISTER", address: Number.isNaN(rawNum) ? 0 : rawNum, dataType: "INT16" };
+    return {
+      area: "HOLDING_REGISTER",
+      address: Number.isNaN(rawNum) ? 0 : rawNum,
+      dataType: "INT16",
+    };
   }
 
   public simulateConnectionLoss(): void {

@@ -3,12 +3,16 @@
  * Paridade funcional aos drivers de barramento de campo do CODESYS V3.5:
  * Modbus TCP/RTU com validação de frames PDU e CRC16,
  * OPC UA (NodeId, Assinaturas e StatusCodes) e MQTT / Sparkplug B.
- * 
+ *
  * Invariante de Segurança Inviolável:
  * IS_PHYSICAL_CONTROL_ALLOWED = false
  */
 
-import { IndustrialProtocol, ProtocolConfiguration, IS_PHYSICAL_CONTROL_ALLOWED } from "../canonical/types";
+import {
+  IndustrialProtocol,
+  ProtocolConfiguration,
+  IS_PHYSICAL_CONTROL_ALLOWED,
+} from "../canonical/types";
 
 // ============================================================================
 // 1. Modbus TCP & RTU PDU / Frame Engine
@@ -55,7 +59,7 @@ export class ModbusProtocolEngine {
    */
   public static parseModbusTCPFrame(
     frame: Uint8Array,
-    options: { allowVirtualWrite?: boolean } = {}
+    options: { allowVirtualWrite?: boolean } = {},
   ): {
     transactionId: number;
     protocolId: number;
@@ -64,7 +68,9 @@ export class ModbusProtocolEngine {
     pdu: ModbusRequestPDU;
   } {
     if (frame.length < 12) {
-      throw new Error(`Frame Modbus TCP inválido: tamanho mínimo 12 bytes, recebido ${frame.length}.`);
+      throw new Error(
+        `Frame Modbus TCP inválido: tamanho mínimo 12 bytes, recebido ${frame.length}.`,
+      );
     }
 
     const transactionId = (frame[0] << 8) | frame[1];
@@ -76,12 +82,20 @@ export class ModbusProtocolEngine {
     const quantityOrValue = (frame[10] << 8) | frame[11];
 
     if (protocolId !== 0) {
-      throw new Error(`Protocol ID deve ser 0x0000 para Modbus TCP, recebido 0x${protocolId.toString(16)}.`);
+      throw new Error(
+        `Protocol ID deve ser 0x0000 para Modbus TCP, recebido 0x${protocolId.toString(16)}.`,
+      );
     }
 
     // Barreira ativa de segurança física (IS_PHYSICAL_CONTROL_ALLOWED = false)
-    if ([5, 6, 15, 16].includes(functionCode) && !options.allowVirtualWrite && !IS_PHYSICAL_CONTROL_ALLOWED) {
-      throw new Error("[SAFETY_VIOLATION] Physical write blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
+    if (
+      [5, 6, 15, 16].includes(functionCode) &&
+      !options.allowVirtualWrite &&
+      !IS_PHYSICAL_CONTROL_ALLOWED
+    ) {
+      throw new Error(
+        "[SAFETY_VIOLATION] Physical write blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.",
+      );
     }
 
     return {
@@ -102,7 +116,9 @@ export class ModbusProtocolEngine {
    * Bloqueio incondicional de envio de comando de escrita física
    */
   public static sendPhysicalWrite(pdu: ModbusRequestPDU): never {
-    throw new Error("[SAFETY_VIOLATION] Physical write blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
+    throw new Error(
+      "[SAFETY_VIOLATION] Physical write blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.",
+    );
   }
 
   /**
@@ -110,7 +126,7 @@ export class ModbusProtocolEngine {
    */
   public static executeVirtualModbus(
     pdu: ModbusRequestPDU,
-    virtualHoldingRegisters: Map<number, number>
+    virtualHoldingRegisters: Map<number, number>,
   ): ModbusResponsePDU {
     const fc = pdu.functionCode;
 
@@ -161,7 +177,8 @@ export interface OPCUANodeId {
   identifier: string | number;
 }
 
-export type OPCUAStatusCode = "Good" | "Bad_NotFound" | "Bad_TypeMismatch" | "Bad_SecurityChecksFailed";
+export type OPCUAStatusCode =
+  "Good" | "Bad_NotFound" | "Bad_TypeMismatch" | "Bad_SecurityChecksFailed";
 
 export class OPCUAProtocolEngine {
   /**
@@ -197,7 +214,7 @@ export class OPCUAProtocolEngine {
    */
   public static readNode(
     nodeIdStr: string,
-    virtualAddressSpace: Map<string, { value: any; dataType: string }>
+    virtualAddressSpace: Map<string, { value: any; dataType: string }>,
   ): { value: any; statusCode: OPCUAStatusCode; timestamp: string } {
     const node = virtualAddressSpace.get(nodeIdStr);
     if (!node) {
@@ -210,7 +227,9 @@ export class OPCUAProtocolEngine {
    * Bloqueio incondicional de escrita em nós físicos reais via OPC UA
    */
   public static writeNode(nodeIdStr: string, value: any): never {
-    throw new Error("[SAFETY_VIOLATION] Physical write blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
+    throw new Error(
+      "[SAFETY_VIOLATION] Physical write blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.",
+    );
   }
 }
 
@@ -251,7 +270,9 @@ export class SparkplugBProtocolEngine {
 
     const messageType = segments[2] as any;
     if (["NCMD", "DCMD"].includes(messageType) && !IS_PHYSICAL_CONTROL_ALLOWED) {
-      throw new Error("[SAFETY_VIOLATION] Sparkplug B command blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
+      throw new Error(
+        "[SAFETY_VIOLATION] Sparkplug B command blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.",
+      );
     }
 
     return {
@@ -266,7 +287,10 @@ export class SparkplugBProtocolEngine {
   /**
    * Converte um conjunto de métricas para payload Sparkplug B compatível
    */
-  public static encodePayload(metrics: SparkplugBMetric[], sequenceNumber: number): SparkplugBPayload {
+  public static encodePayload(
+    metrics: SparkplugBMetric[],
+    sequenceNumber: number,
+  ): SparkplugBPayload {
     return {
       timestamp: Date.now(),
       metrics,
@@ -281,6 +305,8 @@ export class SparkplugBProtocolEngine {
 
 export class MQTTProtocolEngine {
   public static publishCommand(topic: string, payload: any): never {
-    throw new Error("[SAFETY_VIOLATION] MQTT command publish blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.");
+    throw new Error(
+      "[SAFETY_VIOLATION] MQTT command publish blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.",
+    );
   }
 }

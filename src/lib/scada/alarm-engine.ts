@@ -90,10 +90,7 @@ export class DeterministicAlarmEngine {
    * Evaluates a tag against all alarm definitions configured for it.
    * Returns an array of transition events that occurred during this cycle.
    */
-  public evaluateTag(
-    tag: ScadaTagDefinition,
-    overrideTimestamp?: number,
-  ): AlarmTransitionEvent[] {
+  public evaluateTag(tag: ScadaTagDefinition, overrideTimestamp?: number): AlarmTransitionEvent[] {
     const now = overrideTimestamp ?? this.timeProvider();
     const events: AlarmTransitionEvent[] = [];
 
@@ -248,7 +245,11 @@ export class DeterministicAlarmEngine {
       // Condition is physically in alarm
       pending.pendingReturnAt = undefined; // Cancel any pending return
 
-      if (!existing || existing.processCondition === "RETURNED_TO_NORMAL" || existing.processCondition === "NORMAL") {
+      if (
+        !existing ||
+        existing.processCondition === "RETURNED_TO_NORMAL" ||
+        existing.processCondition === "NORMAL"
+      ) {
         if (delayOn > 0 && !pending.pendingTriggerAt) {
           pending.pendingTriggerAt = now;
           pending.pendingTriggerLimit = checkResult.limitType;
@@ -531,8 +532,17 @@ export class DeterministicAlarmEngine {
 
     for (const key of keys) {
       const inst = this.activeInstances.get(key);
-      if (inst && (inst.projectId === projectId || projectId === "all") && inst.ackState === "UNACKNOWLEDGED") {
-        const evt = this.acknowledgeAlarm(key, operator, "Reconhecimento em lote", overrideTimestamp);
+      if (
+        inst &&
+        (inst.projectId === projectId || projectId === "all") &&
+        inst.ackState === "UNACKNOWLEDGED"
+      ) {
+        const evt = this.acknowledgeAlarm(
+          key,
+          operator,
+          "Reconhecimento em lote",
+          overrideTimestamp,
+        );
         if (evt) events.push(evt);
       }
     }

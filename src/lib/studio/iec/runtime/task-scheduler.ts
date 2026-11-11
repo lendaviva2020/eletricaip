@@ -197,7 +197,7 @@ export class IECTaskScheduler {
         if (block) {
           this.executeIRBlock(pouName, block.instructions, cycleIntervalMs);
         }
-      }
+      },
     );
 
     // 3. Aplica Forcing sobre variáveis de saída
@@ -215,7 +215,11 @@ export class IECTaskScheduler {
     return true;
   }
 
-  public getCycleMetrics(): { cycleCount: number; accumulatedTimeMs: number; lastDurationMs: number } {
+  public getCycleMetrics(): {
+    cycleCount: number;
+    accumulatedTimeMs: number;
+    lastDurationMs: number;
+  } {
     return {
       cycleCount: this.cycleCount,
       accumulatedTimeMs: this.totalSimulatedTimeMs,
@@ -227,7 +231,7 @@ export class IECTaskScheduler {
     pouName: string,
     instructions: IRInstruction[],
     deltaMs: number,
-    customLocals?: Record<string, any>
+    customLocals?: Record<string, any>,
   ): void {
     const registers: Record<string, any> = {};
     const locals = customLocals || this.localVariables[pouName] || {};
@@ -240,7 +244,9 @@ export class IECTaskScheduler {
         return registers[valOrReg];
       }
       if (typeof valOrReg === "string" && valOrReg.startsWith("_fbd_")) {
-        return registers[valOrReg] !== undefined ? registers[valOrReg] : this.globalVariables[valOrReg];
+        return registers[valOrReg] !== undefined
+          ? registers[valOrReg]
+          : this.globalVariables[valOrReg];
       }
       return valOrReg;
     };
@@ -251,7 +257,9 @@ export class IECTaskScheduler {
 
       // Verificação de Breakpoint
       if (inst.sourceLine) {
-        const bp = this.breakpoints.find((b) => b.enabled && b.pouName === pouName && b.sourceLine === inst.sourceLine);
+        const bp = this.breakpoints.find(
+          (b) => b.enabled && b.pouName === pouName && b.sourceLine === inst.sourceLine,
+        );
         if (bp) {
           this.hitBreakpoint = bp;
           this.state = "PAUSED";
@@ -290,37 +298,45 @@ export class IECTaskScheduler {
         }
 
         case "ADD":
-          if (inst.dest) registers[inst.dest] = Number(resolveVal(inst.arg1)) + Number(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] = Number(resolveVal(inst.arg1)) + Number(resolveVal(inst.arg2));
           break;
 
         case "SUB":
-          if (inst.dest) registers[inst.dest] = Number(resolveVal(inst.arg1)) - Number(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] = Number(resolveVal(inst.arg1)) - Number(resolveVal(inst.arg2));
           break;
 
         case "MUL":
-          if (inst.dest) registers[inst.dest] = Number(resolveVal(inst.arg1)) * Number(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] = Number(resolveVal(inst.arg1)) * Number(resolveVal(inst.arg2));
           break;
 
         case "DIV": {
           const denom = Number(resolveVal(inst.arg2));
-          if (inst.dest) registers[inst.dest] = denom !== 0 ? Number(resolveVal(inst.arg1)) / denom : 0;
+          if (inst.dest)
+            registers[inst.dest] = denom !== 0 ? Number(resolveVal(inst.arg1)) / denom : 0;
           break;
         }
 
         case "AND":
-          if (inst.dest) registers[inst.dest] = Boolean(resolveVal(inst.arg1)) && Boolean(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] = Boolean(resolveVal(inst.arg1)) && Boolean(resolveVal(inst.arg2));
           break;
 
         case "OR":
-          if (inst.dest) registers[inst.dest] = Boolean(resolveVal(inst.arg1)) || Boolean(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] = Boolean(resolveVal(inst.arg1)) || Boolean(resolveVal(inst.arg2));
           break;
 
         case "XOR":
-          if (inst.dest) registers[inst.dest] = Boolean(resolveVal(inst.arg1)) !== Boolean(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] =
+              Boolean(resolveVal(inst.arg1)) !== Boolean(resolveVal(inst.arg2));
           break;
 
         case "NOT":
-          if (inst.dest) registers[inst.dest] = !Boolean(resolveVal(inst.arg1));
+          if (inst.dest) registers[inst.dest] = !resolveVal(inst.arg1);
           break;
 
         case "EQ":
@@ -332,19 +348,23 @@ export class IECTaskScheduler {
           break;
 
         case "LT":
-          if (inst.dest) registers[inst.dest] = Number(resolveVal(inst.arg1)) < Number(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] = Number(resolveVal(inst.arg1)) < Number(resolveVal(inst.arg2));
           break;
 
         case "LE":
-          if (inst.dest) registers[inst.dest] = Number(resolveVal(inst.arg1)) <= Number(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] = Number(resolveVal(inst.arg1)) <= Number(resolveVal(inst.arg2));
           break;
 
         case "GT":
-          if (inst.dest) registers[inst.dest] = Number(resolveVal(inst.arg1)) > Number(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] = Number(resolveVal(inst.arg1)) > Number(resolveVal(inst.arg2));
           break;
 
         case "GE":
-          if (inst.dest) registers[inst.dest] = Number(resolveVal(inst.arg1)) >= Number(resolveVal(inst.arg2));
+          if (inst.dest)
+            registers[inst.dest] = Number(resolveVal(inst.arg1)) >= Number(resolveVal(inst.arg2));
           break;
 
         case "JUMP": {
@@ -491,7 +511,12 @@ export class IECTaskScheduler {
                 instMemory[k] = resolveVal(v);
               }
             }
-            this.executeIRBlock(fbType, this.compiledIR.blocks[fbType].instructions, deltaMs, instMemory);
+            this.executeIRBlock(
+              fbType,
+              this.compiledIR.blocks[fbType].instructions,
+              deltaMs,
+              instMemory,
+            );
             for (const [k, v] of Object.entries(instMemory)) {
               locals[`${fbInstanceName}.${k}`] = v;
             }

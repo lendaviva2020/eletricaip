@@ -67,7 +67,7 @@ describe("GATE 3.3G — Master Industrial Security Matrix (Negative Testing & Bo
 
     it("executePhysicalCommand() lança PHYSICAL_CONTROL_BLOCKED", () => {
       expect(() => (gatewayManager as any).executePhysicalCommand("START_PUMP")).toThrow(
-        /PHYSICAL_CONTROL_BLOCKED/
+        /PHYSICAL_CONTROL_BLOCKED/,
       );
     });
   });
@@ -98,8 +98,12 @@ describe("GATE 3.3G — Master Industrial Security Matrix (Negative Testing & Bo
       await expect(sparkplugDriver.sendCommand()).rejects.toThrow(/PHYSICAL_CONTROL_BLOCKED/);
       await expect(sparkplugDriver.publishCommand()).rejects.toThrow(/PHYSICAL_CONTROL_BLOCKED/);
       await expect(sparkplugDriver.write()).rejects.toThrow(/PHYSICAL_CONTROL_BLOCKED/);
-      expect(() => sparkplugDriver.validateTopicAllowed("spBv1.0/G/NCMD/N")).toThrow(/PHYSICAL_CONTROL_BLOCKED/);
-      expect(() => sparkplugDriver.validateTopicAllowed("spBv1.0/G/DCMD/N/D")).toThrow(/PHYSICAL_CONTROL_BLOCKED/);
+      expect(() => sparkplugDriver.validateTopicAllowed("spBv1.0/G/NCMD/N")).toThrow(
+        /PHYSICAL_CONTROL_BLOCKED/,
+      );
+      expect(() => sparkplugDriver.validateTopicAllowed("spBv1.0/G/DCMD/N/D")).toThrow(
+        /PHYSICAL_CONTROL_BLOCKED/,
+      );
     });
   });
 

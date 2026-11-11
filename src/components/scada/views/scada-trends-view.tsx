@@ -13,11 +13,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import {
-  ChartLineUp,
-  DownloadSimple,
-  ArrowsClockwise,
-} from "@phosphor-icons/react";
+import { ChartLineUp, DownloadSimple, ArrowsClockwise } from "@phosphor-icons/react";
 import { useScadaStore } from "@/lib/scada/scada-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -51,12 +47,48 @@ export function ScadaTrendsView() {
   const availablePens = useMemo<Record<string, PenConfig>>(() => {
     if (isDemoProject) {
       return {
-        totalFlow: { key: "totalFlow", label: "Vazão Total", unit: "m³/h", color: "#06b6d4", enabled: true },
-        levelT101: { key: "levelT101", label: "Nível T-101", unit: "%", color: "#f59e0b", enabled: true },
-        levelT102: { key: "levelT102", label: "Nível T-102", unit: "%", color: "#3b82f6", enabled: false },
-        levelT105: { key: "levelT105", label: "Nível T-105", unit: "%", color: "#10b981", enabled: true },
-        powerKw: { key: "powerKw", label: "Potência QM-01", unit: "kW", color: "#ec4899", enabled: true },
-        pressureFiltro: { key: "pressureFiltro", label: "Pressão F-01", unit: "bar", color: "#8b5cf6", enabled: true },
+        totalFlow: {
+          key: "totalFlow",
+          label: "Vazão Total",
+          unit: "m³/h",
+          color: "#06b6d4",
+          enabled: true,
+        },
+        levelT101: {
+          key: "levelT101",
+          label: "Nível T-101",
+          unit: "%",
+          color: "#f59e0b",
+          enabled: true,
+        },
+        levelT102: {
+          key: "levelT102",
+          label: "Nível T-102",
+          unit: "%",
+          color: "#3b82f6",
+          enabled: false,
+        },
+        levelT105: {
+          key: "levelT105",
+          label: "Nível T-105",
+          unit: "%",
+          color: "#10b981",
+          enabled: true,
+        },
+        powerKw: {
+          key: "powerKw",
+          label: "Potência QM-01",
+          unit: "kW",
+          color: "#ec4899",
+          enabled: true,
+        },
+        pressureFiltro: {
+          key: "pressureFiltro",
+          label: "Pressão F-01",
+          unit: "bar",
+          color: "#8b5cf6",
+          enabled: true,
+        },
       };
     }
 
@@ -76,8 +108,20 @@ export function ScadaTrendsView() {
 
     if (Object.keys(customerPens).length === 0) {
       // Fallback if no tags yet
-      customerPens["totalFlow"] = { key: "totalFlow", label: "Vazão Total", unit: "m³/h", color: "#06b6d4", enabled: true };
-      customerPens["powerKw"] = { key: "powerKw", label: "Potência Total", unit: "kW", color: "#ec4899", enabled: true };
+      customerPens["totalFlow"] = {
+        key: "totalFlow",
+        label: "Vazão Total",
+        unit: "m³/h",
+        color: "#06b6d4",
+        enabled: true,
+      };
+      customerPens["powerKw"] = {
+        key: "powerKw",
+        label: "Potência Total",
+        unit: "kW",
+        color: "#ec4899",
+        enabled: true,
+      };
     }
 
     return customerPens;
@@ -104,7 +148,8 @@ export function ScadaTrendsView() {
   };
 
   const chartData = useMemo(() => {
-    const rawPoints = trendHistory.length > 0 ? trendHistory : generateInitialHistory(isDemoProject);
+    const rawPoints =
+      trendHistory.length > 0 ? trendHistory : generateInitialHistory(isDemoProject);
     return rawPoints.filter(Boolean).map((pt) => {
       const d = new Date(pt.timestamp || Date.now());
       const timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
@@ -162,8 +207,7 @@ export function ScadaTrendsView() {
         const max = Math.max(...values);
         const sum = values.reduce((acc, v) => acc + v, 0);
         const avg = sum / values.length;
-        const variance =
-          values.reduce((acc, v) => acc + Math.pow(v - avg, 2), 0) / values.length;
+        const variance = values.reduce((acc, v) => acc + Math.pow(v - avg, 2), 0) / values.length;
         const stdDev = Math.sqrt(variance);
 
         return {
@@ -190,7 +234,12 @@ export function ScadaTrendsView() {
       return;
     }
 
-    const header = ["Timestamp_ISO", "Epoch_ms", ...penKeys.map((k) => `${k}_${activePens[k]?.unit || "val"}`)].join(",") + "\n";
+    const header =
+      [
+        "Timestamp_ISO",
+        "Epoch_ms",
+        ...penKeys.map((k) => `${k}_${activePens[k]?.unit || "val"}`),
+      ].join(",") + "\n";
     const rows = chartData
       .map((r) => {
         const iso = new Date(Number(r.timestamp) || Date.now()).toISOString();

@@ -37,7 +37,7 @@ ELSIF rTankLevel >= 80.0 THEN
     bPumpCommand := FALSE;
 END_IF;
 
-END_PROGRAM`
+END_PROGRAM`,
   );
 
   const [localDiagnostics, setLocalDiagnostics] = useState<CompilerDiagnostic[]>([]);
@@ -47,7 +47,7 @@ END_PROGRAM`
     if (currentPou && currentPou.rawSourceST !== undefined) {
       setSourceCode(currentPou.rawSourceST);
     }
-  }, [currentPou?.id]);
+  }, [currentPou]);
 
   const handleEditorChange = (value?: string) => {
     const newCode = value || "";
@@ -68,7 +68,7 @@ END_PROGRAM`
             line: d.line,
             column: d.column,
             pouId,
-          }))
+          })),
         );
       } else if (parseRes.ast) {
         const analyzer = new StSemanticAnalyzer(parseRes.ast);
@@ -173,13 +173,16 @@ END_PROGRAM`
         ],
         tokenizer: {
           root: [
-            [/[a-zA-Z_]\w*/, {
-              cases: {
-                "@keywords": "keyword",
-                "@typeKeywords": "type",
-                "@default": "identifier",
+            [
+              /[a-zA-Z_]\w*/,
+              {
+                cases: {
+                  "@keywords": "keyword",
+                  "@typeKeywords": "type",
+                  "@default": "identifier",
+                },
               },
-            }],
+            ],
             [/\(\*[\s\S]*?\*\)/, "comment"],
             [/\/\/.*$/, "comment"],
             [/[0-9]+(\.[0-9]+)?/, "number"],

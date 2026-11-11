@@ -838,10 +838,10 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
             const tgtNode = diagramDoc.nodes[e.target];
             const fromCode = srcNode
               ? resolveTerminalCode(srcNode, e.sourcePort, "source")
-              : (e.sourcePort || "out");
+              : e.sourcePort || "out";
             const toCode = tgtNode
               ? resolveTerminalCode(tgtNode, e.targetPort, "target")
-              : (e.targetPort || "in");
+              : e.targetPort || "in";
 
             d.engineering.connections[e.id] = {
               id: e.id,

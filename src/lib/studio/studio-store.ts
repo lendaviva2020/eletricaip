@@ -42,7 +42,7 @@ export type StudioEditorTab =
  */
 export function evaluateSafeCondition(
   exprStr: string,
-  getVariable: (name: string) => any
+  getVariable: (name: string) => any,
 ): boolean {
   const trimmed = (exprStr || "").trim();
   if (!trimmed || trimmed === "TRUE" || trimmed === "1") return true;
@@ -67,7 +67,7 @@ export function evaluateSafeCondition(
 
   // Operadores de comparação: >=, <=, !=, <>, ==, =, >, <
   const compMatch = trimmed.match(
-    /^([a-zA-Z0-9_\.]+)\s*(>=|<=|!=|<>|==|=|(?<!<|>)>|(?<!<|>)<)\s*([a-zA-Z0-9_\.]+)$/
+    /^([a-zA-Z0-9_.]+)\s*(>=|<=|!=|<>|==|=|(?<!<|>)>|(?<!<|>)<)\s*([a-zA-Z0-9_.]+)$/,
   );
   if (compMatch) {
     const leftRaw = compMatch[1];
@@ -166,7 +166,9 @@ export interface StudioState {
 export const useStudioStore = create<StudioState>((set, get) => {
   const initialProject = CanonicalProjectService.createSampleIndustrialProject();
   const compileInit = IECCompilerPipeline.compile(initialProject);
-  const initialScheduler = compileInit.compiledIR ? new IECTaskScheduler(compileInit.compiledIR) : null;
+  const initialScheduler = compileInit.compiledIR
+    ? new IECTaskScheduler(compileInit.compiledIR)
+    : null;
 
   const sfcPou = initialProject.pous.find((p) => p.language === "SFC");
   const sfcSteps: SFCStep[] = sfcPou?.networks[0]?.sfcSteps || [];
@@ -216,7 +218,9 @@ export const useStudioStore = create<StudioState>((set, get) => {
         if (stored) {
           try {
             loadedProject = JSON.parse(stored);
-          } catch {}
+          } catch {
+            // fallback gracefully to SSOT if stored json is malformed
+          }
         }
       }
 
@@ -231,7 +235,9 @@ export const useStudioStore = create<StudioState>((set, get) => {
       // 3. Fallback: cria projeto limpo correspondente ao projectId
       if (!loadedProject) {
         const unifiedDoc = useUnifiedProjectStore.getState().doc;
-        const name = (unifiedDoc?.metadata?.id === projectId && unifiedDoc.metadata.name) || "Projeto Industrial";
+        const name =
+          (unifiedDoc?.metadata?.id === projectId && unifiedDoc.metadata.name) ||
+          "Projeto Industrial";
         loadedProject = CanonicalProjectService.createEmptyProject(name, undefined, projectId);
       }
 
@@ -241,7 +247,9 @@ export const useStudioStore = create<StudioState>((set, get) => {
       const steps = sfc?.networks[0]?.sfcSteps || [];
       const trans = sfc?.networks[0]?.sfcTransitions || [];
       const sfcEng = new SFCEngine(steps, trans);
-      const motion = loadedProject.motionAxes[0] ? new MotionSimulator(loadedProject.motionAxes[0]) : null;
+      const motion = loadedProject.motionAxes[0]
+        ? new MotionSimulator(loadedProject.motionAxes[0])
+        : null;
 
       set({
         projectId,
@@ -293,9 +301,10 @@ export const useStudioStore = create<StudioState>((set, get) => {
             area: t.protocolAddress?.startsWith("%I")
               ? "I"
               : t.protocolAddress?.startsWith("%Q")
-              ? "Q"
-              : "M",
-            address: t.protocolAddress || (t.dataType === "BOOL" ? `%MX_${t.name}` : `%MD_${t.name}`),
+                ? "Q"
+                : "M",
+            address:
+              t.protocolAddress || (t.dataType === "BOOL" ? `%MX_${t.name}` : `%MD_${t.name}`),
             unit: t.engineeringUnit,
             initialValue: (t.initialValue as any) ?? false,
             forced: t.isForced,
@@ -462,7 +471,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
           (cond) =>
             evaluateSafeCondition(
               cond,
-              (name) => sched.globalVariables[name] ?? sched.inputProcessImage[name]
+              (name) => sched.globalVariables[name] ?? sched.inputProcessImage[name],
             ),
           (action, isActive) => {
             if (!isActive) return;
@@ -480,7 +489,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
               const tag = proj.tags.find((t) => t.name === varName);
               if (tag) tag.currentValue = parsedVal;
             }
-          }
+          },
         );
       }
 

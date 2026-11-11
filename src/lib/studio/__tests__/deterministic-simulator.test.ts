@@ -95,7 +95,10 @@ describe("IEC Task Scheduler & Deterministic Simulation", () => {
   });
 
   it("should initialize process images %I, %Q, %M and execute scan cycles", () => {
-    const project = IndustrialProjectService.createSampleIndustrialProject("tenant-sim", "SimStation");
+    const project = IndustrialProjectService.createSampleIndustrialProject(
+      "tenant-sim",
+      "SimStation",
+    );
     const compileResult = IECCompilerPipeline.compile(project);
     expect(compileResult.success).toBe(true);
     expect(compileResult.compiledIR).toBeDefined();
@@ -116,7 +119,10 @@ describe("IEC Task Scheduler & Deterministic Simulation", () => {
   });
 
   it("should support simulated in-memory variable forcing without touching physical hardware", () => {
-    const project = IndustrialProjectService.createSampleIndustrialProject("tenant-force", "ForceStation");
+    const project = IndustrialProjectService.createSampleIndustrialProject(
+      "tenant-force",
+      "ForceStation",
+    );
     const compileResult = IECCompilerPipeline.compile(project);
     expect(compileResult.compiledIR).toBeDefined();
     if (!compileResult.compiledIR) return;

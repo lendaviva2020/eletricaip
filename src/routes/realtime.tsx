@@ -176,7 +176,7 @@ function RealtimePage() {
               <code>/api/public/iot/ingest</code> para enviar leituras.
             </div>
           ) : (
-            devices.data.devices.map((d) => (
+            devices.data.devices.map((d: any) => (
               <button
                 key={d.id}
                 onClick={() => setActiveId(d.id)}
@@ -199,7 +199,8 @@ function RealtimePage() {
           <CommandPanel
             deviceExternalId={
               devices.data?.ok
-                ? (devices.data.devices.find((d) => d.id === activeId)?.device_external_id ?? "")
+                ? (devices.data.devices.find((d: any) => d.id === activeId)?.device_external_id ??
+                  "")
                 : ""
             }
             onSend={(p) => sendCmd({ data: p })}

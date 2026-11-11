@@ -180,11 +180,16 @@ export const createInvite = createServerFn({ method: "POST" })
   });
 
 export const revokeInvite = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .inputValidator((input) => z.object({ inviteId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { error } = await supabase.from("invites").delete().eq("id", data.inviteId);
+    const { supabase, userId } = context;
+    const tenantId = await requireTenantAdmin(supabase, userId);
+    const { error } = await supabase
+      .from("invites")
+      .delete()
+      .eq("id", data.inviteId)
+      .eq("tenant_id", tenantId);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });

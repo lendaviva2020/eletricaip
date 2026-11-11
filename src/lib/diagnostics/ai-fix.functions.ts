@@ -153,7 +153,7 @@ export const requestAiFix = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<AiFixClientResult> => {
     const { supabase, userId } = context;
 
-    // 1. Autorização: Usuário tem acesso ao projeto? (RLS + verificação explícita)
+    // 1. Autorização: Usuário tem acesso de escrita ao projeto? (criador ou membro não-viewer do tenant)
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .select("id, created_by, tenant_id")
@@ -165,6 +165,31 @@ export const requestAiFix = createServerFn({ method: "POST" })
         status: 403,
         headers: { "content-type": "application/json" },
       });
+    }
+
+    let hasAccess = project.created_by === userId;
+    let memberRole: string | null = null;
+    if (project.tenant_id) {
+      const { data: membership } = await supabase
+        .from("tenant_memberships")
+        .select("role")
+        .eq("tenant_id", project.tenant_id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (membership?.role) {
+        memberRole = membership.role;
+        hasAccess = true;
+      }
+    }
+
+    if (!hasAccess || memberRole === "viewer") {
+      throw new Response(
+        JSON.stringify({ error: "Forbidden: Permissão insuficiente para este projeto." }),
+        {
+          status: 403,
+          headers: { "content-type": "application/json" },
+        },
+      );
     }
 
     // 2. Débito de créditos de IA no servidor

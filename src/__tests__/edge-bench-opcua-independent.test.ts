@@ -7,7 +7,8 @@ import { OpcUaClientDriver } from "../lib/edge/drivers/opcua-driver";
  */
 class IndependentMockOpcUaServer {
   public endpointUrl: string = "opc.tcp://192.168.10.50:4840";
-  public serverCertificateFingerprint: string = "SHA256:7B9E3A4D2F1C8E5B9A0C3D6F2E1A4B7C9D8E6F3A2B1C4D5E6F7A8B9C0D1E2F3A";
+  public serverCertificateFingerprint: string =
+    "SHA256:7B9E3A4D2F1C8E5B9A0C3D6F2E1A4B7C9D8E6F3A2B1C4D5E6F7A8B9C0D1E2F3A";
   public isRunning: boolean = false;
   private nodeStore: Map<
     string,
@@ -120,7 +121,11 @@ class IndependentMockOpcUaServer {
     return this.nodeStore.get(nodeId);
   }
 
-  public setNodeValue(nodeId: string, val: number | boolean | string, statusCode: number = 0x00000000) {
+  public setNodeValue(
+    nodeId: string,
+    val: number | boolean | string,
+    statusCode: number = 0x00000000,
+  ) {
     const node = this.nodeStore.get(nodeId);
     if (node) {
       node.value = val;
@@ -201,7 +206,8 @@ describe("GATE 3.3B — Independent Bench OPC UA Server Interoperability & Read-
         trustedServerCertificates: ["SHA256:AUTHORIZED_SERVER_FINGERPRINT"],
       });
 
-      const rogueCert = "-----BEGIN CERTIFICATE-----\nROGUE_SERVER_CERTIFICATE\n-----END CERTIFICATE-----";
+      const rogueCert =
+        "-----BEGIN CERTIFICATE-----\nROGUE_SERVER_CERTIFICATE\n-----END CERTIFICATE-----";
       const connected = await untrustedDriver.connect(rogueCert);
       expect(connected).toBe(false);
       expect(untrustedDriver.getState()).toBe("CERTIFICATE_INVALID");
@@ -214,7 +220,9 @@ describe("GATE 3.3B — Independent Bench OPC UA Server Interoperability & Read-
       const rootChildren = await driver.browse("RootFolder");
       expect(rootChildren.length).toBeGreaterThanOrEqual(1);
 
-      const objectsNode = rootChildren.find((n) => n.browseName === "Plant" || n.browseName === "Motors" || n.browseName === "Objects");
+      const objectsNode = rootChildren.find(
+        (n) => n.browseName === "Plant" || n.browseName === "Motors" || n.browseName === "Objects",
+      );
       expect(objectsNode).toBeDefined();
     });
 
@@ -252,7 +260,7 @@ describe("GATE 3.3B — Independent Bench OPC UA Server Interoperability & Read-
         50,
         (samples) => {
           receivedSample = samples;
-        }
+        },
       );
 
       expect(subId).toMatch(/^sub_/);
@@ -281,13 +289,13 @@ describe("GATE 3.3B — Independent Bench OPC UA Server Interoperability & Read-
   describe("4. Strict Read-Only Security Matrix (Deny-by-Default)", () => {
     it("callMethod() é bloqueado com PHYSICAL_CONTROL_BLOCKED", async () => {
       await expect(driver.callMethod()).rejects.toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA Method Call bloqueada/
+        /PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA Method Call bloqueada/,
       );
     });
 
     it("historyUpdate() é bloqueado com PHYSICAL_CONTROL_BLOCKED", async () => {
       await expect(driver.historyUpdate()).rejects.toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA HistoryUpdate bloqueada/
+        /PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA HistoryUpdate bloqueada/,
       );
     });
 
@@ -298,7 +306,7 @@ describe("GATE 3.3B — Independent Bench OPC UA Server Interoperability & Read-
 
     it("validateService('Write') rejeita qualquer tentativa de escrita no servidor", () => {
       expect(() => driver.validateService("Write")).toThrow(
-        /PHYSICAL_CONTROL_BLOCKED: Serviço OPC UA \[Write\] não autorizado/
+        /PHYSICAL_CONTROL_BLOCKED: Serviço OPC UA \[Write\] não autorizado/,
       );
     });
   });

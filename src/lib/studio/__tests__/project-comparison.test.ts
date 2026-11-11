@@ -139,7 +139,9 @@ describe("Milestone 6: Project Comparison, Semantic Diff & Version Control", () 
     const pouDiff = diff.items.find((i) => i.entityType === "POU" && i.entityName === "PRG_Base");
     expect(pouDiff?.changeKind).toBe("MODIFIED");
 
-    const newPouDiff = diff.items.find((i) => i.entityType === "POU" && i.entityName === "PRG_NovaLogica");
+    const newPouDiff = diff.items.find(
+      (i) => i.entityType === "POU" && i.entityName === "PRG_NovaLogica",
+    );
     expect(newPouDiff?.changeKind).toBe("ADDED");
   });
 
@@ -204,7 +206,11 @@ describe("Milestone 6: Project Comparison, Semantic Diff & Version Control", () 
     mineProject.pous[0].rawSourceST = "count := 100;";
     theirsProject.pous[0].rawSourceST = "count := 999;";
 
-    const resConflict = ProjectComparisonEngine.threeWayMerge(baseProject, mineProject, theirsProject);
+    const resConflict = ProjectComparisonEngine.threeWayMerge(
+      baseProject,
+      mineProject,
+      theirsProject,
+    );
     expect(resConflict.hasConflicts).toBe(true);
     expect(resConflict.conflicts.length).toBeGreaterThan(0);
     const pouConflict = resConflict.conflicts.find((c) => c.entityId === "pou-1");

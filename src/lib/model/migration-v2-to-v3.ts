@@ -546,10 +546,10 @@ export function upgradeSnapshotV2ToV3(
         const tgtNode = rawDiagram.nodes[e.target];
         const fromCode = srcNode
           ? resolveTerminalCode(srcNode, e.sourcePort, "source")
-          : (e.sourcePort || "out");
+          : e.sourcePort || "out";
         const toCode = tgtNode
           ? resolveTerminalCode(tgtNode, e.targetPort, "target")
-          : (e.targetPort || "in");
+          : e.targetPort || "in";
 
         const conn: ElectricalConnection = {
           id: e.id,

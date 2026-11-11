@@ -91,12 +91,26 @@ export class ILEngine {
         case "LD": {
           const isNum = !isNaN(Number(operand));
           const isBool = operand.toUpperCase() === "TRUE" || operand.toUpperCase() === "FALSE";
-          const opVal = isBool ? operand.toUpperCase() === "TRUE" : isNum ? Number(operand) : operand;
+          const opVal = isBool
+            ? operand.toUpperCase() === "TRUE"
+            : isNum
+              ? Number(operand)
+              : operand;
 
           if (typeof opVal === "string") {
-            instructions.push({ op: "LOAD_VAR", arg1: opVal, dest: crReg, sourceLine: inst.sourceLine });
+            instructions.push({
+              op: "LOAD_VAR",
+              arg1: opVal,
+              dest: crReg,
+              sourceLine: inst.sourceLine,
+            });
           } else {
-            instructions.push({ op: "LOAD_CONST", arg1: opVal, dest: crReg, sourceLine: inst.sourceLine });
+            instructions.push({
+              op: "LOAD_CONST",
+              arg1: opVal,
+              dest: crReg,
+              sourceLine: inst.sourceLine,
+            });
           }
 
           if (mod === "N") {
@@ -108,10 +122,25 @@ export class ILEngine {
         case "ST": {
           if (mod === "N") {
             const tempReg = `_t_st_${inst.sourceLine}`;
-            instructions.push({ op: "NOT", arg1: crReg, dest: tempReg, sourceLine: inst.sourceLine });
-            instructions.push({ op: "STORE_VAR", arg1: operand, arg2: tempReg, sourceLine: inst.sourceLine });
+            instructions.push({
+              op: "NOT",
+              arg1: crReg,
+              dest: tempReg,
+              sourceLine: inst.sourceLine,
+            });
+            instructions.push({
+              op: "STORE_VAR",
+              arg1: operand,
+              arg2: tempReg,
+              sourceLine: inst.sourceLine,
+            });
           } else {
-            instructions.push({ op: "STORE_VAR", arg1: operand, arg2: crReg, sourceLine: inst.sourceLine });
+            instructions.push({
+              op: "STORE_VAR",
+              arg1: operand,
+              arg2: crReg,
+              sourceLine: inst.sourceLine,
+            });
           }
           break;
         }
@@ -132,9 +161,19 @@ export class ILEngine {
           const opReg = `_t_op_${inst.sourceLine}`;
           const isNum = !isNaN(Number(operand));
           if (isNum) {
-            instructions.push({ op: "LOAD_CONST", arg1: Number(operand), dest: opReg, sourceLine: inst.sourceLine });
+            instructions.push({
+              op: "LOAD_CONST",
+              arg1: Number(operand),
+              dest: opReg,
+              sourceLine: inst.sourceLine,
+            });
           } else {
-            instructions.push({ op: "LOAD_VAR", arg1: operand, dest: opReg, sourceLine: inst.sourceLine });
+            instructions.push({
+              op: "LOAD_VAR",
+              arg1: operand,
+              dest: opReg,
+              sourceLine: inst.sourceLine,
+            });
           }
 
           if (mod === "N") {
@@ -142,15 +181,31 @@ export class ILEngine {
           }
 
           const irOp = op === "NE" ? "NEQ" : (op as any);
-          instructions.push({ op: irOp, arg1: crReg, arg2: opReg, dest: crReg, sourceLine: inst.sourceLine });
+          instructions.push({
+            op: irOp,
+            arg1: crReg,
+            arg2: opReg,
+            dest: crReg,
+            sourceLine: inst.sourceLine,
+          });
           break;
         }
 
         case "JMP": {
           if (mod === "C") {
-            instructions.push({ op: "JUMP_IF_TRUE", arg1: crReg, arg2: operand, sourceLine: inst.sourceLine });
+            instructions.push({
+              op: "JUMP_IF_TRUE",
+              arg1: crReg,
+              arg2: operand,
+              sourceLine: inst.sourceLine,
+            });
           } else if (mod === "CN") {
-            instructions.push({ op: "JUMP_IF_FALSE", arg1: crReg, arg2: operand, sourceLine: inst.sourceLine });
+            instructions.push({
+              op: "JUMP_IF_FALSE",
+              arg1: crReg,
+              arg2: operand,
+              sourceLine: inst.sourceLine,
+            });
           } else {
             instructions.push({ op: "JUMP", arg1: operand, sourceLine: inst.sourceLine });
           }

@@ -25,8 +25,16 @@ import {
 } from "@phosphor-icons/react";
 
 export function ProjectExplorer() {
-  const { project, selectedPouId, selectedDeviceId, selectPou, selectDevice, renamePou, renameTag, setActiveTab } =
-    useStudioStore();
+  const {
+    project,
+    selectedPouId,
+    selectedDeviceId,
+    selectPou,
+    selectDevice,
+    renamePou,
+    renameTag,
+    setActiveTab,
+  } = useStudioStore();
 
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({
     devices: true,
@@ -109,14 +117,18 @@ export function ProjectExplorer() {
                   <div
                     onClick={() => selectDevice(ctrl.id)}
                     className={`flex items-center justify-between px-2 py-1 rounded cursor-pointer ${
-                      selectedDeviceId === ctrl.id ? "bg-[#f59e0b]/20 text-[#f59e0b] font-medium" : "hover:bg-[#161b26]"
+                      selectedDeviceId === ctrl.id
+                        ? "bg-[#f59e0b]/20 text-[#f59e0b] font-medium"
+                        : "hover:bg-[#161b26]"
                     }`}
                   >
                     <div className="flex items-center gap-1.5 truncate">
                       <Circuitry size={13} className="text-[#38bdf8]" />
                       <span className="truncate">{ctrl.name}</span>
                     </div>
-                    <span className="text-[9px] text-[#64748b] font-mono">{ctrl.rackModules.length} módulos</span>
+                    <span className="text-[9px] text-[#64748b] font-mono">
+                      {ctrl.rackModules.length} módulos
+                    </span>
                   </div>
 
                   {/* Módulos do Rack */}
@@ -127,7 +139,9 @@ export function ProjectExplorer() {
                         onClick={() => selectDevice(ctrl.id)}
                         className="flex items-center gap-1.5 px-1.5 py-0.5 text-[11px] text-[#94a3b8] hover:text-[#f8fafc] cursor-pointer"
                       >
-                        <span className="text-[9px] font-mono text-[#64748b]">Slot {mod.slotNumber}:</span>
+                        <span className="text-[9px] font-mono text-[#64748b]">
+                          Slot {mod.slotNumber}:
+                        </span>
                         <span className="truncate">{mod.name}</span>
                       </div>
                     ))}
@@ -149,7 +163,9 @@ export function ProjectExplorer() {
               <Code size={14} className="text-[#a855f7]" />
               <span className="font-medium text-[#e2e8f0]">POUs (Programas & FBs)</span>
             </div>
-            <span className="text-[10px] bg-[#212638] text-[#94a3b8] px-1 rounded">{project.pous.length}</span>
+            <span className="text-[10px] bg-[#212638] text-[#94a3b8] px-1 rounded">
+              {project.pous.length}
+            </span>
           </div>
 
           {expandedNodes.pous && (
@@ -160,21 +176,25 @@ export function ProjectExplorer() {
                   pou.language === "ST"
                     ? "text-[#38bdf8]"
                     : pou.language === "LD"
-                    ? "text-[#22c55e]"
-                    : pou.language === "FBD"
-                    ? "text-[#f59e0b]"
-                    : "text-[#ec4899]";
+                      ? "text-[#22c55e]"
+                      : pou.language === "FBD"
+                        ? "text-[#f59e0b]"
+                        : "text-[#ec4899]";
 
                 return (
                   <div
                     key={pou.id}
                     onClick={() => selectPou(pou.id)}
                     className={`group flex items-center justify-between px-2 py-1 rounded cursor-pointer ${
-                      isSelected ? "bg-[#a855f7]/20 text-[#d8b4fe] font-medium" : "hover:bg-[#161b26]"
+                      isSelected
+                        ? "bg-[#a855f7]/20 text-[#d8b4fe] font-medium"
+                        : "hover:bg-[#161b26]"
                     }`}
                   >
                     <div className="flex items-center gap-1.5 truncate">
-                      <span className={`text-[10px] font-mono font-bold ${langColor}`}>[{pou.language}]</span>
+                      <span className={`text-[10px] font-mono font-bold ${langColor}`}>
+                        [{pou.language}]
+                      </span>
                       {editingId === pou.id ? (
                         <input
                           type="text"
@@ -214,7 +234,9 @@ export function ProjectExplorer() {
               <Graph size={14} className="text-[#22c55e]" />
               <span className="font-medium text-[#e2e8f0]">Tags & GVL Canônicas</span>
             </div>
-            <span className="text-[10px] bg-[#212638] text-[#94a3b8] px-1 rounded">{project.tags.length}</span>
+            <span className="text-[10px] bg-[#212638] text-[#94a3b8] px-1 rounded">
+              {project.tags.length}
+            </span>
           </div>
 
           {expandedNodes.gvl && (

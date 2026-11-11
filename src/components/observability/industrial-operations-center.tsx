@@ -4,7 +4,7 @@
 // Standards: ISA-101 (HMI Design), ISA-18.2, IEC 62443, WCAG 2.2 AA
 // =============================================================================
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Pulse,
   ArrowsClockwise,
@@ -44,15 +44,6 @@ import type {
   IndustrialReliabilityMetrics,
 } from "@/lib/observability/types";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/observability/types";
-import type { FleetUserContext } from "@/lib/edge/types";
-
-const DEMO_USER_CONTEXT: FleetUserContext = {
-  userId: "usr_ops_lead",
-  email: "operacoes@eletricai.ind.br",
-  role: "TENANT_ADMIN",
-  organizationId: "org_sp_industrial",
-  authorizedPlantIds: ["plant_ete_central", "plant_subestacao_sp"],
-};
 
 const GUIDED_QUESTIONS = [
   "Por que a tag ficou STALE?",
@@ -76,7 +67,9 @@ export function IndustrialOperationsCenter() {
   const [sloMeasurements, setSloMeasurements] = useState<SloMeasurement[]>([]);
   const [diagnostics, setDiagnostics] = useState<DeterministicDiagnosticRecord[]>([]);
   const [runbooks, setRunbooks] = useState<IndustrialRunbook[]>([]);
-  const [reliabilityMetrics, setReliabilityMetrics] = useState<IndustrialReliabilityMetrics | null>(null);
+  const [reliabilityMetrics, setReliabilityMetrics] = useState<IndustrialReliabilityMetrics | null>(
+    null,
+  );
 
   // Filtros do Histórico de Incidentes (Fase 8.5)
   const [incidentCategoryFilter, setIncidentCategoryFilter] = useState<string>("ALL");
@@ -89,7 +82,7 @@ export function IndustrialOperationsCenter() {
   const [aiAnalysis, setAiAnalysis] = useState<AiDiagnosticAnalysis | null>(null);
   const [isAskingAi, setIsAskingAi] = useState<boolean>(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const plantParam = selectedPlant === "ALL" ? undefined : selectedPlant;
@@ -97,16 +90,15 @@ export function IndustrialOperationsCenter() {
       const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
 
       const [ov, sn, inc, pip, slo, diag, rbs, rel] = await Promise.all([
-        getObservabilityOverviewFn({ data: { user: DEMO_USER_CONTEXT, plantId: plantParam } }),
-        getHealthSnapshotsFn({ data: { user: DEMO_USER_CONTEXT, plantId: plantParam } }),
-        getIndustrialIncidentsFn({ data: { user: DEMO_USER_CONTEXT, plantId: plantParam } }),
-        getDataReliabilityReportsFn({ data: { user: DEMO_USER_CONTEXT } }),
-        getSloMeasurementsFn({ data: { user: DEMO_USER_CONTEXT } }),
-        getDeterministicDiagnosticsFn({ data: { user: DEMO_USER_CONTEXT, plantId: plantParam } }),
-        getIndustrialRunbooksFn({ data: { user: DEMO_USER_CONTEXT } }),
+        getObservabilityOverviewFn({ data: { plantId: plantParam } }),
+        getHealthSnapshotsFn({ data: { plantId: plantParam } }),
+        getIndustrialIncidentsFn({ data: { plantId: plantParam } }),
+        getDataReliabilityReportsFn({}),
+        getSloMeasurementsFn({}),
+        getDeterministicDiagnosticsFn({ data: { plantId: plantParam } }),
+        getIndustrialRunbooksFn({}),
         getIndustrialReliabilityMetricsFn({
           data: {
-            user: DEMO_USER_CONTEXT,
             plantId: plantParam ?? "plant_ete_central",
             windowStartMs: sevenDaysAgo,
             windowEndMs: now,
@@ -124,23 +116,25 @@ export function IndustrialOperationsCenter() {
       setReliabilityMetrics(rel);
       setLastRefreshedAt(new Date());
     } catch (err) {
-      console.error("[NOC-EOC] Falha ao sincronizar telemetria de observabilidade e diagnóstico:", err);
+      console.error(
+        "[NOC-EOC] Falha ao sincronizar telemetria de observabilidade e diagnóstico:",
+        err,
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedPlant]);
 
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 15000);
     return () => clearInterval(interval);
-  }, [selectedPlant]);
+  }, [loadData]);
 
   const handleAcknowledgeIncident = async (incidentId: string) => {
     try {
       await transitionIncidentStatusFn({
         data: {
-          user: DEMO_USER_CONTEXT,
           incidentId,
           toStatus: "ACKNOWLEDGED",
           note: "Reconhecido pela console do Centro de Operações e Diagnóstico.",
@@ -159,7 +153,6 @@ export function IndustrialOperationsCenter() {
     try {
       const res = await askAiDiagnosticAssistantFn({
         data: {
-          user: DEMO_USER_CONTEXT,
           plantId: selectedPlant === "ALL" ? "plant_ete_central" : selectedPlant,
           question: q,
           incidentId: incidents[0]?.incidentId,
@@ -210,7 +203,10 @@ export function IndustrialOperationsCenter() {
               <h1 className="text-xl font-bold tracking-tight">
                 Centro de Operações e Diagnóstico Industrial
               </h1>
-              <Badge variant="outline" className="text-xs font-mono uppercase bg-muted/50 border-border">
+              <Badge
+                variant="outline"
+                className="text-xs font-mono uppercase bg-muted/50 border-border"
+              >
                 Gate 3.8 · NOC/EOC & RCA
               </Badge>
               <Badge
@@ -221,7 +217,8 @@ export function IndustrialOperationsCenter() {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Observabilidade Transversal, Correlação Causal Determinística, Grafo de Impacto & Resolução Assistida
+              Observabilidade Transversal, Correlação Causal Determinística, Grafo de Impacto &
+              Resolução Assistida
             </p>
           </div>
         </div>
@@ -259,7 +256,11 @@ export function IndustrialOperationsCenter() {
 
       {/* Main Tabs Navigation */}
       <div className="flex-1 flex flex-col p-6 overflow-hidden">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex-1 flex flex-col overflow-hidden"
+        >
           <TabsList className="w-full justify-start border-b border-border rounded-none h-11 bg-transparent p-0 gap-5 overflow-x-auto">
             <TabsTrigger
               value="overview"
@@ -327,7 +328,10 @@ export function IndustrialOperationsCenter() {
                   <p className="text-xs text-muted-foreground uppercase font-medium">Saúde Cloud</p>
                   <div className="flex items-baseline justify-between mt-2">
                     <span className="text-2xl font-bold text-emerald-500">100%</span>
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]"
+                    >
                       NOMINAL
                     </Badge>
                   </div>
@@ -340,9 +344,13 @@ export function IndustrialOperationsCenter() {
                   <p className="text-xs text-muted-foreground uppercase font-medium">Frota Edge</p>
                   <div className="flex items-baseline justify-between mt-2">
                     <span className="text-2xl font-bold text-foreground">
-                      {overviewData?.counts?.fleetOnlineGateways ?? 1} / {overviewData?.counts?.fleetTotalGateways ?? 1}
+                      {overviewData?.counts?.fleetOnlineGateways ?? 1} /{" "}
+                      {overviewData?.counts?.fleetTotalGateways ?? 1}
                     </span>
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]"
+                    >
                       ONLINE
                     </Badge>
                   </div>
@@ -352,10 +360,15 @@ export function IndustrialOperationsCenter() {
 
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-medium">Fontes Industriais</p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    Fontes Industriais
+                  </p>
                   <div className="flex items-baseline justify-between mt-2">
                     <span className="text-2xl font-bold text-foreground">3 / 3</span>
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]"
+                    >
                       ATIVAS
                     </Badge>
                   </div>
@@ -365,10 +378,15 @@ export function IndustrialOperationsCenter() {
 
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-medium">Pipeline de Dados</p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    Pipeline de Dados
+                  </p>
                   <div className="flex items-baseline justify-between mt-2">
                     <span className="text-2xl font-bold text-emerald-500">99.98%</span>
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]"
+                    >
                       10 ESTÁGIOS
                     </Badge>
                   </div>
@@ -378,12 +396,17 @@ export function IndustrialOperationsCenter() {
 
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-medium">Incidentes Abertos</p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    Incidentes Abertos
+                  </p>
                   <div className="flex items-baseline justify-between mt-2">
                     <span className="text-2xl font-bold text-amber-500">
                       {overviewData?.counts?.openIncidents ?? 0}
                     </span>
-                    <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30 text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-500/10 text-amber-500 border-amber-500/30 text-[10px]"
+                    >
                       RASTREADOS
                     </Badge>
                   </div>
@@ -395,10 +418,15 @@ export function IndustrialOperationsCenter() {
 
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-medium">Integridade Historian</p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    Integridade Historian
+                  </p>
                   <div className="flex items-baseline justify-between mt-2">
                     <span className="text-2xl font-bold text-emerald-500">100%</span>
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]"
+                    >
                       AUDITADO
                     </Badge>
                   </div>
@@ -411,9 +439,12 @@ export function IndustrialOperationsCenter() {
             <Card className="bg-card border-border">
               <CardHeader className="py-3 px-5 border-b border-border flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-sm font-semibold">Matriz de Saúde Determinística dos Componentes</CardTitle>
+                  <CardTitle className="text-sm font-semibold">
+                    Matriz de Saúde Determinística dos Componentes
+                  </CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Avaliação em tempo real com justificação verificável e proteção contra oscilação (histerese)
+                    Avaliação em tempo real com justificação verificável e proteção contra oscilação
+                    (histerese)
                   </p>
                 </div>
                 <Badge variant="outline" className="text-xs font-mono">
@@ -437,7 +468,10 @@ export function IndustrialOperationsCenter() {
                     <tbody className="divide-y divide-border font-mono">
                       {snapshots.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-6 text-center text-muted-foreground font-sans">
+                          <td
+                            colSpan={7}
+                            className="py-6 text-center text-muted-foreground font-sans"
+                          >
                             Nenhum componente avaliado no filtro atual.
                           </td>
                         </tr>
@@ -483,7 +517,9 @@ export function IndustrialOperationsCenter() {
                               </span>
                             </td>
                             <td className="py-2 px-4 font-sans text-muted-foreground text-[11px] max-w-md truncate">
-                              <span className="font-semibold text-foreground mr-1">{s.reasonCode}:</span>
+                              <span className="font-semibold text-foreground mr-1">
+                                {s.reasonCode}:
+                              </span>
                               {s.evidenceReference}
                             </td>
                             <td className="py-2 px-4 text-right text-muted-foreground text-[11px]">
@@ -504,27 +540,41 @@ export function IndustrialOperationsCenter() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-medium">MTTD (Detecção)</p>
-                  <p className="text-xl font-bold font-mono mt-1">
-                    {reliabilityMetrics?.mttdMs != null ? `${reliabilityMetrics.mttdMs} ms` : "Sem amostras"}
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    MTTD (Detecção)
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-1">mean(detectedAt - firstObservedAt)</p>
+                  <p className="text-xl font-bold font-mono mt-1">
+                    {reliabilityMetrics?.mttdMs != null
+                      ? `${reliabilityMetrics.mttdMs} ms`
+                      : "Sem amostras"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    mean(detectedAt - firstObservedAt)
+                  </p>
                 </CardContent>
               </Card>
 
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-medium">MTTA (Reconhecimento)</p>
-                  <p className="text-xl font-bold font-mono mt-1">
-                    {reliabilityMetrics?.mttaMs != null ? `${reliabilityMetrics.mttaMs} ms` : "Sem amostras"}
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    MTTA (Reconhecimento)
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-1">mean(acknowledgedAt - detectedAt)</p>
+                  <p className="text-xl font-bold font-mono mt-1">
+                    {reliabilityMetrics?.mttaMs != null
+                      ? `${reliabilityMetrics.mttaMs} ms`
+                      : "Sem amostras"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    mean(acknowledgedAt - detectedAt)
+                  </p>
                 </CardContent>
               </Card>
 
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-medium">MTTR (Rec. Operacional)</p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    MTTR (Rec. Operacional)
+                  </p>
                   <p className="text-xl font-bold font-mono mt-1 text-emerald-500">
                     {reliabilityMetrics?.mttrRecoveryMs != null
                       ? `${reliabilityMetrics.mttrRecoveryMs} ms`
@@ -541,19 +591,26 @@ export function IndustrialOperationsCenter() {
 
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-medium">MTBF (Entre Falhas)</p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    MTBF (Entre Falhas)
+                  </p>
                   <p className="text-xl font-bold font-mono mt-1 text-amber-500">
-                    {reliabilityMetrics?.mtbfMs === "INSUFFICIENT_DATA" || reliabilityMetrics?.mtbfMs == null
+                    {reliabilityMetrics?.mtbfMs === "INSUFFICIENT_DATA" ||
+                    reliabilityMetrics?.mtbfMs == null
                       ? "INSUFFICIENT_DATA"
                       : `${reliabilityMetrics.mtbfMs} ms`}
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-1">Exige &gt;= 2 falhas fechadas</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Exige &gt;= 2 falhas fechadas
+                  </p>
                 </CardContent>
               </Card>
 
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-medium">Causa Confirmada</p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">
+                    Causa Confirmada
+                  </p>
                   <p className="text-xl font-bold font-mono mt-1">
                     {reliabilityMetrics?.confirmedCausePercent ?? 0}%
                   </p>
@@ -572,7 +629,8 @@ export function IndustrialOperationsCenter() {
                     Motor de Diagnóstico Determinístico Baseado em Regras (30 Regras Canônicas)
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Correlação temporal isolada nunca produz CONFIRMED_BY_EVIDENCE. Deadband ativo sem mudança (RULE_23) não gera falso positivo.
+                    Correlação temporal isolada nunca produz CONFIRMED_BY_EVIDENCE. Deadband ativo
+                    sem mudança (RULE_23) não gera falso positivo.
                   </p>
                 </div>
                 <Badge variant="outline" className="text-xs font-mono">
@@ -606,7 +664,9 @@ export function IndustrialOperationsCenter() {
                               <span className="font-bold text-primary block">{d.ruleId}</span>
                               <span className="text-muted-foreground">{d.diagnosticId}</span>
                             </td>
-                            <td className="py-2.5 px-4 font-mono font-semibold">{d.primaryComponent}</td>
+                            <td className="py-2.5 px-4 font-mono font-semibold">
+                              {d.primaryComponent}
+                            </td>
                             <td className="py-2.5 px-4 max-w-md">
                               <p className="text-foreground">{d.hypothesis}</p>
                               <p className="text-[11px] text-muted-foreground">
@@ -642,23 +702,46 @@ export function IndustrialOperationsCenter() {
                   Topologia Canônica de Propagação e Dependências Industriais
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Cadeia validada: Edge Gateway → Protocolo (Modbus/OPC UA/MQTT) → Equipamento (UUID Canônico) → Tag → Historian → SCADA
+                  Cadeia validada: Edge Gateway → Protocolo (Modbus/OPC UA/MQTT) → Equipamento (UUID
+                  Canônico) → Tag → Historian → SCADA
                 </p>
               </CardHeader>
               <CardContent className="p-5">
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-2 font-mono text-xs">
                   {[
-                    { layer: "1. EDGE GATEWAY", id: "gw_ete_01", role: "Origem de Aquisição / WAL" },
-                    { layer: "2. PROTOCOLO OT", id: "drv_modbus_01", role: "Modbus TCP / OPC UA / MQTT" },
-                    { layer: "3. EQUIPAMENTO", id: "eq_bomba_recalque_01", role: "UUID Canônico Gate 3.6" },
-                    { layer: "4. TAG INDUSTRIAL", id: "tag_corrente_bomba_01", role: "Amostragem & Qualidade" },
+                    {
+                      layer: "1. EDGE GATEWAY",
+                      id: "gw_ete_01",
+                      role: "Origem de Aquisição / WAL",
+                    },
+                    {
+                      layer: "2. PROTOCOLO OT",
+                      id: "drv_modbus_01",
+                      role: "Modbus TCP / OPC UA / MQTT",
+                    },
+                    {
+                      layer: "3. EQUIPAMENTO",
+                      id: "eq_bomba_recalque_01",
+                      role: "UUID Canônico Gate 3.6",
+                    },
+                    {
+                      layer: "4. TAG INDUSTRIAL",
+                      id: "tag_corrente_bomba_01",
+                      role: "Amostragem & Qualidade",
+                    },
                     { layer: "5. HISTORIAN", id: "hist_series_ete", role: "Persistência Temporal" },
-                    { layer: "6. SCADA VIEW", id: "scada_synoptic_ete", role: "Supervisão Operacional" },
+                    {
+                      layer: "6. SCADA VIEW",
+                      id: "scada_synoptic_ete",
+                      role: "Supervisão Operacional",
+                    },
                   ].map((node) => (
                     <div key={node.id} className="border border-border rounded-lg p-3 bg-muted/20">
                       <span className="text-[10px] font-bold text-primary block">{node.layer}</span>
                       <p className="font-semibold text-foreground mt-1">{node.id}</p>
-                      <p className="text-[11px] text-muted-foreground font-sans mt-1">{node.role}</p>
+                      <p className="text-[11px] text-muted-foreground font-sans mt-1">
+                        {node.role}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -670,19 +753,27 @@ export function IndustrialOperationsCenter() {
                 <div>
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-primary" />
-                    Biblioteca Oficial de Runbooks Técnicos ({runbooks.length} Procedimentos Aprovados)
+                    Biblioteca Oficial de Runbooks Técnicos ({runbooks.length} Procedimentos
+                    Aprovados)
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Procedimentos versionados com classificação de risco e proibição permanente de atuação física remota
+                    Procedimentos versionados com classificação de risco e proibição permanente de
+                    atuação física remota
                   </p>
                 </div>
               </CardHeader>
               <CardContent className="p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {runbooks.map((rb) => (
-                    <div key={rb.runbookId} className="border border-border rounded-lg p-3.5 bg-card">
+                    <div
+                      key={rb.runbookId}
+                      className="border border-border rounded-lg p-3.5 bg-card"
+                    >
                       <div className="flex items-center justify-between gap-2">
-                        <Badge variant="outline" className="font-mono text-[10px] text-primary border-primary/30">
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-[10px] text-primary border-primary/30"
+                        >
                           {rb.category} · {rb.runbookId}
                         </Badge>
                         <span className="text-[10px] font-mono text-muted-foreground">
@@ -719,10 +810,14 @@ export function IndustrialOperationsCenter() {
                       Assistente Técnico de Diagnóstico Industrial (Estritamente Consultivo)
                     </CardTitle>
                     <p className="text-xs text-muted-foreground">
-                      Baseado exclusivamente no motor determinístico, grafo de dependências, Historian e Runbooks aprovados. Protegido contra Prompt Injection industrial.
+                      Baseado exclusivamente no motor determinístico, grafo de dependências,
+                      Historian e Runbooks aprovados. Protegido contra Prompt Injection industrial.
                     </p>
                   </div>
-                  <Badge variant="outline" className="font-mono text-[10px] bg-emerald-500/10 text-emerald-500">
+                  <Badge
+                    variant="outline"
+                    className="font-mono text-[10px] bg-emerald-500/10 text-emerald-500"
+                  >
                     READ-ONLY · NO PHYSICAL CONTROL
                   </Badge>
                 </div>
@@ -768,7 +863,8 @@ export function IndustrialOperationsCenter() {
                         Análise: {aiAnalysis.analysisId} · Status: {aiAnalysis.status}
                       </span>
                       <Badge variant="outline" className="font-mono text-[10px]">
-                        Confiança: {aiAnalysis.confidenceLevel} ({Math.round(aiAnalysis.confidenceScore * 100)}%)
+                        Confiança: {aiAnalysis.confidenceLevel} (
+                        {Math.round(aiAnalysis.confidenceScore * 100)}%)
                       </Badge>
                     </div>
 
@@ -782,7 +878,9 @@ export function IndustrialOperationsCenter() {
                     </div>
 
                     <div>
-                      <p className="font-semibold text-foreground">2. Causas Prováveis / Hipóteses:</p>
+                      <p className="font-semibold text-foreground">
+                        2. Causas Prováveis / Hipóteses:
+                      </p>
                       <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-0.5">
                         {aiAnalysis.probableCauses.map((c, idx) => (
                           <li key={idx}>{c}</li>
@@ -791,7 +889,9 @@ export function IndustrialOperationsCenter() {
                     </div>
 
                     <div>
-                      <p className="font-semibold text-foreground">3. Informações Ausentes para Confirmação:</p>
+                      <p className="font-semibold text-foreground">
+                        3. Informações Ausentes para Confirmação:
+                      </p>
                       <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-0.5">
                         {aiAnalysis.missingInformation.length === 0 ? (
                           <li>Nenhuma informação crítica pendente.</li>
@@ -802,11 +902,14 @@ export function IndustrialOperationsCenter() {
                     </div>
 
                     <div>
-                      <p className="font-semibold text-foreground">4. Recomendações Técnicas (Runbooks):</p>
+                      <p className="font-semibold text-foreground">
+                        4. Recomendações Técnicas (Runbooks):
+                      </p>
                       <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-0.5">
                         {aiAnalysis.recommendations.map((r, idx) => (
                           <li key={idx}>
-                            <span className="font-mono text-primary">[{r.actionCategory}]</span> {r.step}
+                            <span className="font-mono text-primary">[{r.actionCategory}]</span>{" "}
+                            {r.step}
                           </li>
                         ))}
                       </ul>
@@ -886,11 +989,15 @@ export function IndustrialOperationsCenter() {
                         filteredIncidents.map((inc) => (
                           <tr key={inc.incidentId} className="hover:bg-muted/20 transition-colors">
                             <td className="py-3 px-4 font-mono text-[11px] text-muted-foreground">
-                              <span className="text-foreground font-semibold block">{inc.incidentId}</span>
+                              <span className="text-foreground font-semibold block">
+                                {inc.incidentId}
+                              </span>
                               {new Date(inc.firstObservedAt).toLocaleTimeString()}
                             </td>
                             <td className="py-3 px-4 text-[11px] font-mono">
-                              <span className="text-foreground font-semibold block">{inc.sourceComponentId}</span>
+                              <span className="text-foreground font-semibold block">
+                                {inc.sourceComponentId}
+                              </span>
                               <Badge variant="outline" className="text-[10px] mt-0.5">
                                 {inc.category}
                               </Badge>
@@ -911,7 +1018,9 @@ export function IndustrialOperationsCenter() {
                             </td>
                             <td className="py-3 px-4 max-w-sm">
                               <p className="font-semibold text-foreground text-xs">{inc.title}</p>
-                              <p className="text-[11px] text-muted-foreground truncate">{inc.description}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {inc.description}
+                              </p>
                               {inc.confirmedCause && (
                                 <span className="text-[10px] text-emerald-500 font-mono block">
                                   Confirmada: {inc.confirmedCause.ruleId}
@@ -919,7 +1028,8 @@ export function IndustrialOperationsCenter() {
                               )}
                               {!inc.confirmedCause && inc.probableCause && (
                                 <span className="text-[10px] text-amber-500 font-mono block">
-                                  Provável: {inc.probableCause.ruleId} ({Math.round(inc.probableCause.confidence * 100)}%)
+                                  Provável: {inc.probableCause.ruleId} (
+                                  {Math.round(inc.probableCause.confidence * 100)}%)
                                 </span>
                               )}
                             </td>
@@ -927,7 +1037,10 @@ export function IndustrialOperationsCenter() {
                               {inc.investigationStage ?? "INCIDENT_DETECTED"}
                             </td>
                             <td className="py-3 px-4">
-                              <Badge variant="outline" className="font-mono text-[10px] uppercase font-bold">
+                              <Badge
+                                variant="outline"
+                                className="font-mono text-[10px] uppercase font-bold"
+                              >
                                 {inc.status}
                               </Badge>
                             </td>
@@ -962,22 +1075,73 @@ export function IndustrialOperationsCenter() {
                   Rastreabilidade Ponta a Ponta: Os 10 Estágios do Pipeline Industrial
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Garantia de integridade metrológica, não-repúdio de amostras, deduplicação e preservação temporal
+                  Garantia de integridade metrológica, não-repúdio de amostras, deduplicação e
+                  preservação temporal
                 </p>
               </CardHeader>
               <CardContent className="p-5">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3 font-mono text-xs">
                   {[
-                    { num: "01", name: "Coleta na Origem", desc: "Drivers Modbus/OPC UA/MQTT", status: "OK" },
-                    { num: "02", name: "Normalização", desc: "Escala & Engenharia (NBR 5410)", status: "OK" },
-                    { num: "03", name: "Validação Schema", desc: "Zod Contract Validation", status: "OK" },
-                    { num: "04", name: "Lote de Telemetria", desc: "Formação de Batches Ordenados", status: "OK" },
-                    { num: "05", name: "Persistência Local", desc: "SQLite WAL Store-and-Forward", status: "OK" },
-                    { num: "06", name: "Transmissão Segura", desc: "mTLS / WSS com Backpressure", status: "OK" },
-                    { num: "07", name: "Recepção Cloud", desc: "Ingestion API Endpoint", status: "OK" },
-                    { num: "08", name: "Deduplicação", desc: "Idempotência por Chave Composta", status: "OK" },
-                    { num: "09", name: "Historian Storage", desc: "Gravação Permanente de Série", status: "OK" },
-                    { num: "10", name: "SCADA Dispatch", desc: "Streaming para Clientes em Tempo Real", status: "OK" },
+                    {
+                      num: "01",
+                      name: "Coleta na Origem",
+                      desc: "Drivers Modbus/OPC UA/MQTT",
+                      status: "OK",
+                    },
+                    {
+                      num: "02",
+                      name: "Normalização",
+                      desc: "Escala & Engenharia (NBR 5410)",
+                      status: "OK",
+                    },
+                    {
+                      num: "03",
+                      name: "Validação Schema",
+                      desc: "Zod Contract Validation",
+                      status: "OK",
+                    },
+                    {
+                      num: "04",
+                      name: "Lote de Telemetria",
+                      desc: "Formação de Batches Ordenados",
+                      status: "OK",
+                    },
+                    {
+                      num: "05",
+                      name: "Persistência Local",
+                      desc: "SQLite WAL Store-and-Forward",
+                      status: "OK",
+                    },
+                    {
+                      num: "06",
+                      name: "Transmissão Segura",
+                      desc: "mTLS / WSS com Backpressure",
+                      status: "OK",
+                    },
+                    {
+                      num: "07",
+                      name: "Recepção Cloud",
+                      desc: "Ingestion API Endpoint",
+                      status: "OK",
+                    },
+                    {
+                      num: "08",
+                      name: "Deduplicação",
+                      desc: "Idempotência por Chave Composta",
+                      status: "OK",
+                    },
+                    {
+                      num: "09",
+                      name: "Historian Storage",
+                      desc: "Gravação Permanente de Série",
+                      status: "OK",
+                    },
+                    {
+                      num: "10",
+                      name: "SCADA Dispatch",
+                      desc: "Streaming para Clientes em Tempo Real",
+                      status: "OK",
+                    },
                   ].map((stage) => (
                     <div
                       key={stage.num}
@@ -988,8 +1152,12 @@ export function IndustrialOperationsCenter() {
                           <span className="text-[11px] font-bold text-primary">{stage.num}</span>
                           <span className="h-2 w-2 rounded-full bg-emerald-500" />
                         </div>
-                        <p className="font-semibold text-foreground font-sans text-xs">{stage.name}</p>
-                        <p className="text-[11px] text-muted-foreground mt-1 font-sans">{stage.desc}</p>
+                        <p className="font-semibold text-foreground font-sans text-xs">
+                          {stage.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-1 font-sans">
+                          {stage.desc}
+                        </p>
                       </div>
                       <div className="mt-3 pt-2 border-t border-border/50 text-[10px] text-emerald-500 font-bold">
                         ESTADO NOMINAL
@@ -1022,7 +1190,9 @@ export function IndustrialOperationsCenter() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Políticas RLS:</span>
-                    <span className="text-emerald-500 font-mono">ATIVAS (Isolamento Multi-Tenant)</span>
+                    <span className="text-emerald-500 font-mono">
+                      ATIVAS (Isolamento Multi-Tenant)
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -1083,7 +1253,8 @@ export function IndustrialOperationsCenter() {
                   Metrologia de SLI / SLO e Orçamento de Erros (Error Budgets)
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Cálculo determinístico com denominação explícita e expurgo de manutenção programada aprovada
+                  Cálculo determinístico com denominação explícita e expurgo de manutenção
+                  programada aprovada
                 </p>
               </CardHeader>
               <CardContent className="p-0">

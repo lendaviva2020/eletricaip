@@ -4,6 +4,7 @@
 
 import type { RegisteredGatewayRecord, EdgeTelemetryBatch, EdgeIngestAck } from "./types";
 import { CLOUD_EDGE_PROTOCOL_VERSION } from "./types";
+import { constantTimeEqual, sha256Hex } from "../security/isomorphic-crypto";
 
 export interface GatewayAuthResult {
   authorized: boolean;
@@ -30,8 +31,22 @@ export class CloudGatewayRegistry {
     this.seedDefaultGateways();
   }
 
+  private static toCredentialDigest(rawOrDigest: string): string {
+    if (rawOrDigest.startsWith("sha256:") && rawOrDigest.length === 71) {
+      return rawOrDigest.toLowerCase();
+    }
+    return `sha256:${sha256Hex(rawOrDigest)}`;
+  }
+
   private seedDefaultGateways(): void {
-    // Default seed for demo and lab environments
+    // Segredo nunca hardcoded em codigo/bundle; token opcional apenas via ambiente server-side.
+    const envLabToken =
+      typeof process !== "undefined" && process.env
+        ? process.env["ELETRICAI_LAB_GATEWAY_TOKEN_HASH"] ||
+          process.env["ELETRICAI_LAB_GATEWAY_TOKEN"] ||
+          ""
+        : "";
+
     this.registerGateway(
       {
         gatewayId: "gw_lab_ete_01",
@@ -46,14 +61,17 @@ export class CloudGatewayRegistry {
         operationalState: "ONLINE",
         isRevoked: false,
       },
-      "egw_token_lab_ete_secret_123",
+      envLabToken || undefined,
     );
   }
 
-  public registerGateway(gateway: RegisteredGatewayRecord, tokenOrCertHash?: string): void {
+  public registerGateway(gateway: RegisteredGatewayRecord, tokenOrDigest?: string): void {
     this.gateways.set(gateway.gatewayId, { ...gateway });
-    if (tokenOrCertHash) {
-      this.authTokens.set(gateway.gatewayId, tokenOrCertHash);
+    if (tokenOrDigest && tokenOrDigest.trim().length > 0) {
+      this.authTokens.set(
+        gateway.gatewayId,
+        CloudGatewayRegistry.toCredentialDigest(tokenOrDigest.trim()),
+      );
     }
   }
 
@@ -93,8 +111,26 @@ export class CloudGatewayRegistry {
       };
     }
 
-    const expectedToken = this.authTokens.get(gatewayId);
-    if (expectedToken && credential && expectedToken !== credential && gw.certificateFingerprint !== credential) {
+    if (!credential || typeof credential !== "string" || !credential.trim()) {
+      return {
+        authorized: false,
+        error: "MISSING_CREDENTIALS: Credencial de autenticação do gateway ausente.",
+        statusCode: 401,
+      };
+    }
+
+    const expectedDigest = this.authTokens.get(gatewayId);
+    if (!expectedDigest) {
+      return {
+        authorized: false,
+        error:
+          "GATEWAY_CREDENTIAL_NOT_PROVISIONED: Credencial de gateway não provisionada no servidor.",
+        statusCode: 401,
+      };
+    }
+
+    const presentedDigest = CloudGatewayRegistry.toCredentialDigest(credential.trim());
+    if (!constantTimeEqual(presentedDigest, expectedDigest)) {
       return {
         authorized: false,
         error: "INVALID_CREDENTIALS: Credencial de autenticação mTLS/Token inválida.",

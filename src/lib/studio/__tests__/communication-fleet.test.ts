@@ -17,13 +17,18 @@ describe("Milestones 8 & 9: Industrial Communication, Fleet Management & Certifi
 
     // Frame Modbus TCP FC03 Read Holding Registers (12 bytes)
     const tcpFrame = new Uint8Array([
-      0x00, 0x01, // Transaction ID = 1
-      0x00, 0x00, // Protocol ID = 0 (Modbus)
-      0x00, 0x06, // Length = 6
-      0x01,       // Unit ID = 1
-      0x03,       // Function Code = 3
-      0x00, 0x64, // Starting Address = 100
-      0x00, 0x02, // Quantity = 2 registers
+      0x00,
+      0x01, // Transaction ID = 1
+      0x00,
+      0x00, // Protocol ID = 0 (Modbus)
+      0x00,
+      0x06, // Length = 6
+      0x01, // Unit ID = 1
+      0x03, // Function Code = 3
+      0x00,
+      0x64, // Starting Address = 100
+      0x00,
+      0x02, // Quantity = 2 registers
     ]);
 
     const parsed = ModbusProtocolEngine.parseModbusTCPFrame(tcpFrame);
@@ -50,9 +55,7 @@ describe("Milestones 8 & 9: Industrial Communication, Fleet Management & Certifi
     expect(parsedNode.identifierType).toBe("STRING");
     expect(parsedNode.identifier).toBe("Device1.Motor.SpeedRPM");
 
-    const virtualAddressSpace = new Map([
-      [nodeStr, { value: 1750.5, dataType: "Float" }],
-    ]);
+    const virtualAddressSpace = new Map([[nodeStr, { value: 1750.5, dataType: "Float" }]]);
 
     const readRes = OPCUAProtocolEngine.readNode(nodeStr, virtualAddressSpace);
     expect(readRes.statusCode).toBe("Good");
@@ -73,7 +76,7 @@ describe("Milestones 8 & 9: Industrial Communication, Fleet Management & Certifi
 
     const payload = SparkplugBProtocolEngine.encodePayload(
       [{ name: "Temperatura", timestamp: Date.now(), dataType: "Float", value: 45.2 }],
-      255
+      255,
     );
     expect(payload.seq).toBe(255);
     expect(payload.metrics.length).toBe(1);

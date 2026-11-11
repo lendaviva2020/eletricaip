@@ -81,8 +81,22 @@ describe("Milestone 5: Interactive Debugger & Trace Oscilloscope Engine", () => 
       triggerThreshold: 100.0,
       preTriggerSamples: 2,
       channels: [
-        { id: "ch1", tagId: "tag-press", name: "rPressure", color: "#FF0000", minDisplay: 0, maxDisplay: 200 },
-        { id: "ch2", tagId: "tag-pump", name: "bPumpRun", color: "#00FF00", minDisplay: 0, maxDisplay: 1 },
+        {
+          id: "ch1",
+          tagId: "tag-press",
+          name: "rPressure",
+          color: "#FF0000",
+          minDisplay: 0,
+          maxDisplay: 200,
+        },
+        {
+          id: "ch2",
+          tagId: "tag-pump",
+          name: "bPumpRun",
+          color: "#00FF00",
+          minDisplay: 0,
+          maxDisplay: 1,
+        },
       ],
     };
 

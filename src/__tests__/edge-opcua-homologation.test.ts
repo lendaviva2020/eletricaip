@@ -10,8 +10,13 @@ import { PersistentEdgeOutbox } from "@/lib/edge/buffer/sqlite-outbox";
 describe("GATE 3.4 — OPC UA Read-Only Driver Homologation", () => {
   let driver: OpcUaClientDriver;
   let outbox: PersistentEdgeOutbox;
-  const mockServerCert = "-----BEGIN CERTIFICATE-----\nMIIB...SERVER_MOCK_CERT\n-----END CERTIFICATE-----";
-  const validFingerprint = crypto.createHash("sha256").update(mockServerCert).digest("hex").toUpperCase();
+  const mockServerCert =
+    "-----BEGIN CERTIFICATE-----\nMIIB...SERVER_MOCK_CERT\n-----END CERTIFICATE-----";
+  const validFingerprint = crypto
+    .createHash("sha256")
+    .update(mockServerCert)
+    .digest("hex")
+    .toUpperCase();
 
   beforeEach(() => {
     outbox = new PersistentEdgeOutbox({ maxSamples: 1000 });
@@ -35,7 +40,8 @@ describe("GATE 3.4 — OPC UA Read-Only Driver Homologation", () => {
   });
 
   it("2. Certificado Inválido / Desconhecido: Rejeita conexão com CERTIFICATE_INVALID", async () => {
-    const untrustedCert = "-----BEGIN CERTIFICATE-----\nUNTRUSTED_ROGUE_CERT\n-----END CERTIFICATE-----";
+    const untrustedCert =
+      "-----BEGIN CERTIFICATE-----\nUNTRUSTED_ROGUE_CERT\n-----END CERTIFICATE-----";
     const connected = await driver.connect(untrustedCert);
     expect(connected).toBe(false);
     expect(driver.getState()).toBe("CERTIFICATE_INVALID");

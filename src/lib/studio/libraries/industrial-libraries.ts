@@ -1,14 +1,14 @@
 /**
  * ElétricAi Industrial OS — Original Industrial Libraries
  * 12 Bibliotecas Industriais com Contratos Formais, POUs e Algoritmos de Engenharia
- * 
+ *
  * Regra de Segurança Inegociável:
  * IS_PHYSICAL_CONTROL_ALLOWED = false
  */
 
 import { LibraryPackage, LibraryRegistry } from "./library-manager";
 
-export const IS_PHYSICAL_CONTROL_ALLOWED: false = false;
+export const IS_PHYSICAL_CONTROL_ALLOWED = false as const;
 
 // ============================================================================
 // 1. Biblioteca: ElectricalProtection (ANSI 50, 51, 50N, 51N, 27, 59, 81U, 81O)
@@ -22,7 +22,7 @@ export class FB_Overcurrent50_51 {
     curveType: "STANDARD_INVERSE" | "VERY_INVERSE" | "EXTREMELY_INVERSE",
     instPickupCurrent: number,
     cycleTimeSec: number,
-    internalAccumulator: number
+    internalAccumulator: number,
   ): { trip50: boolean; trip51: boolean; accumulator: number; timeToTripSec: number } {
     // ANSI 50: Instantâneo
     const trip50 = currentRMS >= instPickupCurrent;
@@ -69,12 +69,12 @@ export class FB_VoltageProtection27_59 {
     voltageRMS: number,
     nominalVoltage: number,
     undervoltageThresholdPct: number, // Ex: 80%
-    overvoltageThresholdPct: number,  // Ex: 110%
+    overvoltageThresholdPct: number, // Ex: 110%
     undervoltageDelaySec: number,
     overvoltageDelaySec: number,
     cycleTimeSec: number,
     uvTimerAcc: number,
-    ovTimerAcc: number
+    ovTimerAcc: number,
   ): { trip27: boolean; trip59: boolean; newUvAcc: number; newOvAcc: number } {
     const vPct = (voltageRMS / nominalVoltage) * 100;
     let newUvAcc = uvTimerAcc;
@@ -118,22 +118,29 @@ export class FB_TransformerThermalModel {
     windingTimeConstantMinutes: number = 6.0,
     cycleTimeSec: number = 1.0,
     prevTopOilTemp: number = 40.0,
-    prevHotSpotTemp: number = 55.0
-  ): { topOilTempC: number; hotSpotTempC: number; thermalAgingFactor: number; alarmOverheat: boolean } {
+    prevHotSpotTemp: number = 55.0,
+  ): {
+    topOilTempC: number;
+    hotSpotTempC: number;
+    thermalAgingFactor: number;
+    alarmOverheat: boolean;
+  } {
     const loadRatio = loadCurrentPct / 100.0;
     // Elevação de regime permanente do óleo no topo (IEC 60076-7)
     const steadyStateOilRise = 45.0 * Math.pow((1 + 5 * Math.pow(loadRatio, 2)) / 6, 0.8);
     const targetTopOil = ambientTempC + steadyStateOilRise;
 
     const dtHours = cycleTimeSec / 3600.0;
-    const topOilTempC = prevTopOilTemp + (targetTopOil - prevTopOilTemp) * (dtHours / topOilTimeConstantHours);
+    const topOilTempC =
+      prevTopOilTemp + (targetTopOil - prevTopOilTemp) * (dtHours / topOilTimeConstantHours);
 
     // Gradiente do enrolamento ao óleo
     const windingGradient = 23.0 * Math.pow(loadRatio, 1.6);
     const targetHotSpot = topOilTempC + windingGradient;
 
     const dtMin = cycleTimeSec / 60.0;
-    const hotSpotTempC = prevHotSpotTemp + (targetHotSpot - prevHotSpotTemp) * (dtMin / windingTimeConstantMinutes);
+    const hotSpotTempC =
+      prevHotSpotTemp + (targetHotSpot - prevHotSpotTemp) * (dtMin / windingTimeConstantMinutes);
 
     // Fator de envelhecimento relativo (Arrhenius: V = 2^((HotSpot - 98) / 6))
     const thermalAgingFactor = Math.pow(2, (hotSpotTempC - 98.0) / 6.0);
@@ -153,8 +160,14 @@ export class FB_OLTCTapChanger {
     currentTap: number = 0,
     minTap: number = -16,
     maxTap: number = 16,
-    accumulatedTimer: number = 0
-  ): { newTap: number; raisePulse: boolean; lowerPulse: boolean; newTimer: number; inDeadband: boolean } {
+    accumulatedTimer: number = 0,
+  ): {
+    newTap: number;
+    raisePulse: boolean;
+    lowerPulse: boolean;
+    newTimer: number;
+    inDeadband: boolean;
+  } {
     const errorPct = ((measuredVoltage - targetVoltage) / targetVoltage) * 100;
     let raisePulse = false;
     let lowerPulse = false;
@@ -198,7 +211,7 @@ export class FB_DOLStarter {
     feedbackTimeoutSec: number = 1.5,
     cycleTimeSec: number = 0.05,
     timerDiscrepancy: number = 0,
-    currentMotorRun: boolean = false
+    currentMotorRun: boolean = false,
   ): { motorRun: boolean; faultTrip: boolean; newTimer: number } {
     let motorRun = currentMotorRun;
     let faultTrip = false;
@@ -234,10 +247,22 @@ export class FB_StarDeltaStarter {
     transitionDwellSec: number = 0.05, // 50ms para evitar curto fase-fase
     cycleTimeSec: number = 0.01,
     state: "OFF" | "STAR" | "DWELL" | "DELTA" = "OFF",
-    timerAcc: number = 0
-  ): { mainContactor: boolean; starContactor: boolean; deltaContactor: boolean; newState: "OFF" | "STAR" | "DWELL" | "DELTA"; newTimer: number } {
+    timerAcc: number = 0,
+  ): {
+    mainContactor: boolean;
+    starContactor: boolean;
+    deltaContactor: boolean;
+    newState: "OFF" | "STAR" | "DWELL" | "DELTA";
+    newTimer: number;
+  } {
     if (cmdStop || overloadTripped) {
-      return { mainContactor: false, starContactor: false, deltaContactor: false, newState: "OFF", newTimer: 0 };
+      return {
+        mainContactor: false,
+        starContactor: false,
+        deltaContactor: false,
+        newState: "OFF",
+        newTimer: 0,
+      };
     }
 
     let newState = state;
@@ -290,7 +315,7 @@ export class FB_VFDControl {
     maxFreqHz: number = 60.0,
     minFreqHz: number = 0.0,
     cycleTimeSec: number = 0.01,
-    currentOutputHz: number = 0.0
+    currentOutputHz: number = 0.0,
   ): { outputHz: number; controlWord: number; atSpeed: boolean } {
     if (!enable) {
       return { outputHz: 0.0, controlWord: 0x0000, atSpeed: false };
@@ -307,7 +332,7 @@ export class FB_VFDControl {
 
     const atSpeed = Math.abs(outputHz - clampedTarget) < 0.1;
     // Exemplo de Control Word CANopen/Profidrive padrão
-    const controlWord = enable ? (atSpeed ? 0x047F : 0x047E) : 0x0470;
+    const controlWord = enable ? (atSpeed ? 0x047f : 0x047e) : 0x0470;
 
     return { outputHz, controlWord, atSpeed };
   }
@@ -324,7 +349,7 @@ export class FB_DuplexPumpAlternation {
     pump2Available: boolean,
     hoursPump1: number,
     hoursPump2: number,
-    leadPumpPreference: 1 | 2
+    leadPumpPreference: 1 | 2,
   ): { runPump1: boolean; runPump2: boolean; activeLeadPump: 1 | 2 } {
     let lead: 1 | 2 = leadPumpPreference;
 
@@ -360,7 +385,7 @@ export class FB_PumpCavitationProtection {
     vaporPressureBar: number,
     liquidDensityKgM3: number = 1000,
     suctionVelocityMS: number = 1.5,
-    npshRequiredM: number = 2.5
+    npshRequiredM: number = 2.5,
   ): { npshAvailableM: number; cavitationRisk: boolean; interlockTrip: boolean } {
     const g = 9.81;
     const staticHeadM = ((suctionPressureBar - vaporPressureBar) * 1e5) / (liquidDensityKgM3 * g);
@@ -385,8 +410,13 @@ export class FB_DiscreteValve {
     limitClosed: boolean,
     maxTransitTimeSec: number = 12.0,
     cycleTimeSec: number = 0.1,
-    transitTimer: number = 0
-  ): { outputOpenCoil: boolean; outputCloseCoil: boolean; faultTimeout: boolean; newTimer: number } {
+    transitTimer: number = 0,
+  ): {
+    outputOpenCoil: boolean;
+    outputCloseCoil: boolean;
+    faultTimeout: boolean;
+    newTimer: number;
+  } {
     const outputOpenCoil = cmdOpen;
     const outputCloseCoil = !cmdOpen;
 
@@ -416,8 +446,11 @@ export class FB_AnalogInputScaling {
   public static execute(
     rawSignalMa: number,
     engMin: number,
-    engMax: number
-  ): { scaledValue: number; status: "OK" | "UNDER_RANGE" | "OVER_RANGE" | "FAULT_OPEN_WIRE" | "FAULT_SHORT" } {
+    engMax: number,
+  ): {
+    scaledValue: number;
+    status: "OK" | "UNDER_RANGE" | "OVER_RANGE" | "FAULT_OPEN_WIRE" | "FAULT_SHORT";
+  } {
     // NAMUR NE43
     // < 3.6 mA: Falha de fiação aberta
     // 3.6 a 3.8 mA: Subfaixa (Under-range)
@@ -459,7 +492,7 @@ export class FB_PIDController {
     maxOutput: number = 100,
     cycleTimeSec: number = 0.1,
     integralAcc: number = 0,
-    prevError: number = 0
+    prevError: number = 0,
   ): { controlOutput: number; newIntegralAcc: number; newError: number } {
     const error = setpoint - processVariable;
     const propTerm = kp * error;
@@ -505,7 +538,7 @@ export class FB_ThreePhasePowerMeter {
     iPhaseC: number,
     powerFactorPhaseA: number = 0.95,
     cycleTimeSec: number = 1.0,
-    prevActiveEnergyKWh: number = 0
+    prevActiveEnergyKWh: number = 0,
   ): {
     totalActivePowerKW: number;
     totalReactivePowerKvar: number;
@@ -523,8 +556,11 @@ export class FB_ThreePhasePowerMeter {
     const sC = (vPhaseC * iPhaseC) / 1000;
     const totalApparentPowerKVA = sA + sB + sC;
 
-    const totalReactivePowerKvar = Math.sqrt(Math.max(0, Math.pow(totalApparentPowerKVA, 2) - Math.pow(totalActivePowerKW, 2)));
-    const globalPowerFactor = totalApparentPowerKVA > 0 ? totalActivePowerKW / totalApparentPowerKVA : 1.0;
+    const totalReactivePowerKvar = Math.sqrt(
+      Math.max(0, Math.pow(totalApparentPowerKVA, 2) - Math.pow(totalActivePowerKW, 2)),
+    );
+    const globalPowerFactor =
+      totalApparentPowerKVA > 0 ? totalActivePowerKW / totalApparentPowerKVA : 1.0;
 
     const energyIncKWh = totalActivePowerKW * (cycleTimeSec / 3600.0);
     const accumulatedEnergyKWh = prevActiveEnergyKWh + energyIncKWh;
@@ -551,8 +587,13 @@ export class FB_DualChannelEStop {
     maxDiscrepancyTimeSec: number = 0.05, // 50ms
     cycleTimeSec: number = 0.005,
     timerDiscrepancy: number = 0,
-    latchedTrip: boolean = false
-  ): { safetyHealthy: boolean; faultDiscrepancy: boolean; newTimer: number; newLatchedTrip: boolean } {
+    latchedTrip: boolean = false,
+  ): {
+    safetyHealthy: boolean;
+    faultDiscrepancy: boolean;
+    newTimer: number;
+    newLatchedTrip: boolean;
+  } {
     let faultDiscrepancy = false;
     let newTimer = timerDiscrepancy;
     let newLatchedTrip = latchedTrip;
@@ -591,7 +632,7 @@ export class FB_WaterTreatmentETE {
   public static execute(
     measuredPH: number,
     targetPH: number = 7.0,
-    deadband: number = 0.3
+    deadband: number = 0.3,
   ): { dosingAcidCmd: boolean; dosingBaseCmd: boolean; aerationNeeded: boolean } {
     let dosingAcidCmd = false;
     let dosingBaseCmd = false;
@@ -618,7 +659,7 @@ export class FB_ZeroPressureAccumulation {
     downstreamZoneClear: boolean,
     maxTravelTimeSec: number = 5.0,
     cycleTimeSec: number = 0.05,
-    zoneTimer: number = 0
+    zoneTimer: number = 0,
   ): { zoneRun: boolean; jamAlarm: boolean; newTimer: number } {
     const zoneRun = downstreamZoneClear;
     let jamAlarm = false;
@@ -641,7 +682,9 @@ export class FB_ZeroPressureAccumulation {
 // Registro de Todas as 12 Bibliotecas no LibraryRegistry
 // ============================================================================
 
-export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryRegistry.getInstance()): void {
+export function registerIndustrialLibraries(
+  registry: LibraryRegistry = LibraryRegistry.getInstance(),
+): void {
   // 1. Standard (Placeholders básicos)
   registry.register({
     id: "lib-std-001",
@@ -653,11 +696,36 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "TON", kind: "FUNCTION_BLOCK", description: "Timer On-Delay", signature: "(IN: BOOL, PT: TIME) -> (Q: BOOL, ET: TIME)" },
-      { name: "TOF", kind: "FUNCTION_BLOCK", description: "Timer Off-Delay", signature: "(IN: BOOL, PT: TIME) -> (Q: BOOL, ET: TIME)" },
-      { name: "TP", kind: "FUNCTION_BLOCK", description: "Timer Pulse", signature: "(IN: BOOL, PT: TIME) -> (Q: BOOL, ET: TIME)" },
-      { name: "R_TRIG", kind: "FUNCTION_BLOCK", description: "Rising Edge Trigger", signature: "(CLK: BOOL) -> (Q: BOOL)" },
-      { name: "F_TRIG", kind: "FUNCTION_BLOCK", description: "Falling Edge Trigger", signature: "(CLK: BOOL) -> (Q: BOOL)" },
+      {
+        name: "TON",
+        kind: "FUNCTION_BLOCK",
+        description: "Timer On-Delay",
+        signature: "(IN: BOOL, PT: TIME) -> (Q: BOOL, ET: TIME)",
+      },
+      {
+        name: "TOF",
+        kind: "FUNCTION_BLOCK",
+        description: "Timer Off-Delay",
+        signature: "(IN: BOOL, PT: TIME) -> (Q: BOOL, ET: TIME)",
+      },
+      {
+        name: "TP",
+        kind: "FUNCTION_BLOCK",
+        description: "Timer Pulse",
+        signature: "(IN: BOOL, PT: TIME) -> (Q: BOOL, ET: TIME)",
+      },
+      {
+        name: "R_TRIG",
+        kind: "FUNCTION_BLOCK",
+        description: "Rising Edge Trigger",
+        signature: "(CLK: BOOL) -> (Q: BOOL)",
+      },
+      {
+        name: "F_TRIG",
+        kind: "FUNCTION_BLOCK",
+        description: "Falling Edge Trigger",
+        signature: "(CLK: BOOL) -> (Q: BOOL)",
+      },
     ],
   });
 
@@ -699,8 +767,18 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "RTS_IEC_HANDLE", kind: "DUT", description: "Handle opaco de runtime", signature: "TYPE RTS_IEC_HANDLE : DWORD;" },
-      { name: "RTS_IEC_RESULT", kind: "DUT", description: "Código de resultado de operação", signature: "TYPE RTS_IEC_RESULT : UDINT;" },
+      {
+        name: "RTS_IEC_HANDLE",
+        kind: "DUT",
+        description: "Handle opaco de runtime",
+        signature: "TYPE RTS_IEC_HANDLE : DWORD;",
+      },
+      {
+        name: "RTS_IEC_RESULT",
+        kind: "DUT",
+        description: "Código de resultado de operação",
+        signature: "TYPE RTS_IEC_RESULT : UDINT;",
+      },
     ],
   });
 
@@ -715,8 +793,18 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [{ name: "EletricAi_Standard", versionRange: "^3.5.0" }],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_Overcurrent50_51", kind: "FUNCTION_BLOCK", description: "Sobrecorrente instantânea e temporizada IEC 60255", signature: "FB_Overcurrent50_51" },
-      { name: "FB_VoltageProtection27_59", kind: "FUNCTION_BLOCK", description: "Proteção de subtensão e sobretensão", signature: "FB_VoltageProtection27_59" },
+      {
+        name: "FB_Overcurrent50_51",
+        kind: "FUNCTION_BLOCK",
+        description: "Sobrecorrente instantânea e temporizada IEC 60255",
+        signature: "FB_Overcurrent50_51",
+      },
+      {
+        name: "FB_VoltageProtection27_59",
+        kind: "FUNCTION_BLOCK",
+        description: "Proteção de subtensão e sobretensão",
+        signature: "FB_VoltageProtection27_59",
+      },
     ],
   });
 
@@ -731,8 +819,18 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [{ name: "ElectricalProtection", versionRange: "^1.0.0" }],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_TransformerThermalModel", kind: "FUNCTION_BLOCK", description: "Modelo térmico de topo de óleo e ponto mais quente", signature: "FB_TransformerThermalModel" },
-      { name: "FB_OLTCTapChanger", kind: "FUNCTION_BLOCK", description: "Controle automático de tap OLTC", signature: "FB_OLTCTapChanger" },
+      {
+        name: "FB_TransformerThermalModel",
+        kind: "FUNCTION_BLOCK",
+        description: "Modelo térmico de topo de óleo e ponto mais quente",
+        signature: "FB_TransformerThermalModel",
+      },
+      {
+        name: "FB_OLTCTapChanger",
+        kind: "FUNCTION_BLOCK",
+        description: "Controle automático de tap OLTC",
+        signature: "FB_OLTCTapChanger",
+      },
     ],
   });
 
@@ -747,8 +845,18 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [{ name: "EletricAi_Standard", versionRange: "^3.5.0" }],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_DOLStarter", kind: "FUNCTION_BLOCK", description: "Partida Direta com supervisão de contator", signature: "FB_DOLStarter" },
-      { name: "FB_StarDeltaStarter", kind: "FUNCTION_BLOCK", description: "Partida Estrela-Triângulo com dwell anti-flashover", signature: "FB_StarDeltaStarter" },
+      {
+        name: "FB_DOLStarter",
+        kind: "FUNCTION_BLOCK",
+        description: "Partida Direta com supervisão de contator",
+        signature: "FB_DOLStarter",
+      },
+      {
+        name: "FB_StarDeltaStarter",
+        kind: "FUNCTION_BLOCK",
+        description: "Partida Estrela-Triângulo com dwell anti-flashover",
+        signature: "FB_StarDeltaStarter",
+      },
     ],
   });
 
@@ -759,11 +867,17 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     vendor: "ElétricAi Drives",
     version: "1.0.0",
     category: "MOTION",
-    description: "Controle de inversores de frequência com gerador de rampas e palavras de controle",
+    description:
+      "Controle de inversores de frequência com gerador de rampas e palavras de controle",
     dependencies: [{ name: "EletricAi_Standard", versionRange: "^3.5.0" }],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_VFDControl", kind: "FUNCTION_BLOCK", description: "Rampa e controle de velocidade em malha aberta/fechada", signature: "FB_VFDControl" },
+      {
+        name: "FB_VFDControl",
+        kind: "FUNCTION_BLOCK",
+        description: "Rampa e controle de velocidade em malha aberta/fechada",
+        signature: "FB_VFDControl",
+      },
     ],
   });
 
@@ -778,8 +892,18 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [{ name: "MotorStarters", versionRange: "^1.0.0" }],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_DuplexPumpAlternation", kind: "FUNCTION_BLOCK", description: "Alternância de bombas por horímetro e escalonamento", signature: "FB_DuplexPumpAlternation" },
-      { name: "FB_PumpCavitationProtection", kind: "FUNCTION_BLOCK", description: "Proteção contra cavitação e cálculo de NPSH", signature: "FB_PumpCavitationProtection" },
+      {
+        name: "FB_DuplexPumpAlternation",
+        kind: "FUNCTION_BLOCK",
+        description: "Alternância de bombas por horímetro e escalonamento",
+        signature: "FB_DuplexPumpAlternation",
+      },
+      {
+        name: "FB_PumpCavitationProtection",
+        kind: "FUNCTION_BLOCK",
+        description: "Proteção contra cavitação e cálculo de NPSH",
+        signature: "FB_PumpCavitationProtection",
+      },
     ],
   });
 
@@ -794,7 +918,12 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [{ name: "EletricAi_Standard", versionRange: "^3.5.0" }],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_DiscreteValve", kind: "FUNCTION_BLOCK", description: "Válvula solenoide/motorizada com supervisão de fim de curso", signature: "FB_DiscreteValve" },
+      {
+        name: "FB_DiscreteValve",
+        kind: "FUNCTION_BLOCK",
+        description: "Válvula solenoide/motorizada com supervisão de fim de curso",
+        signature: "FB_DiscreteValve",
+      },
     ],
   });
 
@@ -809,7 +938,12 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_AnalogInputScaling", kind: "FUNCTION_BLOCK", description: "Escalonamento analógico 4-20mA com NAMUR NE43", signature: "FB_AnalogInputScaling" },
+      {
+        name: "FB_AnalogInputScaling",
+        kind: "FUNCTION_BLOCK",
+        description: "Escalonamento analógico 4-20mA com NAMUR NE43",
+        signature: "FB_AnalogInputScaling",
+      },
     ],
   });
 
@@ -824,7 +958,12 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [{ name: "SensorsAndInstruments", versionRange: "^1.0.0" }],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_PIDController", kind: "FUNCTION_BLOCK", description: "Controlador PID industrial com anti-reset windup", signature: "FB_PIDController" },
+      {
+        name: "FB_PIDController",
+        kind: "FUNCTION_BLOCK",
+        description: "Controlador PID industrial com anti-reset windup",
+        signature: "FB_PIDController",
+      },
     ],
   });
 
@@ -835,11 +974,17 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     vendor: "ElétricAi Power Systems",
     version: "1.0.0",
     category: "APPLICATION",
-    description: "Medição de grandezas elétricas trifásicas (kW, kvar, kVA, FP) e integração de energia",
+    description:
+      "Medição de grandezas elétricas trifásicas (kW, kvar, kVA, FP) e integração de energia",
     dependencies: [],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_ThreePhasePowerMeter", kind: "FUNCTION_BLOCK", description: "Medidor trifásico de potência e energia ativa/reativa", signature: "FB_ThreePhasePowerMeter" },
+      {
+        name: "FB_ThreePhasePowerMeter",
+        kind: "FUNCTION_BLOCK",
+        description: "Medidor trifásico de potência e energia ativa/reativa",
+        signature: "FB_ThreePhasePowerMeter",
+      },
     ],
   });
 
@@ -854,7 +999,12 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [{ name: "EletricAi_Standard", versionRange: "^3.5.0" }],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_DualChannelEStop", kind: "FUNCTION_BLOCK", description: "Parada de emergência bicanal supervisionada", signature: "FB_DualChannelEStop" },
+      {
+        name: "FB_DualChannelEStop",
+        kind: "FUNCTION_BLOCK",
+        description: "Parada de emergência bicanal supervisionada",
+        signature: "FB_DualChannelEStop",
+      },
     ],
   });
 
@@ -866,10 +1016,18 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     version: "1.0.0",
     category: "APPLICATION",
     description: "Tratamento de efluentes industriais: neutralização de pH e controle de aeração",
-    dependencies: [{ name: "ProcessControl", versionRange: "^1.0.0" }, { name: "PumpsAndPiping", versionRange: "^1.0.0" }],
+    dependencies: [
+      { name: "ProcessControl", versionRange: "^1.0.0" },
+      { name: "PumpsAndPiping", versionRange: "^1.0.0" },
+    ],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_WaterTreatmentETE", kind: "FUNCTION_BLOCK", description: "Loop de neutralização de pH para estações de efluentes", signature: "FB_WaterTreatmentETE" },
+      {
+        name: "FB_WaterTreatmentETE",
+        kind: "FUNCTION_BLOCK",
+        description: "Loop de neutralização de pH para estações de efluentes",
+        signature: "FB_WaterTreatmentETE",
+      },
     ],
   });
 
@@ -884,7 +1042,12 @@ export function registerIndustrialLibraries(registry: LibraryRegistry = LibraryR
     dependencies: [{ name: "MotorStarters", versionRange: "^1.0.0" }],
     isPlaceholder: false,
     exportedSymbols: [
-      { name: "FB_ZeroPressureAccumulation", kind: "FUNCTION_BLOCK", description: "Lógica de zona ZPA com detecção de emperramento", signature: "FB_ZeroPressureAccumulation" },
+      {
+        name: "FB_ZeroPressureAccumulation",
+        kind: "FUNCTION_BLOCK",
+        description: "Lógica de zona ZPA com detecção de emperramento",
+        signature: "FB_ZeroPressureAccumulation",
+      },
     ],
   });
 }

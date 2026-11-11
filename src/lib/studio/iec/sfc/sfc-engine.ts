@@ -84,7 +84,9 @@ export class SFCEngine {
     // 2. Identifica transições habilitadas (todos os fromStepIds ativos) e satisfeitas
     const transitionsToFire: SFCTransition[] = [];
     for (const trans of this.transitions) {
-      const allPredecessorsActive = trans.fromStepIds.every((id: string) => this.state.activeStepIds.has(id));
+      const allPredecessorsActive = trans.fromStepIds.every((id: string) =>
+        this.state.activeStepIds.has(id),
+      );
       if (allPredecessorsActive) {
         const satisfied = evalCondition(trans.conditionST);
         trans.isSatisfied = satisfied;
@@ -127,11 +129,12 @@ export class SFCEngine {
       this.state.deadlockReason = "DEADLOCK: Nenhum passo ativo no grafo sequencial SFC.";
     } else {
       const hasAnyOutgoing = Array.from(this.state.activeStepIds).some((activeId) =>
-        this.transitions.some((t) => t.fromStepIds.includes(activeId))
+        this.transitions.some((t) => t.fromStepIds.includes(activeId)),
       );
       if (!hasAnyOutgoing && this.transitions.length === 0) {
         this.state.isDeadlocked = true;
-        this.state.deadlockReason = "DEADLOCK: Nenhuma transição de saída definida para os passos ativos.";
+        this.state.deadlockReason =
+          "DEADLOCK: Nenhuma transição de saída definida para os passos ativos.";
       } else {
         this.state.isDeadlocked = false;
       }

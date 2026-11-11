@@ -1,7 +1,7 @@
 /**
  * ElétricAi Industrial OS — Deep HMI, SCADA, ISA-18.2 Alarms & Recipe Engine
  * Paridade funcional ao CODESYS Visualization, Alarm Manager e Recipe Management.
- * 
+ *
  * Regra de Segurança:
  * IS_PHYSICAL_CONTROL_ALLOWED = false
  */
@@ -52,7 +52,7 @@ export class ISA18AlarmLifecycleEngine {
   public evaluateAlarm(
     def: AlarmDefinition,
     currentValue: number | boolean,
-    now: Date = new Date()
+    now: Date = new Date(),
   ): ISA18AlarmInstance {
     let instance = this.activeAlarms.get(def.id);
     if (!instance) {
@@ -183,11 +183,13 @@ export class HMIScadaBridge {
   public static resolveWidgetState(
     widget: HMIWidget,
     tagMap: Map<string, Tag>,
-    activeAlarms: ISA18AlarmInstance[]
+    activeAlarms: ISA18AlarmInstance[],
   ): IndustrialFaceplateState {
     const tag = widget.bindingTagId ? tagMap.get(widget.bindingTagId) : undefined;
     const val = tag ? tag.currentValue : 0;
-    const isAlarm = activeAlarms.some((a) => a.tagId === widget.bindingTagId && a.state !== "NORMAL");
+    const isAlarm = activeAlarms.some(
+      (a) => a.tagId === widget.bindingTagId && a.state !== "NORMAL",
+    );
 
     let statusColor = "#10B981"; // Verde normal
     let statusText = "NORMAL";
@@ -271,25 +273,38 @@ export class IndustrialRecipeManager {
     for (const param of recipe.parameters) {
       const tag = tagMap.get(param.targetTagId);
       if (!tag) {
-        errors.push(`Parâmetro '${param.parameterName}': Tag alvo '${param.targetTagId}' não encontrada no projeto.`);
+        errors.push(
+          `Parâmetro '${param.parameterName}': Tag alvo '${param.targetTagId}' não encontrada no projeto.`,
+        );
         continue;
       }
 
       // Validação de tipo de dado
-      if (typeof param.targetValue === "number" && !["REAL", "LREAL", "INT", "DINT", "UINT", "WORD", "DWORD"].includes(tag.dataType)) {
-        errors.push(`Parâmetro '${param.parameterName}': incompatibilidade de tipo. Valor numérico fornecido para tag do tipo ${tag.dataType}.`);
+      if (
+        typeof param.targetValue === "number" &&
+        !["REAL", "LREAL", "INT", "DINT", "UINT", "WORD", "DWORD"].includes(tag.dataType)
+      ) {
+        errors.push(
+          `Parâmetro '${param.parameterName}': incompatibilidade de tipo. Valor numérico fornecido para tag do tipo ${tag.dataType}.`,
+        );
       } else if (typeof param.targetValue === "boolean" && tag.dataType !== "BOOL") {
-        errors.push(`Parâmetro '${param.parameterName}': incompatibilidade de tipo. Valor booleano fornecido para tag do tipo ${tag.dataType}.`);
+        errors.push(
+          `Parâmetro '${param.parameterName}': incompatibilidade de tipo. Valor booleano fornecido para tag do tipo ${tag.dataType}.`,
+        );
       }
 
       // Validação de limites (se definidos no parâmetro)
       const pAny = param as any;
       if (typeof param.targetValue === "number") {
         if (pAny.minValue !== undefined && param.targetValue < pAny.minValue) {
-          errors.push(`Parâmetro '${param.parameterName}': valor ${param.targetValue} abaixo do mínimo permitido (${pAny.minValue}).`);
+          errors.push(
+            `Parâmetro '${param.parameterName}': valor ${param.targetValue} abaixo do mínimo permitido (${pAny.minValue}).`,
+          );
         }
         if (pAny.maxValue !== undefined && param.targetValue > pAny.maxValue) {
-          errors.push(`Parâmetro '${param.parameterName}': valor ${param.targetValue} acima do máximo permitido (${pAny.maxValue}).`);
+          errors.push(
+            `Parâmetro '${param.parameterName}': valor ${param.targetValue} acima do máximo permitido (${pAny.maxValue}).`,
+          );
         }
       }
     }
@@ -308,7 +323,7 @@ export class IndustrialRecipeManager {
     projectId: string,
     name: string,
     productCode: string,
-    tags: Tag[]
+    tags: Tag[],
   ): RecipeDefinition {
     const recipe: RecipeDefinition = {
       id,
@@ -330,16 +345,27 @@ export class IndustrialRecipeManager {
   /**
    * Aplica a receita atomicamente ao conjunto de tags do projeto em memória virtual
    */
-  public applyRecipe(recipeId: string, tags: Tag[], appliedBy: string = "Operador_Engenharia"): AppliedRecipeResult {
+  public applyRecipe(
+    recipeId: string,
+    tags: Tag[],
+    appliedBy: string = "Operador_Engenharia",
+  ): AppliedRecipeResult {
     // Validação estrita antes da escrita atômica
     const validation = this.validateRecipe(recipeId, tags);
     if (!validation.isValid) {
-      throw new Error(`[RECIPE_ATOMIC_ERROR] Falha de validação da receita: ${validation.errors.join("; ")}`);
+      throw new Error(
+        `[RECIPE_ATOMIC_ERROR] Falha de validação da receita: ${validation.errors.join("; ")}`,
+      );
     }
 
     const recipe = this.recipes.get(recipeId)!;
     const tagMap = new Map(tags.map((t) => [t.id, t]));
-    const updated: { tagId: string; parameterName: string; targetValue: any; previousValue?: any }[] = [];
+    const updated: {
+      tagId: string;
+      parameterName: string;
+      targetValue: any;
+      previousValue?: any;
+    }[] = [];
 
     // Aplicação atômica em memória virtual
     for (const param of recipe.parameters) {

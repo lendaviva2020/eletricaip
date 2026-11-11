@@ -5,7 +5,14 @@
  * detecção de conflitos e mesclagem automatizada de projetos de automação.
  */
 
-import { IndustrialProject, ProjectDiffItem, POU, Tag, TaskConfiguration, Device } from "../canonical/types";
+import {
+  IndustrialProject,
+  ProjectDiffItem,
+  POU,
+  Tag,
+  TaskConfiguration,
+  Device,
+} from "../canonical/types";
 import { generateUuid as uuidv4 } from "../canonical/uuid";
 
 export interface SemanticDiffResult {
@@ -33,7 +40,10 @@ export class ProjectComparisonEngine {
   /**
    * Compara profundamente dois projetos industriais (Origem vs Destino)
    */
-  public static compareProjects(source: IndustrialProject, target: IndustrialProject): SemanticDiffResult {
+  public static compareProjects(
+    source: IndustrialProject,
+    target: IndustrialProject,
+  ): SemanticDiffResult {
     const diffs: ProjectDiffItem[] = [];
 
     // 1. Comparação de POUs (Programas, Function Blocks, Funções)
@@ -187,7 +197,11 @@ export class ProjectComparisonEngine {
     }
   }
 
-  private static compareTasks(sourceTasks: TaskConfiguration[], targetTasks: TaskConfiguration[], diffs: ProjectDiffItem[]): void {
+  private static compareTasks(
+    sourceTasks: TaskConfiguration[],
+    targetTasks: TaskConfiguration[],
+    diffs: ProjectDiffItem[],
+  ): void {
     const targetMap = new Map(targetTasks.map((t) => [t.id, t]));
     const sourceMap = new Map(sourceTasks.map((t) => [t.id, t]));
 
@@ -202,7 +216,11 @@ export class ProjectComparisonEngine {
           description: `Tarefa '${src.name}' foi removida.`,
           propertyDiffs: {},
         });
-      } else if (src.priority !== tgt.priority || src.intervalMs !== tgt.intervalMs || src.type !== tgt.type) {
+      } else if (
+        src.priority !== tgt.priority ||
+        src.intervalMs !== tgt.intervalMs ||
+        src.type !== tgt.type
+      ) {
         diffs.push({
           entityId: src.id,
           entityType: "TASK",
@@ -228,7 +246,11 @@ export class ProjectComparisonEngine {
     }
   }
 
-  private static compareDevices(sourceDevs: Device[], targetDevs: Device[], diffs: ProjectDiffItem[]): void {
+  private static compareDevices(
+    sourceDevs: Device[],
+    targetDevs: Device[],
+    diffs: ProjectDiffItem[],
+  ): void {
     const targetMap = new Map(targetDevs.map((d) => [d.id, d]));
     const sourceMap = new Map(sourceDevs.map((d) => [d.id, d]));
 
@@ -259,7 +281,11 @@ export class ProjectComparisonEngine {
     }
   }
 
-  private static compareAlarms(sourceAlarms: any[], targetAlarms: any[], diffs: ProjectDiffItem[]): void {
+  private static compareAlarms(
+    sourceAlarms: any[],
+    targetAlarms: any[],
+    diffs: ProjectDiffItem[],
+  ): void {
     const targetMap = new Map(targetAlarms.map((a) => [a.id, a]));
     const sourceMap = new Map(sourceAlarms.map((a) => [a.id, a]));
 
@@ -297,7 +323,7 @@ export class ProjectComparisonEngine {
   public static threeWayMerge(
     base: IndustrialProject,
     mine: IndustrialProject,
-    theirs: IndustrialProject
+    theirs: IndustrialProject,
   ): {
     mergedProject: IndustrialProject;
     conflicts: MergeConflict[];
@@ -313,17 +339,13 @@ export class ProjectComparisonEngine {
       entityType: string,
       baseList: T[],
       mineList: T[],
-      theirsList: T[]
+      theirsList: T[],
     ): T[] => {
       const baseMap = new Map(baseList.map((x) => [x.id, x]));
       const mineMap = new Map(mineList.map((x) => [x.id, x]));
       const theirsMap = new Map(theirsList.map((x) => [x.id, x]));
 
-      const allIds = new Set<string>([
-        ...baseMap.keys(),
-        ...mineMap.keys(),
-        ...theirsMap.keys(),
-      ]);
+      const allIds = new Set<string>([...baseMap.keys(), ...mineMap.keys(), ...theirsMap.keys()]);
 
       const result: T[] = [];
 
@@ -414,11 +436,31 @@ export class ProjectComparisonEngine {
     const mergedProject: IndustrialProject = JSON.parse(JSON.stringify(mine));
     mergedProject.pous = mergeCollection("POU", base.pous, mine.pous, theirs.pous);
     mergedProject.tags = mergeCollection("TAG", base.tags, mine.tags, theirs.tags);
-    mergedProject.taskConfigurations = mergeCollection("TASK", base.taskConfigurations, mine.taskConfigurations, theirs.taskConfigurations);
+    mergedProject.taskConfigurations = mergeCollection(
+      "TASK",
+      base.taskConfigurations,
+      mine.taskConfigurations,
+      theirs.taskConfigurations,
+    );
     mergedProject.devices = mergeCollection("DEVICE", base.devices, mine.devices, theirs.devices);
-    mergedProject.alarmDefinitions = mergeCollection("ALARM", base.alarmDefinitions, mine.alarmDefinitions, theirs.alarmDefinitions);
-    mergedProject.dataTypes = mergeCollection("DATATYPE", base.dataTypes || [], mine.dataTypes || [], theirs.dataTypes || []);
-    mergedProject.recipeDefinitions = mergeCollection("RECIPE", base.recipeDefinitions || [], mine.recipeDefinitions || [], theirs.recipeDefinitions || []);
+    mergedProject.alarmDefinitions = mergeCollection(
+      "ALARM",
+      base.alarmDefinitions,
+      mine.alarmDefinitions,
+      theirs.alarmDefinitions,
+    );
+    mergedProject.dataTypes = mergeCollection(
+      "DATATYPE",
+      base.dataTypes || [],
+      mine.dataTypes || [],
+      theirs.dataTypes || [],
+    );
+    mergedProject.recipeDefinitions = mergeCollection(
+      "RECIPE",
+      base.recipeDefinitions || [],
+      mine.recipeDefinitions || [],
+      theirs.recipeDefinitions || [],
+    );
     mergedProject.updatedAt = new Date().toISOString();
 
     return {
@@ -434,7 +476,7 @@ export class ProjectComparisonEngine {
    */
   public static mergeNonConflicting(
     base: IndustrialProject,
-    modified: IndustrialProject
+    modified: IndustrialProject,
   ): { mergedProject: IndustrialProject; conflicts: MergeConflict[] } {
     const result = this.threeWayMerge(base, base, modified);
     return {

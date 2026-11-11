@@ -65,15 +65,15 @@ describe("GATE 3.1I — Strict Read-Only Physical Safety Enforcement", () => {
 
   it("2. Modbus TCP: Bloqueia chamadas de escrita de Coils e Registradores (FC5, FC6, FC15, FC16)", async () => {
     await expect(modbusDriver.writeCoil()).rejects.toThrow(
-      /PHYSICAL_CONTROL_BLOCKED: Modbus FC5\/FC15/
+      /PHYSICAL_CONTROL_BLOCKED: Modbus FC5\/FC15/,
     );
 
     await expect(modbusDriver.writeRegister()).rejects.toThrow(
-      /PHYSICAL_CONTROL_BLOCKED: Modbus FC6\/FC16/
+      /PHYSICAL_CONTROL_BLOCKED: Modbus FC6\/FC16/,
     );
 
     await expect(modbusDriver.write()).rejects.toThrow(
-      /PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Modbus bloqueada/
+      /PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Modbus bloqueada/,
     );
   });
 
@@ -83,23 +83,23 @@ describe("GATE 3.1I — Strict Read-Only Physical Safety Enforcement", () => {
     expect((opcDriver as any).writeNode).toBeUndefined();
 
     await expect(opcDriver.callMethod()).rejects.toThrow(
-      /PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA Method Call bloqueada/
+      /PHYSICAL_CONTROL_BLOCKED: Chamada OPC UA Method Call bloqueada/,
     );
   });
 
   it("4. MQTT Sparkplug B: Bloqueia envio de mensagens de comando NCMD e DCMD", async () => {
     await expect(sparkplugDriver.sendCommand()).rejects.toThrow(
-      /PHYSICAL_CONTROL_BLOCKED: Envio ou execução de comandos Sparkplug B NCMD\/DCMD bloqueado/
+      /PHYSICAL_CONTROL_BLOCKED: Envio ou execução de comandos Sparkplug B NCMD\/DCMD bloqueado/,
     );
 
     await expect(sparkplugDriver.write()).rejects.toThrow(
-      /PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Sparkplug B bloqueada/
+      /PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Sparkplug B bloqueada/,
     );
   });
 
   it("5. Gateway Orchestrator: Bloqueia qualquer invocação de comando físico (Start/Stop/Reset/Open/Close)", () => {
     expect(() => gatewayManager.executePhysicalCommand()).toThrow(
-      /PHYSICAL_CONTROL_BLOCKED: Comandos físicos desabilitados no Gateway/
+      /PHYSICAL_CONTROL_BLOCKED: Comandos físicos desabilitados no Gateway/,
     );
   });
 });

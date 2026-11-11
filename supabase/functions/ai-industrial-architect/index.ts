@@ -2,12 +2,28 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  Vary: "Origin",
-};
+function buildCorsHeaders(req?: Request): Record<string, string> {
+  const configured = (Deno.env.get("ALLOWED_ORIGINS") ?? Deno.env.get("PUBLIC_APP_URL") ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const allowed = new Set<string>([
+    ...configured,
+    "https://eletricaip.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ]);
+  const origin = req?.headers.get("Origin") ?? "";
+  const matchedOrigin = allowed.has(origin)
+    ? origin
+    : configured[0] ?? "https://eletricaip.vercel.app";
+  return {
+    "Access-Control-Allow-Origin": matchedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    Vary: "Origin",
+  };
+}
 
 // Verify the caller's Supabase JWT. Returns user id + an authed client (RLS as user) or null.
 async function requireUser(
@@ -192,7 +208,13 @@ type ErrCode =
   | "BAD_RESPONSE"
   | "BAD_INPUT";
 
-function err(code: ErrCode, message: string, status = 200, extra: Record<string, unknown> = {}) {
+function err(
+  code: ErrCode,
+  message: string,
+  status = 200,
+  extra: Record<string, unknown> = {},
+  corsHeaders: Record<string, string> = buildCorsHeaders(),
+) {
   // Always 200 to the client (so non-2xx doesn't crash the page); client checks `ok`/`error`.
   return new Response(JSON.stringify({ ok: false, error: { code, message, ...extra } }), {
     status,
@@ -202,7 +224,7 @@ function err(code: ErrCode, message: string, status = 200, extra: Record<string,
 
 // --- Health check -----------------------------------------------------------
 // GET ?health=1 returns a status object the AI Status page consumes.
-async function healthCheck(): Promise<Response> {
+async function healthCheck(corsHeaders: Record<string, string>): Promise<Response> {
   const key = Deno.env.get("GEMINI_API_KEY");
   const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.1-pro-preview";
   const v = validateKeyFormat(key);
@@ -211,10 +233,10 @@ async function healthCheck(): Promise<Response> {
   let pingError: string | undefined;
   if (v.ok && key) {
     try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
       const r = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: "ping" }] }],
           generationConfig: { maxOutputTokens: 1, temperature: 0 },
@@ -222,9 +244,9 @@ async function healthCheck(): Promise<Response> {
       });
       pingStatus = r.status;
       pingOk = r.ok;
-      if (!r.ok) pingError = (await r.text()).slice(0, 200);
-    } catch (e) {
-      pingError = (e as Error).message;
+      if (!r.ok) pingError = `Upstream HTTP ${r.status}`;
+    } catch {
+      pingError = "Falha de conexão com o provedor Gemini.";
     }
   }
   return new Response(
@@ -245,6 +267,7 @@ async function healthCheck(): Promise<Response> {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   // Require authenticated Supabase user for all calls (health + generation).
@@ -261,7 +284,7 @@ Deno.serve(async (req) => {
   }
 
   const url = new URL(req.url);
-  if (req.method === "GET" && url.searchParams.get("health") === "1") return healthCheck();
+  if (req.method === "GET" && url.searchParams.get("health") === "1") return healthCheck(corsHeaders);
 
   try {
     const admin = createAdminClient();
@@ -315,10 +338,10 @@ Deno.serve(async (req) => {
       ? `Briefing:\n${safePrompt}\n\nContexto atual do projeto (JSON):\n${contextStr}`
       : safePrompt;
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
     const resp = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey! },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: SYSTEM }] },
         contents: [{ role: "user", parts: [{ text: userMsg }] }],
@@ -331,12 +354,13 @@ Deno.serve(async (req) => {
     });
 
     if (resp.status === 400 || resp.status === 401 || resp.status === 403) {
-      const txt = await resp.text();
+      await resp.text();
       return err(
         "AUTH_401",
         "Chave de IA inválida ou revogada. Atualize GEMINI_API_KEY no painel de secrets do Supabase e obtenha uma chave em aistudio.google.com/app/apikey.",
         200,
-        { provider: "gemini", detail: txt.slice(0, 200) },
+        { provider: "gemini", status: resp.status },
+        corsHeaders,
       );
     }
     if (resp.status === 429)

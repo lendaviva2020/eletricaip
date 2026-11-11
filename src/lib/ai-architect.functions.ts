@@ -432,6 +432,7 @@ async function fetchNormativeContext(
 }
 
 export const extractBriefingServerFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input) => BriefingDocumentInputSchema.parse(input))
   .handler(async ({ data }) => {
     const parsed = parseBriefingDocument(data);
@@ -636,7 +637,7 @@ export const getAiCredits = createServerFn({ method: "GET" })
   });
 
 export const pingArchitect = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuth, requireBurstLimit])
   .handler(async () => {
     return await pingGemini();
   });

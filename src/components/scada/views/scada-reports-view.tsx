@@ -54,9 +54,7 @@ export function ScadaReportsView() {
           <select
             value={reportType}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-              setReportType(
-                e.target.value as "daily" | "water_balance" | "energy" | "alarm_pareto",
-              )
+              setReportType(e.target.value as "daily" | "water_balance" | "energy" | "alarm_pareto")
             }
             className="bg-zinc-900 border border-zinc-800 rounded-md px-3 py-1.5 text-xs text-zinc-200 font-mono"
           >

@@ -61,7 +61,8 @@ export function isHostAllowed(host: string): boolean {
   const h = host.trim().toLowerCase();
   if (!h) return false;
   if (h === "localhost" || h.endsWith(".localhost")) return false;
-  if (h === "simulation" || h.includes("simulation")) return true;
+  // Apenas o host lógico exato "simulation" ativa o simulador em memória (impede bypasses como 169.254.169.254.simulation).
+  if (h === "simulation") return true;
   // IPv6 literal — block all (loopback, link-local, ULA shouldn't be exposed)
   if (h.includes(":")) return false;
   const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
@@ -80,18 +81,27 @@ export function isHostAllowed(host: string): boolean {
   if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(h)) {
     return false;
   }
-  // Block well-known cloud metadata hostnames
+  // Block well-known cloud metadata hostnames and DNS wildcard IP-mirror / rebinding tricks
   const blocked = ["metadata.google.internal", "metadata.goog", "metadata", "instance-data"];
-  if (blocked.includes(h)) return false;
+  if (
+    blocked.includes(h) ||
+    h.endsWith(".internal") ||
+    h.endsWith(".nip.io") ||
+    h.endsWith(".sslip.io") ||
+    h.endsWith(".xip.io") ||
+    h.endsWith(".localtest.me") ||
+    /^(\d{1,3}\.){3}\d{1,3}\./.test(h)
+  ) {
+    return false;
+  }
   return true;
 }
 
 export async function resolveToAllowedIPv4(host: string): Promise<string> {
   const h = host.trim().toLowerCase();
 
-  // Hosts de simulação e literais IPv4 já foram completamente validados por
-  // isHostAllowed (branch de range privado) — não há DNS para resolver.
-  if (h === "simulation" || h.includes("simulation")) return host;
+  // Host lógico "simulation" e literais IPv4 já foram validados por isHostAllowed — não há DNS a resolver.
+  if (h === "simulation") return host;
   if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return host;
 
   let addresses: string[];
@@ -391,8 +401,8 @@ export const testModbusHost = createServerFn({ method: "POST" })
     if (!isHostAllowed(data.host)) {
       throw new Error("Host não permitido. Redes loopback e restritas são bloqueadas.");
     }
-    // Simulated test: return success for simulation hosts or RFC1918 addresses
-    if (data.host === "192.168.1.100" || data.host.includes("simulation")) {
+    // Simulated test: only exact simulation host or RFC1918 lab target
+    if (data.host.trim().toLowerCase() === "simulation" || data.host === "192.168.1.100") {
       return { ok: true as const, simulated: true };
     }
     // Real connection test
@@ -408,9 +418,9 @@ export const testModbusHost = createServerFn({ method: "POST" })
         socket.destroy();
         resolve({ ok: true as const });
       });
-      socket.on("error", (err) => {
+      socket.on("error", () => {
         clearTimeout(timer);
-        reject(new Error(`Falha na conexão: ${err.message}`));
+        reject(new Error("Falha ao estabelecer conexão com o gateway Modbus informado."));
       });
     });
   });

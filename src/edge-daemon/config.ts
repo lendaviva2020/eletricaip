@@ -120,7 +120,9 @@ export function loadEdgeConfig(explicitPath?: string): EdgeDaemonConfig {
 
   if (explicitPath) {
     if (!fs.existsSync(explicitPath)) {
-      throw new Error(`CONFIG_FILE_NOT_FOUND: Arquivo de configuração explicitamente informado [${explicitPath}] não existe.`);
+      throw new Error(
+        `CONFIG_FILE_NOT_FOUND: Arquivo de configuração explicitamente informado [${explicitPath}] não existe.`,
+      );
     }
     candidatePaths.push(explicitPath);
   }
@@ -135,14 +137,22 @@ export function loadEdgeConfig(explicitPath?: string): EdgeDaemonConfig {
         const raw = fs.readFileSync(p, "utf8");
         const parsed = JSON.parse(raw);
         if (explicitPath && (!parsed.gatewayId || !parsed.organizationId)) {
-          throw new Error(`CONFIG_VALIDATION_ERROR: Arquivo de configuração [${p}] não possui os campos obrigatórios gatewayId ou organizationId.`);
+          throw new Error(
+            `CONFIG_VALIDATION_ERROR: Arquivo de configuração [${p}] não possui os campos obrigatórios gatewayId ou organizationId.`,
+          );
         }
         return mergeWithDefaults(parsed);
       } catch (err) {
-        if (err instanceof Error && (err.message.includes("CONFIG_VALIDATION_ERROR") || err.message.includes("CONFIG_FILE_NOT_FOUND"))) {
+        if (
+          err instanceof Error &&
+          (err.message.includes("CONFIG_VALIDATION_ERROR") ||
+            err.message.includes("CONFIG_FILE_NOT_FOUND"))
+        ) {
           throw err;
         }
-        throw new Error(`CONFIG_PARSE_ERROR: Falha ao ler arquivo de configuração [${p}]: ${err instanceof Error ? err.message : String(err)}`);
+        throw new Error(
+          `CONFIG_PARSE_ERROR: Falha ao ler arquivo de configuração [${p}]: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
   }
@@ -151,7 +161,6 @@ export function loadEdgeConfig(explicitPath?: string): EdgeDaemonConfig {
 }
 
 export { loadEdgeConfig as loadConfig };
-
 
 function mergeWithDefaults(custom: Partial<EdgeDaemonConfig>): EdgeDaemonConfig {
   return {

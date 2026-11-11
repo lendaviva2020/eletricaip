@@ -5,7 +5,10 @@ export const Route = createFileRoute("/settings/observability")({
   head: () => ({
     meta: [
       { title: "Centro de Operações Industriais · EletricAI" },
-      { name: "description", content: "Observabilidade industrial, confiabilidade operacional e SLI/SLO." },
+      {
+        name: "description",
+        content: "Observabilidade industrial, confiabilidade operacional e SLI/SLO.",
+      },
     ],
   }),
   component: ObservabilityPage,

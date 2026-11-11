@@ -207,7 +207,10 @@ export class CloudSyncClient {
         this.consecutiveFailures++;
         this.lastError = ack.error || "BATCH_REJECTED_BY_CLOUD";
         this.outbox.requeueInFlight();
-        this.currentSyncIntervalMs = Math.min(30000, this.baseSyncIntervalMs * Math.pow(2, this.consecutiveFailures));
+        this.currentSyncIntervalMs = Math.min(
+          30000,
+          this.baseSyncIntervalMs * Math.pow(2, this.consecutiveFailures),
+        );
         this.isSyncing = false;
         return { sent: 0, pending: this.outbox.getStatistics().pendingUploadCount };
       }
@@ -215,7 +218,10 @@ export class CloudSyncClient {
       this.consecutiveFailures++;
       this.lastError = err?.message || "TRANSMISSION_EXCEPTION";
       this.outbox.requeueInFlight();
-      this.currentSyncIntervalMs = Math.min(30000, this.baseSyncIntervalMs * Math.pow(2, this.consecutiveFailures));
+      this.currentSyncIntervalMs = Math.min(
+        30000,
+        this.baseSyncIntervalMs * Math.pow(2, this.consecutiveFailures),
+      );
       this.isSyncing = false;
       return { sent: 0, pending: this.outbox.getStatistics().pendingUploadCount };
     }

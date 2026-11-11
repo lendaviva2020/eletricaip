@@ -1,14 +1,14 @@
 /**
  * ElétricAi Industrial OS — Multi-Type IEC Task Scheduler & Watchdog Engine
  * Paridade com o Task Configuration do CODESYS V3.5.
- * 
+ *
  * Suporta:
  * - CYCLIC: Disparo periódico por intervalo (ex: 10ms, 20ms, 100ms)
  * - FREEWHEELING: Ciclo contínuo de baixa prioridade sem temporizador
  * - EVENT: Disparo por borda de subida de tag/variável booleana
  * - STATUS_TRIGGERED: Disparo contínuo enquanto variável de status for TRUE
  * - EXTERNAL_EVENT: Disparo por interrupção ou evento externo
- * 
+ *
  * Recursos:
  * - Prioridade de 0 (máxima) a 31 (mínima)
  * - Watchdog com sensibilidade configurável (número de estouros tolerados)
@@ -94,7 +94,7 @@ export class MultiTypeTaskManager {
   public evaluateAndExecute(
     virtualNowMs: number,
     getVariableValue: (varOrTagId: string) => any,
-    customExec?: (pouId: string) => void
+    customExec?: (pouId: string) => void,
   ): { executedTaskIds: string[]; watchdogFaults: string[] } {
     const executedTaskIds: string[] = [];
     const watchdogFaults: string[] = [];

@@ -65,7 +65,9 @@ export const MotionPanel: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <Compass className="w-6 h-6 text-indigo-400" />
-            <h2 className="text-base font-bold text-zinc-100">{axis?.name || "Eixo_Transportador_01"}</h2>
+            <h2 className="text-base font-bold text-zinc-100">
+              {axis?.name || "Eixo_Transportador_01"}
+            </h2>
             <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">
               PLCopen Motion Control
             </span>
@@ -78,7 +80,7 @@ export const MotionPanel: React.FC = () => {
         <div className="flex items-center gap-3">
           <span
             className={`text-xs px-3 py-1 rounded font-bold font-mono border ${getStateColor(
-              axis?.state || "DISABLED"
+              axis?.state || "DISABLED",
             )}`}
           >
             ESTADO: {axis?.state || "DISABLED"}

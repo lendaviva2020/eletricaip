@@ -1242,9 +1242,9 @@ describe("Gate 3.6 — Canonical Industrial Data Integration (30 Mandatory Scena
       }),
     ).toThrowError(CanonicalIntegrityError);
 
-    expect(() =>
-      service.getAlarmOccurrencesForPlant(userTenantB, tenantA, plantSP),
-    ).toThrowError(CanonicalIntegrityError);
+    expect(() => service.getAlarmOccurrencesForPlant(userTenantB, tenantA, plantSP)).toThrowError(
+      CanonicalIntegrityError,
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -1254,9 +1254,9 @@ describe("Gate 3.6 — Canonical Industrial Data Integration (30 Mandatory Scena
     expect(IS_PHYSICAL_CONTROL_ALLOWED).toBe(false);
     expect(service.isPhysicalControlAllowed).toBe(false);
 
-    expect(() => service.assertPhysicalWriteForbidden("MODBUS_FC06_WRITE_SINGLE_REGISTER")).toThrowError(
-      /PHYSICAL_WRITE_FORBIDDEN/,
-    );
+    expect(() =>
+      service.assertPhysicalWriteForbidden("MODBUS_FC06_WRITE_SINGLE_REGISTER"),
+    ).toThrowError(/PHYSICAL_WRITE_FORBIDDEN/);
 
     expect(() =>
       service.registerGatewayTagSource({
@@ -1498,7 +1498,9 @@ describe("Gate 3.6 — Canonical Industrial Data Integration (30 Mandatory Scena
     expect(syncRes.tagIds).toContain(tagCurrentId);
     expect(syncRes.bindingIds).toContain("ctrlbind_cb_01");
 
-    const plcBlocks = (doc.plc.project as unknown as { blocks: Array<{ id: string; language: string }> }).blocks;
+    const plcBlocks = (
+      doc.plc.project as unknown as { blocks: Array<{ id: string; language: string }> }
+    ).blocks;
     const ladderBlock = plcBlocks.find((b) => b.id === "ob1_ladder");
     expect(ladderBlock?.language).toBe("LADDER");
     expect(doc.engineering.controlBindings.cb_01.tagId).toBe(tagCurrentId);

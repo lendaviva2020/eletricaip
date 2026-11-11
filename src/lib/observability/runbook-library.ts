@@ -4,12 +4,7 @@
 // Standards: ISA-95, IEC 62443, NR-10 / IEC 61508 Safety Boundaries
 // =============================================================================
 
-import type {
-  FleetRole,
-  IndustrialRunbook,
-  RunbookCategory,
-  RunbookStep,
-} from "./types";
+import type { FleetRole, IndustrialRunbook, RunbookCategory, RunbookStep } from "./types";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "./types";
 
 const ROLE_LEVEL: Record<FleetRole, number> = {
@@ -36,17 +31,20 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Verificar no Centro de Operações se os Edge Gateways entraram em modo Store-and-Forward autônomo.",
+        instruction:
+          "Verificar no Centro de Operações se os Edge Gateways entraram em modo Store-and-Forward autônomo.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "VIEWER",
         expectedOutcome: "Confirmação de que a coleta local na planta não sofreu interrupção.",
       },
       {
         stepNumber: 2,
-        instruction: "Inspecionar métricas de latência da API Cloud versus latência do banco PostgreSQL.",
+        instruction:
+          "Inspecionar métricas de latência da API Cloud versus latência do banco PostgreSQL.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
-        expectedOutcome: "Isolamento entre falha de worker de aplicação (RULE_13) e falha de persistência (RULE_12).",
+        expectedOutcome:
+          "Isolamento entre falha de worker de aplicação (RULE_13) e falha de persistência (RULE_12).",
       },
     ],
     requiredPermissions: ["EDGE_OPERATOR", "PLANT_ADMIN", "TENANT_ADMIN", "PLATFORM_ADMIN"],
@@ -54,11 +52,15 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
       "isPhysicalControlAllowed: false — Nenhuma operação na Cloud altera estados de PLCs ou inversores.",
       "Não limpar filas de ingestão antes da confirmação de drenagem do Outbox dos gateways.",
     ],
-    expectedEvidence: ["Snapshots de saúde CLOUD_API HEALTHY", "Taxa de erro 5xx = 0% por 3 janelas consecutivas"],
+    expectedEvidence: [
+      "Snapshots de saúde CLOUD_API HEALTHY",
+      "Taxa de erro 5xx = 0% por 3 janelas consecutivas",
+    ],
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Reequilibrar pool de conexões e workers de ingestão na camada de administração Cloud.",
+        instruction:
+          "Reequilibrar pool de conexões e workers de ingestão na camada de administração Cloud.",
         actionType: "SOFTWARE_ADMIN_PROCEDURE",
         minimumRole: "TENANT_ADMIN",
         expectedOutcome: "Workers Cloud respondendo com HTTP 200 e latência < 300ms.",
@@ -67,7 +69,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Aguardar 3 ciclos consecutivos de health probe com estado HEALTHY e drenagem do Outbox.",
+        instruction:
+          "Aguardar 3 ciclos consecutivos de health probe com estado HEALTHY e drenagem do Outbox.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Retorno do SLO Cloud Service Availability para conformidade.",
@@ -99,14 +102,17 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Conferir timestamp do último heartbeat válido e status de revogação/expiração do certificado.",
+        instruction:
+          "Conferir timestamp do último heartbeat válido e status de revogação/expiração do certificado.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "VIEWER",
-        expectedOutcome: "Identificação do momento exato da perda de sinal e exclusão de bloqueio por certificado.",
+        expectedOutcome:
+          "Identificação do momento exato da perda de sinal e exclusão de bloqueio por certificado.",
       },
       {
         stepNumber: 2,
-        instruction: "Verificar se houve deploy de configuração ou atualização recente no gateway (RULE_25).",
+        instruction:
+          "Verificar se houve deploy de configuração ou atualização recente no gateway (RULE_25).",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Correlação entre mudança de versão e parada de sincronismo.",
@@ -117,27 +123,34 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
       "isPhysicalControlAllowed: false — O reinício do serviço de software do Edge não envia comandos de escrita aos PLCs.",
       "Intervenções elétricas no painel do gateway em campo exigem profissional habilitado (NR-10).",
     ],
-    expectedEvidence: ["3 heartbeats assinados consecutivos recebidos", "CPU < 75% e Memória < 80%"],
+    expectedEvidence: [
+      "3 heartbeats assinados consecutivos recebidos",
+      "CPU < 75% e Memória < 80%",
+    ],
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Caso acessível via canal administrativo seguro, executar rollback de configuração do daemon Edge.",
+        instruction:
+          "Caso acessível via canal administrativo seguro, executar rollback de configuração do daemon Edge.",
         actionType: "SOFTWARE_ADMIN_PROCEDURE",
         minimumRole: "PLANT_ADMIN",
         expectedOutcome: "Daemon Edge reiniciado com última configuração estável conhecida.",
       },
       {
         stepNumber: 2,
-        instruction: "Se sem conectividade WAN/LAN, solicitar inspeção presencial de alimentação 24Vcc e switch OT no painel.",
+        instruction:
+          "Se sem conectividade WAN/LAN, solicitar inspeção presencial de alimentação 24Vcc e switch OT no painel.",
         actionType: "QUALIFIED_HUMAN_FIELD_INTERVENTION",
         minimumRole: "ENGINEER",
-        expectedOutcome: "Restabelecimento físico da energia ou link Ethernet do Edge Gateway em campo.",
+        expectedOutcome:
+          "Restabelecimento físico da energia ou link Ethernet do Edge Gateway em campo.",
       },
     ],
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Confirmar recebimento de >= 3 amostras consecutivas de heartbeat e início da drenagem do SQLite WAL.",
+        instruction:
+          "Confirmar recebimento de >= 3 amostras consecutivas de heartbeat e início da drenagem do SQLite WAL.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Gateway em estado HEALTHY e telemetria normalizada.",
@@ -169,10 +182,12 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Inspecionar tamanho do arquivo WAL e quantidade de registros retidos no Outbox.",
+        instruction:
+          "Inspecionar tamanho do arquivo WAL e quantidade de registros retidos no Outbox.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
-        expectedOutcome: "Determinação se o consumo decorre de backlog longo ou logs de sistema não rotacionados.",
+        expectedOutcome:
+          "Determinação se o consumo decorre de backlog longo ou logs de sistema não rotacionados.",
       },
     ],
     requiredPermissions: ["PLANT_ADMIN", "TENANT_ADMIN"],
@@ -183,7 +198,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Acionar rotação administrativa de logs antigos e executar PRAGMA wal_checkpoint(TRUNCATE) após drenagem.",
+        instruction:
+          "Acionar rotação administrativa de logs antigos e executar PRAGMA wal_checkpoint(TRUNCATE) após drenagem.",
         actionType: "SOFTWARE_ADMIN_PROCEDURE",
         minimumRole: "PLANT_ADMIN",
         expectedOutcome: "Espaço em disco liberado preservando 100% das amostras industriais.",
@@ -192,7 +208,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Verificar 3 ciclos consecutivos de escrita no buffer local com zero erros de I/O.",
+        instruction:
+          "Verificar 3 ciclos consecutivos de escrita no buffer local com zero erros de I/O.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Armazenamento local do Edge íntegro.",
@@ -227,11 +244,13 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
         instruction: "Verificar se o Edge Gateway que hospeda o driver Modbus está HEALTHY.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "VIEWER",
-        expectedOutcome: "Confirmação de que a falha é restrita ao enlace OT/equipamento e não ao gateway.",
+        expectedOutcome:
+          "Confirmação de que a falha é restrita ao enlace OT/equipamento e não ao gateway.",
       },
       {
         stepNumber: 2,
-        instruction: "Conferir latência média de polling, Unit ID e limite de conexões simultâneas do escravo Modbus.",
+        instruction:
+          "Conferir latência média de polling, Unit ID e limite de conexões simultâneas do escravo Modbus.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Identificação de sobrecarga de polling ou queda física do equipamento.",
@@ -242,18 +261,23 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
       "isPhysicalControlAllowed: false — Utilize exclusivamente Function Codes de leitura (FC03/FC04). Proibido FC05/FC06/FC15/FC16.",
       "Verificações físicas em painéis de inversores/PLCs devem ser realizadas por eletricista habilitado (NR-10).",
     ],
-    expectedEvidence: ["Taxa de timeout Modbus = 0%", "Qualidade das tags retornando para GOOD por >= 3 ciclos"],
+    expectedEvidence: [
+      "Taxa de timeout Modbus = 0%",
+      "Qualidade das tags retornando para GOOD por >= 3 ciclos",
+    ],
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Ajustar scan rate ou timeout de leitura na configuração administrativa do coletor se houver saturação do escravo.",
+        instruction:
+          "Ajustar scan rate ou timeout de leitura na configuração administrativa do coletor se houver saturação do escravo.",
         actionType: "AUTHORIZED_ENGINEER_REQUIRED",
         minimumRole: "ENGINEER",
         expectedOutcome: "Redução de contenção TCP na interface de rede do PLC/medidor.",
       },
       {
         stepNumber: 2,
-        instruction: "Verificar cabeamento Ethernet industrial, switch OT e alimentação do escravo Modbus em campo.",
+        instruction:
+          "Verificar cabeamento Ethernet industrial, switch OT e alimentação do escravo Modbus em campo.",
         actionType: "QUALIFIED_HUMAN_FIELD_INTERVENTION",
         minimumRole: "ENGINEER",
         expectedOutcome: "Link físico restabelecido na porta 502.",
@@ -262,7 +286,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Confirmar 3 ciclos de leitura Modbus TCP consecutivos com qualidade GOOD e persistência no Historian.",
+        instruction:
+          "Confirmar 3 ciclos de leitura Modbus TCP consecutivos com qualidade GOOD e persistência no Historian.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Canal Modbus TCP normalizado.",
@@ -287,27 +312,31 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     title: "Recuperação de Queda de Sessão e Canal Seguro OPC UA",
     category: "OPC_UA",
     affectedComponentTypes: ["PROTOCOL_OPC_UA", "INDUSTRIAL_EQUIPMENT"],
-    symptoms: [
-      "Perda de sessão OPC UA ou BadSessionIdInvalid / BadSecureChannelClosed (RULE_04)",
-    ],
+    symptoms: ["Perda de sessão OPC UA ou BadSessionIdInvalid / BadSecureChannelClosed (RULE_04)"],
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Inspecionar código de status OPC UA retornado no último ciclo de Subscription/Read.",
+        instruction:
+          "Inspecionar código de status OPC UA retornado no último ciclo de Subscription/Read.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
-        expectedOutcome: "Distinção entre timeout de rede, limite de sessões no servidor PLC ou rejeição de certificado.",
+        expectedOutcome:
+          "Distinção entre timeout de rede, limite de sessões no servidor PLC ou rejeição de certificado.",
       },
     ],
     requiredPermissions: ["EDGE_OPERATOR", "PLANT_ADMIN"],
     safetyWarnings: [
       "isPhysicalControlAllowed: false — Sessão OPC UA opera estritamente em modo Read/Subscribe. Chamadas Write e Method Call são bloqueadas.",
     ],
-    expectedEvidence: ["Sessão OPC UA ativa", "Subscriptions entregando PublishResponses com qualidade GOOD"],
+    expectedEvidence: [
+      "Sessão OPC UA ativa",
+      "Subscriptions entregando PublishResponses com qualidade GOOD",
+    ],
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Validar sincronismo de relógio NTP e lista de confiança X.509 entre o Edge e o servidor OPC UA.",
+        instruction:
+          "Validar sincronismo de relógio NTP e lista de confiança X.509 entre o Edge e o servidor OPC UA.",
         actionType: "SOFTWARE_ADMIN_PROCEDURE",
         minimumRole: "PLANT_ADMIN",
         expectedOutcome: "Reestabelecimento do SecureChannel OPC UA.",
@@ -316,7 +345,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Confirmar recebimento contínuo de MonitoredItems por >= 3 ciclos consecutivos.",
+        instruction:
+          "Confirmar recebimento contínuo de MonitoredItems por >= 3 ciclos consecutivos.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Coleta OPC UA estabilizada.",
@@ -348,21 +378,27 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Verificar no grafo de impacto se múltiplos dispositivos MQTT compartilham o mesmo Broker.",
+        instruction:
+          "Verificar no grafo de impacto se múltiplos dispositivos MQTT compartilham o mesmo Broker.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "VIEWER",
-        expectedOutcome: "Confirmação de falha centralizada no Broker vs falha isolada de um Edge Node.",
+        expectedOutcome:
+          "Confirmação de falha centralizada no Broker vs falha isolada de um Edge Node.",
       },
     ],
     requiredPermissions: ["EDGE_OPERATOR", "PLANT_ADMIN"],
     safetyWarnings: [
       "isPhysicalControlAllowed: false — Proibida publicação de tópicos NCMD ou DCMD para atuação física.",
     ],
-    expectedEvidence: ["Conexão TLS MQTT ativa", "Birth Certificate (NBIRTH) atualizado e sequência bdSeq coerente"],
+    expectedEvidence: [
+      "Conexão TLS MQTT ativa",
+      "Birth Certificate (NBIRTH) atualizado e sequência bdSeq coerente",
+    ],
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Verificar saúde do serviço Broker MQTT, certificados TLS e ACLs de subscrição.",
+        instruction:
+          "Verificar saúde do serviço Broker MQTT, certificados TLS e ACLs de subscrição.",
         actionType: "SOFTWARE_ADMIN_PROCEDURE",
         minimumRole: "PLANT_ADMIN",
         expectedOutcome: "Reconexão dos clientes Sparkplug B e emissão de NBIRTH.",
@@ -403,7 +439,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Comparar contadores de pacotes recebidos no barramento SCADA versus registros inseridos no Historian.",
+        instruction:
+          "Comparar contadores de pacotes recebidos no barramento SCADA versus registros inseridos no Historian.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Confirmação de gargalo exclusivo no writer histórico.",
@@ -413,11 +450,15 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     safetyWarnings: [
       "Preservar integridade das partições temporais e chaves de idempotência para evitar duplicação durante o backfill.",
     ],
-    expectedEvidence: ["Lag de escrita do Historian < 2000ms", "Consultas históricas respondendo < 1000ms"],
+    expectedEvidence: [
+      "Lag de escrita do Historian < 2000ms",
+      "Consultas históricas respondendo < 1000ms",
+    ],
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Reprocessar fila de batch insert do Historian e validar índices de partição temporal.",
+        instruction:
+          "Reprocessar fila de batch insert do Historian e validar índices de partição temporal.",
         actionType: "SOFTWARE_ADMIN_PROCEDURE",
         minimumRole: "TENANT_ADMIN",
         expectedOutcome: "Retomada imediata da gravação de séries temporais e backfill concluído.",
@@ -426,7 +467,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Verificar persistência confirmada de >= 3 lotes consecutivos no Historian sem lacunas.",
+        instruction:
+          "Verificar persistência confirmada de >= 3 lotes consecutivos no Historian sem lacunas.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "SLO Historian Completeness restabelecido.",
@@ -451,23 +493,24 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     title: "Investigação de Dados STALE ou UNKNOWN nas Sinópticas SCADA",
     category: "SCADA",
     affectedComponentTypes: ["SCADA_CORE", "INDUSTRIAL_EQUIPMENT"],
-    symptoms: [
-      "Tags exibidas com badge STALE (RULE_22) ou estado UNKNOWN (RULE_21) no SCADA",
-    ],
+    symptoms: ["Tags exibidas com badge STALE (RULE_22) ou estado UNKNOWN (RULE_21) no SCADA"],
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Consultar o Grafo de Dependências para verificar se o Edge Gateway ou Protocolo upstream está offline.",
+        instruction:
+          "Consultar o Grafo de Dependências para verificar se o Edge Gateway ou Protocolo upstream está offline.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "VIEWER",
-        expectedOutcome: "Determinação se a tag STALE é sintoma secundário de queda de gateway/protocolo.",
+        expectedOutcome:
+          "Determinação se a tag STALE é sintoma secundário de queda de gateway/protocolo.",
       },
       {
         stepNumber: 2,
         instruction: "Verificar se a tag possui deadband ativo e sinal físico estável (RULE_23).",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
-        expectedOutcome: "Descarte de falso positivo quando o valor físico não variou além da banda morta.",
+        expectedOutcome:
+          "Descarte de falso positivo quando o valor físico não variou além da banda morta.",
       },
     ],
     requiredPermissions: ["VIEWER", "EDGE_OPERATOR", "ENGINEER"],
@@ -478,7 +521,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Restabelecer o componente upstream identificado no grafo de dependências (Gateway ou Driver).",
+        instruction:
+          "Restabelecer o componente upstream identificado no grafo de dependências (Gateway ou Driver).",
         actionType: "SOFTWARE_ADMIN_PROCEDURE",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Retorno automático da atualização das tags dependentes no SCADA.",
@@ -487,7 +531,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Confirmar remoção automática do badge STALE após >= 3 amostras consecutivas com qualidade GOOD.",
+        instruction:
+          "Confirmar remoção automática do badge STALE após >= 3 amostras consecutivas com qualidade GOOD.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "VIEWER",
         expectedOutcome: "Visualização SCADA íntegra e confiável.",
@@ -512,16 +557,16 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     title: "Diagnóstico e Recuperação de Conectividade com o Banco de Dados Central",
     category: "DATABASE",
     affectedComponentTypes: ["CLOUD_DATABASE"],
-    symptoms: [
-      "Cloud saudável com falha de conexão ou timeout no PostgreSQL (RULE_12)",
-    ],
+    symptoms: ["Cloud saudável com falha de conexão ou timeout no PostgreSQL (RULE_12)"],
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Inspecionar saturação do pool de conexões, queries bloqueadas e latência de escrita.",
+        instruction:
+          "Inspecionar saturação do pool de conexões, queries bloqueadas e latência de escrita.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "TENANT_ADMIN",
-        expectedOutcome: "Identificação de contenção de locks ou indisponibilidade de rede do banco.",
+        expectedOutcome:
+          "Identificação de contenção de locks ou indisponibilidade de rede do banco.",
       },
     ],
     requiredPermissions: ["TENANT_ADMIN", "PLATFORM_ADMIN"],
@@ -572,7 +617,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Verificar validade (notBefore/notAfter), fingerprint SHA-256 e status de revogação no Fleet Manager.",
+        instruction:
+          "Verificar validade (notBefore/notAfter), fingerprint SHA-256 e status de revogação no Fleet Manager.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "AUDITOR",
         expectedOutcome: "Identificação exata da credencial inválida.",
@@ -582,11 +628,15 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     safetyWarnings: [
       "Nunca desabilitar validação de certificado TLS/mTLS ou usar modo Insecure/None em produção.",
     ],
-    expectedEvidence: ["Novo certificado X.509 ativo e verificado", "Handshake mTLS concluído com sucesso"],
+    expectedEvidence: [
+      "Novo certificado X.509 ativo e verificado",
+      "Handshake mTLS concluído com sucesso",
+    ],
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Emitir e provisionar novo certificado assinado pela CA da organização via Edge Fleet Manager.",
+        instruction:
+          "Emitir e provisionar novo certificado assinado pela CA da organização via Edge Fleet Manager.",
         actionType: "SOFTWARE_ADMIN_PROCEDURE",
         minimumRole: "PLANT_ADMIN",
         expectedOutcome: "Credencial criptográfica renovada com auditoria SHA-256.",
@@ -626,21 +676,25 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Auditar trilha de segurança imutável (correlationId, actorId, tenantId alvo e assinatura).",
+        instruction:
+          "Auditar trilha de segurança imutável (correlationId, actorId, tenantId alvo e assinatura).",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "AUDITOR",
-        expectedOutcome: "Determinação se o evento decorre de erro de configuração ou tentativa de intrusão.",
+        expectedOutcome:
+          "Determinação se o evento decorre de erro de configuração ou tentativa de intrusão.",
       },
     ],
     requiredPermissions: ["AUDITOR", "TENANT_ADMIN", "PLATFORM_ADMIN"],
-    safetyWarnings: [
-      "Manter bloqueio preventivo ativo até conclusão da auditoria de segurança.",
+    safetyWarnings: ["Manter bloqueio preventivo ativo até conclusão da auditoria de segurança."],
+    expectedEvidence: [
+      "Integridade da cadeia de auditoria SHA-256 verificada",
+      "Zero acessos não autorizados",
     ],
-    expectedEvidence: ["Integridade da cadeia de auditoria SHA-256 verificada", "Zero acessos não autorizados"],
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Revogar credenciais comprometidas e rotacionar chaves de identidade do gateway/usuário.",
+        instruction:
+          "Revogar credenciais comprometidas e rotacionar chaves de identidade do gateway/usuário.",
         actionType: "SOFTWARE_ADMIN_PROCEDURE",
         minimumRole: "TENANT_ADMIN",
         expectedOutcome: "Isolamento completo do vetor de risco.",
@@ -649,7 +703,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Verificar ausência de novas rejeições de autenticação por 3 janelas de observação.",
+        instruction:
+          "Verificar ausência de novas rejeições de autenticação por 3 janelas de observação.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "AUDITOR",
         expectedOutcome: "Postura de segurança validada.",
@@ -680,21 +735,27 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Inspecionar tamanho do backlog no Outbox do Edge e taxa de transferência de sincronização.",
+        instruction:
+          "Inspecionar tamanho do backlog no Outbox do Edge e taxa de transferência de sincronização.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
-        expectedOutcome: "Estimativa do tempo necessário para drenagem completa (Data Recovery Time).",
+        expectedOutcome:
+          "Estimativa do tempo necessário para drenagem completa (Data Recovery Time).",
       },
     ],
     requiredPermissions: ["EDGE_OPERATOR", "PLANT_ADMIN"],
     safetyWarnings: [
       "O motor de ingestão deve manter deduplicação idempotente ativa durante toda a drenagem.",
     ],
-    expectedEvidence: ["Outbox = 0 registros pendentes", "Sequência contínua reconciliada no Historian"],
+    expectedEvidence: [
+      "Outbox = 0 registros pendentes",
+      "Sequência contínua reconciliada no Historian",
+    ],
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Monitorar o replay controlado de lotes Store-and-Forward preservando os timestamps originais de coleta.",
+        instruction:
+          "Monitorar o replay controlado de lotes Store-and-Forward preservando os timestamps originais de coleta.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Drenagem progressiva sem sobrecarga da API Cloud.",
@@ -703,7 +764,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Confirmar backlog zerado e persistência histórica verificada por >= 3 ciclos.",
+        instruction:
+          "Confirmar backlog zerado e persistência histórica verificada por >= 3 ciclos.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Sincronização Cloud-Edge 100% convergente.",
@@ -728,13 +790,12 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     title: "Correção de Desalinhamento de Relógio (Clock Drift) entre Fonte, Edge e Cloud",
     category: "DATA_QUALITY",
     affectedComponentTypes: ["EDGE_GATEWAY", "INDUSTRIAL_EQUIPMENT", "DATA_PIPELINE"],
-    symptoms: [
-      "Desvio de relógio > 5000ms detectado entre sourceTimestamp e observedAt (RULE_19)",
-    ],
+    symptoms: ["Desvio de relógio > 5000ms detectado entre sourceTimestamp e observedAt (RULE_19)"],
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Comparar sourceTimestamp do PLC, timestamp do Edge Gateway e timestamp da Cloud.",
+        instruction:
+          "Comparar sourceTimestamp do PLC, timestamp do Edge Gateway e timestamp da Cloud.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Identificação de qual nó está sem sincronismo NTP/PTP.",
@@ -748,7 +809,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Ressincronizar serviço NTP/Chrony no Edge Gateway e solicitar ajuste de relógio RTC no PLC à engenharia.",
+        instruction:
+          "Ressincronizar serviço NTP/Chrony no Edge Gateway e solicitar ajuste de relógio RTC no PLC à engenharia.",
         actionType: "AUTHORIZED_ENGINEER_REQUIRED",
         minimumRole: "ENGINEER",
         expectedOutcome: "Alinhamento temporal < 500ms entre todas as camadas.",
@@ -780,9 +842,7 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     title: "Investigação de Qualidade BAD Persistente em Sensor ou Registrador Industrial",
     category: "DATA_QUALITY",
     affectedComponentTypes: ["INDUSTRIAL_EQUIPMENT"],
-    symptoms: [
-      "Tag reportando qualidade BAD persistente com gateway e protocolo online (RULE_20)",
-    ],
+    symptoms: ["Tag reportando qualidade BAD persistente com gateway e protocolo online (RULE_20)"],
     diagnosticChecks: [
       {
         stepNumber: 1,
@@ -801,7 +861,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Inspecionar em campo o transdutor, fusível de bornes e cartão de entrada do PLC.",
+        instruction:
+          "Inspecionar em campo o transdutor, fusível de bornes e cartão de entrada do PLC.",
         actionType: "QUALIFIED_HUMAN_FIELD_INTERVENTION",
         minimumRole: "ENGINEER",
         expectedOutcome: "Reparo ou substituição do elemento sensor em campo.",
@@ -810,7 +871,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     validationProcedure: [
       {
         stepNumber: 1,
-        instruction: "Confirmar >= 3 amostras consecutivas com qualidade GOOD e persistência no Historian.",
+        instruction:
+          "Confirmar >= 3 amostras consecutivas com qualidade GOOD e persistência no Historian.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "EDGE_OPERATOR",
         expectedOutcome: "Qualidade metrológica restabelecida.",
@@ -839,7 +901,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     diagnosticChecks: [
       {
         stepNumber: 1,
-        instruction: "Conferir se o heartbeat do gateway e a sessão do protocolo estão ativos e saudáveis.",
+        instruction:
+          "Conferir se o heartbeat do gateway e a sessão do protocolo estão ativos e saudáveis.",
         actionType: "READ_ONLY_VERIFICATION",
         minimumRole: "VIEWER",
         expectedOutcome: "Confirmação de operação normal sem falha de comunicação.",
@@ -853,7 +916,8 @@ export const OFFICIAL_INDUSTRIAL_RUNBOOKS: readonly IndustrialRunbook[] = Object
     recoveryProcedure: [
       {
         stepNumber: 1,
-        instruction: "Nenhuma ação corretiva necessária — comportamento normal de otimização de banda.",
+        instruction:
+          "Nenhuma ação corretiva necessária — comportamento normal de otimização de banda.",
         actionType: "INFORMATIVE",
         minimumRole: "VIEWER",
         expectedOutcome: "Operação mantida sem alarmes falsos.",

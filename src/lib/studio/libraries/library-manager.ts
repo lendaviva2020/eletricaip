@@ -1,7 +1,7 @@
 /**
  * ElétricAi Industrial OS — Industrial Library Manager & Dependency Engine
  * Paridade funcional ao CODESYS Library Manager e Placeholder Resolution System.
- * 
+ *
  * Regras estritas:
  * - Clean Room Mode: Modelagem original e contratos formais de engenharia
  * - Preservação de isolamento físico: IS_PHYSICAL_CONTROL_ALLOWED = false
@@ -89,7 +89,7 @@ export class SemVer {
 
   public static compare(
     a: { major: number; minor: number; patch: number },
-    b: { major: number; minor: number; patch: number }
+    b: { major: number; minor: number; patch: number },
   ): number {
     if (a.major !== b.major) return a.major - b.major;
     if (a.minor !== b.minor) return a.minor - b.minor;
@@ -123,7 +123,7 @@ export class SemVer {
 
   private static satisfiesSingle(
     v: { major: number; minor: number; patch: number },
-    clause: string
+    clause: string,
   ): boolean {
     const trimmed = clause.trim();
     if (trimmed === "*" || trimmed === "") return true;
@@ -138,7 +138,10 @@ export class SemVer {
         }
         return v.major === 0 && v.minor === target.minor && v.patch >= target.patch;
       }
-      return v.major === target.major && (v.minor > target.minor || (v.minor === target.minor && v.patch >= target.patch));
+      return (
+        v.major === target.major &&
+        (v.minor > target.minor || (v.minor === target.minor && v.patch >= target.patch))
+      );
     }
 
     if (trimmed.startsWith("~")) {
@@ -309,7 +312,7 @@ export class IndustrialLibraryManager {
    */
   public resolveProjectLibraries(
     project: IndustrialProject,
-    customPlaceholderMappings?: Record<string, string>
+    customPlaceholderMappings?: Record<string, string>,
   ): {
     resolved: ResolvedLibrary[];
     loadOrder: string[];
@@ -319,7 +322,9 @@ export class IndustrialLibraryManager {
     const diagnostics: LibraryDiagnostic[] = [];
     const resolved: ResolvedLibrary[] = [];
     const primaryController = project.controllers[0];
-    const defaultMappings = this.getDefaultPlaceholderMappings(primaryController ? primaryController.vendor : "GENERIC_IEC");
+    const defaultMappings = this.getDefaultPlaceholderMappings(
+      primaryController ? primaryController.vendor : "GENERIC_IEC",
+    );
     const activeMappings = { ...defaultMappings, ...customPlaceholderMappings };
 
     // Grafo de Dependências para Topological Sort: node -> dependencies[]
@@ -343,7 +348,7 @@ export class IndustrialLibraryManager {
     while (toResolve.length > 0) {
       const item = toResolve.shift()!;
       let targetName = item.name;
-      let isPlaceholder = item.isPlaceholder;
+      const isPlaceholder = item.isPlaceholder;
 
       if (isPlaceholder) {
         const mappedConcrete = activeMappings[targetName];

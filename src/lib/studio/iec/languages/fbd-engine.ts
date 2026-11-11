@@ -52,11 +52,13 @@ export class FBDEngine {
     if (sorted.length < nodes.length) {
       const unreached = nodes.filter((n) => !sorted.includes(n));
       const hasCyclicEdge = connections.some(
-        (c) => unreached.some((u) => u.id === c.fromNodeId) && unreached.some((u) => u.id === c.toNodeId)
+        (c) =>
+          unreached.some((u) => u.id === c.fromNodeId) &&
+          unreached.some((u) => u.id === c.toNodeId),
       );
       if (hasCyclicEdge) {
         throw new Error(
-          `FBD_CIRCULAR_DEPENDENCY: Ciclo inválido detectado entre os blocos: ${unreached.map((n) => n.name).join(", ")}`
+          `FBD_CIRCULAR_DEPENDENCY: Ciclo inválido detectado entre os blocos: ${unreached.map((n) => n.name).join(", ")}`,
         );
       }
       // Apenas nós puramente isolados (sem conexões) são anexados
@@ -71,7 +73,11 @@ export class FBDEngine {
   /**
    * Executa a avaliação da rede de nós FBD com propagação em cascata topo-abaixo determinística
    */
-  public static evaluateNetwork(nodes: FBDNode[], connections: FBDConnection[], ctx: FBDEvaluationContext): void {
+  public static evaluateNetwork(
+    nodes: FBDNode[],
+    connections: FBDConnection[],
+    ctx: FBDEvaluationContext,
+  ): void {
     const sorted = this.sortNodesTopologically(nodes, connections);
     const pinValues = new Map<string, any>();
 
@@ -106,7 +112,7 @@ export class FBDEngine {
           outVal = Boolean(inVals[0]) !== Boolean(inVals[1]);
           break;
         case "NOT":
-          outVal = !Boolean(inVals[0]);
+          outVal = !inVals[0];
           break;
         case "ADD":
           outVal = (Number(inVals[0]) || 0) + (Number(inVals[1]) || 0);
@@ -118,7 +124,8 @@ export class FBDEngine {
           outVal = (Number(inVals[0]) || 0) * (Number(inVals[1]) || 0);
           break;
         case "DIV":
-          outVal = (Number(inVals[1]) || 1) !== 0 ? (Number(inVals[0]) || 0) / Number(inVals[1]) : 0;
+          outVal =
+            (Number(inVals[1]) || 1) !== 0 ? (Number(inVals[0]) || 0) / Number(inVals[1]) : 0;
           break;
         case "GT":
           outVal = (Number(inVals[0]) || 0) > (Number(inVals[1]) || 0);
@@ -212,7 +219,11 @@ export class FBDEngine {
           dest: outReg,
           sourceMapping: { pouName, language: "FBD", nodeId: node.id, blockType: node.blockType },
         });
-      } else if (["AND", "OR", "XOR", "ADD", "SUB", "MUL", "DIV", "GT", "GE", "LT", "LE", "EQ"].includes(bType)) {
+      } else if (
+        ["AND", "OR", "XOR", "ADD", "SUB", "MUL", "DIV", "GT", "GE", "LT", "LE", "EQ"].includes(
+          bType,
+        )
+      ) {
         instructions.push({
           op: bType as any,
           arg1: inRegs[0] ?? 0,

@@ -257,7 +257,10 @@ export const useScadaStore = create<ScadaState>()(
           // Automatically configure analog alarm limits for customer canonical tags
           if (tags) {
             for (const tag of Object.values(tags)) {
-              if (tag.name.toUpperCase().includes("CORRENTE") || tag.name.toUpperCase().includes("CURRENT")) {
+              if (
+                tag.name.toUpperCase().includes("CORRENTE") ||
+                tag.name.toUpperCase().includes("CURRENT")
+              ) {
                 scadaAlarmEngine.registerDefinition({
                   id: `alm_def_${tag.id}`,
                   projectId,
@@ -525,7 +528,12 @@ export const useScadaStore = create<ScadaState>()(
 
       acknowledgeAlarm: (alarmId, operator = "OPERADOR") => {
         const timestamp = Date.now();
-        scadaAlarmEngine.acknowledgeAlarm(alarmId, operator, "Reconhecido na tela de alarmes", timestamp);
+        scadaAlarmEngine.acknowledgeAlarm(
+          alarmId,
+          operator,
+          "Reconhecido na tela de alarmes",
+          timestamp,
+        );
         set((state) => {
           let wasWarning = false;
           let wasCritical = false;

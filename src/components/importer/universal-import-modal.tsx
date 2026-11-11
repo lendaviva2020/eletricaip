@@ -170,11 +170,13 @@ export function UniversalImportModal({
     }
   }, [open, initialTab]);
 
+  const handleValidateRef = useRef<(payload?: string) => void>(() => {});
+
   // Sync initialPayload when changed externally
   useEffect(() => {
     if (initialPayload) {
       setRawInput(initialPayload);
-      handleValidate(initialPayload);
+      handleValidateRef.current(initialPayload);
     }
   }, [initialPayload]);
 
@@ -210,6 +212,7 @@ export function UniversalImportModal({
       toast.error(`Falha na validação: ${err?.message || "Erro desconhecido"}`);
     }
   };
+  handleValidateRef.current = handleValidate;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

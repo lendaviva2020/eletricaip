@@ -15,7 +15,7 @@ import {
 describe("UNIFILAR AI PROMPT PIPELINE — TOPOLOGIA INDUSTRIAL MESTRE (QGBT)", () => {
   it("Valida e repara o cenário industrial mestre (QGBT -> Barramento -> 3 Ramais)", () => {
     // Simulando o resultado gerado pela IA onde os nós foram criados, mas as conexões vieram ausentes ou parciais
-    let doc = createEmptyDoc();
+    const doc = createEmptyDoc();
 
     const nQfGeral = makeNode({
       id: "n_qf_geral",

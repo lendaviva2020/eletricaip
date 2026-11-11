@@ -106,7 +106,13 @@ export class DataReliabilityTracker {
       stages.get("8_DEDUPLICATION")!.samplesDropped += 1;
       stages.get("8_DEDUPLICATION")!.dropReason = "DUPLICATE_SAMPLE_DETECTED";
       this.updateReportMetrics(event, { isDuplicate: true, latencyMs });
-      return { isAccepted: false, isSequenceLoss: false, isOutOfOrder: false, isDuplicate: true, latencyMs };
+      return {
+        isAccepted: false,
+        isSequenceLoss: false,
+        isOutOfOrder: false,
+        isDuplicate: true,
+        latencyMs,
+      };
     }
     this.deduplicationSet.add(dedupKey);
     stages.get("8_DEDUPLICATION")!.samplesOut += 1;
@@ -216,7 +222,10 @@ export class DataReliabilityTracker {
     );
   }
 
-  public getReliabilityReport(tenantId: string, gatewayId: string): PipelineReliabilityReport | undefined {
+  public getReliabilityReport(
+    tenantId: string,
+    gatewayId: string,
+  ): PipelineReliabilityReport | undefined {
     return this.reports.get(`${tenantId}:${gatewayId}`);
   }
 

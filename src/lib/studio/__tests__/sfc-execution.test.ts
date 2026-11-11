@@ -12,7 +12,9 @@ describe("IEC 61131-3 Sequential Function Chart (SFC) Engine", () => {
         isInitial: true,
         isActive: true,
         timeInStepMs: 0,
-        actions: [{ id: "act-1", actionName: "ReadyAction", qualifier: "N", stCode: "bReady := TRUE;" }],
+        actions: [
+          { id: "act-1", actionName: "ReadyAction", qualifier: "N", stCode: "bReady := TRUE;" },
+        ],
         x: 0,
         y: 0,
       },
@@ -113,8 +115,18 @@ describe("IEC 61131-3 Sequential Function Chart (SFC) Engine", () => {
         isActive: true,
         timeInStepMs: 0,
         actions: [
-          { id: "act-s", actionName: "PumpRunAction", qualifier: "S", stCode: "bPumpRunning := TRUE;" },
-          { id: "act-n", actionName: "ValveOpenAction", qualifier: "N", stCode: "bValveOpen := TRUE;" },
+          {
+            id: "act-s",
+            actionName: "PumpRunAction",
+            qualifier: "S",
+            stCode: "bPumpRunning := TRUE;",
+          },
+          {
+            id: "act-n",
+            actionName: "ValveOpenAction",
+            qualifier: "N",
+            stCode: "bValveOpen := TRUE;",
+          },
         ],
         x: 0,
         y: 0,
@@ -127,7 +139,12 @@ describe("IEC 61131-3 Sequential Function Chart (SFC) Engine", () => {
         isActive: false,
         timeInStepMs: 0,
         actions: [
-          { id: "act-r", actionName: "PumpStopAction", qualifier: "R", stCode: "bPumpRunning := FALSE;" },
+          {
+            id: "act-r",
+            actionName: "PumpStopAction",
+            qualifier: "R",
+            stCode: "bPumpRunning := FALSE;",
+          },
         ],
         x: 0,
         y: 100,
@@ -159,12 +176,16 @@ describe("IEC 61131-3 Sequential Function Chart (SFC) Engine", () => {
 
     // In step-reset, act-r is dispatched
     let resetDispatched = false;
-    engine.executeCycle(20, () => false, (action) => {
-      if (action.id === "act-r") {
-        resetDispatched = true;
-        engine.getState().storedActions.delete("PumpRunAction");
-      }
-    });
+    engine.executeCycle(
+      20,
+      () => false,
+      (action) => {
+        if (action.id === "act-r") {
+          resetDispatched = true;
+          engine.getState().storedActions.delete("PumpRunAction");
+        }
+      },
+    );
     expect(resetDispatched).toBe(true);
     expect(engine.getState().storedActions.has("PumpRunAction")).toBe(false);
   });
@@ -188,7 +209,11 @@ describe("IEC 61131-3 Sequential Function Chart (SFC) Engine", () => {
     const transitions: SFCTransition[] = [];
     const engine = new SFCEngine(steps, transitions);
 
-    engine.executeCycle(50, () => false, () => {});
+    engine.executeCycle(
+      50,
+      () => false,
+      () => {},
+    );
     expect(engine.getState().isDeadlocked).toBe(true);
     expect(engine.getState().deadlockReason).toContain("Nenhuma transição de saída");
   });

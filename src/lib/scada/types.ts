@@ -241,22 +241,12 @@ export type AlarmClass =
   | "SAFETY_INDICATION";
 
 export type AlarmProcessCondition =
-  | "NORMAL"
-  | "ACTIVE"
-  | "RETURNED_TO_NORMAL"
-  | "SUPPRESSED"
-  | "OUT_OF_SERVICE";
+  "NORMAL" | "ACTIVE" | "RETURNED_TO_NORMAL" | "SUPPRESSED" | "OUT_OF_SERVICE";
 
 export type AlarmAckState = "UNACKNOWLEDGED" | "ACKNOWLEDGED";
 
 export type AlarmTransitionType =
-  | "TRIGGER"
-  | "ACKNOWLEDGE"
-  | "RETURN_TO_NORMAL"
-  | "CLEAR"
-  | "SUPPRESS"
-  | "UNSUPPRESS"
-  | "SHELVE";
+  "TRIGGER" | "ACKNOWLEDGE" | "RETURN_TO_NORMAL" | "CLEAR" | "SUPPRESS" | "UNSUPPRESS" | "SHELVE";
 
 export interface AnalogAlarmLimitConfig {
   highHigh?: number | null;
@@ -389,4 +379,3 @@ export interface OperationalReportData {
   tableData: Array<Record<string, string | number | boolean>>;
   summary: string;
 }
-

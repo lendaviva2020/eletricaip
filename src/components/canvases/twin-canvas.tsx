@@ -172,7 +172,7 @@ export function TwinCanvas() {
       lifeConsumedH,
       failureRisk,
     };
-  }, [loadDelta, voltageDelta, ambientDelta, horizonH, currentVal]);
+  }, [loadDelta, voltageDelta, ambientDelta, horizonH, currentVal, canonicalNameplates]);
 
   // Real-time baseline metrics for comparison
   const baseline = useMemo(() => {

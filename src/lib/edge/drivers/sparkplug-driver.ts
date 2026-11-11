@@ -16,13 +16,7 @@ import type {
 import type { TagQuality, TagDataType } from "../../scada/types";
 
 export type SparkplugMessageType =
-  | "NBIRTH"
-  | "NDEATH"
-  | "DBIRTH"
-  | "DDEATH"
-  | "NDATA"
-  | "DDATA"
-  | "STATE";
+  "NBIRTH" | "NDEATH" | "DBIRTH" | "DDEATH" | "NDATA" | "DDATA" | "STATE";
 
 export interface SparkplugMetric {
   name: string;
@@ -75,15 +69,21 @@ export class SparkplugBDriver implements IndustrialDriver {
    * Hardware safety interlock: Physical actuation commands (NCMD, DCMD) and writes are permanently blocked.
    */
   public async sendCommand(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Envio ou execução de comandos Sparkplug B NCMD/DCMD bloqueado. Gateway opera exclusivamente em modo READ-ONLY.");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Envio ou execução de comandos Sparkplug B NCMD/DCMD bloqueado. Gateway opera exclusivamente em modo READ-ONLY.",
+    );
   }
 
   public async publishCommand(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Publicação de comandos Sparkplug B NCMD/DCMD bloqueada. Gateway opera exclusivamente em modo READ-ONLY.");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Publicação de comandos Sparkplug B NCMD/DCMD bloqueada. Gateway opera exclusivamente em modo READ-ONLY.",
+    );
   }
 
   public async write(): Promise<never> {
-    throw new Error("PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Sparkplug B bloqueada. Gateway opera exclusivamente em modo READ-ONLY.");
+    throw new Error(
+      "PHYSICAL_CONTROL_BLOCKED: Operação física de escrita Sparkplug B bloqueada. Gateway opera exclusivamente em modo READ-ONLY.",
+    );
   }
 
   /**
@@ -94,7 +94,7 @@ export class SparkplugBDriver implements IndustrialDriver {
     if (topic.includes("/NCMD/") || topic.includes("/DCMD/")) {
       this.diagnostics.requestsFailed++;
       throw new Error(
-        `PHYSICAL_CONTROL_BLOCKED: Tópico de comando Sparkplug B [${topic}] não autorizado. Gateway opera sob política de negação por padrão (Comandos NCMD e DCMD bloqueados).`
+        `PHYSICAL_CONTROL_BLOCKED: Tópico de comando Sparkplug B [${topic}] não autorizado. Gateway opera sob política de negação por padrão (Comandos NCMD e DCMD bloqueados).`,
       );
     }
   }
@@ -168,7 +168,9 @@ export class SparkplugBDriver implements IndustrialDriver {
 
   public async read(metricName: string): Promise<ReadResult> {
     if (this.state !== "CONNECTED") {
-      throw new Error(`SPARKPLUG_NOT_CONNECTED: Não é possível ler métricas no estado [${this.state}].`);
+      throw new Error(
+        `SPARKPLUG_NOT_CONNECTED: Não é possível ler métricas no estado [${this.state}].`,
+      );
     }
 
     const metric = this.knownMetrics.get(metricName);
@@ -190,7 +192,8 @@ export class SparkplugBDriver implements IndustrialDriver {
       tagName: metric.name,
       value: metric.value,
       rawSampleValue: typeof metric.value === "number" ? metric.value : undefined,
-      dataType: metric.dataType === "Boolean" ? "BOOL" : metric.dataType === "String" ? "STRING" : "REAL",
+      dataType:
+        metric.dataType === "Boolean" ? "BOOL" : metric.dataType === "String" ? "STRING" : "REAL",
       quality,
       sourceTimestamp: metric.timestamp,
       engineeringUnit: metric.metadata?.engineeringUnits,
@@ -228,7 +231,10 @@ export class SparkplugBDriver implements IndustrialDriver {
    * Processes an incoming Sparkplug B MQTT message with topic parsing,
    * sequence validation (0-255 rollover) and metric updates.
    */
-  public handleIncomingMessage(topic: string, payload: SparkplugPayload): { success: boolean; error?: string } {
+  public handleIncomingMessage(
+    topic: string,
+    payload: SparkplugPayload,
+  ): { success: boolean; error?: string } {
     if (this.state !== "CONNECTED") {
       return { success: false, error: "BROKER_NOT_CONNECTED" };
     }
@@ -249,7 +255,10 @@ export class SparkplugBDriver implements IndustrialDriver {
     // Validate ACL topic authorization
     if (this.config.authorizedTopicsOnly && groupId !== this.config.groupId) {
       this.diagnostics.requestsFailed++;
-      return { success: false, error: "UNAUTHORIZED_GROUP_TOPIC: Acesso negado para Group ID divergente." };
+      return {
+        success: false,
+        error: "UNAUTHORIZED_GROUP_TOPIC: Acesso negado para Group ID divergente.",
+      };
     }
 
     // Sequence checking for data messages (NDATA, DDATA)
@@ -283,7 +292,8 @@ export class SparkplugBDriver implements IndustrialDriver {
     const results: ReadResult[] = [];
     for (const m of payload.metrics) {
       const fullMetricName = deviceId ? `${deviceId}/${m.name}` : m.name;
-      const quality: TagQuality = messageType === "NDEATH" || messageType === "DDEATH" ? "STALE" : "GOOD";
+      const quality: TagQuality =
+        messageType === "NDEATH" || messageType === "DDEATH" ? "STALE" : "GOOD";
 
       this.knownMetrics.set(fullMetricName, { ...m, name: fullMetricName, quality });
 

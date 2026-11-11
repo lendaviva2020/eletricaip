@@ -2,12 +2,28 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "npm:zod@3.24.2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  Vary: "Origin",
-};
+function buildCorsHeaders(req: Request): Record<string, string> {
+  const configured = (Deno.env.get("ALLOWED_ORIGINS") ?? Deno.env.get("PUBLIC_APP_URL") ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const allowed = new Set<string>([
+    ...configured,
+    "https://eletricaip.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ]);
+  const origin = req.headers.get("Origin") ?? "";
+  const matchedOrigin = allowed.has(origin)
+    ? origin
+    : configured[0] ?? "https://eletricaip.vercel.app";
+  return {
+    "Access-Control-Allow-Origin": matchedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
 
 // ── Schemas Zod Estritos (.strict()) ───────────────────────────────────────
 
@@ -239,6 +255,8 @@ Selecione a melhor proposta para resolver os diagnósticos e gere a justificativ
 // ── Deno Serve Handler ─────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -319,7 +337,7 @@ Deno.serve(async (req) => {
 
     const { projectId, diagnostics, proposals } = parseResult.data;
 
-    // 4. Autorização: Usuário tem acesso ao projeto? (RLS + verificação explícita)
+    // 4. Autorização: Usuário é criador OU membro ativo (não-viewer) do tenant dono do projeto
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .select("id, created_by, tenant_id")
@@ -331,6 +349,31 @@ Deno.serve(async (req) => {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    let hasAccess = project.created_by === user.id;
+    let memberRole: string | null = null;
+    if (project.tenant_id) {
+      const { data: membership } = await supabase
+        .from("tenant_memberships")
+        .select("role")
+        .eq("tenant_id", project.tenant_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (membership?.role) {
+        memberRole = membership.role;
+        hasAccess = true;
+      }
+    }
+
+    if (!hasAccess || memberRole === "viewer") {
+      return new Response(
+        JSON.stringify({ error: "Forbidden: Usuário sem permissão sobre este projeto." }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     // 5. Débito de Crédito de IA no Servidor (Retorna 402 se saldo insuficiente)
@@ -369,7 +412,6 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: "Erro interno no servidor ao processar o diagnóstico com IA.",
-        details: err instanceof Error ? err.message : String(err),
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

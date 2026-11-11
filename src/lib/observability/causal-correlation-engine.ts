@@ -157,7 +157,8 @@ function isExplicitHealthyVerificationEvent(evt: CorrelatedOperationalEvent): bo
 
 export class IndustrialCorrelationEngine {
   private eventsByTenantPlant: Map<string, CorrelatedOperationalEvent[]> = new Map();
-  private ledgerSealsByScope: Map<string, { expectedCount: number; lastHeadHash: string }> = new Map();
+  private ledgerSealsByScope: Map<string, { expectedCount: number; lastHeadHash: string }> =
+    new Map();
   private lastSequenceByComponent: Map<string, { seq: number; sourceTs: number }> = new Map();
   private seenEventSignatures: Set<string> = new Set();
 
@@ -203,11 +204,12 @@ export class IndustrialCorrelationEngine {
     const chainIndex = list.length;
     const previousEventHash =
       chainIndex > 0
-        ? list[chainIndex - 1].eventHash ?? "GENESIS_EVENT_STREAM_BLOCK"
+        ? (list[chainIndex - 1].eventHash ?? "GENESIS_EVENT_STREAM_BLOCK")
         : "GENESIS_EVENT_STREAM_BLOCK";
 
     const eventId =
-      input.eventId ?? `evt_${input.tenantId}_${input.componentId}_${input.sequenceNumber}_${input.sourceTimestamp}`;
+      input.eventId ??
+      `evt_${input.tenantId}_${input.componentId}_${input.sequenceNumber}_${input.sourceTimestamp}`;
 
     const frozenMetadata = deepCloneAndFreeze({
       ...(input.metadata ?? {}),
@@ -495,7 +497,8 @@ export class IndustrialCorrelationEngine {
 
     return list
       .filter((evt) => {
-        if (params.windowStartMs !== undefined && evt.observedAt < params.windowStartMs) return false;
+        if (params.windowStartMs !== undefined && evt.observedAt < params.windowStartMs)
+          return false;
         if (params.windowEndMs !== undefined && evt.observedAt > params.windowEndMs) return false;
         if (params.correlationId && evt.correlationId !== params.correlationId) return false;
         if (params.componentId && evt.componentId !== params.componentId) return false;
@@ -601,7 +604,10 @@ export class IndustrialCorrelationEngine {
             continue;
           }
 
-          if (!upstreamCauseComponentId || pathInfo.path.length > (dependencyPathFromCause?.length ?? 0)) {
+          if (
+            !upstreamCauseComponentId ||
+            pathInfo.path.length > (dependencyPathFromCause?.length ?? 0)
+          ) {
             upstreamCauseComponentId = candidateRootId;
             dependencyPathFromCause = pathInfo.path;
             isPathAllCanonical = pathInfo.allEdgesCanonicalValidated;
@@ -626,7 +632,12 @@ export class IndustrialCorrelationEngine {
         // Verificar se este componente com falha é provedor upstream de algum outro componente com falha na janela
         const hasDownstreamFailureInWindow = Array.from(failureComponentIds).some((otherId) => {
           if (otherId === evt.componentId) return false;
-          const p = graph.getDependencyPath(params.tenantId, params.plantId, evt.componentId, otherId);
+          const p = graph.getDependencyPath(
+            params.tenantId,
+            params.plantId,
+            evt.componentId,
+            otherId,
+          );
           return Boolean(p && p.length >= 2);
         });
 
@@ -667,7 +678,9 @@ export class IndustrialCorrelationEngine {
       const isContradicted = contradictoryComponents.has(node.componentId);
 
       const downstreamSymptoms = groupedSymptoms.filter(
-        (s) => s.role === "SECONDARY_PROPAGATED_SYMPTOM" && s.upstreamCauseComponentId === node.componentId,
+        (s) =>
+          s.role === "SECONDARY_PROPAGATED_SYMPTOM" &&
+          s.upstreamCauseComponentId === node.componentId,
       );
       const allDownstreamPathsCanonical =
         downstreamSymptoms.length === 0 ||
@@ -677,9 +690,17 @@ export class IndustrialCorrelationEngine {
 
       if (isContradicted) {
         status = "INCONCLUSIVE";
-      } else if (hasDirectEvidence && allDownstreamPathsCanonical && !temporalOnlyCorrelationRejected) {
+      } else if (
+        hasDirectEvidence &&
+        allDownstreamPathsCanonical &&
+        !temporalOnlyCorrelationRejected
+      ) {
         status = "CONFIRMED_BY_EVIDENCE";
-      } else if (hasDirectEvidence && node.role === "PRIMARY_ROOT_CAUSE_CANDIDATE" && allDownstreamPathsCanonical) {
+      } else if (
+        hasDirectEvidence &&
+        node.role === "PRIMARY_ROOT_CAUSE_CANDIDATE" &&
+        allDownstreamPathsCanonical
+      ) {
         status = "CONFIRMED_BY_EVIDENCE";
       } else {
         status = "SUSPECTED";

@@ -244,7 +244,10 @@ export const CanonicalEdgeBatchSchema = z.object({
   batchSequenceNumber: z.number().int().nonnegative().default(1),
   sentAt: z.number().int().positive(),
   samples: z.array(CanonicalEdgeSampleSchema).max(5000),
-  alarms: z.array(z.lazy(() => EdgeAlarmTransitionSchema)).max(1000).default([]),
+  alarms: z
+    .array(z.lazy(() => EdgeAlarmTransitionSchema))
+    .max(1000)
+    .default([]),
 });
 export type CanonicalEdgeBatch = z.infer<typeof CanonicalEdgeBatchSchema>;
 

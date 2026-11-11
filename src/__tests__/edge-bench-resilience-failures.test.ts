@@ -27,7 +27,10 @@ describe("GATE 3.3E — Resilience, WAN Outages, Crash Recovery & Buffer Capacit
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "eletricai-bench-resilience-"));
-    dbPath = path.join(tempDir, `bench_outbox_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.db`);
+    dbPath = path.join(
+      tempDir,
+      `bench_outbox_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.db`,
+    );
 
     outbox = new PersistentEdgeOutbox({
       dbPath,

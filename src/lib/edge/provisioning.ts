@@ -16,7 +16,10 @@ export class EdgeProvisioningService {
   private tokenHashes: Map<string, ProvisioningToken> = new Map();
   private gateways: Map<string, GatewayIdentity> = new Map();
   private certificates: Map<string, GatewayCertificateRecord> = new Map();
-  private activeAuthTokens: Map<string, { gatewayId: string; organizationId: string; plantId: string }> = new Map();
+  private activeAuthTokens: Map<
+    string,
+    { gatewayId: string; organizationId: string; plantId: string }
+  > = new Map();
   private revokedGateways: Set<string> = new Set();
   private claimLocks: Set<string> = new Set();
 
@@ -31,7 +34,10 @@ export class EdgeProvisioningService {
     const providedBuf = Buffer.from(providedHash, "hex");
     for (const [storedHash, record] of this.tokenHashes.entries()) {
       const storedBuf = Buffer.from(storedHash, "hex");
-      if (storedBuf.length === providedBuf.length && crypto.timingSafeEqual(storedBuf, providedBuf)) {
+      if (
+        storedBuf.length === providedBuf.length &&
+        crypto.timingSafeEqual(storedBuf, providedBuf)
+      ) {
         return record;
       }
     }
@@ -74,7 +80,10 @@ export class EdgeProvisioningService {
   /**
    * Explicitly revokes an active provisioning token prior to its expiration.
    */
-  public revokeProvisioningToken(tokenOrHash: string, reason: string = "ADMINISTRATIVE_REVOCATION"): boolean {
+  public revokeProvisioningToken(
+    tokenOrHash: string,
+    reason: string = "ADMINISTRATIVE_REVOCATION",
+  ): boolean {
     const hash = tokenOrHash.startsWith("EGW-PROV-")
       ? EdgeProvisioningService.hashToken(tokenOrHash)
       : tokenOrHash;
@@ -107,7 +116,8 @@ export class EdgeProvisioningService {
         cloudEndpoint: "",
         issuedAt: new Date().toISOString(),
         certValidUntil: "",
-        error: "CONCURRENT_CLAIM_CONFLICT: Operação de provisionamento simultânea em andamento para este token.",
+        error:
+          "CONCURRENT_CLAIM_CONFLICT: Operação de provisionamento simultânea em andamento para este token.",
       };
     }
 
@@ -187,7 +197,10 @@ export class EdgeProvisioningService {
         request.certificateFingerprint ||
         (request.publicCertPem
           ? crypto.createHash("sha256").update(request.publicCertPem).digest("hex")
-          : crypto.createHash("sha256").update(`${gatewayId}:${request.stationHardwareId}`).digest("hex"));
+          : crypto
+              .createHash("sha256")
+              .update(`${gatewayId}:${request.stationHardwareId}`)
+              .digest("hex"));
 
       const now = new Date().toISOString();
       const certExpiresAt = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString(); // 1 year validity
@@ -271,7 +284,7 @@ export class EdgeProvisioningService {
       publicCertPem?: string;
       certificateFingerprint?: string;
       validDays?: number;
-    }
+    },
   ): { success: boolean; certValidUntil: string; error?: string } {
     const gateway = this.gateways.get(gatewayId);
     if (!gateway) {
@@ -311,7 +324,10 @@ export class EdgeProvisioningService {
   /**
    * Revokes a provisioned gateway station, invalidating its certificates and auth sessions.
    */
-  public revokeGateway(gatewayId: string, reason: string = "SECURITY_INCIDENT_REVOCATION"): boolean {
+  public revokeGateway(
+    gatewayId: string,
+    reason: string = "SECURITY_INCIDENT_REVOCATION",
+  ): boolean {
     const gateway = this.gateways.get(gatewayId);
     if (!gateway) return false;
 

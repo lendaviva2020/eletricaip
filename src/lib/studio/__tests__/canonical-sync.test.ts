@@ -3,7 +3,10 @@ import { IndustrialProjectService } from "../canonical/project-service";
 
 describe("Canonical Engineering Model & Referential Integrity", () => {
   it("should create a sample industrial project with all 32 entities valid", () => {
-    const project = IndustrialProjectService.createSampleIndustrialProject("tenant-100", "Station A");
+    const project = IndustrialProjectService.createSampleIndustrialProject(
+      "tenant-100",
+      "Station A",
+    );
 
     expect(project.id).toBeDefined();
     expect(project.controllers.length).toBeGreaterThan(0);
@@ -19,7 +22,10 @@ describe("Canonical Engineering Model & Referential Integrity", () => {
   });
 
   it("should propagate entity renaming across all POUs, Rungs, FBD nodes, and HMI without breaking UUIDs", () => {
-    const project = IndustrialProjectService.createSampleIndustrialProject("tenant-100", "Station A");
+    const project = IndustrialProjectService.createSampleIndustrialProject(
+      "tenant-100",
+      "Station A",
+    );
 
     // Identify tag Tanque_Nivel_Percent
     const tagTankLevel = project.tags.find((t) => t.name === "Tanque_Nivel_Percent");
@@ -33,7 +39,7 @@ describe("Canonical Engineering Model & Referential Integrity", () => {
       project,
       "TAG",
       tagTankLevel.id,
-      newName
+      newName,
     );
 
     // 1. Tag itself was renamed
@@ -60,7 +66,10 @@ describe("Canonical Engineering Model & Referential Integrity", () => {
   });
 
   it("should rebuild dependency graph correctly connecting POUs and Tags", () => {
-    const project = IndustrialProjectService.createSampleIndustrialProject("tenant-100", "Station A");
+    const project = IndustrialProjectService.createSampleIndustrialProject(
+      "tenant-100",
+      "Station A",
+    );
     const graph = IndustrialProjectService.rebuildDependencyGraph(project);
 
     expect(graph.references.length).toBeGreaterThan(0);

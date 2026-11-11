@@ -1,7 +1,6 @@
 // ELÉTRICAI INDUSTRIAL OS — SIGNED UPDATES, STAGED ROLLOUTS & AUTOMATED ROLLBACK ENGINE
 // Standards: NIST SP 800-82 Rev. 3, IEC 62443-4-2, The Update Framework (TUF)
 
-import { createHash } from "node:crypto";
 import type {
   SignedUpdateManifest,
   FleetGatewaySummary,
@@ -10,6 +9,7 @@ import type {
 } from "./types";
 import { fleetAuditManager } from "./fleet-audit";
 import { fleetRbacEngine } from "./fleet-rbac";
+import { constantTimeEqual, hmacSha256Hex } from "../security/isomorphic-crypto";
 
 export interface UpdateExecutionResult {
   success: boolean;
@@ -39,26 +39,56 @@ export interface UpdateCampaign {
 
 export class SignedUpdateManager {
   private campaigns: Map<string, UpdateCampaign> = new Map();
-  private publicSigningKey: string = "PUBKEY_ELETRICAI_OFFICIAL_RELEASE_SIGNING_AUTHORITY_2026";
+  private signingSecret: string;
 
-  /**
-   * Generates a valid cryptographic signature for a release manifest.
-   */
-  public signReleaseManifest(
-    manifestData: Omit<SignedUpdateManifest, "signature">,
-    signingSecret: string = "SECRET_ELETRICAI_PRIVATE_RELEASE_SIGNER",
+  constructor(signingSecret?: string) {
+    this.signingSecret =
+      signingSecret ??
+      (typeof process !== "undefined" && process.env
+        ? (process.env["ELETRICAI_RELEASE_SIGNING_SECRET"] ?? "")
+        : "");
+  }
+
+  private buildCanonicalSigningPayload(
+    manifestData: Pick<
+      SignedUpdateManifest,
+      "packageId" | "targetVersion" | "targetArch" | "sha256"
+    >,
   ): string {
-    const raw = `${manifestData.packageId}:${manifestData.targetVersion}:${manifestData.targetArch}:${manifestData.sha256}:${signingSecret}`;
-    return createHash("sha256").update(raw).digest("hex");
+    return `${manifestData.packageId}:${manifestData.targetVersion}:${manifestData.targetArch}:${manifestData.sha256.toLowerCase()}`;
   }
 
   /**
-   * Verifies the authenticity, checksum, and signature of a release manifest.
+   * Generates a valid cryptographic HMAC-SHA256 signature for a release manifest.
+   * Requires an explicit signing secret (never falls back to a hardcoded private key).
    */
-  public verifyManifestSignature(manifest: SignedUpdateManifest): boolean {
-    if (!manifest.signature || manifest.signature.length < 16) return false;
-    // In our test/bench execution, verify signature presence and SHA-256 formatting
-    return /^[a-f0-9]{64}$/i.test(manifest.sha256) && manifest.signature.length > 0;
+  public signReleaseManifest(
+    manifestData: Omit<SignedUpdateManifest, "signature">,
+    signingSecret?: string,
+  ): string {
+    const key = signingSecret || this.signingSecret;
+    if (!key) {
+      throw new Error(
+        "SIGNING_SECRET_UNCONFIGURED: Segredo de assinatura de release não configurado no servidor.",
+      );
+    }
+    return hmacSha256Hex(key, this.buildCanonicalSigningPayload(manifestData));
+  }
+
+  /**
+   * Verifies the authenticity, checksum, and HMAC-SHA256 signature of a release manifest.
+   * Fails closed if no verification key is configured or if the signature does not match.
+   */
+  public verifyManifestSignature(
+    manifest: SignedUpdateManifest,
+    verificationSecret?: string,
+  ): boolean {
+    if (!/^[a-f0-9]{64}$/i.test(manifest.sha256)) return false;
+    if (!manifest.signature || !/^[a-f0-9]{64}$/i.test(manifest.signature)) return false;
+    const key = verificationSecret || this.signingSecret;
+    if (!key) return false;
+    const expected = hmacSha256Hex(key, this.buildCanonicalSigningPayload(manifest));
+    return constantTimeEqual(manifest.signature.toLowerCase(), expected.toLowerCase());
   }
 
   /**
@@ -77,7 +107,9 @@ export class SignedUpdateManager {
     });
 
     if (!this.verifyManifestSignature(manifest)) {
-      throw new Error("INVALID_MANIFEST_SIGNATURE: Assinatura digital do pacote de atualização inválida ou corrompida.");
+      throw new Error(
+        "INVALID_MANIFEST_SIGNATURE: Assinatura digital do pacote de atualização inválida ou corrompida.",
+      );
     }
 
     const campaignId = `cmp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -187,7 +219,8 @@ export class SignedUpdateManager {
         gatewayId: gateway.gatewayId,
         state: "ROLLED_BACK",
         activeVersion: previousVersion,
-        error: "HEALTH_CHECK_FAILED: Falha na validação pós-instalação. Rollback executado com sucesso.",
+        error:
+          "HEALTH_CHECK_FAILED: Falha na validação pós-instalação. Rollback executado com sucesso.",
       });
 
       fleetAuditManager.recordEvent({
@@ -213,7 +246,8 @@ export class SignedUpdateManager {
         activeVersion: previousVersion,
         updateState: "ROLLED_BACK",
         rollbackExecuted: true,
-        error: "HEALTH_CHECK_FAILED: Falha na validação pós-instalação. Rollback executado com sucesso.",
+        error:
+          "HEALTH_CHECK_FAILED: Falha na validação pós-instalação. Rollback executado com sucesso.",
       };
     }
 

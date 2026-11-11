@@ -202,7 +202,7 @@ export class EdgeDaemon {
               gatewayId: this.config.gatewayId,
               isPhysicalControlAllowed: false,
               telemetry,
-            })
+            }),
           );
           return;
         }
@@ -248,7 +248,7 @@ export class EdgeDaemon {
       this.healthServer = server;
       server.listen(this.config.healthServer.port, this.config.healthServer.host, () => {
         this.logger.info(
-          `Servidor de Health/Métricas ativo em http://${this.config.healthServer.host}:${this.config.healthServer.port}/healthz`
+          `Servidor de Health/Métricas ativo em http://${this.config.healthServer.host}:${this.config.healthServer.port}/healthz`,
         );
         resolve();
       });

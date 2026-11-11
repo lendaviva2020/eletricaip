@@ -11,7 +11,10 @@ describe("GATE 3.3F — SQLite Durability, Synchronous Policy & Degradation Sign
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "eletricai-bench-durability-"));
-    dbPath = path.join(tempDir, `bench_durability_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.db`);
+    dbPath = path.join(
+      tempDir,
+      `bench_durability_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.db`,
+    );
   });
 
   afterEach(async () => {

@@ -46,9 +46,7 @@ export function safeParseYaml(yamlText: string): unknown {
       stack.pop();
     }
     if (stack.length > 20) {
-      throw new Error(
-        "Profundidade máxima de aninhamento YAML excedida (limite: 20 níveis).",
-      );
+      throw new Error("Profundidade máxima de aninhamento YAML excedida (limite: 20 níveis).");
     }
     const currentParent = stack[stack.length - 1].obj;
 

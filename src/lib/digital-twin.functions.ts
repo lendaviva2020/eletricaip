@@ -119,6 +119,31 @@ const SignedReadInput = z.object({
     .optional(),
 });
 
+function hasUnsafePathChars(input: string): boolean {
+  for (let i = 0; i < input.length; i++) {
+    const code = input.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f || code === 0x5c) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isSafeStorageObjectPath(rawPath: string, expectedPrefix: string): boolean {
+  if (!rawPath || !expectedPrefix) return false;
+  if (hasUnsafePathChars(rawPath)) return false;
+  if (rawPath.includes("..") || rawPath.includes("//")) return false;
+  try {
+    const decoded = decodeURIComponent(rawPath);
+    if (hasUnsafePathChars(decoded)) return false;
+    if (decoded.includes("..") || decoded.includes("//")) return false;
+  } catch {
+    return false;
+  }
+  const normalized = rawPath.split("/").filter((seg) => seg.length > 0 && seg !== ".");
+  return rawPath.startsWith(expectedPrefix) && !normalized.includes("..");
+}
+
 export const getTwinModelSignedUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => SignedReadInput.parse(data))
@@ -132,7 +157,7 @@ export const getTwinModelSignedUrl = createServerFn({ method: "POST" })
       .maybeSingle();
     const tenantId = profile?.tenant_id;
     if (!tenantId) throw new Error("no_tenant");
-    if (!data.path.startsWith(`${tenantId}/`)) throw new Error("forbidden");
+    if (!isSafeStorageObjectPath(data.path, `${tenantId}/`)) throw new Error("forbidden");
 
     const { data: signed, error } = await supabase.storage
       .from(BUCKET)
@@ -276,7 +301,9 @@ export const confirmTwinModelUpload = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const tenantId = await requireProjectMembership(supabase, userId, data.projectId);
-    if (!data.path.startsWith(`${tenantId}/${data.projectId}/`)) throw new Error("forbidden");
+    if (!isSafeStorageObjectPath(data.path, `${tenantId}/${data.projectId}/`)) {
+      throw new Error("forbidden");
+    }
 
     const { error } = await supabase
       .from("projects")

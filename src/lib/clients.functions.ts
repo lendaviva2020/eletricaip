@@ -24,6 +24,15 @@ export interface ClientRow {
   updated_at: string;
 }
 
+function isSafeHttpOrHttpsUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const ClientPayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
   sector: z.string().trim().max(80).default(""),
@@ -32,8 +41,24 @@ const ClientPayloadSchema = z.object({
   phone: z.string().trim().max(40).default(""),
   cnpj: z.string().trim().max(20).default(""),
   address: z.string().trim().max(240).default(""),
-  website: z.string().trim().max(200).default(""),
-  logo_url: z.string().url().max(500).nullable().optional().default(null),
+  website: z
+    .string()
+    .trim()
+    .max(200)
+    .default("")
+    .refine((v) => v === "" || isSafeHttpOrHttpsUrl(v), {
+      message: "URL de website deve iniciar com http:// ou https://",
+    }),
+  logo_url: z
+    .string()
+    .url()
+    .max(500)
+    .refine(isSafeHttpOrHttpsUrl, {
+      message: "logo_url deve iniciar com http:// ou https://",
+    })
+    .nullable()
+    .optional()
+    .default(null),
   status: z.enum(["active", "prospect", "inactive"]).default("active"),
   sla_pct: z.coerce.number().min(0).max(100).default(99.9),
   notes: z.string().trim().max(2000).default(""),

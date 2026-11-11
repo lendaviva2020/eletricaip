@@ -56,4 +56,6 @@ auth-state.json
 auth-state*.json
 playwright/.auth/
 .playwright/
+playwright-report/
+test-results/
 

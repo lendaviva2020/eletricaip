@@ -2,12 +2,7 @@
 // Standards: ISA-101, IEC 62443, OPC UA Unified Architecture (Part 8: Data Access)
 // Provenance: source, sourceTimestamp, receivedAt, sequenceNumber, quality, unforcedValue
 
-import type {
-  ScadaTagDefinition,
-  TagUpdateInput,
-  TagQuality,
-  HistoricalSample,
-} from "./types";
+import type { ScadaTagDefinition, TagUpdateInput, TagQuality, HistoricalSample } from "./types";
 
 export interface ProcessedTagResult {
   tag: ScadaTagDefinition;
@@ -164,7 +159,8 @@ export class IndustrialTagRuntime {
         scaleMin: 0,
         scaleMax: 100,
         value: engValue,
-        rawSampleValue: typeof input.rawValue === "number" && !isInvalidNumber ? input.rawValue : undefined,
+        rawSampleValue:
+          typeof input.rawValue === "number" && !isInvalidNumber ? input.rawValue : undefined,
         unforcedValue: engValue,
         quality: resolvedQuality,
         driver: input.source,
@@ -255,7 +251,10 @@ export class IndustrialTagRuntime {
     // If tag is forced, preserve the unforced value in background and DO NOT overwrite forced value
     if (tag.forced) {
       tag.unforcedValue = engineeringValue;
-      tag.rawSampleValue = typeof input.rawValue === "number" && !isInvalidNumber ? input.rawValue : tag.rawSampleValue;
+      tag.rawSampleValue =
+        typeof input.rawValue === "number" && !isInvalidNumber
+          ? input.rawValue
+          : tag.rawSampleValue;
       return {
         tag,
         hasChanged: false,
@@ -302,7 +301,8 @@ export class IndustrialTagRuntime {
     // 8. Update Tag Definition in Runtime
     tag.value = engineeringValue;
     tag.unforcedValue = engineeringValue;
-    tag.rawSampleValue = typeof input.rawValue === "number" && !isInvalidNumber ? input.rawValue : undefined;
+    tag.rawSampleValue =
+      typeof input.rawValue === "number" && !isInvalidNumber ? input.rawValue : undefined;
     tag.quality = resolvedQuality;
     tag.driver = input.source;
     tag.lastUpdated = nowUtc;

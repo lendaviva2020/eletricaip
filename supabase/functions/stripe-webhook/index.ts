@@ -1,12 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  Vary: "Origin",
-};
+function buildCorsHeaders(): Record<string, string> {
+  const allowedOrigin = Deno.env.get("PUBLIC_APP_URL") || "https://eletricaip.vercel.app";
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
 
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -81,12 +84,18 @@ function getPlanFromPrice(priceId: string): string | null {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCorsHeaders();
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
+
+  if (!STRIPE_WEBHOOK_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return new Response("not_configured", { status: 503, headers: corsHeaders });
   }
 
   try {
@@ -104,6 +113,23 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    // Idempotency check shared with Next/TanStack webhook receiver
+    if (event.id) {
+      const { error: dupErr } = await supabase
+        .from("stripe_webhook_events")
+        .insert({ event_id: event.id, event_type: event.type });
+      if (dupErr) {
+        const msg = String(dupErr.message ?? "").toLowerCase();
+        if (msg.includes("duplicate") || (dupErr as { code?: string }).code === "23505") {
+          return new Response(JSON.stringify({ received: true, deduplicated: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+        throw new Error(`stripe_event_log_failed:${dupErr.message}`);
+      }
+    }
 
     console.log(`[stripe-webhook] Event: ${event.type}`);
 
@@ -194,17 +220,21 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (tenant) {
-          const { error: invError } = await supabase.from("invoices").insert({
-            tenant_id: tenant.id,
-            stripe_invoice_id: invoice.id,
-            amount: Math.round(amountPaid / 100),
-            currency: currency.toUpperCase(),
-            status: "paid",
-            pdf_url: invoicePdf || invoiceUrl,
-            created_at: new Date(invoice.created * 1000).toISOString(),
-          });
+          // Canonical monetary unit: integer cents (matching settings.billing.tsx / 100)
+          const { error: invError } = await supabase.from("invoices").upsert(
+            {
+              tenant_id: tenant.id,
+              stripe_invoice_id: invoice.id,
+              amount: Math.round(Number(amountPaid)),
+              currency: String(currency).toLowerCase(),
+              status: "paid",
+              pdf_url: invoicePdf || invoiceUrl,
+              created_at: new Date(invoice.created * 1000).toISOString(),
+            },
+            { onConflict: "stripe_invoice_id" },
+          );
 
-          if (invError) console.error("[stripe-webhook] Invoice insert error:", invError.message);
+          if (invError) console.error("[stripe-webhook] Invoice upsert error:", invError.message);
         }
         break;
       }

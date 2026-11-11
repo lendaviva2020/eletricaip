@@ -462,8 +462,8 @@ function BillingPage() {
                 label="Gasto total"
                 value={`R$ ${(
                   (data?.invoices ?? [])
-                    .filter((inv) => inv.status === "paid")
-                    .reduce((acc, inv) => acc + (inv.amount ?? 0), 0) / 100
+                    .filter((inv: any) => inv.status === "paid")
+                    .reduce((acc: number, inv: any) => acc + (inv.amount ?? 0), 0) / 100
                 )
                   .toFixed(2)
                   .replace(".", ",")}`}

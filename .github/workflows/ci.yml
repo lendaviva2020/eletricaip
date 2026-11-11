@@ -34,11 +34,18 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      - name: Security — Dependency Audit & Source Secret Check
+        run: |
+          bun audit --audit-level=critical
+          ! grep -rn --exclude-dir=__tests__ "egw_token_lab_ete_secret_123\|SECRET_ELETRICAI_PRIVATE_RELEASE_SIGNER\|ELETRICAI_REMOTE_CONFIG_SIGNING_KEY" src/
+
       - name: Tests
         run: bun run test
 
-      - name: Production build
-        run: bun run build
+      - name: Production build & Client Bundle Secret Scan
+        run: |
+          bun run build
+          ! grep -rn "egw_token_lab_ete_secret_123\|SERVICE_ROLE_KEY\|STRIPE_WEBHOOK_SECRET\|MP_ACCESS_TOKEN" .vercel/output/static/
 
   deploy-supabase:
     needs: quality

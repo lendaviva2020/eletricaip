@@ -17,13 +17,18 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
         const sig = request.headers.get("stripe-signature");
         if (!sig) return new Response("missing_signature", { status: 400 });
 
-        const body = await request.text();
-        const ok = await verifyStripeSig(body, sig, secret, 300);
-        if (!ok) return new Response("invalid_signature", { status: 400 });
+        let body: string;
+        let event: StripeEvent;
+        try {
+          body = await request.text();
+          const ok = await verifyStripeSig(body, sig, secret, 300);
+          if (!ok) return new Response("invalid_signature", { status: 400 });
+          event = JSON.parse(body) as StripeEvent;
+        } catch {
+          return new Response("invalid_payload", { status: 400 });
+        }
 
-        const event = JSON.parse(body) as StripeEvent;
-
-        // Idempotency: only short-circuit on actual duplicate-key violations.
+        // Idempotency reservation: roll back row if event handling fails so Stripe retries recover.
         const { error: dupErr } = await supabaseAdmin
           .from("stripe_webhook_events")
           .insert({ event_id: event.id, event_type: event.type });
@@ -40,6 +45,7 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
           await handleStripeEvent(event);
         } catch (e) {
           console.error("[stripe] handler error", e);
+          await supabaseAdmin.from("stripe_webhook_events").delete().eq("event_id", event.id);
           return new Response("handler_error", { status: 500 });
         }
         return new Response("ok", { status: 200 });

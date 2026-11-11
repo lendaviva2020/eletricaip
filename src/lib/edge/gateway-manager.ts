@@ -30,7 +30,7 @@ export class MasterEdgeGatewayManager {
   public readonly identity: GatewayIdentity;
   public readonly outbox: PersistentEdgeOutbox;
   public readonly syncClient: CloudSyncClient;
-  public readonly isPhysicalControlAllowed: false = false;
+  public readonly isPhysicalControlAllowed = false as const;
   private runtime: IndustrialTagRuntime;
   private alarmEngine?: DeterministicAlarmEngine;
   private drivers: Map<string, IndustrialDriver> = new Map();
@@ -157,7 +157,11 @@ export class MasterEdgeGatewayManager {
     // 2. Feed Industrial Tag Runtime
     const numVal = typeof params.value === "number" ? params.value : 0;
     const protocol: ProtocolDriver =
-      driver.protocol === "OPC_UA" ? "OPC_UA" : driver.protocol === "MODBUS_TCP" ? "MODBUS_TCP" : "MQTT";
+      driver.protocol === "OPC_UA"
+        ? "OPC_UA"
+        : driver.protocol === "MODBUS_TCP"
+          ? "MODBUS_TCP"
+          : "MQTT";
 
     const updateRes = this.runtime.processUpdate({
       tagId: tagName,
@@ -165,7 +169,12 @@ export class MasterEdgeGatewayManager {
       projectId: params.projectId,
       equipmentId: mapping?.equipmentId,
       rawValue: params.value,
-      dataType: typeof params.value === "boolean" ? "BOOL" : typeof params.value === "number" ? "REAL" : "STRING",
+      dataType:
+        typeof params.value === "boolean"
+          ? "BOOL"
+          : typeof params.value === "number"
+            ? "REAL"
+            : "STRING",
       source: protocol,
       sourceTimestamp: params.sourceTimestamp,
       receivedAt: Date.now(),
@@ -254,7 +263,10 @@ export class MasterEdgeGatewayManager {
       uptimeSeconds: uptime,
       cpuUsagePercent: 12.4, // Nominal telemetry load
       memoryUsageMb: 84.5,
-      diskUsagePercent: Math.min(100, Math.round((bufferStats.diskBytesUsed / bufferStats.diskLimitBytes) * 100)),
+      diskUsagePercent: Math.min(
+        100,
+        Math.round((bufferStats.diskBytesUsed / bufferStats.diskLimitBytes) * 100),
+      ),
       bufferStatus: bufferStats,
       lastCloudSyncTimestamp: this.isCloudConnected ? Date.now() : null,
       activeTagsCount: this.tagMappings.size,

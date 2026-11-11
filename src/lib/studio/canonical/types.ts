@@ -24,12 +24,7 @@ export type UUID = z.infer<typeof UUIDSchema>;
 // ----------------------------------------------------------------------------
 // 1. Tipos de Dados Industriais (IEC 61131-3 Elementary & Composite Data Types)
 // ----------------------------------------------------------------------------
-export const IECPrimitiveValueSchema = z.union([
-  z.boolean(),
-  z.number(),
-  z.string(),
-  z.null(),
-]);
+export const IECPrimitiveValueSchema = z.union([z.boolean(), z.number(), z.string(), z.null()]);
 export type IECPrimitiveValue = z.infer<typeof IECPrimitiveValueSchema>;
 
 export const IECValueSchema = z.union([
@@ -230,7 +225,9 @@ export const HardwareModuleSchema = z.object({
   partNumber: z.string().default(""),
   channelsCount: z.number().int().nonnegative().default(0),
   channels: z.array(IOChannelSchema).default([]),
-  hardwareParameters: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
+  hardwareParameters: z
+    .record(z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .default({}),
   diagnostics: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
 });
 export type HardwareModule = z.infer<typeof HardwareModuleSchema>;
@@ -726,13 +723,15 @@ export const SimulationScenarioSchema = z.object({
   projectId: UUIDSchema,
   name: z.string().min(1),
   clockIntervalMs: z.number().int().positive().default(10),
-  inputsTimeline: z.array(
-    z.object({
-      timeOffsetMs: z.number().nonnegative(),
-      tagId: UUIDSchema,
-      simulatedValue: IECValueSchema,
-    }),
-  ).default([]),
+  inputsTimeline: z
+    .array(
+      z.object({
+        timeOffsetMs: z.number().nonnegative(),
+        tagId: UUIDSchema,
+        simulatedValue: IECValueSchema,
+      }),
+    )
+    .default([]),
 });
 export type SimulationScenario = z.infer<typeof SimulationScenarioSchema>;
 
@@ -804,7 +803,9 @@ export const TraceConfigurationSchema = z.object({
   sampleIntervalMs: z.number().int().positive().default(10),
   bufferDepthSamples: z.number().int().positive().default(1000),
   triggerTagId: UUIDSchema.optional(),
-  triggerCondition: z.enum(["RISING_EDGE", "FALLING_EDGE", "THRESHOLD", "CONTINUOUS"]).default("CONTINUOUS"),
+  triggerCondition: z
+    .enum(["RISING_EDGE", "FALLING_EDGE", "THRESHOLD", "CONTINUOUS"])
+    .default("CONTINUOUS"),
   triggerThreshold: z.number().default(0),
   preTriggerSamples: z.number().int().nonnegative().default(100),
   channels: z.array(TraceChannelSchema).default([]),
@@ -826,7 +827,12 @@ export const X509CertificateSchema = z.object({
 });
 export type X509Certificate = z.infer<typeof X509CertificateSchema>;
 
-export const DigitalTwinSyncStatusSchema = z.enum(["SYNCHRONIZED", "DRIFT_DETECTED", "DESYNCHRONIZED", "OFFLINE"]);
+export const DigitalTwinSyncStatusSchema = z.enum([
+  "SYNCHRONIZED",
+  "DRIFT_DETECTED",
+  "DESYNCHRONIZED",
+  "OFFLINE",
+]);
 export type DigitalTwinSyncStatus = z.infer<typeof DigitalTwinSyncStatusSchema>;
 
 export const DigitalTwinStateSchema = z.object({
@@ -840,7 +846,13 @@ export const DigitalTwinStateSchema = z.object({
 });
 export type DigitalTwinState = z.infer<typeof DigitalTwinStateSchema>;
 
-export const UserRoleSchema = z.enum(["ADMIN", "LEAD_ENGINEER", "OPERATOR", "MAINTENANCE", "AUDITOR"]);
+export const UserRoleSchema = z.enum([
+  "ADMIN",
+  "LEAD_ENGINEER",
+  "OPERATOR",
+  "MAINTENANCE",
+  "AUDITOR",
+]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const RBACPermissionSchema = z.object({

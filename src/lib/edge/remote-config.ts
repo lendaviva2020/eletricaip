@@ -2,10 +2,10 @@
 // Standards: IEC 62443-4-2, NIST SP 800-82 Rev. 3, RFC 8259
 
 import { z } from "zod";
-import { createHash } from "node:crypto";
 import type { RemoteConfigPayload, FleetUserContext } from "./types";
 import { fleetAuditManager } from "./fleet-audit";
 import { fleetRbacEngine } from "./fleet-rbac";
+import { constantTimeEqual, hmacSha256Hex } from "../security/isomorphic-crypto";
 
 export const RemoteConfigPayloadSchema = z.object({
   configVersion: z.number().int().positive(),
@@ -69,8 +69,14 @@ export class RemoteConfigManager {
   private configHistory: Map<string, RemoteConfigPayload[]> = new Map();
   // gatewayId -> Last Known Good Configuration (LKGC)
   private lkgcMap: Map<string, RemoteConfigPayload> = new Map();
+  private signingSecret: string;
 
-  constructor() {
+  constructor(signingSecret?: string) {
+    this.signingSecret =
+      signingSecret ??
+      (typeof process !== "undefined" && process.env
+        ? (process.env["ELETRICAI_REMOTE_CONFIG_SIGNING_SECRET"] ?? "")
+        : "");
     this.seedDefaultConfig();
   }
 
@@ -109,15 +115,50 @@ export class RemoteConfigManager {
     return this.configHistory.get(gatewayId) || [];
   }
 
+  private buildCanonicalPayloadString(payload: Omit<RemoteConfigPayload, "signature">): string {
+    return JSON.stringify({
+      configVersion: payload.configVersion,
+      gatewayId: payload.gatewayId,
+      author: payload.author,
+      timestamp: payload.timestamp,
+      scanRateMs: payload.scanRateMs,
+      authorizedEndpoints: payload.authorizedEndpoints,
+      enabledTags: payload.enabledTags,
+      readProtocols: payload.readProtocols,
+      bufferLimits: payload.bufferLimits,
+      retentionPolicy: payload.retentionPolicy,
+      observability: payload.observability,
+      approval: payload.approval,
+    });
+  }
+
   /**
-   * Generates a tamper-proof signature for a configuration payload.
+   * Generates a tamper-proof HMAC-SHA256 signature for a configuration payload.
    */
   public generateConfigSignature(
     payload: Omit<RemoteConfigPayload, "signature">,
-    signingSecret: string = "ELETRICAI_REMOTE_CONFIG_SIGNING_KEY",
+    signingSecret?: string,
   ): string {
-    const raw = JSON.stringify(payload);
-    return createHash("sha256").update(`${raw}:${signingSecret}`).digest("hex");
+    const key = signingSecret || this.signingSecret;
+    if (!key) {
+      throw new Error(
+        "CONFIG_SIGNING_SECRET_UNCONFIGURED: Segredo de assinatura de configuração remota não configurado.",
+      );
+    }
+    return hmacSha256Hex(key, this.buildCanonicalPayloadString(payload));
+  }
+
+  /**
+   * Cryptographically verifies the HMAC-SHA256 signature of a remote configuration payload.
+   * Fails closed if no verification key is configured or if the signature is forged/invalid.
+   */
+  public verifyConfigSignature(payload: RemoteConfigPayload, verificationSecret?: string): boolean {
+    if (!payload.signature || !/^[a-f0-9]{64}$/i.test(payload.signature)) return false;
+    const key = verificationSecret || this.signingSecret;
+    if (!key) return false;
+    const { signature, ...unsigned } = payload;
+    const expected = hmacSha256Hex(key, this.buildCanonicalPayloadString(unsigned));
+    return constantTimeEqual(signature.toLowerCase(), expected.toLowerCase());
   }
 
   /**
@@ -134,9 +175,10 @@ export class RemoteConfigManager {
     fleetRbacEngine.assertCanPerformAction(user, "PROPOSE_CONFIG", {
       organizationId: targetOrgId,
       plantId: targetPlantId,
-      gatewayId: typeof candidate === "object" && candidate !== null && "gatewayId" in candidate
-        ? String((candidate as any).gatewayId)
-        : "unknown",
+      gatewayId:
+        typeof candidate === "object" && candidate !== null && "gatewayId" in candidate
+          ? String((candidate as any).gatewayId)
+          : "unknown",
     });
 
     // 2. Strict Safety Interlock Check: Reject ANY attempted physical write or control parameter
@@ -158,13 +200,17 @@ export class RemoteConfigManager {
         eventType: "DANGEROUS_CONFIG_REJECTED",
         severity: "CRITICAL",
         result: "DENIED",
-        details: { reason: "Tentativa de habilitar escrita física ou controle de atuadores via configuração remota." },
+        details: {
+          reason:
+            "Tentativa de habilitar escrita física ou controle de atuadores via configuração remota.",
+        },
       });
 
       return {
         success: false,
         activeConfigVersion: this.lkgcMap.get((candidate as any)?.gatewayId)?.configVersion ?? 0,
-        error: "DANGEROUS_CONFIG_REJECTED: A plataforma proíbe permanentemente configurações com escrita física (isPhysicalControlAllowed: false).",
+        error:
+          "DANGEROUS_CONFIG_REJECTED: A plataforma proíbe permanentemente configurações com escrita física (isPhysicalControlAllowed: false).",
         isFallbackToLkgc: true,
       };
     }
@@ -172,7 +218,9 @@ export class RemoteConfigManager {
     // 3. Schema Validation
     const parsed = RemoteConfigPayloadSchema.safeParse(candidate);
     if (!parsed.success) {
-      const errDetails = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ");
+      const errDetails = parsed.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join(", ");
       const gwId = (candidate as any)?.gatewayId || "unknown";
       const currentLkgc = this.lkgcMap.get(gwId);
 
@@ -199,6 +247,29 @@ export class RemoteConfigManager {
     const validConfig = parsed.data;
     const history = this.configHistory.get(validConfig.gatewayId) || [];
     const currentActive = this.lkgcMap.get(validConfig.gatewayId);
+
+    // 3.5. Cryptographic Signature Verification (fail-closed)
+    if (!this.verifyConfigSignature(validConfig)) {
+      fleetAuditManager.recordEvent({
+        actor: { id: user.userId, email: user.email, role: user.role },
+        source: "ADMIN_CONSOLE",
+        gatewayId: validConfig.gatewayId,
+        plantId: targetPlantId,
+        organizationId: targetOrgId,
+        eventType: "CONFIG_REJECTED",
+        severity: "CRITICAL",
+        result: "FAILED",
+        details: { reason: "Assinatura HMAC-SHA256 inválida ou chave ausente." },
+      });
+
+      return {
+        success: false,
+        activeConfigVersion: currentActive?.configVersion ?? 0,
+        error:
+          "INVALID_CONFIG_SIGNATURE: Assinatura criptográfica da configuração remota inválida.",
+        isFallbackToLkgc: true,
+      };
+    }
 
     // 4. Concurrency & Monotonic Version Check
     if (currentActive && validConfig.configVersion <= currentActive.configVersion) {

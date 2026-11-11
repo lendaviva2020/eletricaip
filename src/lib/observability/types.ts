@@ -19,12 +19,7 @@ export const IS_PHYSICAL_CONTROL_ALLOWED = false as const;
 // -----------------------------------------------------------------------------
 
 export type HealthState =
-  | "HEALTHY"
-  | "DEGRADED"
-  | "UNAVAILABLE"
-  | "UNKNOWN"
-  | "MAINTENANCE"
-  | "NOT_INSTRUMENTED";
+  "HEALTHY" | "DEGRADED" | "UNAVAILABLE" | "UNKNOWN" | "MAINTENANCE" | "NOT_INSTRUMENTED";
 
 export type ComponentType =
   | "CLOUD_SERVICE"
@@ -164,20 +159,12 @@ export interface PipelineReliabilityReport {
 // 4. Gestão de Incidentes Operacionais (IEC 62443 / ITIL Industrial)
 // -----------------------------------------------------------------------------
 
-export type IncidentCategory =
-  | "INDUSTRIAL_PROCESS"
-  | "INFRASTRUCTURE"
-  | "SECURITY_EVENT";
+export type IncidentCategory = "INDUSTRIAL_PROCESS" | "INFRASTRUCTURE" | "SECURITY_EVENT";
 
 export type IncidentSeverity = "INFO" | "WARNING" | "CRITICAL" | "FATAL";
 
 export type IncidentStatus =
-  | "OPEN"
-  | "ACKNOWLEDGED"
-  | "INVESTIGATING"
-  | "MITIGATED"
-  | "RESOLVED"
-  | "CLOSED";
+  "OPEN" | "ACKNOWLEDGED" | "INVESTIGATING" | "MITIGATED" | "RESOLVED" | "CLOSED";
 
 export type IncidentInvestigationStage =
   | "INCIDENT_DETECTED"
@@ -440,10 +427,7 @@ export type DependencyRelationType =
   | "STORAGE_PIPELINE"
   | "VISUALIZATION_BINDING";
 
-export type DependencyValidationState =
-  | "VALIDATED_CANONICAL"
-  | "CONFIGURED_UNVERIFIED"
-  | "UNKNOWN";
+export type DependencyValidationState = "VALIDATED_CANONICAL" | "CONFIGURED_UNVERIFIED" | "UNKNOWN";
 
 export interface DependencyNode {
   componentId: string;
@@ -496,12 +480,7 @@ export interface DependencyImpactAnalysis {
 // -----------------------------------------------------------------------------
 
 export type DiagnosticStatus =
-  | "OBSERVED"
-  | "SUSPECTED"
-  | "CONFIRMED_BY_EVIDENCE"
-  | "INCONCLUSIVE"
-  | "REJECTED"
-  | "RESOLVED";
+  "OBSERVED" | "SUSPECTED" | "CONFIRMED_BY_EVIDENCE" | "INCONCLUSIVE" | "REJECTED" | "RESOLVED";
 
 export type DiagnosticRuleId =
   | "RULE_01_GATEWAY_OFFLINE_INGESTION_HALT"
@@ -616,7 +595,8 @@ export interface AiDiagnosticAnalysis {
   observedFacts: string[];
   availableEvidence: Array<{
     referenceId: string;
-    sourceType: "EVENT" | "METRIC" | "DIAGNOSTIC_RULE" | "DEPENDENCY_GRAPH" | "HISTORIAN" | "RUNBOOK";
+    sourceType:
+      "EVENT" | "METRIC" | "DIAGNOSTIC_RULE" | "DEPENDENCY_GRAPH" | "HISTORIAN" | "RUNBOOK";
     summary: string;
   }>;
   hypotheses: string[];
@@ -721,4 +701,3 @@ export interface IndustrialReliabilityMetrics {
   }>;
   formulas: Record<string, string>;
 }
-

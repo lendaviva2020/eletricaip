@@ -180,9 +180,9 @@ describe("GATE 3.6 — Modbus TCP Read-Only Driver Homologation", () => {
     expect(driver.getState()).toBe("DISCONNECTED");
     expect(driver.getDiagnostics().reconnectCount).toBe(1);
 
-    await expect(driver.read({ area: "HOLDING_REGISTER", address: 0, dataType: "INT16" })).rejects.toThrow(
-      /MODBUS_NOT_CONNECTED/,
-    );
+    await expect(
+      driver.read({ area: "HOLDING_REGISTER", address: 0, dataType: "INT16" }),
+    ).rejects.toThrow(/MODBUS_NOT_CONNECTED/);
 
     await driver.connect();
     expect(driver.getState()).toBe("CONNECTED");

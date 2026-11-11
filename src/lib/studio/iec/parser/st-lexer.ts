@@ -122,7 +122,10 @@ export class StLexer {
       }
 
       // Time literal T#500ms, TIME#1s
-      if ((char === "T" || char === "t") && (this.peek() === "#" || this.source.slice(this.pos, this.pos + 5).toUpperCase() === "TIME#")) {
+      if (
+        (char === "T" || char === "t") &&
+        (this.peek() === "#" || this.source.slice(this.pos, this.pos + 5).toUpperCase() === "TIME#")
+      ) {
         tokens.push(this.readTimeLiteral());
         continue;
       }
@@ -141,7 +144,13 @@ export class StLexer {
 
       // Operadores de múltiplos caracteres
       const twoChar = this.source.slice(this.pos, this.pos + 2);
-      if (twoChar === ":=" || twoChar === "<=" || twoChar === ">=" || twoChar === "<>" || twoChar === "..") {
+      if (
+        twoChar === ":=" ||
+        twoChar === "<=" ||
+        twoChar === ">=" ||
+        twoChar === "<>" ||
+        twoChar === ".."
+      ) {
         const token: Token = {
           type: twoChar === ":=" ? "OPERATOR" : twoChar === ".." ? "PUNCTUATION" : "OPERATOR",
           value: twoChar,
@@ -280,7 +289,10 @@ export class StLexer {
     const startCol = this.col;
     let val = "";
     let isReal = false;
-    while (this.pos < this.length && (this.isDigit(this.source[this.pos]) || this.source[this.pos] === ".")) {
+    while (
+      this.pos < this.length &&
+      (this.isDigit(this.source[this.pos]) || this.source[this.pos] === ".")
+    ) {
       if (this.source[this.pos] === ".") {
         if (this.peek() === ".") {
           // caso de subrange '..'
@@ -303,7 +315,13 @@ export class StLexer {
     const startLine = this.line;
     const startCol = this.col;
     let val = "";
-    while (this.pos < this.length && (this.isAlpha(this.source[this.pos]) || this.isDigit(this.source[this.pos]) || this.source[this.pos] === "_" || this.source[this.pos] === "%")) {
+    while (
+      this.pos < this.length &&
+      (this.isAlpha(this.source[this.pos]) ||
+        this.isDigit(this.source[this.pos]) ||
+        this.source[this.pos] === "_" ||
+        this.source[this.pos] === "%")
+    ) {
       val += this.advance();
     }
     const upper = val.toUpperCase();

@@ -62,7 +62,8 @@ export class TraceOscilloscopeEngine {
     // Se ainda não disparou o gatilho, verifica condição
     if (!this.isTriggered) {
       this.preTriggerBuffer.push(sample);
-      const preLimit = this.config.preTriggerSamples || Math.floor(this.config.bufferDepthSamples * 0.2);
+      const preLimit =
+        this.config.preTriggerSamples || Math.floor(this.config.bufferDepthSamples * 0.2);
       if (this.preTriggerBuffer.length > preLimit) {
         this.preTriggerBuffer.shift();
       }
@@ -100,11 +101,14 @@ export class TraceOscilloscopeEngine {
 
     switch (this.config.triggerCondition) {
       case "RISING_EDGE":
-        return !Boolean(prev) && Boolean(current);
+        return !prev && Boolean(current);
       case "FALLING_EDGE":
-        return Boolean(prev) && !Boolean(current);
+        return Boolean(prev) && !current;
       case "THRESHOLD":
-        return Number(current) >= (this.config.triggerThreshold || 0) && Number(prev) < (this.config.triggerThreshold || 0);
+        return (
+          Number(current) >= (this.config.triggerThreshold || 0) &&
+          Number(prev) < (this.config.triggerThreshold || 0)
+        );
       default:
         return false;
     }
