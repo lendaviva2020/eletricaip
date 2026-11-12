@@ -50,6 +50,7 @@ create index if not exists idx_ai_fix_audit_reverts
 alter table public.ai_fix_audit enable row level security;
 
 -- Política de Leitura: Usuário com permissão no projeto
+drop policy if exists "ai_fix_audit_select_policy" on public.ai_fix_audit;
 create policy "ai_fix_audit_select_policy"
   on public.ai_fix_audit
   for select
@@ -71,6 +72,7 @@ create policy "ai_fix_audit_select_policy"
   );
 
 -- Política de Inserção: Apenas usuário autenticado gerando seu próprio registro
+drop policy if exists "ai_fix_audit_insert_policy" on public.ai_fix_audit;
 create policy "ai_fix_audit_insert_policy"
   on public.ai_fix_audit
   for insert

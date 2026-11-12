@@ -329,81 +329,95 @@ alter table public.industrial_alarm_definitions enable row level security;
 alter table public.industrial_alarm_occurrences enable row level security;
 alter table public.industrial_alarm_transitions enable row level security;
 
+drop policy if exists "tenant_isolation_industrial_plants" on public.industrial_plants;
 create policy "tenant_isolation_industrial_plants" on public.industrial_plants
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_sectors" on public.industrial_sectors;
 create policy "tenant_isolation_industrial_sectors" on public.industrial_sectors
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "read_industrial_equipment_types" on public.industrial_equipment_types;
 create policy "read_industrial_equipment_types" on public.industrial_equipment_types
   for select using (auth.uid() is not null);
 
+drop policy if exists "tenant_isolation_industrial_equipments" on public.industrial_equipments;
 create policy "tenant_isolation_industrial_equipments" on public.industrial_equipments
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_equipment_revisions" on public.industrial_equipment_revisions;
 create policy "tenant_isolation_industrial_equipment_revisions" on public.industrial_equipment_revisions
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_tags" on public.industrial_tags;
 create policy "tenant_isolation_industrial_tags" on public.industrial_tags
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_tag_revisions" on public.industrial_tag_revisions;
 create policy "tenant_isolation_industrial_tag_revisions" on public.industrial_tag_revisions
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_tag_bindings" on public.industrial_tag_bindings;
 create policy "tenant_isolation_industrial_tag_bindings" on public.industrial_tag_bindings
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_gateways" on public.industrial_gateways;
 create policy "tenant_isolation_industrial_gateways" on public.industrial_gateways
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_gateway_tag_sources" on public.industrial_gateway_tag_sources;
 create policy "tenant_isolation_industrial_gateway_tag_sources" on public.industrial_gateway_tag_sources
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_historian_samples" on public.industrial_historian_samples;
 create policy "tenant_isolation_industrial_historian_samples" on public.industrial_historian_samples
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_alarm_definitions" on public.industrial_alarm_definitions;
 create policy "tenant_isolation_industrial_alarm_definitions" on public.industrial_alarm_definitions
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_alarm_occurrences" on public.industrial_alarm_occurrences;
 create policy "tenant_isolation_industrial_alarm_occurrences" on public.industrial_alarm_occurrences
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())
     or public.is_platform_admin()
   );
 
+drop policy if exists "tenant_isolation_industrial_alarm_transitions" on public.industrial_alarm_transitions;
 create policy "tenant_isolation_industrial_alarm_transitions" on public.industrial_alarm_transitions
   for all using (
     tenant_id in (select tenant_id from public.tenant_memberships where user_id = auth.uid())

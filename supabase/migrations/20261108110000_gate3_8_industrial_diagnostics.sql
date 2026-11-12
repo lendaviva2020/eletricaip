@@ -89,11 +89,13 @@ CREATE INDEX IF NOT EXISTS idx_diag_records_org_plant
 
 ALTER TABLE public.industrial_diagnostic_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tenant_isolation_diagnostic_records" ON public.industrial_diagnostic_records;
 CREATE POLICY "tenant_isolation_diagnostic_records"
   ON public.industrial_diagnostic_records
   FOR SELECT
   USING (organization_id = current_setting('app.current_organization_id', true));
 
+DROP POLICY IF EXISTS "tenant_insert_diagnostic_records" ON public.industrial_diagnostic_records;
 CREATE POLICY "tenant_insert_diagnostic_records"
   ON public.industrial_diagnostic_records
   FOR INSERT
@@ -113,11 +115,13 @@ CREATE TABLE IF NOT EXISTS public.industrial_incident_rejected_hypotheses (
 
 ALTER TABLE public.industrial_incident_rejected_hypotheses ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tenant_isolation_rejected_hypotheses" ON public.industrial_incident_rejected_hypotheses;
 CREATE POLICY "tenant_isolation_rejected_hypotheses"
   ON public.industrial_incident_rejected_hypotheses
   FOR SELECT
   USING (organization_id = current_setting('app.current_organization_id', true));
 
+DROP POLICY IF EXISTS "tenant_insert_rejected_hypotheses" ON public.industrial_incident_rejected_hypotheses;
 CREATE POLICY "tenant_insert_rejected_hypotheses"
   ON public.industrial_incident_rejected_hypotheses
   FOR INSERT
