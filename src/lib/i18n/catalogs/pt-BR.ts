@@ -113,6 +113,8 @@ export const ptBR = {
       alarmsHint: "ISA-18.2",
       studio: "Studio IEC",
       studioHint: "CODESYS Parity",
+      compactStudio: "eletric Studio",
+      compactStudioHint: "CLP Compacto",
     },
     console: {
       logs: "Logs",

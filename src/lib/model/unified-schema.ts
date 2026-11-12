@@ -11,6 +11,7 @@ import {
 } from "@/lib/diagram/schema";
 import type { PlcProject } from "@/lib/plc/types";
 import type { MotorNameplate, TwinMapping } from "@/lib/digital-twin-store";
+import type { CompactProgramModel } from "@/lib/compact-studio/domain/types";
 import { getCanonicalTerminalsForEquipment } from "@/lib/diagram/connection/terminal-library";
 
 export const UNIFIED_SCHEMA_VERSION = 3 as const;
@@ -398,6 +399,7 @@ export interface UnifiedProjectDoc {
     activeLadderBlockId: string;
     activeFbdBlockId: string;
   };
+  compactStudio?: CompactProgramModel;
   views: ViewsState;
   studies: Record<string, EngineeringStudyRecord>;
   diagnostics: ModelDiagnostic[];
