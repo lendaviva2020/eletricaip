@@ -39,6 +39,7 @@ export function createEmptyCompactProgramModel(opts?: {
   readonly id?: string;
   readonly name?: string;
   readonly nowIso?: string;
+  readonly cycleTimeMs?: number;
 }): CompactProgramModel {
   const timestamp = opts?.nowIso ?? "2026-01-01T00:00:00.000Z";
   return {
@@ -47,7 +48,7 @@ export function createEmptyCompactProgramModel(opts?: {
     name: opts?.name ?? "Programa Principal",
     description: "",
     preferredNotation: "FBD",
-    cycleTimeMs: 20,
+    cycleTimeMs: opts?.cycleTimeMs ?? 20,
     createdAt: timestamp,
     updatedAt: timestamp,
     pages: [
