@@ -6,6 +6,7 @@ import type { AuthContext } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { Json } from "@/integrations/supabase/types";
+import { CompactProgramModelSchema } from "@/lib/compact-studio/domain/schemas";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -122,6 +123,7 @@ export const SnapshotSchema = z
     controlBindings: z.record(z.string(), z.any()).optional(),
     diagnostics: z.array(z.any()).optional(),
     unifiedDoc: z.any().optional(),
+    compactStudio: CompactProgramModelSchema.optional(),
   })
   .passthrough()
   .transform((snapshot) => ({

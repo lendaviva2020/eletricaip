@@ -417,5 +417,6 @@ export function buildProjectSnapshot(): ProjectSnapshot {
     controlBindings: us.doc.engineering.controlBindings,
     diagnostics: us.doc.diagnostics,
     unifiedDoc: us.doc,
+    compactStudio: us.doc.compactStudio,
   };
 }

@@ -40,6 +40,7 @@ import {
 } from "./migration-v2-to-v3";
 import { resolveTerminalCode } from "@/lib/diagram/connection/connection-engine";
 import { useRuntimeStore } from "./runtime-store";
+import { parseCompactProgramModel } from "@/lib/compact-studio/domain/schemas";
 
 export interface EquipmentPlacementInput {
   unifilar?: { nodeId?: string; position: Position; rotation?: number; label?: string };
@@ -114,6 +115,8 @@ export interface UnifiedProjectStoreState {
   ingestDiagramDocChange: (diagramDoc: DiagramDoc) => void;
   /** Vincula o editor Ladder/FBD ao bloco de programa indicado (por linguagem). */
   setActiveProgramBlock: (blockId: string) => void;
+  /** Atualiza o modelo canônico compacto (eletric Studio) no mesmo projeto sem cópias paralelas. */
+  setCompactStudioProgram: (program: UnifiedProjectDoc["compactStudio"]) => void;
 }
 
 // Reentrancy guard so syncingUnified -> Legacy does not trigger Legacy -> Unified
@@ -906,6 +909,63 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
       // Mantém o ProjectStore (usado pela Ponte/SCADA) atualizado quando o
       // WebglCanvas edita o diagrama — sem apagar widgets SCADA nem tags.
       mergeEquipmentsIntoProjectStore(nextDoc);
+    },
+
+    setCompactStudioProgram: (program) => {
+      if (program !== undefined) {
+        const check = parseCompactProgramModel(program);
+        if (!check.ok) {
+          throw new Error(`COMPACT_STUDIO_SCHEMA_ERROR: ${check.errors[0] ?? "modelo inválido"}`);
+        }
+      }
+      const nextDoc = produce(get().doc, (d) => {
+        d.compactStudio = program;
+        if (program) {
+          for (const sym of program.ioSymbols) {
+            const tagId = sym.canonicalTagId ?? sym.id;
+            const existing = d.engineering.tags[tagId];
+            const area: CanonicalTag["area"] =
+              sym.ioKind === "DI" ||
+              sym.ioKind === "AI" ||
+              sym.ioKind === "NI" ||
+              sym.ioKind === "NAI"
+                ? "I"
+                : sym.ioKind === "DO" ||
+                    sym.ioKind === "AO" ||
+                    sym.ioKind === "NQ" ||
+                    sym.ioKind === "NAQ"
+                  ? "Q"
+                  : "M";
+            const mappedDataType: CanonicalTag["dataType"] =
+              sym.signalType === "BOOL" ||
+              sym.signalType === "BYTE" ||
+              sym.signalType === "WORD" ||
+              sym.signalType === "INT" ||
+              sym.signalType === "REAL" ||
+              sym.signalType === "TIME" ||
+              sym.signalType === "STRING"
+                ? sym.signalType
+                : "BOOL";
+            d.engineering.tags[tagId] = {
+              id: tagId,
+              name: sym.symbolicName,
+              dataType: mappedDataType,
+              area,
+              address: sym.address,
+              initialValue: sym.initialValue,
+              forced: existing?.forced ?? false,
+              retentive: sym.retentive,
+              description: sym.comment,
+              linkedEquipmentId: existing?.linkedEquipmentId,
+              linkedTerminalId: existing?.linkedTerminalId,
+              plcChannelId: existing?.plcChannelId,
+            };
+          }
+        }
+        d.metadata.revision += 1;
+        d.metadata.updatedAt = new Date().toISOString();
+      });
+      set({ doc: nextDoc, dirty: true });
     },
   })),
 );
