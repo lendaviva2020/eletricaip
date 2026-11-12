@@ -227,6 +227,15 @@ export class SqliteFleetStorageBackend implements FleetStorageBackend {
         updated_at TEXT NOT NULL,
         PRIMARY KEY (provider, event_id)
       );
+
+      CREATE TABLE IF NOT EXISTS ota_signing_keys (
+        key_id TEXT PRIMARY KEY,
+        public_key_pem TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','REVOKED')),
+        revoked_reason TEXT,
+        revoked_at TEXT,
+        updated_at TEXT NOT NULL
+      );
     `);
   }
 
@@ -715,6 +724,55 @@ export class SqliteFleetStorageBackend implements FleetStorageBackend {
         packageId,
         targetVersion,
         manifestHash,
+        new Date().toISOString(),
+      );
+  }
+
+  public loadOtaSigningKeys(): Array<{
+    keyId: string;
+    publicKeyPem: string;
+    status: "ACTIVE" | "REVOKED";
+    revokedReason?: string;
+    revokedAt?: string;
+  }> {
+    const rows = this.db
+      .prepare(
+        "SELECT key_id, public_key_pem, status, revoked_reason, revoked_at FROM ota_signing_keys",
+      )
+      .all();
+    return rows.map((r) => ({
+      keyId: String(r["key_id"]),
+      publicKeyPem: String(r["public_key_pem"]),
+      status: String(r["status"]) === "REVOKED" ? "REVOKED" : "ACTIVE",
+      revokedReason: r["revoked_reason"] ? String(r["revoked_reason"]) : undefined,
+      revokedAt: r["revoked_at"] ? String(r["revoked_at"]) : undefined,
+    }));
+  }
+
+  public saveOtaSigningKey(record: {
+    keyId: string;
+    publicKeyPem: string;
+    status: "ACTIVE" | "REVOKED";
+    revokedReason?: string;
+    revokedAt?: string;
+  }): void {
+    this.db
+      .prepare(
+        `INSERT INTO ota_signing_keys (key_id, public_key_pem, status, revoked_reason, revoked_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(key_id) DO UPDATE SET
+           public_key_pem = excluded.public_key_pem,
+           status = excluded.status,
+           revoked_reason = excluded.revoked_reason,
+           revoked_at = excluded.revoked_at,
+           updated_at = excluded.updated_at`,
+      )
+      .run(
+        record.keyId,
+        record.publicKeyPem,
+        record.status,
+        record.revokedReason ?? null,
+        record.revokedAt ?? null,
         new Date().toISOString(),
       );
   }

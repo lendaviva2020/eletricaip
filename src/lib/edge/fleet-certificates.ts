@@ -88,8 +88,22 @@ export class FleetCertificateManager {
     this.store?.saveCertificate(gatewayId, record, popKey);
   }
 
+  private refreshCertificateFromStore(gatewayId: string): EdgeCertificateRecord | undefined {
+    if (!this.store) return this.certificates.get(gatewayId);
+    const persisted = this.store.loadCertificates();
+    for (const item of persisted) {
+      this.certificates.set(item.gatewayId, item.cert);
+      if (item.popKey) {
+        this.gatewayPopKeys.set(item.gatewayId, item.popKey);
+      }
+    }
+    return this.certificates.get(gatewayId);
+  }
+
   public getCertificate(gatewayId: string): EdgeCertificateRecord | undefined {
-    const cert = this.certificates.get(gatewayId);
+    const cert = this.store
+      ? this.refreshCertificateFromStore(gatewayId)
+      : this.certificates.get(gatewayId);
     if (!cert) return undefined;
 
     // Dynamically evaluate status based on current time
@@ -134,7 +148,9 @@ export class FleetCertificateManager {
       gatewayId: pop.gatewayId,
     });
 
-    const existingCert = this.certificates.get(pop.gatewayId);
+    const existingCert = this.store
+      ? this.refreshCertificateFromStore(pop.gatewayId)
+      : this.certificates.get(pop.gatewayId);
     if (!existingCert) {
       return { success: false, error: "CERT_NOT_FOUND: Certificado do gateway não localizado." };
     }
@@ -260,7 +276,9 @@ export class FleetCertificateManager {
       gatewayId,
     });
 
-    const cert = this.certificates.get(gatewayId);
+    const cert = this.store
+      ? this.refreshCertificateFromStore(gatewayId)
+      : this.certificates.get(gatewayId);
     if (!cert) return false;
 
     cert.isRevoked = true;

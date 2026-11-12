@@ -38,7 +38,7 @@ jobs:
         run: |
           bun audit --audit-level=high
           ! grep -rn --exclude-dir=__tests__ "egw_token_lab_ete_secret_123\|SECRET_ELETRICAI_PRIVATE_RELEASE_SIGNER\|ELETRICAI_REMOTE_CONFIG_SIGNING_KEY" src/
-          ! grep -n "node:dns\|node:net\|\"net\"" src/lib/modbus-server.functions.ts src/lib/opcua-server.functions.ts
+          ! grep -n "node:dns\|node:net\|\"net\"" src/lib/modbus-server.functions.ts src/lib/opcua-server.functions.ts src/lib/edge/*.server.ts
 
       - name: Tests
         run: bun run test

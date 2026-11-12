@@ -550,6 +550,8 @@ export interface FleetStorageBackend {
     targetVersion: string,
     manifestHash: string,
   ): void;
+  loadOtaSigningKeys?(): OtaSigningKeyRecord[];
+  saveOtaSigningKey?(record: OtaSigningKeyRecord): void;
 
   // Provisioning Tokens (atomic single-use)
   loadProvisioningState(): PersistedProvisioningState;
@@ -581,4 +583,135 @@ export interface FleetStorageBackend {
   ): WebhookLedgerEntry | undefined;
 
   close?(): void;
+}
+
+export interface OtaSigningKeyRecord {
+  keyId: string;
+  publicKeyPem: string;
+  status: "ACTIVE" | "REVOKED";
+  revokedReason?: string;
+  revokedAt?: string;
+}
+
+export interface AsyncFleetStorageBackend {
+  readonly backendKind: "supabase_postgresql";
+
+  // Audit chain (append-only via atomic PostgreSQL RPC)
+  loadAuditEvents(): Promise<FleetAuditEvent[]>;
+  appendAuditEventAtomic(
+    event: FleetAuditEvent,
+    expectedPreviousHash: string,
+  ): Promise<{ accepted: boolean; seq?: number; currentTipHash: string }>;
+
+  // Cloud Gateway Registry
+  loadRegisteredGateways(): Promise<
+    Array<{
+      gateway: RegisteredGatewayRecord;
+      authTokenDigest?: string;
+      lastBatchSequence: number;
+    }>
+  >;
+  getRegisteredGateway(gatewayId: string): Promise<{
+    gateway: RegisteredGatewayRecord;
+    authTokenDigest?: string;
+    lastBatchSequence: number;
+  } | null>;
+  saveRegisteredGateway(
+    gateway: RegisteredGatewayRecord,
+    authTokenDigest?: string,
+    lastBatchSequence?: number,
+  ): Promise<void>;
+  hasIngestDedupKey(dedupKey: string): Promise<boolean>;
+  recordIngestedBatchAtomic(params: {
+    gatewayId: string;
+    organizationId: string;
+    plantId: string;
+    expectedMinSequence: number;
+    newSequence: number;
+    acceptedSamples: OutboxSampleEntry[];
+    dedupKeys: string[];
+  }): Promise<{ committed: boolean; reason?: string }>;
+  loadLatestTelemetryForGateway(gatewayId: string): Promise<OutboxSampleEntry[]>;
+
+  // Edge Fleet Manager
+  loadFleetGateways(): Promise<FleetGatewaySummary[]>;
+  getFleetGateway(gatewayId: string): Promise<FleetGatewaySummary | null>;
+  saveFleetGateway(gateway: FleetGatewaySummary, expectedVersion?: number): Promise<boolean>;
+
+  // Fleet Certificates & Challenge Anti-Replay
+  loadCertificates(): Promise<
+    Array<{
+      gatewayId: string;
+      cert: EdgeCertificateRecord;
+      popKey?: string;
+    }>
+  >;
+  saveCertificate(gatewayId: string, cert: EdgeCertificateRecord, popKey?: string): Promise<void>;
+  consumeChallengeOnce(gatewayId: string, challenge: string, ttlMs?: number): Promise<boolean>;
+
+  // Remote Config & Monotonic History
+  loadRemoteConfigs(): Promise<
+    Record<string, { history: RemoteConfigPayload[]; lkgc?: RemoteConfigPayload }>
+  >;
+  appendRemoteConfigMonotonic(gatewayId: string, config: RemoteConfigPayload): Promise<boolean>;
+  setLkgcConfig(gatewayId: string, config: RemoteConfigPayload): Promise<void>;
+
+  // Signed Updates, Campaigns & Key Rotation/Revocation
+  loadOtaCampaigns(): Promise<Record<string, unknown>>;
+  saveOtaCampaign(
+    campaignId: string,
+    organizationId: string,
+    plantId: string,
+    campaign: unknown,
+  ): Promise<void>;
+  hasAppliedOtaVersion(
+    gatewayId: string,
+    packageId: string,
+    targetVersion: string,
+  ): Promise<boolean>;
+  recordAppliedOtaVersion(
+    gatewayId: string,
+    packageId: string,
+    targetVersion: string,
+    manifestHash: string,
+  ): Promise<void>;
+  loadOtaSigningKeys(): Promise<OtaSigningKeyRecord[]>;
+  saveOtaSigningKey(record: OtaSigningKeyRecord): Promise<void>;
+
+  // Provisioning Tokens (atomic single-use via PostgreSQL RPC)
+  loadProvisioningState(): Promise<PersistedProvisioningState>;
+  saveProvisioningToken(token: ProvisioningToken): Promise<void>;
+  claimProvisioningTokenAtomic(params: {
+    tokenHash: string;
+    consumedAt: number;
+    stationKey: string;
+    gatewayId: string;
+    organizationId: string;
+    plantId: string;
+    stationId: string;
+    authTokenDigest: string;
+    gatewayPayload: RegisteredGatewayRecord;
+    updatedTokenPayload: ProvisioningToken;
+  }): Promise<{ claimed: boolean; reason?: string }>;
+
+  // Idempotent Webhook Ledger (shared across serverless Cloud instances)
+  beginWebhookEvent(params: {
+    provider: "stripe" | "mercadopago";
+    eventId: string;
+    payloadHash: string;
+    leaseMs?: number;
+  }): Promise<{
+    status: "ACQUIRED" | "ALREADY_PROCESSED" | "IN_FLIGHT";
+    entry: WebhookLedgerEntry;
+  }>;
+  completeWebhookEvent(params: {
+    provider: "stripe" | "mercadopago";
+    eventId: string;
+    state: "PROCESSED" | "FAILED" | "RETRYABLE";
+    lastError?: string;
+  }): Promise<void>;
+  getWebhookEvent(
+    provider: "stripe" | "mercadopago",
+    eventId: string,
+  ): Promise<WebhookLedgerEntry | undefined>;
 }

@@ -15,8 +15,10 @@ test.describe("Phase 7: Multi-Viewport & Industrial Responsiveness Homologation"
 
   const viewports = [
     { name: "1280x720 (Standard HD)", width: 1280, height: 720 },
-    { name: "1920x1080 (Full HD)", width: 1920, height: 1080 },
+    { name: "1366x768 (Industrial Laptop)", width: 1366, height: 768 },
     { name: "1440x900 (Desktop Wide)", width: 1440, height: 900 },
+    { name: "1600x900 (HD+ Engineering)", width: 1600, height: 900 },
+    { name: "1920x1080 (Full HD)", width: 1920, height: 1080 },
     { name: "390x844 (Mobile Industrial)", width: 390, height: 844 },
   ];
 

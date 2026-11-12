@@ -79,6 +79,13 @@ export class FleetAuditManager {
     }
   }
 
+  public recomputeHashForTip(
+    previousHash: string,
+    event: Omit<FleetAuditEvent, "tamperProofHash" | "lifecycleState" | "previousHash">,
+  ): string {
+    return this.computeEventHash(previousHash, event);
+  }
+
   private computeEventHash(
     previousHash: string,
     event: Omit<FleetAuditEvent, "tamperProofHash" | "lifecycleState" | "previousHash">,
@@ -102,13 +109,20 @@ export class FleetAuditManager {
     return sha256Hex(canonicalPayload);
   }
 
+  private syncFromStore(): void {
+    if (!this.store) return;
+    const persisted = this.store.loadAuditEvents();
+    this.events = persisted;
+    this.lastHash =
+      persisted.length > 0 ? persisted[persisted.length - 1].tamperProofHash : AUDIT_GENESIS_HASH;
+  }
+
   public recordEvent(params: CreateFleetAuditEventParams): FleetAuditEvent {
     const timestamp = Date.now();
     const id = `aud_${timestamp}_${Math.random().toString(36).substring(2, 9)}`;
     const correlationId =
       params.correlationId || `corr_${timestamp}_${Math.random().toString(36).substring(2, 7)}`;
     const details = params.details ? structuredClone(params.details) : {};
-    const previousHash = this.lastHash;
 
     const unsigned = {
       id,
@@ -126,22 +140,44 @@ export class FleetAuditManager {
       details,
     };
 
-    const tamperProofHash = this.computeEventHash(previousHash, unsigned);
+    const maxAttempts = this.store ? 5 : 1;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (this.store) {
+        this.syncFromStore();
+      }
+      const previousHash = this.lastHash;
+      const tamperProofHash = this.computeEventHash(previousHash, unsigned);
+      const event: FleetAuditEvent = {
+        ...unsigned,
+        previousHash,
+        lifecycleState: "PROCESSED",
+        tamperProofHash,
+      };
 
-    const event: FleetAuditEvent = {
-      ...unsigned,
-      previousHash,
-      lifecycleState: "PROCESSED",
-      tamperProofHash,
-    };
+      if (!this.store) {
+        this.lastHash = tamperProofHash;
+        this.events.push(event);
+        return event;
+      }
 
-    if (this.store) {
-      this.store.appendAuditEvent(event, previousHash);
+      try {
+        this.store.appendAuditEvent(event, previousHash);
+        this.lastHash = tamperProofHash;
+        this.events.push(event);
+        return event;
+      } catch (err) {
+        lastError = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes("AUDIT_CHAIN_CONFLICT")) {
+          throw err;
+        }
+      }
     }
 
-    this.lastHash = tamperProofHash;
-    this.events.push(event);
-    return event;
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("AUDIT_CHAIN_CONFLICT: Falha após retentativas concorrentes.");
   }
 
   /**
@@ -153,6 +189,9 @@ export class FleetAuditManager {
     acknowledgedBy: string,
     actorOverride?: { id?: string; email?: string; role?: FleetRole },
   ): FleetAuditEvent | null {
+    if (this.store) {
+      this.syncFromStore();
+    }
     const original = this.events.find((e) => e.id === eventId);
     if (!original) return null;
 
@@ -209,14 +248,11 @@ export class FleetAuditManager {
     eventType?: string;
     limit?: number;
   }): FleetAuditEvent[] {
-    const ackedIds = this.getAcknowledgedEventIds();
-    const list = this.store ? this.store.loadAuditEvents() : this.events;
-    if (this.store && list.length !== this.events.length) {
-      this.events = list;
-      if (list.length > 0) {
-        this.lastHash = list[list.length - 1].tamperProofHash;
-      }
+    if (this.store) {
+      this.syncFromStore();
     }
+    const list = this.events;
+    const ackedIds = this.getAcknowledgedEventIds();
 
     let result = list.map((ev) =>
       ackedIds.has(ev.id) ? { ...ev, lifecycleState: "ACKNOWLEDGED" as const } : { ...ev },

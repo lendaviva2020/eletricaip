@@ -2,12 +2,42 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createHmac } from "node:crypto";
 import { logSecurityEvent } from "@/lib/security/security-audit-log.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type { FleetStorageBackend } from "@/lib/edge/types";
+import type { AsyncFleetStorageBackend, FleetStorageBackend } from "@/lib/edge/types";
 import {
   assertSupabaseWriteOk,
   runTransactionalWebhookHandler,
   type DbWriteResult,
 } from "@/lib/security/webhook-ledger.server";
+
+const ALLOWED_MP_TRANSITIONS: Record<string, Set<string>> = {
+  pending: new Set([
+    "pending",
+    "in_process",
+    "in_mediation",
+    "authorized",
+    "approved",
+    "rejected",
+    "cancelled",
+  ]),
+  in_process: new Set(["in_process", "authorized", "approved", "rejected", "cancelled"]),
+  in_mediation: new Set(["in_mediation", "approved", "rejected", "cancelled"]),
+  authorized: new Set(["authorized", "approved", "rejected", "cancelled"]),
+  approved: new Set(["approved", "refunded", "charged_back", "cancelled"]),
+  rejected: new Set(["rejected"]),
+  cancelled: new Set(["cancelled"]),
+  refunded: new Set(["refunded"]),
+  charged_back: new Set(["charged_back"]),
+};
+
+export function isValidMpStatusTransition(
+  previousStatus: string | null | undefined,
+  nextStatus: string,
+): boolean {
+  if (!previousStatus) return true;
+  const allowed = ALLOWED_MP_TRANSITIONS[previousStatus.toLowerCase()];
+  if (!allowed) return previousStatus.toLowerCase() === nextStatus.toLowerCase();
+  return allowed.has(nextStatus.toLowerCase());
+}
 
 /**
  * Mercado Pago webhook receiver (hardened Gate 4.3.1).
@@ -41,6 +71,7 @@ export interface MpPayment {
 export interface MpWebhookDeps {
   adminClient?: typeof supabaseAdmin;
   store?: FleetStorageBackend;
+  asyncStore?: AsyncFleetStorageBackend;
   sharedSecret?: string;
   accessToken?: string;
   fetchImpl?: typeof fetch;
@@ -98,10 +129,14 @@ export async function processMpWebhookRequest(
       raw,
       deps?.adminClient ?? supabaseAdmin,
       deps?.store,
+      deps?.asyncStore,
       deps?.fetchImpl ?? fetch,
     );
     if (outcome === "IN_FLIGHT") {
       return new Response("in_flight_conflict", { status: 409 });
+    }
+    if (outcome === "INVALID_TRANSITION") {
+      return new Response("invalid_state_transition", { status: 409 });
     }
     return new Response("ok", { status: 200 });
   } catch (e) {
@@ -140,8 +175,9 @@ async function syncMpPayment(
   rawPayload: string,
   db: typeof supabaseAdmin,
   store: FleetStorageBackend | undefined,
+  asyncStore: AsyncFleetStorageBackend | undefined,
   fetchImpl: typeof fetch,
-): Promise<"PROCESSED" | "DUPLICATE" | "IN_FLIGHT"> {
+): Promise<"PROCESSED" | "DUPLICATE" | "IN_FLIGHT" | "INVALID_TRANSITION"> {
   const r = await fetchImpl(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -157,63 +193,145 @@ async function syncMpPayment(
     if (!isDuplicate) {
       throw new Error(`dedup_failed:${dupErr.message}`);
     }
-    const existingLedger = store?.getWebhookEvent("mercadopago", dedupKey);
+    const existingLedger = asyncStore
+      ? await asyncStore.getWebhookEvent("mercadopago", dedupKey)
+      : store?.getWebhookEvent("mercadopago", dedupKey);
     if (!existingLedger || existingLedger.state === "PROCESSED") {
       return "DUPLICATE";
     }
   }
 
-  const res = await runTransactionalWebhookHandler({
-    provider: "mercadopago",
-    eventId: dedupKey,
-    rawPayload: rawPayload || dedupKey,
-    route: "/api/public/mp/webhook",
-    store,
-    onRollbackReservation: async () => {
-      await db.from("mp_webhook_processed").delete().eq("payment_id", dedupKey);
-    },
-    execute: async () => {
-      const meta = (p.metadata ?? {}) as { tenant_id?: string; plan?: string };
-      const [refTenant, refPlan] = (p.external_reference ?? "").split(":");
-      const tenantId = String(meta.tenant_id ?? refTenant ?? "");
-      const plan = String(meta.plan ?? refPlan ?? "pro");
-      if (!tenantId) return;
+  let invalidTransitionDetected = false;
+  try {
+    const res = await runTransactionalWebhookHandler({
+      provider: "mercadopago",
+      eventId: dedupKey,
+      rawPayload: rawPayload || dedupKey,
+      route: "/api/public/mp/webhook",
+      store,
+      asyncStore,
+      onRollbackReservation: async () => {
+        await db.from("mp_webhook_processed").delete().eq("payment_id", dedupKey);
+      },
+      execute: async () => {
+        const meta = (p.metadata ?? {}) as { tenant_id?: string; plan?: string };
+        const [refTenant, refPlan] = (p.external_reference ?? "").split(":");
+        const tenantId = String(meta.tenant_id ?? refTenant ?? "");
+        const plan = String(meta.plan ?? refPlan ?? "pro");
+        if (!tenantId) return;
 
-      const invRes = (await db.from("invoices").upsert(
-        {
-          tenant_id: tenantId,
-          stripe_invoice_id: `mp_${p.id}`,
-          amount: Math.round((p.transaction_amount ?? 0) * 100),
-          currency: (p.currency_id ?? "BRL").toLowerCase(),
-          status: p.status === "approved" ? "paid" : p.status,
-        },
-        { onConflict: "stripe_invoice_id" },
-      )) as DbWriteResult;
-      assertSupabaseWriteOk(invRes, "invoices.upsert(mp)");
+        const amountCents = Math.round((p.transaction_amount ?? 0) * 100);
+        const currency = (p.currency_id ?? "BRL").toLowerCase();
 
-      if (p.status === "approved") {
-        const tenantRes = (await db
-          .from("tenants")
-          .update({
-            plan,
-            subscription_status: "active",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", tenantId)) as DbWriteResult;
-        assertSupabaseWriteOk(tenantRes, "tenants.update(mp.approved)");
-      } else if (p.status === "cancelled" || p.status === "rejected") {
-        const tenantRes = (await db
-          .from("tenants")
-          .update({ subscription_status: p.status, updated_at: new Date().toISOString() })
-          .eq("id", tenantId)) as DbWriteResult;
-        assertSupabaseWriteOk(tenantRes, `tenants.update(mp.${p.status})`);
-      }
-    },
-  });
+        // When backed by live PostgreSQL (migration 20261112120000), execute atomic multi-table transition RPC
+        const maybeRpc = (
+          db as unknown as {
+            rpc?: (
+              fn: string,
+              args: Record<string, unknown>,
+            ) => Promise<{ data: unknown; error: { message?: string; code?: string } | null }>;
+          }
+        ).rpc;
+        if (typeof maybeRpc === "function") {
+          const rpcRes = await maybeRpc.call(db, "apply_mp_payment_transition_atomic", {
+            p_external_payment_id: String(p.id),
+            p_tenant_id: tenantId,
+            p_next_status: p.status,
+            p_plan: plan,
+            p_amount_cents: amountCents,
+            p_currency: currency,
+          });
+          assertSupabaseWriteOk(rpcRes, "rpc.apply_mp_payment_transition_atomic");
+          const rows = Array.isArray(rpcRes.data)
+            ? (rpcRes.data as Array<Record<string, unknown>>)
+            : rpcRes.data
+              ? [rpcRes.data as Record<string, unknown>]
+              : [];
+          const first = rows[0];
+          if (first && first["applied"] === false) {
+            invalidTransitionDetected = true;
+            throw new Error(
+              `INVALID_PAYMENT_STATE_TRANSITION: ${String(first["previous_status"] ?? "unknown")} -> ${p.status}`,
+            );
+          }
+          return;
+        }
 
-  if (res.statusCode === 409) return "IN_FLIGHT";
-  if (res.outcome === "DUPLICATE_PROCESSED") return "DUPLICATE";
-  return "PROCESSED";
+        // Fallback for unit-test client mocks without `.rpc`: enforce status transition against prior invoice if readable
+        const invoicesTable = db.from("invoices") as unknown as {
+          select?: (cols: string) => {
+            eq: (
+              col: string,
+              val: unknown,
+            ) => {
+              maybeSingle: () => Promise<{
+                data: { status?: string } | null;
+                error: { message?: string; code?: string } | null;
+              }>;
+            };
+          };
+        };
+        if (typeof invoicesTable.select === "function") {
+          const existingInv = await invoicesTable
+            .select("status")
+            .eq("stripe_invoice_id", `mp_${p.id}`)
+            .maybeSingle();
+          const prevMapped =
+            existingInv.data?.status === "paid" ? "approved" : existingInv.data?.status;
+          if (!isValidMpStatusTransition(prevMapped, p.status)) {
+            invalidTransitionDetected = true;
+            throw new Error(`INVALID_PAYMENT_STATE_TRANSITION: ${prevMapped} -> ${p.status}`);
+          }
+        }
+
+        const invRes = (await db.from("invoices").upsert(
+          {
+            tenant_id: tenantId,
+            stripe_invoice_id: `mp_${p.id}`,
+            amount: amountCents,
+            currency,
+            status: p.status === "approved" ? "paid" : p.status,
+          },
+          { onConflict: "stripe_invoice_id" },
+        )) as DbWriteResult;
+        assertSupabaseWriteOk(invRes, "invoices.upsert(mp)");
+
+        if (p.status === "approved") {
+          const tenantRes = (await db
+            .from("tenants")
+            .update({
+              plan,
+              subscription_status: "active",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", tenantId)) as DbWriteResult;
+          assertSupabaseWriteOk(tenantRes, "tenants.update(mp.approved)");
+        } else if (
+          p.status === "cancelled" ||
+          p.status === "rejected" ||
+          p.status === "refunded" ||
+          p.status === "charged_back"
+        ) {
+          const tenantRes = (await db
+            .from("tenants")
+            .update({
+              ...(p.status === "refunded" || p.status === "charged_back" ? { plan: "free" } : {}),
+              subscription_status: p.status,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", tenantId)) as DbWriteResult;
+          assertSupabaseWriteOk(tenantRes, `tenants.update(mp.${p.status})`);
+        }
+      },
+    });
+
+    if (res.statusCode === 409) return "IN_FLIGHT";
+    if (res.outcome === "DUPLICATE_PROCESSED") return "DUPLICATE";
+    return "PROCESSED";
+  } catch (err) {
+    if (invalidTransitionDetected) return "INVALID_TRANSITION";
+    throw err;
+  }
 }
 
 /** Timing-safe string comparison — constant-time XOR-based. */

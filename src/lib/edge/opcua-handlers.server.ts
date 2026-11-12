@@ -7,9 +7,9 @@ import {
   guardProtocolWriteAttempt,
   resolveCloudToEdgeTarget,
 } from "./cloud-protocol-guard.server";
-import { cloudGatewayRegistry } from "./cloud-gateway-registry";
-import { edgeFleetManager } from "./fleet-manager";
-import { ensurePersistentFleetRuntime } from "./fleet-runtime.server";
+import { runWithFleetManagers } from "./fleet-handlers.server";
+import type { CloudGatewayRegistry } from "./cloud-gateway-registry";
+import type { EdgeFleetManager } from "./fleet-manager";
 
 export type OpcuaConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
@@ -80,8 +80,10 @@ function hydrateEdgeReadOnlyTags(
   session: OpcuaSession,
   gatewayId: string,
   baseProvenance: TagProvenance,
+  fleetManager: EdgeFleetManager,
+  registry: CloudGatewayRegistry,
 ): void {
-  const gateway = edgeFleetManager.getGateway(gatewayId);
+  const gateway = fleetManager.getGateway(gatewayId);
   const effectiveProvenance: TagProvenance =
     gateway?.operationalState === "ONLINE" && gateway.connectivityState === "CONNECTED"
       ? "PHYSICAL_READ_ONLY"
@@ -90,7 +92,7 @@ function hydrateEdgeReadOnlyTags(
         : baseProvenance;
 
   session.provenance = effectiveProvenance;
-  const snapshots = cloudGatewayRegistry.getLatestTelemetryForGateway(gatewayId);
+  const snapshots = registry.getLatestTelemetryForGateway(gatewayId);
   session.tags.clear();
   for (const sample of snapshots) {
     const nodeId = `ns=2;s=${sample.tagName}`;
@@ -166,7 +168,6 @@ if (typeof process !== "undefined" && typeof process.on === "function") {
 }
 
 export async function executeConnectOpcua(data: OpcuaServerConfig, context: unknown) {
-  ensurePersistentFleetRuntime();
   const actor = await authorizeProtocolSessionActor(context, {
     allowReadOnlyRoles: false,
     route: "opcua/connect",
@@ -190,71 +191,80 @@ export async function executeConnectOpcua(data: OpcuaServerConfig, context: unkn
     };
   }
 
-  const targetDecision = resolveCloudToEdgeTarget({
-    protocol: "OPC_UA",
-    mode: data.mode,
-    target: data.endpoint,
-    gatewayId: data.gatewayId,
-    actor,
-    route: "opcua/connect",
-  });
+  return runWithFleetManagers(async ({ fleetManager, registry }) => {
+    const targetDecision = resolveCloudToEdgeTarget({
+      protocol: "OPC_UA",
+      mode: data.mode,
+      target: data.endpoint,
+      gatewayId: data.gatewayId,
+      actor,
+      route: "opcua/connect",
+      fleetManagerOverride: fleetManager,
+    });
 
-  if (!targetDecision.allowed) {
-    return {
-      ok: false as const,
-      error: { code: targetDecision.code, message: targetDecision.message },
-    };
-  }
+    if (!targetDecision.allowed) {
+      return {
+        ok: false as const,
+        error: { code: targetDecision.code, message: targetDecision.message },
+      };
+    }
 
-  const session = ensureSession(actor.userId);
-  session.config = data;
-  session.organizationId = actor.organizationId;
-  session.transport =
-    targetDecision.mode === "SIMULATOR" ? "IN_MEMORY_SIMULATOR" : "EDGE_GATEWAY_MEDIATED";
-  session.status = "connecting";
+    const session = ensureSession(actor.userId);
+    session.config = data;
+    session.organizationId = actor.organizationId;
+    session.transport =
+      targetDecision.mode === "SIMULATOR" ? "IN_MEMORY_SIMULATOR" : "EDGE_GATEWAY_MEDIATED";
+    session.status = "connecting";
 
-  await actor.supabase.from("runtime_logs").insert({
-    user_id: actor.userId,
-    tag: "OPCUA",
-    message:
-      targetDecision.mode === "SIMULATOR"
-        ? `Iniciando sessão OPC-UA SIMULATOR em ${targetDecision.normalizedTarget}`
-        : `Associando sessão OPC-UA EDGE_READ_ONLY via gateway ${targetDecision.gatewayId} -> ${targetDecision.normalizedTarget}`,
-    level: "info",
-    channel: "OPC-UA",
-  });
+    await actor.supabase.from("runtime_logs").insert({
+      user_id: actor.userId,
+      tag: "OPCUA",
+      message:
+        targetDecision.mode === "SIMULATOR"
+          ? `Iniciando sessão OPC-UA SIMULATOR em ${targetDecision.normalizedTarget}`
+          : `Associando sessão OPC-UA EDGE_READ_ONLY via gateway ${targetDecision.gatewayId} -> ${targetDecision.normalizedTarget}`,
+      level: "info",
+      channel: "OPC-UA",
+    });
 
-  if (targetDecision.mode === "SIMULATOR") {
-    startSimulatedSession(session);
+    if (targetDecision.mode === "SIMULATOR") {
+      startSimulatedSession(session);
+      session.status = "connected";
+      session.provenance = "SIMULATED";
+      session.connectedAt = new Date().toISOString();
+      return {
+        ok: true as const,
+        status: session.status,
+        mode: "SIMULATOR" as const,
+        simulated: true as const,
+        provenance: "SIMULATED" as const,
+        transport: session.transport,
+        endpoint: targetDecision.normalizedTarget,
+      };
+    }
+
+    hydrateEdgeReadOnlyTags(
+      session,
+      targetDecision.gatewayId,
+      targetDecision.provenance,
+      fleetManager,
+      registry,
+    );
     session.status = "connected";
-    session.provenance = "SIMULATED";
+    session.provenance = targetDecision.provenance;
     session.connectedAt = new Date().toISOString();
+
     return {
       ok: true as const,
       status: session.status,
-      mode: "SIMULATOR" as const,
-      simulated: true as const,
-      provenance: "SIMULATED" as const,
+      mode: "EDGE_READ_ONLY" as const,
+      simulated: false as const,
+      provenance: targetDecision.provenance,
       transport: session.transport,
+      gatewayId: targetDecision.gatewayId,
       endpoint: targetDecision.normalizedTarget,
     };
-  }
-
-  hydrateEdgeReadOnlyTags(session, targetDecision.gatewayId, targetDecision.provenance);
-  session.status = "connected";
-  session.provenance = targetDecision.provenance;
-  session.connectedAt = new Date().toISOString();
-
-  return {
-    ok: true as const,
-    status: session.status,
-    mode: "EDGE_READ_ONLY" as const,
-    simulated: false as const,
-    provenance: targetDecision.provenance,
-    transport: session.transport,
-    gatewayId: targetDecision.gatewayId,
-    endpoint: targetDecision.normalizedTarget,
-  };
+  });
 }
 
 export async function executeDisconnectOpcua(context: unknown) {
@@ -278,7 +288,6 @@ export async function executeDisconnectOpcua(context: unknown) {
 }
 
 export async function executeGetOpcuaStatus(context: unknown) {
-  ensurePersistentFleetRuntime();
   const actor = await authorizeProtocolSessionActor(context, {
     allowReadOnlyRoles: true,
     route: "opcua/status",
@@ -307,7 +316,10 @@ export async function executeGetOpcuaStatus(context: unknown) {
   }
 
   if (session.config.mode === "EDGE_READ_ONLY" && session.config.gatewayId) {
-    hydrateEdgeReadOnlyTags(session, session.config.gatewayId, session.provenance);
+    const gatewayId = session.config.gatewayId;
+    await runWithFleetManagers(({ fleetManager, registry }) => {
+      hydrateEdgeReadOnlyTags(session, gatewayId, session.provenance, fleetManager, registry);
+    });
   }
 
   return {
@@ -420,7 +432,6 @@ export async function executeTestOpcuaConnection(
   },
   context: unknown,
 ) {
-  ensurePersistentFleetRuntime();
   const actor = await authorizeProtocolSessionActor(context, {
     allowReadOnlyRoles: true,
     route: "opcua/test",
@@ -431,69 +442,72 @@ export async function executeTestOpcuaConnection(
     throw new Error(`${actor.code}: ${actor.message}`);
   }
 
-  const targetDecision = resolveCloudToEdgeTarget({
-    protocol: "OPC_UA",
-    mode: data.mode,
-    target: data.endpoint,
-    gatewayId: data.gatewayId,
-    actor,
-    route: "opcua/test",
-  });
+  return runWithFleetManagers(async ({ fleetManager, registry }) => {
+    const targetDecision = resolveCloudToEdgeTarget({
+      protocol: "OPC_UA",
+      mode: data.mode,
+      target: data.endpoint,
+      gatewayId: data.gatewayId,
+      actor,
+      route: "opcua/test",
+      fleetManagerOverride: fleetManager,
+    });
 
-  if (!targetDecision.allowed) {
-    throw new Error(`${targetDecision.code}: ${targetDecision.message}`);
-  }
+    if (!targetDecision.allowed) {
+      throw new Error(`${targetDecision.code}: ${targetDecision.message}`);
+    }
 
-  if (targetDecision.mode === "SIMULATOR") {
+    if (targetDecision.mode === "SIMULATOR") {
+      return {
+        ok: true as const,
+        mode: "SIMULATOR" as const,
+        simulated: true as const,
+        provenance: "SIMULATED" as const,
+        transport: "IN_MEMORY_SIMULATOR" as const,
+        directCloudToOtAllowed: false as const,
+        tagCount: 10,
+        sampleTags: [
+          {
+            nodeId: "ns=2;s=Motor_01.Speed",
+            displayName: "Motor_01.Speed",
+            dataType: "Double",
+            provenance: "SIMULATED" as const,
+          },
+          {
+            nodeId: "ns=2;s=Tank_01.Level",
+            displayName: "Tank_01.Level",
+            dataType: "Double",
+            provenance: "SIMULATED" as const,
+          },
+          {
+            nodeId: "ns=2;s=System.Ready",
+            displayName: "System.Ready",
+            dataType: "Boolean",
+            provenance: "SIMULATED" as const,
+          },
+        ],
+      };
+    }
+
+    const gateway = fleetManager.getGateway(targetDecision.gatewayId);
+    const telemetry = registry.getLatestTelemetryForGateway(targetDecision.gatewayId);
+
     return {
       ok: true as const,
-      mode: "SIMULATOR" as const,
-      simulated: true as const,
-      provenance: "SIMULATED" as const,
-      transport: "IN_MEMORY_SIMULATOR" as const,
-      directCloudToOtAllowed: false as const,
-      tagCount: 10,
-      sampleTags: [
-        {
-          nodeId: "ns=2;s=Motor_01.Speed",
-          displayName: "Motor_01.Speed",
-          dataType: "Double",
-          provenance: "SIMULATED" as const,
-        },
-        {
-          nodeId: "ns=2;s=Tank_01.Level",
-          displayName: "Tank_01.Level",
-          dataType: "Double",
-          provenance: "SIMULATED" as const,
-        },
-        {
-          nodeId: "ns=2;s=System.Ready",
-          displayName: "System.Ready",
-          dataType: "Boolean",
-          provenance: "SIMULATED" as const,
-        },
-      ],
-    };
-  }
-
-  const gateway = edgeFleetManager.getGateway(targetDecision.gatewayId);
-  const telemetry = cloudGatewayRegistry.getLatestTelemetryForGateway(targetDecision.gatewayId);
-
-  return {
-    ok: true as const,
-    mode: "EDGE_READ_ONLY" as const,
-    simulated: false as const,
-    provenance: targetDecision.provenance,
-    transport: "EDGE_GATEWAY_MEDIATED" as const,
-    gatewayId: targetDecision.gatewayId,
-    gatewayOperationalState: gateway?.operationalState ?? "UNKNOWN",
-    directCloudToOtAllowed: false as const,
-    tagCount: telemetry.length,
-    sampleTags: telemetry.slice(0, 5).map((s) => ({
-      nodeId: `ns=2;s=${s.tagName}`,
-      displayName: s.tagName,
-      dataType: "Double",
+      mode: "EDGE_READ_ONLY" as const,
+      simulated: false as const,
       provenance: targetDecision.provenance,
-    })),
-  };
+      transport: "EDGE_GATEWAY_MEDIATED" as const,
+      gatewayId: targetDecision.gatewayId,
+      gatewayOperationalState: gateway?.operationalState ?? "UNKNOWN",
+      directCloudToOtAllowed: false as const,
+      tagCount: telemetry.length,
+      sampleTags: telemetry.slice(0, 5).map((s) => ({
+        nodeId: `ns=2;s=${s.tagName}`,
+        displayName: s.tagName,
+        dataType: "Double",
+        provenance: targetDecision.provenance,
+      })),
+    };
+  });
 }

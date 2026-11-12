@@ -164,9 +164,14 @@ export function resolveCloudToEdgeTarget(input: {
   gatewayId?: string;
   actor: AuthorizedProtocolActor;
   route: string;
+  fleetManagerOverride?: typeof edgeFleetManager;
 }): EdgeTargetAuthorizationResult {
-  ensurePersistentFleetRuntime();
-  const gateway = input.gatewayId ? edgeFleetManager.getGateway(input.gatewayId) : undefined;
+  if (!input.fleetManagerOverride) {
+    ensurePersistentFleetRuntime();
+  }
+  const gateway = input.gatewayId
+    ? (input.fleetManagerOverride ?? edgeFleetManager).getGateway(input.gatewayId)
+    : undefined;
 
   const decision = authorizeCloudToEdgeReadTarget({
     protocol: input.protocol,

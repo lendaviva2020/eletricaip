@@ -21,6 +21,8 @@ src/integrations/supabase/previewAuthStorage.ts
 supabase/
 
 # Documentação, scripts internos e fixtures de teste
+AGENTS.md
+deploy/grafana/
 docs/
 scripts/
 public/fonts/

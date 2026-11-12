@@ -329,10 +329,15 @@ function CommandPanel({
   };
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <PaperPlaneRight className="h-4 w-4 text-info" />
-        <h2 className="font-semibold">Enviar comando</h2>
+    <Card className="p-4 border-amber-500/40 bg-amber-500/5">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <PaperPlaneRight className="h-4 w-4 text-amber-500" />
+          <h2 className="font-semibold">Comandos físicos (Bloqueado · Read-Only)</h2>
+        </div>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-400">
+          IS_PHYSICAL_CONTROL_ALLOWED = false
+        </span>
       </div>
       <div className="grid sm:grid-cols-[1fr_140px_auto] gap-2 items-end">
         <div>
@@ -341,6 +346,7 @@ function CommandPanel({
             value={cmd}
             onChange={(e) => setCmd(e.target.value)}
             placeholder="start, stop, reset…"
+            disabled
           />
         </div>
         <div>
@@ -351,15 +357,17 @@ function CommandPanel({
             max={60000}
             value={watchdog}
             onChange={(e) => setWatchdog(Number(e.target.value) || 5000)}
+            disabled
           />
         </div>
-        <Button onClick={send} disabled={busy || !deviceExternalId}>
-          {busy ? "Enviando…" : "Enviar"}
+        <Button onClick={send} disabled title="Controle físico permanentemente bloqueado">
+          {busy ? "Enviando…" : "Bloqueado"}
         </Button>
       </div>
       {msg && <div className="text-xs mt-2 text-muted-foreground">{msg}</div>}
-      <div className="text-[10px] text-muted-foreground mt-2">
-        Se o PLC não confirmar antes do watchdog, o comando é marcado como falho (fail-safe).
+      <div className="text-[10px] text-amber-500/90 mt-2">
+        Bloqueio permanente de segurança física ativo: envio de comandos para PLCs/CLPs de campo é
+        rejeitado no cliente e no servidor (PHYSICAL_CONTROL_BLOCKED).
       </div>
     </Card>
   );

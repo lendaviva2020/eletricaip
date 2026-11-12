@@ -129,11 +129,14 @@ export class CloudGatewayRegistry {
   }
 
   public getGateway(gatewayId: string): RegisteredGatewayRecord | undefined {
-    return this.gateways.get(gatewayId) ?? this.refreshGatewayFromStore(gatewayId);
+    if (this.store) {
+      return this.refreshGatewayFromStore(gatewayId);
+    }
+    return this.gateways.get(gatewayId);
   }
 
   public revokeGateway(gatewayId: string, reason: string): boolean {
-    const gw = this.gateways.get(gatewayId);
+    const gw = this.store ? this.refreshGatewayFromStore(gatewayId) : this.gateways.get(gatewayId);
     if (!gw) return false;
     gw.isRevoked = true;
     gw.operationalState = "REVOKED";
@@ -152,7 +155,7 @@ export class CloudGatewayRegistry {
    * Guarantees server-side tenant derivation: Does NOT trust client-supplied headers.
    */
   public authenticateGateway(gatewayId: string, credential?: string): GatewayAuthResult {
-    const gw = this.gateways.get(gatewayId) ?? this.refreshGatewayFromStore(gatewayId);
+    const gw = this.store ? this.refreshGatewayFromStore(gatewayId) : this.gateways.get(gatewayId);
     if (!gw) {
       return {
         authorized: false,

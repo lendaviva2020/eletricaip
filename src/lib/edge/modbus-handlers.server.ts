@@ -7,9 +7,9 @@ import {
   guardProtocolWriteAttempt,
   resolveCloudToEdgeTarget,
 } from "./cloud-protocol-guard.server";
-import { cloudGatewayRegistry } from "./cloud-gateway-registry";
-import { edgeFleetManager } from "./fleet-manager";
-import { ensurePersistentFleetRuntime } from "./fleet-runtime.server";
+import { runWithFleetManagers } from "./fleet-handlers.server";
+import type { CloudGatewayRegistry } from "./cloud-gateway-registry";
+import type { EdgeFleetManager } from "./fleet-manager";
 
 export type ModbusConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
@@ -79,8 +79,10 @@ function hydrateEdgeReadOnlyRegisters(
   session: ModbusSession,
   gatewayId: string,
   baseProvenance: TagProvenance,
+  fleetManager: EdgeFleetManager,
+  registry: CloudGatewayRegistry,
 ): void {
-  const gateway = edgeFleetManager.getGateway(gatewayId);
+  const gateway = fleetManager.getGateway(gatewayId);
   const effectiveProvenance: TagProvenance =
     gateway?.operationalState === "ONLINE" && gateway.connectivityState === "CONNECTED"
       ? "PHYSICAL_READ_ONLY"
@@ -89,7 +91,7 @@ function hydrateEdgeReadOnlyRegisters(
         : baseProvenance;
 
   session.provenance = effectiveProvenance;
-  const snapshots = cloudGatewayRegistry.getLatestTelemetryForGateway(gatewayId);
+  const snapshots = registry.getLatestTelemetryForGateway(gatewayId);
   session.values.clear();
   snapshots.forEach((sample, index) => {
     const key = `holding_register:${index}`;
@@ -162,7 +164,6 @@ if (typeof process !== "undefined" && typeof process.on === "function") {
 }
 
 export async function executeConnectModbus(data: ModbusGatewayConfig, context: unknown) {
-  ensurePersistentFleetRuntime();
   const actor = await authorizeProtocolSessionActor(context, {
     allowReadOnlyRoles: false,
     route: "modbus/connect",
@@ -186,74 +187,83 @@ export async function executeConnectModbus(data: ModbusGatewayConfig, context: u
     };
   }
 
-  const targetDecision = resolveCloudToEdgeTarget({
-    protocol: "MODBUS_TCP",
-    mode: data.mode,
-    target: data.host,
-    port: data.port,
-    gatewayId: data.gatewayId,
-    actor,
-    route: "modbus/connect",
-  });
+  return runWithFleetManagers(async ({ fleetManager, registry }) => {
+    const targetDecision = resolveCloudToEdgeTarget({
+      protocol: "MODBUS_TCP",
+      mode: data.mode,
+      target: data.host,
+      port: data.port,
+      gatewayId: data.gatewayId,
+      actor,
+      route: "modbus/connect",
+      fleetManagerOverride: fleetManager,
+    });
 
-  if (!targetDecision.allowed) {
-    return {
-      ok: false as const,
-      error: {
-        code: targetDecision.code,
-        message: targetDecision.message,
-      },
-    };
-  }
+    if (!targetDecision.allowed) {
+      return {
+        ok: false as const,
+        error: {
+          code: targetDecision.code,
+          message: targetDecision.message,
+        },
+      };
+    }
 
-  const session = ensureSession(actor.userId, data);
-  session.organizationId = actor.organizationId;
-  session.status = "connecting";
+    const session = ensureSession(actor.userId, data);
+    session.organizationId = actor.organizationId;
+    session.status = "connecting";
 
-  await actor.supabase.from("runtime_logs").insert({
-    user_id: actor.userId,
-    tag: "MB",
-    message:
-      data.mode === "SIMULATOR"
-        ? `Iniciando sessão Modbus SIMULATOR em memória (Unit ID ${data.unitId})`
-        : `Associando sessão Modbus EDGE_READ_ONLY via gateway ${data.gatewayId} -> ${targetDecision.normalizedTarget}`,
-    level: "info",
-    channel: "Modbus",
-  });
+    await actor.supabase.from("runtime_logs").insert({
+      user_id: actor.userId,
+      tag: "MB",
+      message:
+        data.mode === "SIMULATOR"
+          ? `Iniciando sessão Modbus SIMULATOR em memória (Unit ID ${data.unitId})`
+          : `Associando sessão Modbus EDGE_READ_ONLY via gateway ${data.gatewayId} -> ${targetDecision.normalizedTarget}`,
+      level: "info",
+      channel: "Modbus",
+    });
 
-  if (targetDecision.mode === "SIMULATOR") {
-    startSimulatedModbus(session);
+    if (targetDecision.mode === "SIMULATOR") {
+      startSimulatedModbus(session);
+      session.status = "connected";
+      session.provenance = "SIMULATED";
+      session.connectedAt = new Date().toISOString();
+      return {
+        ok: true as const,
+        status: session.status,
+        mode: "SIMULATOR" as const,
+        simulated: true as const,
+        provenance: "SIMULATED" as const,
+        transport: session.transport,
+        host: targetDecision.normalizedTarget,
+        port: data.port,
+      };
+    }
+
+    hydrateEdgeReadOnlyRegisters(
+      session,
+      targetDecision.gatewayId,
+      targetDecision.provenance,
+      fleetManager,
+      registry,
+    );
     session.status = "connected";
-    session.provenance = "SIMULATED";
+    session.provenance = targetDecision.provenance;
     session.connectedAt = new Date().toISOString();
+
     return {
       ok: true as const,
       status: session.status,
-      mode: "SIMULATOR" as const,
-      simulated: true as const,
-      provenance: "SIMULATED" as const,
+      mode: "EDGE_READ_ONLY" as const,
+      simulated: false as const,
+      provenance: targetDecision.provenance,
       transport: session.transport,
-      host: targetDecision.normalizedTarget,
+      gatewayId: targetDecision.gatewayId,
+      host: data.host,
       port: data.port,
     };
-  }
-
-  hydrateEdgeReadOnlyRegisters(session, targetDecision.gatewayId, targetDecision.provenance);
-  session.status = "connected";
-  session.provenance = targetDecision.provenance;
-  session.connectedAt = new Date().toISOString();
-
-  return {
-    ok: true as const,
-    status: session.status,
-    mode: "EDGE_READ_ONLY" as const,
-    simulated: false as const,
-    provenance: targetDecision.provenance,
-    transport: session.transport,
-    gatewayId: targetDecision.gatewayId,
-    host: data.host,
-    port: data.port,
-  };
+  });
 }
 
 export async function executeDisconnectModbus(context: unknown) {
@@ -277,7 +287,6 @@ export async function executeDisconnectModbus(context: unknown) {
 }
 
 export async function executeGetModbusStatus(context: unknown) {
-  ensurePersistentFleetRuntime();
   const actor = await authorizeProtocolSessionActor(context, {
     allowReadOnlyRoles: true,
     route: "modbus/status",
@@ -308,7 +317,10 @@ export async function executeGetModbusStatus(context: unknown) {
   }
 
   if (session.config.mode === "EDGE_READ_ONLY" && session.config.gatewayId) {
-    hydrateEdgeReadOnlyRegisters(session, session.config.gatewayId, session.provenance);
+    const gatewayId = session.config.gatewayId;
+    await runWithFleetManagers(({ fleetManager, registry }) => {
+      hydrateEdgeReadOnlyRegisters(session, gatewayId, session.provenance, fleetManager, registry);
+    });
   }
 
   return {
@@ -440,7 +452,6 @@ export async function executeTestModbusHost(
   data: { mode: EdgeExecutionMode; host: string; port: number; gatewayId?: string },
   context: unknown,
 ) {
-  ensurePersistentFleetRuntime();
   const actor = await authorizeProtocolSessionActor(context, {
     allowReadOnlyRoles: true,
     route: "modbus/test",
@@ -451,40 +462,43 @@ export async function executeTestModbusHost(
     throw new Error(`${actor.code}: ${actor.message}`);
   }
 
-  const targetDecision = resolveCloudToEdgeTarget({
-    protocol: "MODBUS_TCP",
-    mode: data.mode,
-    target: data.host,
-    port: data.port,
-    gatewayId: data.gatewayId,
-    actor,
-    route: "modbus/test",
-  });
+  return runWithFleetManagers(({ fleetManager }) => {
+    const targetDecision = resolveCloudToEdgeTarget({
+      protocol: "MODBUS_TCP",
+      mode: data.mode,
+      target: data.host,
+      port: data.port,
+      gatewayId: data.gatewayId,
+      actor,
+      route: "modbus/test",
+      fleetManagerOverride: fleetManager,
+    });
 
-  if (!targetDecision.allowed) {
-    throw new Error(`${targetDecision.code}: ${targetDecision.message}`);
-  }
+    if (!targetDecision.allowed) {
+      throw new Error(`${targetDecision.code}: ${targetDecision.message}`);
+    }
 
-  if (targetDecision.mode === "SIMULATOR") {
+    if (targetDecision.mode === "SIMULATOR") {
+      return {
+        ok: true as const,
+        mode: "SIMULATOR" as const,
+        simulated: true as const,
+        provenance: "SIMULATED" as const,
+        transport: "IN_MEMORY_SIMULATOR" as const,
+        directCloudToOtAllowed: false as const,
+      };
+    }
+
+    const gateway = fleetManager.getGateway(targetDecision.gatewayId);
     return {
       ok: true as const,
-      mode: "SIMULATOR" as const,
-      simulated: true as const,
-      provenance: "SIMULATED" as const,
-      transport: "IN_MEMORY_SIMULATOR" as const,
+      mode: "EDGE_READ_ONLY" as const,
+      simulated: false as const,
+      provenance: targetDecision.provenance,
+      transport: "EDGE_GATEWAY_MEDIATED" as const,
+      gatewayId: targetDecision.gatewayId,
+      gatewayOperationalState: gateway?.operationalState ?? "UNKNOWN",
       directCloudToOtAllowed: false as const,
     };
-  }
-
-  const gateway = edgeFleetManager.getGateway(targetDecision.gatewayId);
-  return {
-    ok: true as const,
-    mode: "EDGE_READ_ONLY" as const,
-    simulated: false as const,
-    provenance: targetDecision.provenance,
-    transport: "EDGE_GATEWAY_MEDIATED" as const,
-    gatewayId: targetDecision.gatewayId,
-    gatewayOperationalState: gateway?.operationalState ?? "UNKNOWN",
-    directCloudToOtAllowed: false as const,
-  };
+  });
 }

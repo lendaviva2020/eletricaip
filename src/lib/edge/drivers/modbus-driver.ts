@@ -510,4 +510,88 @@ export class ModbusTcpClientDriver implements IndustrialDriver {
     this.state = "DISCONNECTED";
     this.diagnostics.reconnectCount++;
   }
+
+  /**
+   * Builds a binary 12-byte Modbus TCP MBAP + Read PDU request frame (strictly FC1..FC4).
+   */
+  public buildMbapReadRequestFrame(params: {
+    transactionId: number;
+    unitId?: number;
+    functionCode: 1 | 2 | 3 | 4;
+    startAddress: number;
+    quantity: number;
+  }): Uint8Array {
+    this.validateFunctionCode(params.functionCode);
+    const area: ModbusArea =
+      params.functionCode === 1
+        ? "COIL"
+        : params.functionCode === 2
+          ? "DISCRETE_INPUT"
+          : params.functionCode === 4
+            ? "INPUT_REGISTER"
+            : "HOLDING_REGISTER";
+    this.validateParameters({
+      unitId: params.unitId,
+      address: params.startAddress,
+      quantity: params.quantity,
+      area,
+    });
+
+    const buf = new Uint8Array(12);
+    const view = new DataView(buf.buffer);
+    view.setUint16(0, params.transactionId & 0xffff, false);
+    view.setUint16(2, 0x0000, false); // Protocol ID = 0
+    view.setUint16(4, 6, false); // Length = 6 bytes remaining
+    view.setUint8(6, params.unitId ?? this.config.unitId ?? 1);
+    view.setUint8(7, params.functionCode);
+    view.setUint16(8, params.startAddress & 0xffff, false);
+    view.setUint16(10, params.quantity & 0xffff, false);
+    return buf;
+  }
+
+  /**
+   * Decodes a binary Modbus TCP MBAP + Read Response PDU frame (throws on Modbus exception bit 0x80).
+   */
+  public decodeMbapReadResponseFrame(frame: Uint8Array): {
+    transactionId: number;
+    unitId: number;
+    functionCode: number;
+    registers: number[];
+  } {
+    if (frame.length < 9) {
+      throw new Error("MODBUS_MALFORMED_FRAME: Frame MBAP/PDU menor que 9 bytes.");
+    }
+    const view = new DataView(frame.buffer, frame.byteOffset, frame.byteLength);
+    const transactionId = view.getUint16(0, false);
+    const protocolId = view.getUint16(2, false);
+    if (protocolId !== 0) {
+      throw new Error(
+        `MODBUS_INVALID_PROTOCOL_ID: Esperado 0x0000, obtido 0x${protocolId.toString(16)}.`,
+      );
+    }
+    const unitId = view.getUint8(6);
+    const fc = view.getUint8(7);
+    if ((fc & 0x80) !== 0) {
+      const exCode = view.getUint8(8);
+      throw new Error(
+        `MODBUS_EXCEPTION_RESPONSE: FC=0x${fc.toString(16)}, Exception=0x${exCode.toString(16)}.`,
+      );
+    }
+    this.validateFunctionCode(fc);
+    const byteCount = view.getUint8(8);
+    if (frame.length < 9 + byteCount) {
+      throw new Error("MODBUS_TRUNCATED_PDU: Byte count excede o tamanho real do buffer recebido.");
+    }
+    const registers: number[] = [];
+    if (fc === 3 || fc === 4) {
+      for (let i = 0; i + 1 < byteCount; i += 2) {
+        registers.push(view.getUint16(9 + i, false));
+      }
+    } else {
+      for (let i = 0; i < byteCount; i++) {
+        registers.push(view.getUint8(9 + i));
+      }
+    }
+    return { transactionId, unitId, functionCode: fc, registers };
+  }
 }

@@ -6,7 +6,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { edgeFleetManager } from "@/lib/edge/fleet-manager";
 import { resolveAuthenticatedFleetContext } from "@/lib/edge/fleet-auth-context.server";
 import { aiDiagnosticAssistant } from "./ai-diagnostic-assistant";
 import { dataReliabilityTracker } from "./data-reliability-tracker";
@@ -72,11 +71,12 @@ export const getObservabilityOverviewFn = createServerFn({ method: "GET" })
       plantId,
     });
 
-    const { ensurePersistentFleetRuntime } = await import("@/lib/edge/fleet-runtime.server");
-    ensurePersistentFleetRuntime();
-    const fleetGateways = edgeFleetManager.getFleetGateways(actor, {
-      plantId,
-    });
+    const { runWithFleetManagers } = await import("@/lib/edge/fleet-handlers.server");
+    const fleetGateways = await runWithFleetManagers(({ fleetManager }) =>
+      fleetManager.getFleetGateways(actor, {
+        plantId,
+      }),
+    );
 
     const openIncidentsCount = incidents.filter(
       (i) => i.status !== "RESOLVED" && i.status !== "CLOSED",

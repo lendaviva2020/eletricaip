@@ -46,12 +46,10 @@ export const ingestEdgeTelemetryBatch = createServerFn({ method: "POST" })
       .parse(d);
   })
   .handler(async ({ data }): Promise<EdgeIngestAck> => {
-    const [{ ensurePersistentFleetRuntime }, { cloudGatewayRegistry }] = await Promise.all([
-      import("../edge/fleet-runtime.server"),
-      import("../edge/cloud-gateway-registry"),
-    ]);
-    ensurePersistentFleetRuntime();
-    const res = cloudGatewayRegistry.processTelemetryBatch(data.batch, data.authToken);
+    const { runWithFleetManagers } = await import("../edge/fleet-handlers.server");
+    const res = await runWithFleetManagers(({ registry }) =>
+      registry.processTelemetryBatch(data.batch, data.authToken),
+    );
     if (!res.ack.success && (res.statusCode === 401 || res.statusCode === 403)) {
       throw new Response(res.ack.error || "Unauthorized gateway credential", {
         status: res.statusCode,

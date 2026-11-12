@@ -80,6 +80,25 @@ export class SupabaseConfigError extends Error {
   }
 }
 
+/** Identifica URL loopback local autorizada apenas em ambiente local/teste controlado. */
+export function isAuthorizedLocalSupabaseUrl(url: string): boolean {
+  const proc = typeof process !== "undefined" ? process.env : undefined;
+  const allowLocal =
+    proc?.["ALLOW_LOCAL_SUPABASE"] === "true" ||
+    proc?.["NODE_ENV"] === "test" ||
+    Boolean(proc?.["VITEST"]);
+  if (!allowLocal) return false;
+  try {
+    const parsed = new URL(url);
+    return (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost")
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Valida que URL e chave pertencem ao projeto esperado. Lança
  * SupabaseConfigError com diagnóstico seguro (sem expor a chave).
@@ -88,6 +107,9 @@ export function assertSupabaseProject(
   env: SupabasePublicEnv,
   expectedRef: string = EXPECTED_SUPABASE_PROJECT_REF,
 ): void {
+  if (isAuthorizedLocalSupabaseUrl(env.url)) {
+    return;
+  }
   const urlRef = projectRefFromUrl(env.url);
   if (urlRef !== expectedRef) {
     throw new SupabaseConfigError(

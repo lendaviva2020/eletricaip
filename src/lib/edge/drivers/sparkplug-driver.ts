@@ -253,12 +253,23 @@ export class SparkplugBDriver implements IndustrialDriver {
 
     const [_, groupId, messageType, edgeNodeId, deviceId] = parts;
 
-    // Validate ACL topic authorization
-    if (this.config.authorizedTopicsOnly && groupId !== this.config.groupId) {
+    if (messageType === "NCMD" || messageType === "DCMD") {
       this.diagnostics.requestsFailed++;
       return {
         success: false,
-        error: "UNAUTHORIZED_GROUP_TOPIC: Acesso negado para Group ID divergente.",
+        error: `PHYSICAL_CONTROL_BLOCKED: Mensagem de comando ${messageType} rejeitada (READ-ONLY).`,
+      };
+    }
+
+    // Validate ACL topic authorization
+    if (
+      this.config.authorizedTopicsOnly &&
+      (groupId !== this.config.groupId || edgeNodeId !== this.config.edgeNodeId)
+    ) {
+      this.diagnostics.requestsFailed++;
+      return {
+        success: false,
+        error: "UNAUTHORIZED_GROUP_TOPIC: Acesso negado para Group ID ou Edge Node ID divergente.",
       };
     }
 

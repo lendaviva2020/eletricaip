@@ -121,9 +121,12 @@ export function resolveAuthoritativeGatewayForActor(
   gatewayId: string,
   actor: FleetUserContext,
   route: string,
+  fleetManagerOverride?: typeof edgeFleetManager,
 ): FleetGatewaySummary {
-  ensurePersistentFleetRuntime();
-  const gw = edgeFleetManager.getGateway(gatewayId);
+  if (!fleetManagerOverride) {
+    ensurePersistentFleetRuntime();
+  }
+  const gw = (fleetManagerOverride ?? edgeFleetManager).getGateway(gatewayId);
   if (!gw) {
     logSecurityEvent({
       category: "RBAC_DENIED",

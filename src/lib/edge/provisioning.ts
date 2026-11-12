@@ -77,10 +77,49 @@ export class EdgeProvisioningService {
     return crypto.createHash("sha256").update(token).digest("hex");
   }
 
+  private syncStateFromStore(): void {
+    if (!this.store) return;
+    const state = this.store.loadProvisioningState();
+    for (const token of state.tokens) {
+      const hash = token.tokenHash ?? EdgeProvisioningService.hashToken(token.token);
+      this.tokenHashes.set(hash, token);
+    }
+    const persistedRegistered = this.store.loadRegisteredGateways();
+    for (const item of persistedRegistered) {
+      const rec = item.gateway;
+      this.gateways.set(rec.gatewayId, {
+        gatewayId: rec.gatewayId,
+        organizationId: rec.organizationId,
+        plantId: rec.plantId,
+        stationId: rec.stationId,
+        gatewayVersion: rec.gatewayVersion,
+        installationId: rec.installationId,
+        certificateFingerprint: rec.certificateFingerprint,
+        registeredAt: rec.registeredAt,
+        lastSeenAt: rec.lastSeenAt,
+        operationalState: rec.isRevoked ? "OFFLINE" : "ONLINE",
+      });
+      if (rec.isRevoked) {
+        this.revokedGateways.add(rec.gatewayId);
+      }
+      if (item.authTokenDigest) {
+        const rawDigest = item.authTokenDigest.startsWith("sha256:")
+          ? item.authTokenDigest.slice(7)
+          : item.authTokenDigest;
+        this.activeAuthTokenDigests.set(rawDigest, {
+          gatewayId: rec.gatewayId,
+          organizationId: rec.organizationId,
+          plantId: rec.plantId,
+        });
+      }
+    }
+  }
+
   /**
    * Constant-time hash comparison to prevent timing side-channel attacks on token verification.
    */
   private findTokenByHash(providedHash: string): ProvisioningToken | undefined {
+    this.syncStateFromStore();
     const providedBuf = Buffer.from(providedHash, "hex");
     for (const [storedHash, record] of this.tokenHashes.entries()) {
       const storedBuf = Buffer.from(storedHash, "hex");
@@ -363,6 +402,7 @@ export class EdgeProvisioningService {
    * Enforces certificate lifecycle, rejects revoked gateways, and stops cross-organization forgery.
    */
   public authenticateGateway(authToken: string): GatewayIdentity | null {
+    this.syncStateFromStore();
     const tokenDigest = EdgeProvisioningService.hashToken(authToken);
     const session =
       this.activeAuthTokens.get(authToken) ?? this.activeAuthTokenDigests.get(tokenDigest);

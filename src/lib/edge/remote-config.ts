@@ -148,11 +148,27 @@ export class RemoteConfigManager {
     this.lkgcMap.set("gw_lab_ete_01", defaultConfig);
   }
 
+  private refreshFromStore(gatewayId: string): void {
+    if (!this.store) return;
+    const persisted = this.store.loadRemoteConfigs();
+    const entry = persisted[gatewayId];
+    if (entry) {
+      this.configHistory.set(gatewayId, entry.history);
+      if (entry.lkgc) {
+        this.lkgcMap.set(gatewayId, entry.lkgc);
+      } else if (entry.history.length > 0) {
+        this.lkgcMap.set(gatewayId, entry.history[entry.history.length - 1]);
+      }
+    }
+  }
+
   public getActiveConfig(gatewayId: string): RemoteConfigPayload | undefined {
+    this.refreshFromStore(gatewayId);
     return this.lkgcMap.get(gatewayId);
   }
 
   public getConfigHistory(gatewayId: string): RemoteConfigPayload[] {
+    this.refreshFromStore(gatewayId);
     return this.configHistory.get(gatewayId) || [];
   }
 
@@ -265,7 +281,7 @@ export class RemoteConfigManager {
       const gwId = (candidate as any)?.gatewayId || "unknown";
       const currentLkgc = this.lkgcMap.get(gwId);
 
-      fleetAuditManager.recordEvent({
+      this.auditManager.recordEvent({
         actor: { id: user.userId, email: user.email, role: user.role },
         source: "ADMIN_CONSOLE",
         gatewayId: gwId,
@@ -286,12 +302,13 @@ export class RemoteConfigManager {
     }
 
     const validConfig = parsed.data;
+    this.refreshFromStore(validConfig.gatewayId);
     const history = this.configHistory.get(validConfig.gatewayId) || [];
     const currentActive = this.lkgcMap.get(validConfig.gatewayId);
 
     // 3.5. Cryptographic Signature Verification (fail-closed)
     if (!this.verifyConfigSignature(validConfig)) {
-      fleetAuditManager.recordEvent({
+      this.auditManager.recordEvent({
         actor: { id: user.userId, email: user.email, role: user.role },
         source: "ADMIN_CONSOLE",
         gatewayId: validConfig.gatewayId,
@@ -373,6 +390,7 @@ export class RemoteConfigManager {
       gatewayId,
     });
 
+    this.refreshFromStore(gatewayId);
     const history = this.configHistory.get(gatewayId) || [];
     if (history.length <= 1) {
       return {

@@ -299,7 +299,16 @@ export class EdgeFleetManager {
     this.store?.saveFleetGateway(copy);
   }
 
+  private syncFromStore(): void {
+    if (!this.store) return;
+    const persisted = this.store.loadFleetGateways();
+    for (const gw of persisted) {
+      this.gateways.set(gw.gatewayId, gw);
+    }
+  }
+
   public getGateway(gatewayId: string): FleetGatewaySummary | undefined {
+    this.syncFromStore();
     const gw = this.gateways.get(gatewayId);
     if (!gw) return undefined;
     return this.resolveGatewayWithLiveState(gw);
@@ -312,8 +321,13 @@ export class EdgeFleetManager {
     gateway: FleetGatewaySummary,
     now: number = Date.now(),
   ): EdgeOperationalState {
-    // 1. Certificate Revocation Check
-    if (gateway.certificate.isRevoked || gateway.operationalState === "REVOKED") {
+    // 1. Certificate Revocation Check (consult authoritative cert store when attached)
+    const liveCert = this.certManager.getCertificate(gateway.gatewayId);
+    if (
+      liveCert?.isRevoked ||
+      gateway.certificate.isRevoked ||
+      gateway.operationalState === "REVOKED"
+    ) {
       return "REVOKED";
     }
 
@@ -388,9 +402,24 @@ export class EdgeFleetManager {
     telemetry: GatewayHeartbeatTelemetry,
     now: number = Date.now(),
   ): { success: boolean; resolvedState: EdgeOperationalState; error?: string } {
+    this.syncFromStore();
     const gw = this.gateways.get(gatewayId);
     if (!gw) {
       return { success: false, resolvedState: "UNKNOWN", error: "GATEWAY_NOT_FOUND" };
+    }
+
+    const liveCert = this.certManager.getCertificate(gatewayId);
+    if (liveCert?.isRevoked || gw.certificate.isRevoked || gw.operationalState === "REVOKED") {
+      gw.operationalState = "REVOKED";
+      gw.connectivityState = "DISCONNECTED";
+      gw.certificate = liveCert ?? { ...gw.certificate, isRevoked: true, state: "REVOKED" };
+      this.gateways.set(gatewayId, gw);
+      this.store?.saveFleetGateway(gw);
+      return {
+        success: false,
+        resolvedState: "REVOKED",
+        error: "GATEWAY_REVOKED: Gateway revogado não pode reportar heartbeat operacional.",
+      };
     }
 
     const previousState = gw.operationalState;
@@ -475,6 +504,7 @@ export class EdgeFleetManager {
   ): FleetGatewaySummary[] {
     fleetRbacEngine.assertCanPerformAction(user, "VIEW_FLEET");
 
+    this.syncFromStore();
     const now = Date.now();
     let all = Array.from(this.gateways.values()).map((gw) =>
       this.resolveGatewayWithLiveState(gw, now),

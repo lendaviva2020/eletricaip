@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/edge/protocol-classification";
+import { logSecurityEvent } from "@/lib/security/security-audit-log.server";
 
 export const listIotDevices = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -103,6 +105,21 @@ export const enqueueIotCommand = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { userId } = context;
+    if (!IS_PHYSICAL_CONTROL_ALLOWED) {
+      logSecurityEvent({
+        category: "RBAC_DENIED",
+        severity: "CRITICAL",
+        route: "iot/enqueueIotCommand",
+        actorId: userId,
+        reason: `PHYSICAL_CONTROL_BLOCKED: Tentativa de envio de comando físico (${data.command}) para ${data.deviceExternalId}.`,
+      });
+      return {
+        ok: false as const,
+        error:
+          "PHYSICAL_CONTROL_BLOCKED: Envio de comandos físicos para PLCs/CLPs está permanentemente bloqueado (IS_PHYSICAL_CONTROL_ALLOWED = false).",
+      };
+    }
+
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("tenant_id")

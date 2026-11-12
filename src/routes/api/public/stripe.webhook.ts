@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type { FleetStorageBackend } from "@/lib/edge/types";
+import type { AsyncFleetStorageBackend, FleetStorageBackend } from "@/lib/edge/types";
 import {
   assertSupabaseWriteOk,
   runTransactionalWebhookHandler,
@@ -30,6 +30,7 @@ export interface StripeEvent {
 export interface StripeWebhookDeps {
   adminClient?: typeof supabaseAdmin;
   store?: FleetStorageBackend;
+  asyncStore?: AsyncFleetStorageBackend;
   webhookSecret?: string;
 }
 
@@ -72,7 +73,9 @@ export async function processStripeWebhookRequest(
       console.error("[stripe] insert event log failed", dupErr);
       return new Response("event_log_failed", { status: 500 });
     }
-    const existingLedger = deps?.store?.getWebhookEvent("stripe", event.id);
+    const existingLedger = deps?.asyncStore
+      ? await deps.asyncStore.getWebhookEvent("stripe", event.id)
+      : deps?.store?.getWebhookEvent("stripe", event.id);
     if (!existingLedger || existingLedger.state === "PROCESSED") {
       return new Response("ok", { status: 200 });
     }
@@ -85,6 +88,7 @@ export async function processStripeWebhookRequest(
       rawPayload: body,
       route: "/api/public/stripe/webhook",
       store: deps?.store,
+      asyncStore: deps?.asyncStore,
       execute: async () => handleStripeEvent(event, db),
       onRollbackReservation: async () => {
         await db.from("stripe_webhook_events").delete().eq("event_id", event.id);

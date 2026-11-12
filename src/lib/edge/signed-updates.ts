@@ -104,6 +104,7 @@ export class SignedUpdateManager {
   private campaigns: Map<string, UpdateCampaign> = new Map();
   private appliedVersionsMemory: Set<string> = new Set();
   private publicKeysByKeyId: Record<string, string>;
+  private revokedKeyIds: Set<string> = new Set();
   private privateSigningKeyPem?: string;
   private defaultKeyId: string;
   private store?: FleetStorageBackend;
@@ -147,13 +148,70 @@ export class SignedUpdateManager {
     for (const [id, cmp] of Object.entries(loaded)) {
       this.campaigns.set(id, cmp as UpdateCampaign);
     }
+    const keys = store.loadOtaSigningKeys?.() ?? [];
+    for (const key of keys) {
+      if (key.status === "REVOKED") {
+        this.revokedKeyIds.add(key.keyId);
+        delete this.publicKeysByKeyId[key.keyId];
+      } else if (key.publicKeyPem.includes("BEGIN PUBLIC KEY")) {
+        this.publicKeysByKeyId[key.keyId] = key.publicKeyPem;
+      }
+    }
+    for (const [keyId, pem] of Object.entries(this.publicKeysByKeyId)) {
+      if (!this.revokedKeyIds.has(keyId)) {
+        store.saveOtaSigningKey?.({ keyId, publicKeyPem: pem, status: "ACTIVE" });
+      }
+    }
   }
 
   public registerTrustedPublicKey(keyId: string, publicKeyPem: string): void {
     if (!keyId || !publicKeyPem.includes("BEGIN PUBLIC KEY")) {
       throw new Error("INVALID_PUBLIC_KEY_PEM: Chave pública Ed25519 SPKI PEM inválida.");
     }
+    this.revokedKeyIds.delete(keyId);
     this.publicKeysByKeyId[keyId] = publicKeyPem;
+    this.store?.saveOtaSigningKey?.({ keyId, publicKeyPem, status: "ACTIVE" });
+  }
+
+  public isSigningKeyRevoked(keyId: string): boolean {
+    if (this.store?.loadOtaSigningKeys) {
+      for (const k of this.store.loadOtaSigningKeys()) {
+        if (k.status === "REVOKED") {
+          this.revokedKeyIds.add(k.keyId);
+          delete this.publicKeysByKeyId[k.keyId];
+        } else {
+          this.publicKeysByKeyId[k.keyId] = k.publicKeyPem;
+        }
+      }
+    }
+    return this.revokedKeyIds.has(keyId);
+  }
+
+  public revokeSigningKey(keyId: string, reason: string, actor?: FleetUserContext): boolean {
+    const existingPem = this.publicKeysByKeyId[keyId] ?? "";
+    this.revokedKeyIds.add(keyId);
+    delete this.publicKeysByKeyId[keyId];
+    this.store?.saveOtaSigningKey?.({
+      keyId,
+      publicKeyPem: existingPem || "REVOKED",
+      status: "REVOKED",
+      revokedReason: reason,
+      revokedAt: new Date().toISOString(),
+    });
+    if (actor) {
+      this.auditManager.recordEvent({
+        actor: { id: actor.userId, email: actor.email, role: actor.role },
+        source: "ADMIN_CONSOLE",
+        gatewayId: "ota_pki_keyring",
+        plantId: actor.authorizedPlantIds[0] ?? "global",
+        organizationId: actor.organizationId,
+        eventType: "OTA_SIGNING_KEY_REVOKED",
+        severity: "CRITICAL",
+        result: "SUCCESS",
+        details: { keyId, reason },
+      });
+    }
+    return true;
   }
 
   public buildCanonicalSigningPayload(
@@ -219,6 +277,13 @@ export class SignedUpdateManager {
     if (!/^[a-f0-9]{64}$/i.test(manifest.sha256)) return false;
     if (!manifest.signature || manifest.signature.trim().length < 64) return false;
 
+    if (manifest.createdAt) {
+      const createdMs = Date.parse(manifest.createdAt);
+      if (Number.isNaN(createdMs) || createdMs > nowMs + 300_000) {
+        return false;
+      }
+    }
+
     if (manifest.expiresAt) {
       const expiresMs = Date.parse(manifest.expiresAt);
       if (Number.isNaN(expiresMs) || nowMs > expiresMs) {
@@ -227,6 +292,9 @@ export class SignedUpdateManager {
     }
 
     const keyId = manifest.keyId ?? this.defaultKeyId;
+    if (this.isSigningKeyRevoked(keyId)) {
+      return false;
+    }
     const publicKeyPem = overridePublicKeyPem || this.publicKeysByKeyId[keyId];
     if (!publicKeyPem || !publicKeyPem.includes("BEGIN PUBLIC KEY")) {
       return false;

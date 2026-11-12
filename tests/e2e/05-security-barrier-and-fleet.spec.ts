@@ -115,4 +115,34 @@ test.describe("Phase 5: Security Barrier & Edge Fleet Operations", () => {
     expect(page.url()).toContain("127.0.0.1:3000");
     expect(page.url()).not.toContain("evil.com");
   });
+
+  test("gate 4.3.2: edge fleet audit log, gateway detail panel, and billing route render cleanly without errors", async ({
+    page,
+  }) => {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (e) => pageErrors.push(e.message));
+
+    await page.goto("/settings/edge-fleet", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: /Frota Edge/i })).toBeVisible({
+      timeout: 15000,
+    });
+
+    // Verify seeded gateways load from persistent storage runtime and open detail drawer
+    await expect(page.locator("text=gw_lab_ete_01").first()).toBeVisible({ timeout: 15000 });
+    await page.getByRole("button", { name: "Inspecionar" }).first().click();
+    await expect(page.getByRole("button", { name: /Trilha de Auditoria/i })).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByRole("button", { name: /Configuração Remota/i })).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Check realtime physical control lock route & billing route render cleanly without runtime crash
+    await page.goto("/realtime", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toBeVisible();
+    await page.goto("/settings/billing", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toBeVisible();
+    await expect(page.locator("vite-error-overlay")).toHaveCount(0);
+    expect(pageErrors).toEqual([]);
+  });
 });
