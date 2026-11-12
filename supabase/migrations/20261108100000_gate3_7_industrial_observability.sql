@@ -179,31 +179,37 @@ alter table public.observability_slo_measurements enable row level security;
 alter table public.observability_pipeline_checkpoints enable row level security;
 
 -- Snapshots RLS
+drop policy if exists "Users can view health snapshots of own tenant" on public.observability_health_snapshots;
 create policy "Users can view health snapshots of own tenant"
   on public.observability_health_snapshots for select
-  using (tenant_id = auth.jwt() ->> 'tenant_id'::uuid or auth.jwt() ->> 'role' = 'PLATFORM_ADMIN');
+  using (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid or auth.jwt() ->> 'role' = 'PLATFORM_ADMIN');
 
 -- Incidents RLS
+drop policy if exists "Users can view incidents of own tenant" on public.observability_incidents;
 create policy "Users can view incidents of own tenant"
   on public.observability_incidents for select
-  using (tenant_id = auth.jwt() ->> 'tenant_id'::uuid or auth.jwt() ->> 'role' = 'PLATFORM_ADMIN');
+  using (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid or auth.jwt() ->> 'role' = 'PLATFORM_ADMIN');
 
+drop policy if exists "Engineers and Admins can update incidents of own tenant" on public.observability_incidents;
 create policy "Engineers and Admins can update incidents of own tenant"
   on public.observability_incidents for update
-  using (tenant_id = auth.jwt() ->> 'tenant_id'::uuid)
-  with check (tenant_id = auth.jwt() ->> 'tenant_id'::uuid);
+  using (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid)
+  with check (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid);
 
 -- Transitions RLS
+drop policy if exists "Users can view incident transitions of own tenant" on public.observability_incident_transitions;
 create policy "Users can view incident transitions of own tenant"
   on public.observability_incident_transitions for select
-  using (tenant_id = auth.jwt() ->> 'tenant_id'::uuid);
+  using (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid);
 
 -- SLO Measurements RLS
+drop policy if exists "Users can view SLO measurements of own tenant" on public.observability_slo_measurements;
 create policy "Users can view SLO measurements of own tenant"
   on public.observability_slo_measurements for select
-  using (tenant_id = auth.jwt() ->> 'tenant_id'::uuid);
+  using (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid);
 
 -- Pipeline Checkpoints RLS
+drop policy if exists "Users can view pipeline checkpoints of own tenant" on public.observability_pipeline_checkpoints;
 create policy "Users can view pipeline checkpoints of own tenant"
   on public.observability_pipeline_checkpoints for select
-  using (tenant_id = auth.jwt() ->> 'tenant_id'::uuid);
+  using (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid);
