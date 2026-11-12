@@ -73,13 +73,17 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
   };
 
   const TEST_CONFIG_HMAC_KEY = "test_only_config_hmac_secret_gate43";
-  const TEST_RELEASE_HMAC_KEY = "test_only_release_hmac_secret_gate43";
+  const TEST_RELEASE_KEYPAIR = SignedUpdateManager.generateReleaseKeyPair("test-ed25519-key");
 
   beforeEach(() => {
     fleetManager = new EdgeFleetManager();
     certManager = new FleetCertificateManager();
     configManager = new RemoteConfigManager(TEST_CONFIG_HMAC_KEY);
-    updateManager = new SignedUpdateManager(TEST_RELEASE_HMAC_KEY);
+    updateManager = new SignedUpdateManager({
+      publicKeysByKeyId: { [TEST_RELEASE_KEYPAIR.keyId]: TEST_RELEASE_KEYPAIR.publicKeyPem },
+      privateSigningKeyPem: TEST_RELEASE_KEYPAIR.privateKeyPem,
+      defaultKeyId: TEST_RELEASE_KEYPAIR.keyId,
+    });
     auditManager = new FleetAuditManager();
     rbacEngine = new FleetRbacEngine();
   });
@@ -402,6 +406,7 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
       targetVersion: "1.3.0",
       targetArch: "x86_64" as const,
       sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      keyId: TEST_RELEASE_KEYPAIR.keyId,
       releaseNotes: "Patch de segurança",
       minGatewayVersion: "1.0.0",
     };
@@ -438,6 +443,7 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
       targetVersion: "1.3.0",
       targetArch: "x86_64" as const,
       sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      keyId: TEST_RELEASE_KEYPAIR.keyId,
       releaseNotes: "Atualização com falha simulada",
       minGatewayVersion: "1.0.0",
     };
@@ -446,14 +452,14 @@ describe("GATE 3.5 — Edge Fleet Management & Industrial Operational Readiness 
       signature: updateManager.signReleaseManifest(unsignedManifest12),
     };
 
+    const mockGw = fleetManager.getGateway("gw_lab_ete_01")!;
     const campaign = updateManager.createStagedCampaign(
       manifest,
-      "plant_ete_sp",
-      "org_sp_industrial",
+      mockGw.plantId,
+      mockGw.organizationId,
       TenantAdminA,
     );
 
-    const mockGw = fleetManager.getGateway("gw_lab_ete_01")!;
     // Simulate failed post-update health check (daemon returned false)
     const execResult = updateManager.executeGatewayUpdate(campaign.campaignId, mockGw, () => false);
 

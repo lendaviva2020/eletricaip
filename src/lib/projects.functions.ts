@@ -55,7 +55,7 @@ export const SnapshotSchema = z
       .object({
         nodes: z.array(z.any()).default([]),
         edges: z.array(z.any()).default([]),
-        tags: z.record(RuntimeTagSchema).default({}),
+        tags: z.record(z.string(), RuntimeTagSchema).default({}),
         scadaLayout: z
           .object({
             nodes: z.array(z.any()).default([]),
@@ -72,7 +72,7 @@ export const SnapshotSchema = z
       .default({ components: [], edges: [] }),
     editor: z
       .object({
-        tags: z.record(z.any()).default({}),
+        tags: z.record(z.string(), z.any()).default({}),
         rungs: z.array(z.any()).default([]),
         fbdNodes: z.array(z.any()).default([]),
         fbdEdges: z.array(z.any()).default([]),
@@ -80,10 +80,16 @@ export const SnapshotSchema = z
           .object({
             scans: z.number().int().nonnegative(),
             elapsedMs: z.number().nonnegative(),
-            variables: z.record(z.union([z.boolean(), z.number(), z.string()])),
-            states: z.record(z.record(z.union([z.boolean(), z.number(), z.string()]))),
-            outputs: z.record(z.record(z.union([z.boolean(), z.number(), z.string()]))),
-            inputs: z.record(z.boolean()),
+            variables: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+            states: z.record(
+              z.string(),
+              z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+            ),
+            outputs: z.record(
+              z.string(),
+              z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+            ),
+            inputs: z.record(z.string(), z.boolean()),
           })
           .nullable()
           .optional(),
@@ -108,12 +114,12 @@ export const SnapshotSchema = z
     twin: z
       .object({
         mappings: z.array(z.any()).default([]),
-        nameplates: z.record(z.any()).default({}),
+        nameplates: z.record(z.string(), z.any()).default({}),
         modelUrl: z.string().nullable().optional(),
       })
       .optional(),
-    studies: z.record(z.any()).optional(),
-    controlBindings: z.record(z.any()).optional(),
+    studies: z.record(z.string(), z.any()).optional(),
+    controlBindings: z.record(z.string(), z.any()).optional(),
     diagnostics: z.array(z.any()).optional(),
     unifiedDoc: z.any().optional(),
   })
@@ -343,7 +349,7 @@ export const createProject = createServerFn({ method: "POST" })
 
 export const loadProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .inputValidator(z.object({ projectId: z.guid() }))
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
     const { supabase } = authCtx;
@@ -472,7 +478,7 @@ export const saveProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      projectId: z.string().uuid(),
+      projectId: z.guid(),
       snapshot: SnapshotSchema,
       expectedVersion: z.number().int().positive().optional(),
       force: z.boolean().optional(),
@@ -486,7 +492,7 @@ export const saveProject = createServerFn({ method: "POST" })
 
 export const duplicateProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .inputValidator(z.object({ projectId: z.guid() }))
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
     const { supabase, userId, claims } = authCtx;
@@ -571,7 +577,7 @@ export const duplicateProject = createServerFn({ method: "POST" })
 
 export const archiveProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .inputValidator(z.object({ projectId: z.guid() }))
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
     const { supabase } = authCtx;
@@ -616,7 +622,7 @@ async function deleteProjectChildren(
 
 export const deleteProject = createServerFn({ method: "POST" })
   .middleware([requireActiveSession])
-  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .inputValidator(z.object({ projectId: z.guid() }))
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
     const { supabase, userId } = authCtx;
@@ -652,7 +658,7 @@ export const deleteProject = createServerFn({ method: "POST" })
 
 export const listProjectVersions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .inputValidator(z.object({ projectId: z.guid() }))
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
     const { supabase } = authCtx;
@@ -668,7 +674,7 @@ export const listProjectVersions = createServerFn({ method: "POST" })
 
 export const restoreProjectVersion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ projectId: z.string().uuid(), versionId: z.string().uuid() }))
+  .inputValidator(z.object({ projectId: z.guid(), versionId: z.guid() }))
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
     const { supabase } = authCtx;
@@ -759,7 +765,7 @@ export async function importProjectPackageData(
   const { supabase } = authCtx;
   const parsed = ProjectPackageSchema.safeParse(input.packageData);
   if (!parsed.success) {
-    throw new Error(`Pacote inválido: ${parsed.error.errors.map((e) => e.message).join(", ")}`);
+    throw new Error(`Pacote inválido: ${parsed.error.issues.map((e) => e.message).join(", ")}`);
   }
 
   const pkg = parsed.data;
@@ -791,7 +797,7 @@ export async function importProjectPackageData(
 
 export const exportProjectPackage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ projectId: z.string().uuid() }))
+  .inputValidator(z.object({ projectId: z.guid() }))
   .handler(async ({ data, context }) => {
     const authCtx = context as unknown as AuthContext;
     return exportProjectPackageData(authCtx.supabase, data.projectId);

@@ -115,6 +115,7 @@ Deno.serve(async (req) => {
     });
 
     // Idempotency check shared with Next/TanStack webhook receiver
+    let reservedEventId: string | null = null;
     if (event.id) {
       const { error: dupErr } = await supabase
         .from("stripe_webhook_events")
@@ -129,118 +130,138 @@ Deno.serve(async (req) => {
         }
         throw new Error(`stripe_event_log_failed:${dupErr.message}`);
       }
+      reservedEventId = event.id;
     }
 
-    console.log(`[stripe-webhook] Event: ${event.type}`);
+    try {
+      console.log(`[stripe-webhook] Event: ${event.type}`);
 
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object;
-        const customerId = session.customer;
-        const subscriptionId = session.subscription;
-        const plan = getPlanFromPrice(
-          session.metadata?.price_id ?? session.line_items?.data?.[0]?.price?.id,
-        );
+      switch (event.type) {
+        case "checkout.session.completed": {
+          const session = event.data.object;
+          const customerId = session.customer;
+          const subscriptionId = session.subscription;
+          const plan = getPlanFromPrice(
+            session.metadata?.price_id ?? session.line_items?.data?.[0]?.price?.id,
+          );
 
-        if (customerId && subscriptionId && plan) {
+          if (customerId && subscriptionId && plan) {
+            const { error } = await supabase
+              .from("tenants")
+              .update({
+                stripe_customer_id: customerId,
+                stripe_subscription_id: subscriptionId,
+                plan,
+                subscription_status: "active",
+              })
+              .eq("stripe_customer_id", customerId);
+
+            if (error) {
+              throw new Error(`stripe_checkout_update_failed:${error.message}`);
+            }
+          }
+          break;
+        }
+
+        case "customer.subscription.updated":
+        case "customer.subscription.created": {
+          const sub = event.data.object;
+          const status = sub.status;
+          const items = sub.items?.data ?? [];
+          const priceId = items[0]?.price?.id;
+          const productName = items[0]?.price?.metadata?.plan_id ?? "";
+
+          console.log(`[stripe-webhook] Subscription ${sub.id}: status=${status}, price=${priceId}`);
+
+          const plan = PLAN_MAP[productName] ?? null;
+          const dbStatus =
+            status === "active" || status === "trialing"
+              ? "active"
+              : status === "past_due"
+                ? "past_due"
+                : status === "canceled"
+                  ? "canceled"
+                  : "inactive";
+
           const { error } = await supabase
             .from("tenants")
             .update({
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscriptionId,
-              plan,
-              subscription_status: "active",
+              stripe_subscription_id: sub.id,
+              plan: plan ?? undefined,
+              subscription_status: dbStatus,
             })
-            .eq("stripe_customer_id", customerId);
+            .eq("stripe_subscription_id", sub.id);
 
-          if (error) console.error("[stripe-webhook] Update error:", error.message);
+          if (error) {
+            throw new Error(`stripe_subscription_update_failed:${error.message}`);
+          }
+          break;
         }
-        break;
-      }
 
-      case "customer.subscription.updated":
-      case "customer.subscription.created": {
-        const sub = event.data.object;
-        const status = sub.status;
-        const items = sub.items?.data ?? [];
-        const priceId = items[0]?.price?.id;
-        const productName = items[0]?.price?.metadata?.plan_id ?? "";
+        case "customer.subscription.deleted": {
+          const deletedSub = event.data.object;
+          const { error } = await supabase
+            .from("tenants")
+            .update({
+              plan: "free",
+              subscription_status: "canceled",
+            })
+            .eq("stripe_subscription_id", deletedSub.id);
 
-        console.log(`[stripe-webhook] Subscription ${sub.id}: status=${status}, price=${priceId}`);
-
-        const plan = PLAN_MAP[productName] ?? null;
-        const dbStatus =
-          status === "active" || status === "trialing"
-            ? "active"
-            : status === "past_due"
-              ? "past_due"
-              : status === "canceled"
-                ? "canceled"
-                : "inactive";
-
-        const { error } = await supabase
-          .from("tenants")
-          .update({
-            stripe_subscription_id: sub.id,
-            plan: plan ?? undefined,
-            subscription_status: dbStatus,
-          })
-          .eq("stripe_subscription_id", sub.id);
-
-        if (error) console.error("[stripe-webhook] Sub update error:", error.message);
-        break;
-      }
-
-      case "customer.subscription.deleted": {
-        const deletedSub = event.data.object;
-        const { error } = await supabase
-          .from("tenants")
-          .update({
-            plan: "free",
-            subscription_status: "canceled",
-          })
-          .eq("stripe_subscription_id", deletedSub.id);
-
-        if (error) console.error("[stripe-webhook] Delete error:", error.message);
-        break;
-      }
-
-      case "invoice.payment_succeeded": {
-        const invoice = event.data.object;
-        const invSubId = invoice.subscription;
-        const amountPaid = invoice.amount_paid ?? 0;
-        const currency = invoice.currency ?? "brl";
-        const invoiceUrl = invoice.hosted_invoice_url ?? "";
-        const invoicePdf = invoice.invoice_pdf ?? "";
-
-        const { data: tenant } = await supabase
-          .from("tenants")
-          .select("id, stripe_customer_id, plan")
-          .eq("stripe_subscription_id", invSubId)
-          .maybeSingle();
-
-        if (tenant) {
-          // Canonical monetary unit: integer cents (matching settings.billing.tsx / 100)
-          const { error: invError } = await supabase.from("invoices").upsert(
-            {
-              tenant_id: tenant.id,
-              stripe_invoice_id: invoice.id,
-              amount: Math.round(Number(amountPaid)),
-              currency: String(currency).toLowerCase(),
-              status: "paid",
-              pdf_url: invoicePdf || invoiceUrl,
-              created_at: new Date(invoice.created * 1000).toISOString(),
-            },
-            { onConflict: "stripe_invoice_id" },
-          );
-
-          if (invError) console.error("[stripe-webhook] Invoice upsert error:", invError.message);
+          if (error) {
+            throw new Error(`stripe_subscription_delete_failed:${error.message}`);
+          }
+          break;
         }
-        break;
-      }
 
-      default:
-        console.log(`[stripe-webhook] Unhandled event type: ${event.type}`);
+        case "invoice.payment_succeeded": {
+          const invoice = event.data.object;
+          const invSubId = invoice.subscription;
+          const amountPaid = invoice.amount_paid ?? 0;
+          const currency = invoice.currency ?? "brl";
+          const invoiceUrl = invoice.hosted_invoice_url ?? "";
+          const invoicePdf = invoice.invoice_pdf ?? "";
+
+          const { data: tenant, error: tenantLookupErr } = await supabase
+            .from("tenants")
+            .select("id, stripe_customer_id, plan")
+            .eq("stripe_subscription_id", invSubId)
+            .maybeSingle();
+
+          if (tenantLookupErr) {
+            throw new Error(`stripe_invoice_tenant_lookup_failed:${tenantLookupErr.message}`);
+          }
+
+          if (tenant) {
+            // Canonical monetary unit: integer cents (matching settings.billing.tsx / 100)
+            const { error: invError } = await supabase.from("invoices").upsert(
+              {
+                tenant_id: tenant.id,
+                stripe_invoice_id: invoice.id,
+                amount: Math.round(Number(amountPaid)),
+                currency: String(currency).toLowerCase(),
+                status: "paid",
+                pdf_url: invoicePdf || invoiceUrl,
+                created_at: new Date(invoice.created * 1000).toISOString(),
+              },
+              { onConflict: "stripe_invoice_id" },
+            );
+
+            if (invError) {
+              throw new Error(`stripe_invoice_upsert_failed:${invError.message}`);
+            }
+          }
+          break;
+        }
+
+        default:
+          console.log(`[stripe-webhook] Unhandled event type: ${event.type}`);
+      }
+    } catch (processingErr) {
+      if (reservedEventId) {
+        await supabase.from("stripe_webhook_events").delete().eq("event_id", reservedEventId);
+      }
+      throw processingErr;
     }
 
     return new Response(JSON.stringify({ received: true }), {

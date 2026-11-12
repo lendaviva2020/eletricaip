@@ -7,10 +7,10 @@ import {
   timingSafeEqual,
   verify as verifyCryptoSignature,
 } from "node:crypto";
-import type { EdgeCertificateRecord, FleetUserContext } from "./types";
-import { fleetAuditManager } from "./fleet-audit";
+import type { EdgeCertificateRecord, FleetStorageBackend, FleetUserContext } from "./types";
+import { fleetAuditManager, type FleetAuditManager } from "./fleet-audit";
 import { fleetRbacEngine } from "./fleet-rbac";
-import { cloudGatewayRegistry } from "./cloud-gateway-registry";
+import { cloudGatewayRegistry, type CloudGatewayRegistry } from "./cloud-gateway-registry";
 
 export interface RenewalProofOfPossession {
   gatewayId: string;
@@ -22,9 +22,40 @@ export interface RenewalProofOfPossession {
 export class FleetCertificateManager {
   private certificates: Map<string, EdgeCertificateRecord> = new Map();
   private gatewayPopKeys: Map<string, string> = new Map();
+  private consumedChallenges: Set<string> = new Set();
+  private store?: FleetStorageBackend;
+  private auditManager: FleetAuditManager;
+  private registry: CloudGatewayRegistry;
 
-  constructor() {
+  constructor(options?: {
+    store?: FleetStorageBackend;
+    auditManager?: FleetAuditManager;
+    registry?: CloudGatewayRegistry;
+  }) {
+    this.auditManager = options?.auditManager ?? fleetAuditManager;
+    this.registry = options?.registry ?? cloudGatewayRegistry;
     this.seedDefaultCertificates();
+    if (options?.store) {
+      this.attachStorageBackend(options.store);
+    }
+  }
+
+  public attachStorageBackend(store: FleetStorageBackend): void {
+    this.store = store;
+    const persisted = store.loadCertificates();
+    if (persisted.length > 0) {
+      for (const item of persisted) {
+        this.certificates.set(item.gatewayId, item.cert);
+        if (item.popKey) {
+          this.gatewayPopKeys.set(item.gatewayId, item.popKey);
+        }
+      }
+      return;
+    }
+
+    for (const [gwId, cert] of this.certificates.entries()) {
+      store.saveCertificate(gwId, cert, this.gatewayPopKeys.get(gwId));
+    }
   }
 
   private seedDefaultCertificates(): void {
@@ -47,10 +78,14 @@ export class FleetCertificateManager {
     gatewayId: string,
     publicKeyOrPopSecret?: string,
   ): void {
-    this.certificates.set(gatewayId, { ...cert });
+    const record = { ...cert };
+    this.certificates.set(gatewayId, record);
+    let popKey = this.gatewayPopKeys.get(gatewayId);
     if (publicKeyOrPopSecret && publicKeyOrPopSecret.trim().length > 0) {
-      this.gatewayPopKeys.set(gatewayId, publicKeyOrPopSecret.trim());
+      popKey = publicKeyOrPopSecret.trim();
+      this.gatewayPopKeys.set(gatewayId, popKey);
     }
+    this.store?.saveCertificate(gatewayId, record, popKey);
   }
 
   public getCertificate(gatewayId: string): EdgeCertificateRecord | undefined {
@@ -155,6 +190,23 @@ export class FleetCertificateManager {
       };
     }
 
+    // Anti-replay challenge validation AFTER cryptographic verification
+    const challengeKey = `${pop.gatewayId}:${pop.challenge}`;
+    if (this.store) {
+      if (!this.store.consumeChallengeOnce(pop.gatewayId, pop.challenge)) {
+        return {
+          success: false,
+          error: "CHALLENGE_REPLAYED: Desafio Proof-of-Possession já foi consumido anteriormente.",
+        };
+      }
+    } else if (this.consumedChallenges.has(challengeKey)) {
+      return {
+        success: false,
+        error: "CHALLENGE_REPLAYED: Desafio Proof-of-Possession já foi consumido anteriormente.",
+      };
+    }
+    this.consumedChallenges.add(challengeKey);
+
     const now = Date.now();
     const oneYearMs = 365 * 24 * 3600 * 1000;
     const newFingerprint = pop.newCsrFingerprint.startsWith("SHA256:")
@@ -171,8 +223,9 @@ export class FleetCertificateManager {
     };
 
     this.certificates.set(pop.gatewayId, renewedCert);
+    this.store?.saveCertificate(pop.gatewayId, renewedCert, registeredKey);
 
-    fleetAuditManager.recordEvent({
+    this.auditManager.recordEvent({
       actor: { id: user.userId, email: user.email, role: user.role },
       source: "CLOUD_SERVER",
       gatewayId: pop.gatewayId,
@@ -214,11 +267,12 @@ export class FleetCertificateManager {
     cert.revokedReason = reason;
     cert.state = "REVOKED";
     this.certificates.set(gatewayId, cert);
+    this.store?.saveCertificate(gatewayId, cert, this.gatewayPopKeys.get(gatewayId));
 
     // Notify Cloud Ingestion Engine registry to block immediately with 403 Forbidden
-    cloudGatewayRegistry.revokeGateway(gatewayId, reason);
+    this.registry.revokeGateway(gatewayId, reason);
 
-    fleetAuditManager.recordEvent({
+    this.auditManager.recordEvent({
       actor: { id: user.userId, email: user.email, role: user.role },
       source: "ADMIN_CONSOLE",
       gatewayId,

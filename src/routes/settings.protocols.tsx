@@ -14,6 +14,10 @@ import {
 } from "@phosphor-icons/react";
 import { testOpcuaConnection } from "@/lib/opcua-server.functions";
 import { testModbusHost } from "@/lib/modbus-server.functions";
+import {
+  PROTOCOL_LAYER_CLASSIFICATION,
+  type EdgeExecutionMode,
+} from "@/lib/edge/protocol-classification";
 
 export const Route = createFileRoute("/settings/protocols")({
   head: () => ({ meta: [{ title: "Protocolos Industriais · EletricAI" }] }),
@@ -26,6 +30,7 @@ function ProtocolsPage() {
       <PageHeader />
       <OpcUaSection />
       <ModbusSection />
+      <ProtocolArchitectureMatrix />
       <SecurityNotice />
     </div>
   );
@@ -61,7 +66,9 @@ function PageHeader() {
 // ── OPC-UA ──────────────────────────────────────────────────────
 
 function OpcUaSection() {
-  const [endpoint, setEndpoint] = useState("");
+  const [mode, setMode] = useState<EdgeExecutionMode>("SIMULATOR");
+  const [endpoint, setEndpoint] = useState("opc.tcp://simulation:4840");
+  const [gatewayId, setGatewayId] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [securityMode, setSecurityMode] = useState<"None" | "Sign" | "SignAndEncrypt">("None");
@@ -69,6 +76,8 @@ function OpcUaSection() {
   const [testResult, setTestResult] = useState<{
     ok: boolean;
     tags: number;
+    provenance?: string;
+    transport?: string;
     error?: string;
   } | null>(null);
 
@@ -81,13 +90,20 @@ function OpcUaSection() {
     try {
       const res = await testConn({
         data: {
+          mode,
           endpoint,
+          gatewayId: mode === "EDGE_READ_ONLY" ? gatewayId || undefined : undefined,
           username: username || undefined,
           password: password || undefined,
           securityMode: securityMode || undefined,
         },
       });
-      setTestResult({ ok: true, tags: (res as any).tagCount ?? 0 });
+      setTestResult({
+        ok: true,
+        tags: (res as any).tagCount ?? 0,
+        provenance: (res as any).provenance,
+        transport: (res as any).transport,
+      });
     } catch (e: any) {
       setTestResult({ ok: false, tags: 0, error: e.message ?? String(e) });
     } finally {
@@ -98,16 +114,47 @@ function OpcUaSection() {
   return (
     <ProtocolSection
       icon={<PlugIcon className="h-5 w-5" />}
-      title="OPC-UA (Simulação)"
-      description="Servidor OPC-UA simulado na nuvem. Conexão física com CLPs requer Edge Gateway local."
+      title="OPC-UA (Simulador em Nuvem / Leitura via Edge Gateway)"
+      description="Fronteira rígida Cloud -> Edge Gateway -> Rede OT. Conexões diretas da nuvem para CLPs são bloqueadas."
     >
       <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Modo de execução">
+            <select
+              value={mode}
+              onChange={(e) => {
+                const next = e.target.value as EdgeExecutionMode;
+                setMode(next);
+                if (next === "SIMULATOR" && !endpoint) {
+                  setEndpoint("opc.tcp://simulation:4840");
+                }
+              }}
+              className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="SIMULATOR">SIMULATOR (Laboratório virtual em memória)</option>
+              <option value="EDGE_READ_ONLY">EDGE_READ_ONLY (Mediado por Edge Gateway)</option>
+            </select>
+          </FormField>
+          {mode === "EDGE_READ_ONLY" && (
+            <FormField label="Edge Gateway ID (Tenant)">
+              <input
+                type="text"
+                value={gatewayId}
+                onChange={(e) => setGatewayId(e.target.value)}
+                placeholder="gw_lab_ete_01"
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm font-mono"
+              />
+            </FormField>
+          )}
+        </div>
         <FormField label="Endpoint do servidor">
           <input
             type="text"
             value={endpoint}
             onChange={(e) => setEndpoint(e.target.value)}
-            placeholder="opc.tcp://simulation:4840"
+            placeholder={
+              mode === "SIMULATOR" ? "opc.tcp://simulation:4840" : "opc.tcp://192.168.10.20:4840"
+            }
             className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm font-mono"
           />
         </FormField>
@@ -168,7 +215,8 @@ function OpcUaSection() {
               {testResult.ok ? (
                 <>
                   <CheckCircle className="h-4 w-4" />
-                  Conectado (simulação) — {testResult.tags} tags encontradas
+                  Validado ({testResult.provenance ?? "SIMULATED"} ·{" "}
+                  {testResult.transport ?? "SIMULATOR"}) — {testResult.tags} tags
                 </>
               ) : (
                 <>
@@ -187,11 +235,18 @@ function OpcUaSection() {
 // ── Modbus TCP ──────────────────────────────────────────────────
 
 function ModbusSection() {
-  const [host, setHost] = useState("");
+  const [mode, setMode] = useState<EdgeExecutionMode>("SIMULATOR");
+  const [host, setHost] = useState("simulation");
+  const [gatewayId, setGatewayId] = useState("");
   const [port, setPort] = useState("502");
   const [unitId, setUnitId] = useState("1");
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    ok: boolean;
+    provenance?: string;
+    transport?: string;
+    error?: string;
+  } | null>(null);
 
   const testConn = useServerFn(testModbusHost);
 
@@ -200,13 +255,19 @@ function ModbusSection() {
     setTesting(true);
     setTestResult(null);
     try {
-      await testConn({
+      const res = await testConn({
         data: {
+          mode,
           host,
           port: Number(port) || 502,
+          gatewayId: mode === "EDGE_READ_ONLY" ? gatewayId || undefined : undefined,
         },
       });
-      setTestResult({ ok: true });
+      setTestResult({
+        ok: true,
+        provenance: (res as any).provenance,
+        transport: (res as any).transport,
+      });
     } catch (e: any) {
       setTestResult({ ok: false, error: e.message ?? String(e) });
     } finally {
@@ -217,10 +278,39 @@ function ModbusSection() {
   return (
     <ProtocolSection
       icon={<Plug className="h-5 w-5" />}
-      title="Modbus TCP (Simulação em Nuvem / Laboratório Virtual)"
-      description="Gateway Modbus simulado na nuvem. Comunicação com dispositivos físicos exige Edge Gateway na rede OT."
+      title="Modbus TCP (Simulador em Nuvem / Leitura via Edge Gateway)"
+      description="Sockets TCP/DNS diretos da nuvem estão permanentemente bloqueados. Alvos reais exigem Edge Gateway provisionado."
     >
       <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Modo de execução">
+            <select
+              value={mode}
+              onChange={(e) => {
+                const next = e.target.value as EdgeExecutionMode;
+                setMode(next);
+                if (next === "SIMULATOR" && !host) {
+                  setHost("simulation");
+                }
+              }}
+              className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="SIMULATOR">SIMULATOR (Laboratório virtual em memória)</option>
+              <option value="EDGE_READ_ONLY">EDGE_READ_ONLY (Mediado por Edge Gateway)</option>
+            </select>
+          </FormField>
+          {mode === "EDGE_READ_ONLY" && (
+            <FormField label="Edge Gateway ID (Tenant)">
+              <input
+                type="text"
+                value={gatewayId}
+                onChange={(e) => setGatewayId(e.target.value)}
+                placeholder="gw_lab_ete_01"
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm font-mono"
+              />
+            </FormField>
+          )}
+        </div>
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-2">
             <FormField label="Host / IP">
@@ -228,7 +318,7 @@ function ModbusSection() {
                 type="text"
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
-                placeholder="192.168.0.100"
+                placeholder={mode === "SIMULATOR" ? "simulation" : "192.168.10.20"}
                 className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm font-mono"
               />
             </FormField>
@@ -278,7 +368,8 @@ function ModbusSection() {
               {testResult.ok ? (
                 <>
                   <CheckCircle className="h-4 w-4" />
-                  Conexão estabelecida
+                  Validado ({testResult.provenance ?? "SIMULATED"} ·{" "}
+                  {testResult.transport ?? "SIMULATOR"})
                 </>
               ) : (
                 <>
@@ -330,21 +421,65 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
+function ProtocolArchitectureMatrix() {
+  return (
+    <section className="rounded-xl border border-border bg-card p-6 space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 text-primary">
+          <HardDrives className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="font-semibold">Classificação Arquitetural das Camadas de Protocolo</h2>
+          <p className="text-sm text-muted-foreground">
+            Transparência operacional (Gate 4.3.1): diferenciação explícita entre parser, simulador
+            virtual, adaptador de bancada e transporte Edge→Cloud.
+          </p>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-border text-left text-muted-foreground">
+              <th className="py-2 pr-3 font-medium">Camada</th>
+              <th className="py-2 pr-3 font-medium">Classe Real</th>
+              <th className="py-2 pr-3 font-medium">Local</th>
+              <th className="py-2 font-medium">Proveniência / Limite</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/60">
+            {PROTOCOL_LAYER_CLASSIFICATION.map((item) => (
+              <tr key={item.id}>
+                <td className="py-2 pr-3 font-mono">{item.id}</td>
+                <td className="py-2 pr-3 font-semibold">{item.implementationClass}</td>
+                <td className="py-2 pr-3">{item.runtimeLocation}</td>
+                <td className="py-2 text-muted-foreground">
+                  {item.supportedProvenances.join(", ")} · Read-Only
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function SecurityNotice() {
   return (
     <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 flex items-start gap-3">
       <ShieldCheck className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
       <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-amber-600">Nota de segurança</h3>
+        <h3 className="text-sm font-semibold text-amber-600">Nota de segurança Cloud–Edge–OT</h3>
         <p className="text-xs text-muted-foreground">
-          As credenciais de protocolo são armazenadas apenas em sessão. Em caso de reinicialização
-          do servidor, as conexões precisarão ser reestabelecidas. Acesso a hosts de loopback
-          (127.0.0.1, localhost) e redes privadas restritas é bloqueado para prevenir ataques SSRF.
+          Sockets TCP diretos e resolução DNS da nuvem para a rede OT estão desativados. Loopback
+          (127.0.0.1, localhost), metadata cloud (169.254.169.254) e IPs públicos são bloqueados, e
+          escrita física em CLPs é permanentemente impedida (
+          <code>IS_PHYSICAL_CONTROL_ALLOWED = false</code>).
         </p>
         <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
           <Info className="h-3 w-3" />
-          Para implantação multi-instância com estado persistente, configure Redis ou Upstash como
-          backend de sessão.
+          Fluxo obrigatório para telemetria real: Rede OT → Edge Gateway (read-only) → HTTPS/mTLS →
+          ElétricAI Cloud.
         </p>
       </div>
     </div>

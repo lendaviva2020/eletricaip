@@ -2,7 +2,13 @@
 // Server-Side Gateway Authority, Identity Derivation, Revocation & Multi-Tenant Boundaries
 // Standards: IEC 62443-4-2, NIST SP 800-82 Rev. 3, RFC 8446
 
-import type { RegisteredGatewayRecord, EdgeTelemetryBatch, EdgeIngestAck } from "./types";
+import type {
+  RegisteredGatewayRecord,
+  EdgeTelemetryBatch,
+  EdgeIngestAck,
+  FleetStorageBackend,
+  OutboxSampleEntry,
+} from "./types";
 import { CLOUD_EDGE_PROTOCOL_VERSION } from "./types";
 import { constantTimeEqual, sha256Hex } from "../security/isomorphic-crypto";
 
@@ -23,12 +29,40 @@ export class CloudGatewayRegistry {
   private authTokens: Map<string, string> = new Map(); // gatewayId -> secretTokenHash / certFingerprint
   private ingestedKeys: Set<string> = new Set(); // Dedup key: `${gatewayId}:${tagName}:${sourceTimestamp}`
   private lastBatchSequence: Map<string, number> = new Map(); // gatewayId -> lastSequenceNumber
+  private latestTelemetry: Map<string, Map<string, OutboxSampleEntry>> = new Map();
+  private store?: FleetStorageBackend;
   private backpressureThresholdPerSecond: number = 2000;
   private currentSecondIngestCount: number = 0;
   private currentSecondTimestamp: number = Math.floor(Date.now() / 1000);
 
-  constructor() {
+  constructor(options?: { store?: FleetStorageBackend }) {
     this.seedDefaultGateways();
+    if (options?.store) {
+      this.attachStorageBackend(options.store);
+    }
+  }
+
+  public attachStorageBackend(store: FleetStorageBackend): void {
+    this.store = store;
+    const persisted = store.loadRegisteredGateways();
+    if (persisted.length > 0) {
+      for (const item of persisted) {
+        this.gateways.set(item.gateway.gatewayId, item.gateway);
+        if (item.authTokenDigest) {
+          this.authTokens.set(item.gateway.gatewayId, item.authTokenDigest);
+        }
+        this.lastBatchSequence.set(item.gateway.gatewayId, item.lastBatchSequence);
+      }
+      return;
+    }
+
+    for (const [gwId, gw] of this.gateways.entries()) {
+      store.saveRegisteredGateway(
+        gw,
+        this.authTokens.get(gwId),
+        this.lastBatchSequence.get(gwId) ?? 0,
+      );
+    }
   }
 
   private static toCredentialDigest(rawOrDigest: string): string {
@@ -66,17 +100,36 @@ export class CloudGatewayRegistry {
   }
 
   public registerGateway(gateway: RegisteredGatewayRecord, tokenOrDigest?: string): void {
-    this.gateways.set(gateway.gatewayId, { ...gateway });
+    const record = { ...gateway };
+    this.gateways.set(gateway.gatewayId, record);
+    let digest: string | undefined;
     if (tokenOrDigest && tokenOrDigest.trim().length > 0) {
-      this.authTokens.set(
-        gateway.gatewayId,
-        CloudGatewayRegistry.toCredentialDigest(tokenOrDigest.trim()),
-      );
+      digest = CloudGatewayRegistry.toCredentialDigest(tokenOrDigest.trim());
+      this.authTokens.set(gateway.gatewayId, digest);
     }
+    this.store?.saveRegisteredGateway(
+      record,
+      digest ?? this.authTokens.get(gateway.gatewayId),
+      this.lastBatchSequence.get(gateway.gatewayId) ?? 0,
+    );
+  }
+
+  private refreshGatewayFromStore(gatewayId: string): RegisteredGatewayRecord | undefined {
+    if (!this.store) return this.gateways.get(gatewayId);
+    const match = this.store
+      .loadRegisteredGateways()
+      .find((r) => r.gateway.gatewayId === gatewayId);
+    if (!match) return undefined;
+    this.gateways.set(gatewayId, match.gateway);
+    if (match.authTokenDigest) {
+      this.authTokens.set(gatewayId, match.authTokenDigest);
+    }
+    this.lastBatchSequence.set(gatewayId, match.lastBatchSequence);
+    return match.gateway;
   }
 
   public getGateway(gatewayId: string): RegisteredGatewayRecord | undefined {
-    return this.gateways.get(gatewayId);
+    return this.gateways.get(gatewayId) ?? this.refreshGatewayFromStore(gatewayId);
   }
 
   public revokeGateway(gatewayId: string, reason: string): boolean {
@@ -86,6 +139,11 @@ export class CloudGatewayRegistry {
     gw.operationalState = "REVOKED";
     gw.revocationReason = reason;
     this.gateways.set(gatewayId, gw);
+    this.store?.saveRegisteredGateway(
+      gw,
+      this.authTokens.get(gatewayId),
+      this.lastBatchSequence.get(gatewayId) ?? 0,
+    );
     return true;
   }
 
@@ -94,7 +152,7 @@ export class CloudGatewayRegistry {
    * Guarantees server-side tenant derivation: Does NOT trust client-supplied headers.
    */
   public authenticateGateway(gatewayId: string, credential?: string): GatewayAuthResult {
-    const gw = this.gateways.get(gatewayId);
+    const gw = this.gateways.get(gatewayId) ?? this.refreshGatewayFromStore(gatewayId);
     if (!gw) {
       return {
         authorized: false,
@@ -139,6 +197,11 @@ export class CloudGatewayRegistry {
     }
 
     gw.lastSeenAt = new Date().toISOString();
+    this.store?.saveRegisteredGateway(
+      gw,
+      expectedDigest,
+      this.lastBatchSequence.get(gatewayId) ?? 0,
+    );
     return {
       authorized: true,
       gateway: gw,
@@ -207,27 +270,71 @@ export class CloudGatewayRegistry {
 
     // 4. Sequence Check (Monotonic Tracking)
     const lastSeq = this.lastBatchSequence.get(batch.gatewayId) ?? 0;
-    if (batch.batchSequenceNumber > lastSeq) {
-      this.lastBatchSequence.set(batch.gatewayId, batch.batchSequenceNumber);
-    }
+    const nextSequence = Math.max(lastSeq, batch.batchSequenceNumber);
+    this.lastBatchSequence.set(batch.gatewayId, nextSequence);
 
     const acknowledgedSampleIds: string[] = [];
     const rejectedSampleIds: Array<{ id: string; reason: string }> = [];
+    const newAcceptedSamples: OutboxSampleEntry[] = [];
+    const newDedupKeys: string[] = [];
+    let gatewayLatest = this.latestTelemetry.get(batch.gatewayId);
+    if (!gatewayLatest) {
+      gatewayLatest = new Map();
+      this.latestTelemetry.set(batch.gatewayId, gatewayLatest);
+    }
 
-    // 5. Ingest Samples with Deduplication & Tenant Validation
+    // 5. Ingest Samples with Persistent Deduplication & Authoritative Tenant Identity
     for (const s of batch.samples) {
-      // Cross-plant or cross-tenant check against authoritative identity
-      // The sample must be routed to the plant owned by this gateway
       const dedupKey = `${batch.gatewayId}:${s.tagName}:${s.sourceTimestamp}`;
 
-      if (this.ingestedKeys.has(dedupKey)) {
+      if (this.ingestedKeys.has(dedupKey) || this.store?.hasIngestDedupKey(dedupKey)) {
         // Idempotent duplicate: acknowledge without duplicate persistence
+        this.ingestedKeys.add(dedupKey);
         acknowledgedSampleIds.push(s.sampleId);
         continue;
       }
 
+      const entry: OutboxSampleEntry = {
+        id: s.sampleId,
+        sequenceNumber: batch.batchSequenceNumber,
+        projectId: targetProjectId || authoritativeGw.plantId,
+        organizationId: authoritativeGw.organizationId,
+        plantId: authoritativeGw.plantId,
+        gatewayId: batch.gatewayId,
+        connectionId: batch.gatewayId,
+        tagName: s.tagName,
+        value: s.value,
+        rawSampleValue: s.rawSampleValue,
+        quality: s.quality,
+        source: s.source,
+        sourceTimestamp: s.sourceTimestamp,
+        edgeReceivedAt: now,
+        cloudReceivedAt: now,
+        deliveryState: "ACKNOWLEDGED",
+        attempts: 1,
+      };
+
       this.ingestedKeys.add(dedupKey);
+      newAcceptedSamples.push(entry);
+      newDedupKeys.push(dedupKey);
+
+      const currentBest = gatewayLatest.get(s.tagName);
+      if (!currentBest || s.sourceTimestamp >= currentBest.sourceTimestamp) {
+        gatewayLatest.set(s.tagName, entry);
+      }
       acknowledgedSampleIds.push(s.sampleId);
+    }
+
+    if (this.store && (newAcceptedSamples.length > 0 || nextSequence > lastSeq)) {
+      this.store.recordIngestedBatchAtomic({
+        gatewayId: batch.gatewayId,
+        organizationId: authoritativeGw.organizationId,
+        plantId: authoritativeGw.plantId,
+        expectedMinSequence: lastSeq,
+        newSequence: nextSequence,
+        acceptedSamples: newAcceptedSamples,
+        dedupKeys: newDedupKeys,
+      });
     }
 
     return {
@@ -245,6 +352,14 @@ export class CloudGatewayRegistry {
         nextSyncIntervalMs: isBackpressure ? 2000 : 500,
       },
     };
+  }
+
+  public getLatestTelemetryForGateway(gatewayId: string): OutboxSampleEntry[] {
+    if (this.store) {
+      return this.store.loadLatestTelemetryForGateway(gatewayId);
+    }
+    const map = this.latestTelemetry.get(gatewayId);
+    return map ? Array.from(map.values()) : [];
   }
 
   public setBackpressureThreshold(threshold: number): void {

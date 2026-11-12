@@ -277,6 +277,8 @@ export interface RegisteredGatewayRecord {
   certificate?: EdgeCertificateRecord;
   updateState?: EdgeUpdateState;
   currentConfigVersion?: number;
+  authorizedEndpoints?: string[];
+  recordVersion?: number;
 }
 
 // ============================================================================
@@ -341,6 +343,8 @@ export interface FleetGatewaySummary {
   updateState: EdgeUpdateState;
   currentConfigVersion: number;
   activeAlarmsCount: number;
+  authorizedEndpoints?: string[];
+  recordVersion?: number;
 }
 
 export interface FleetMetricsSummary {
@@ -422,6 +426,13 @@ export interface SignedUpdateManifest {
   targetArch: EdgeHardwareArch;
   sha256: string;
   signature: string;
+  keyId?: string;
+  manifestVersion?: string;
+  createdAt?: string;
+  expiresAt?: string;
+  targetGateway?: string;
+  targetOrganizationId?: string;
+  targetPlantId?: string;
   releaseNotes: string;
   minGatewayVersion: string;
   dependencies?: Record<string, string>;
@@ -430,6 +441,8 @@ export interface SignedUpdateManifest {
 export interface FleetAuditEvent {
   id: string;
   timestamp: number;
+  schemaVersion?: string;
+  previousHash?: string;
   actor: {
     id: string;
     email: string;
@@ -446,4 +459,126 @@ export interface FleetAuditEvent {
   lifecycleState: "RECEIVED" | "PROCESSED" | "ACKNOWLEDGED";
   details: Record<string, any>;
   tamperProofHash: string;
+}
+
+// ============================================================================
+// GATE 4.3.1 — PERSISTENT STORAGE BACKEND CONTRACT (SQLite / PostgreSQL Parity)
+// ============================================================================
+
+export type WebhookProcessingState =
+  "RECEIVED" | "PROCESSING" | "PROCESSED" | "FAILED" | "RETRYABLE";
+
+export interface WebhookLedgerEntry {
+  provider: "stripe" | "mercadopago";
+  eventId: string;
+  state: WebhookProcessingState;
+  payloadHash: string;
+  attempts: number;
+  lockedUntil?: number | null;
+  lastError?: string | null;
+  updatedAt: string;
+}
+
+export interface PersistedProvisioningState {
+  tokens: ProvisioningToken[];
+  activeAuthTokens: Record<string, { gatewayId: string; authTokenDigest: string }>;
+  provisionedStations: Record<string, string>; // `${orgId}:${plantId}:${stationId}` -> gatewayId
+}
+
+export interface FleetStorageBackend {
+  // Audit chain (append-only)
+  loadAuditEvents(): FleetAuditEvent[];
+  appendAuditEvent(event: FleetAuditEvent, expectedPreviousHash: string): void;
+  clearAuditInTestOnly?(): void;
+
+  // Cloud Gateway Registry
+  loadRegisteredGateways(): Array<{
+    gateway: RegisteredGatewayRecord;
+    authTokenDigest?: string;
+    lastBatchSequence: number;
+  }>;
+  saveRegisteredGateway(
+    gateway: RegisteredGatewayRecord,
+    authTokenDigest?: string,
+    lastBatchSequence?: number,
+  ): void;
+  hasIngestDedupKey(dedupKey: string): boolean;
+  recordIngestedBatchAtomic(params: {
+    gatewayId: string;
+    organizationId: string;
+    plantId: string;
+    expectedMinSequence: number;
+    newSequence: number;
+    acceptedSamples: OutboxSampleEntry[];
+    dedupKeys: string[];
+  }): { committed: boolean; reason?: string };
+  loadLatestTelemetryForGateway(gatewayId: string): OutboxSampleEntry[];
+
+  // Edge Fleet Manager
+  loadFleetGateways(): FleetGatewaySummary[];
+  saveFleetGateway(gateway: FleetGatewaySummary, expectedVersion?: number): boolean;
+
+  // Fleet Certificates & Challenge Anti-Replay
+  loadCertificates(): Array<{
+    gatewayId: string;
+    cert: EdgeCertificateRecord;
+    popKey?: string;
+  }>;
+  saveCertificate(gatewayId: string, cert: EdgeCertificateRecord, popKey?: string): void;
+  consumeChallengeOnce(gatewayId: string, challenge: string, ttlMs?: number): boolean;
+
+  // Remote Config & Monotonic History
+  loadRemoteConfigs(): Record<
+    string,
+    { history: RemoteConfigPayload[]; lkgc?: RemoteConfigPayload }
+  >;
+  appendRemoteConfigMonotonic(gatewayId: string, config: RemoteConfigPayload): boolean;
+  setLkgcConfig(gatewayId: string, config: RemoteConfigPayload): void;
+
+  // Signed Updates & Campaigns
+  loadOtaCampaigns(): Record<string, unknown>;
+  saveOtaCampaign(
+    campaignId: string,
+    organizationId: string,
+    plantId: string,
+    campaign: unknown,
+  ): void;
+  hasAppliedOtaVersion(gatewayId: string, packageId: string, targetVersion: string): boolean;
+  recordAppliedOtaVersion(
+    gatewayId: string,
+    packageId: string,
+    targetVersion: string,
+    manifestHash: string,
+  ): void;
+
+  // Provisioning Tokens (atomic single-use)
+  loadProvisioningState(): PersistedProvisioningState;
+  saveProvisioningToken(token: ProvisioningToken): void;
+  claimProvisioningTokenAtomic(params: {
+    tokenHash: string;
+    consumedAt: number;
+    stationKey: string;
+    gatewayId: string;
+    authTokenDigest: string;
+  }): { claimed: boolean; reason?: string };
+
+  // Idempotent Webhook Ledger
+  beginWebhookEvent(params: {
+    provider: "stripe" | "mercadopago";
+    eventId: string;
+    payloadHash: string;
+    leaseMs?: number;
+  }): { status: "ACQUIRED" | "ALREADY_PROCESSED" | "IN_FLIGHT"; entry: WebhookLedgerEntry };
+  completeWebhookEvent(params: {
+    provider: "stripe" | "mercadopago";
+    eventId: string;
+    state: "PROCESSED" | "FAILED" | "RETRYABLE";
+    lastError?: string;
+  }): void;
+  getWebhookEvent(
+    provider: "stripe" | "mercadopago",
+    eventId: string,
+  ): WebhookLedgerEntry | undefined;
+
+  close?(): void;
 }

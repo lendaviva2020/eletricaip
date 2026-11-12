@@ -192,7 +192,7 @@ export function RightPropertyPanel() {
     const nextRaw = { ...currentParams, [key]: value } as unknown;
     const parsed = NodeParamsSchema.safeParse(nextRaw);
     if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message ?? "Valor inválido");
+      toast.error(parsed.error.issues[0]?.message ?? "Valor inválido");
       return;
     }
     dispatch(

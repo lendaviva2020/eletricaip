@@ -9,7 +9,7 @@ import { SignedUpdateManager } from "@/lib/edge/signed-updates";
 import { RemoteConfigManager } from "@/lib/edge/remote-config";
 import { FleetCertificateManager } from "@/lib/edge/fleet-certificates";
 import { FleetRbacEngine, FleetAuthorizationError } from "@/lib/edge/fleet-rbac";
-import { isHostAllowed } from "@/lib/modbus-server.functions";
+import { isHostAllowed } from "@/lib/edge/edge-network-allowlist";
 import { sha256Hex, hmacSha256Hex, constantTimeEqual } from "@/lib/security/isomorphic-crypto";
 import { logSecurityEvent, redactSensitiveString } from "@/lib/security/security-audit-log.server";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/observability/types";
@@ -113,7 +113,7 @@ describe("Gate 4.3 — Red Team Exploit Prevention & Blue Team Regression Suite"
 
   // ── 4. P1-10 Cryptographic Verification in SignedUpdate / RemoteConfig / Cert CA ──
   it("P1-10: SignedUpdateManager, RemoteConfigManager & FleetCertificateManager fail closed on forged signatures", () => {
-    const noKeyUpdateMgr = new SignedUpdateManager("");
+    const noKeyUpdateMgr = new SignedUpdateManager();
     const unsigned = {
       packageId: "pkg-evil",
       targetVersion: "9.9.9",
@@ -127,16 +127,22 @@ describe("Gate 4.3 — Red Team Exploit Prevention & Blue Team Regression Suite"
       signature: "FORGED_RANDOM_16_CHAR_STRING",
     };
     expect(noKeyUpdateMgr.verifyManifestSignature(forgedManifest)).toBe(false);
-    expect(() => noKeyUpdateMgr.signReleaseManifest(unsigned)).toThrow(
-      /SIGNING_SECRET_UNCONFIGURED/,
-    );
+    expect(() => noKeyUpdateMgr.signReleaseManifest(unsigned)).toThrow(/SIGNING_KEY_UNCONFIGURED/);
 
-    const keyedUpdateMgr = new SignedUpdateManager("test-release-hmac-key");
-    const validSig = keyedUpdateMgr.signReleaseManifest(unsigned);
-    expect(keyedUpdateMgr.verifyManifestSignature({ ...unsigned, signature: validSig })).toBe(true);
+    const releaseKeys = SignedUpdateManager.generateReleaseKeyPair("test-ed25519-key");
+    const keyedUpdateMgr = new SignedUpdateManager({
+      publicKeysByKeyId: { [releaseKeys.keyId]: releaseKeys.publicKeyPem },
+      privateSigningKeyPem: releaseKeys.privateKeyPem,
+      defaultKeyId: releaseKeys.keyId,
+    });
+    const signedUnsigned = { ...unsigned, keyId: releaseKeys.keyId };
+    const validSig = keyedUpdateMgr.signReleaseManifest(signedUnsigned);
+    expect(keyedUpdateMgr.verifyManifestSignature({ ...signedUnsigned, signature: validSig })).toBe(
+      true,
+    );
     expect(
       keyedUpdateMgr.verifyManifestSignature({
-        ...unsigned,
+        ...signedUnsigned,
         targetVersion: "9.9.10", // tampered after signing
         signature: validSig,
       }),

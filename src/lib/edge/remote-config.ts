@@ -2,8 +2,8 @@
 // Standards: IEC 62443-4-2, NIST SP 800-82 Rev. 3, RFC 8259
 
 import { z } from "zod";
-import type { RemoteConfigPayload, FleetUserContext } from "./types";
-import { fleetAuditManager } from "./fleet-audit";
+import type { RemoteConfigPayload, FleetStorageBackend, FleetUserContext } from "./types";
+import { fleetAuditManager, type FleetAuditManager } from "./fleet-audit";
 import { fleetRbacEngine } from "./fleet-rbac";
 import { constantTimeEqual, hmacSha256Hex } from "../security/isomorphic-crypto";
 
@@ -70,14 +70,55 @@ export class RemoteConfigManager {
   // gatewayId -> Last Known Good Configuration (LKGC)
   private lkgcMap: Map<string, RemoteConfigPayload> = new Map();
   private signingSecret: string;
+  private store?: FleetStorageBackend;
+  private auditManager: FleetAuditManager;
 
-  constructor(signingSecret?: string) {
+  constructor(
+    signingSecretOrOptions?:
+      | string
+      | { signingSecret?: string; store?: FleetStorageBackend; auditManager?: FleetAuditManager },
+  ) {
+    const opts =
+      typeof signingSecretOrOptions === "string"
+        ? { signingSecret: signingSecretOrOptions }
+        : (signingSecretOrOptions ?? {});
+
     this.signingSecret =
-      signingSecret ??
+      opts.signingSecret ??
       (typeof process !== "undefined" && process.env
         ? (process.env["ELETRICAI_REMOTE_CONFIG_SIGNING_SECRET"] ?? "")
         : "");
+    this.auditManager = opts.auditManager ?? fleetAuditManager;
     this.seedDefaultConfig();
+    if (opts.store) {
+      this.attachStorageBackend(opts.store);
+    }
+  }
+
+  public attachStorageBackend(store: FleetStorageBackend): void {
+    this.store = store;
+    const persisted = store.loadRemoteConfigs();
+    const persistedKeys = Object.keys(persisted);
+    if (persistedKeys.length > 0) {
+      for (const gwId of persistedKeys) {
+        const entry = persisted[gwId];
+        this.configHistory.set(gwId, entry.history);
+        if (entry.lkgc) {
+          this.lkgcMap.set(gwId, entry.lkgc);
+        } else if (entry.history.length > 0) {
+          this.lkgcMap.set(gwId, entry.history[entry.history.length - 1]);
+        }
+      }
+      return;
+    }
+
+    for (const [gwId, history] of this.configHistory.entries()) {
+      for (const cfg of history) {
+        store.appendRemoteConfigMonotonic(gwId, cfg);
+      }
+      const lkgc = this.lkgcMap.get(gwId);
+      if (lkgc) store.setLkgcConfig(gwId, lkgc);
+    }
   }
 
   private seedDefaultConfig(): void {
@@ -271,7 +312,7 @@ export class RemoteConfigManager {
       };
     }
 
-    // 4. Concurrency & Monotonic Version Check
+    // 4. Concurrency & Monotonic Version Check (DB-backed atomic constraint when persistent)
     if (currentActive && validConfig.configVersion <= currentActive.configVersion) {
       return {
         success: false,
@@ -281,12 +322,21 @@ export class RemoteConfigManager {
       };
     }
 
+    if (this.store && !this.store.appendRemoteConfigMonotonic(validConfig.gatewayId, validConfig)) {
+      return {
+        success: false,
+        activeConfigVersion: currentActive?.configVersion ?? 0,
+        error: `CONFIG_VERSION_CONFLICT: Conflito transacional de versão monotônica para gateway ${validConfig.gatewayId}.`,
+        isFallbackToLkgc: true,
+      };
+    }
+
     // 5. Successful Application -> Update LKGC
     history.push(validConfig);
     this.configHistory.set(validConfig.gatewayId, history);
     this.lkgcMap.set(validConfig.gatewayId, validConfig);
 
-    fleetAuditManager.recordEvent({
+    this.auditManager.recordEvent({
       actor: { id: user.userId, email: user.email, role: user.role },
       source: "ADMIN_CONSOLE",
       gatewayId: validConfig.gatewayId,
@@ -336,8 +386,9 @@ export class RemoteConfigManager {
     history.pop();
     const previousConfig = history[history.length - 1];
     this.lkgcMap.set(gatewayId, previousConfig);
+    this.store?.setLkgcConfig(gatewayId, previousConfig);
 
-    fleetAuditManager.recordEvent({
+    this.auditManager.recordEvent({
       actor: { id: user.userId, email: user.email, role: user.role },
       source: "ADMIN_CONSOLE",
       gatewayId,

@@ -366,7 +366,7 @@ export const ComponentHealthSnapshotSchema = z.object({
   reasonCode: z.string().min(1),
   evidenceReference: z.string().min(1),
   source: z.enum(["HEALTH_PROBE", "HEARTBEAT", "TELEMETRY_PIPELINE", "SECURITY_AUDIT"]),
-  metricValues: z.record(z.union([z.number(), z.string(), z.boolean(), z.null()])),
+  metricValues: z.record(z.string(), z.union([z.number(), z.string(), z.boolean(), z.null()])),
   evaluationWindowMs: z.number().int().positive(),
   thresholdVersion: z.string().min(1),
   flappingDetected: z.boolean().optional(),

@@ -4,6 +4,7 @@
 
 import crypto from "node:crypto";
 import type {
+  FleetStorageBackend,
   GatewayIdentity,
   ProvisioningToken,
   ProvisioningRequest,
@@ -20,8 +21,57 @@ export class EdgeProvisioningService {
     string,
     { gatewayId: string; organizationId: string; plantId: string }
   > = new Map();
+  private activeAuthTokenDigests: Map<
+    string,
+    { gatewayId: string; organizationId: string; plantId: string }
+  > = new Map();
   private revokedGateways: Set<string> = new Set();
   private claimLocks: Set<string> = new Set();
+  private store?: FleetStorageBackend;
+
+  constructor(options?: { store?: FleetStorageBackend }) {
+    if (options?.store) {
+      this.attachStorageBackend(options.store);
+    }
+  }
+
+  public attachStorageBackend(store: FleetStorageBackend): void {
+    this.store = store;
+    const state = store.loadProvisioningState();
+    for (const token of state.tokens) {
+      const hash = token.tokenHash ?? EdgeProvisioningService.hashToken(token.token);
+      this.tokenHashes.set(hash, token);
+    }
+    const persistedRegistered = store.loadRegisteredGateways();
+    for (const item of persistedRegistered) {
+      const rec = item.gateway;
+      this.gateways.set(rec.gatewayId, {
+        gatewayId: rec.gatewayId,
+        organizationId: rec.organizationId,
+        plantId: rec.plantId,
+        stationId: rec.stationId,
+        gatewayVersion: rec.gatewayVersion,
+        installationId: rec.installationId,
+        certificateFingerprint: rec.certificateFingerprint,
+        registeredAt: rec.registeredAt,
+        lastSeenAt: rec.lastSeenAt,
+        operationalState: rec.isRevoked ? "OFFLINE" : "ONLINE",
+      });
+      if (rec.isRevoked) {
+        this.revokedGateways.add(rec.gatewayId);
+      }
+      if (item.authTokenDigest) {
+        const rawDigest = item.authTokenDigest.startsWith("sha256:")
+          ? item.authTokenDigest.slice(7)
+          : item.authTokenDigest;
+        this.activeAuthTokenDigests.set(rawDigest, {
+          gatewayId: rec.gatewayId,
+          organizationId: rec.organizationId,
+          plantId: rec.plantId,
+        });
+      }
+    }
+  }
 
   public static hashToken(token: string): string {
     return crypto.createHash("sha256").update(token).digest("hex");
@@ -74,6 +124,7 @@ export class EdgeProvisioningService {
     };
 
     this.tokenHashes.set(tokenHash, record);
+    this.store?.saveProvisioningToken({ ...record, token: `[HASHED:${tokenHash.slice(0, 12)}]` });
     return record;
   }
 
@@ -93,6 +144,7 @@ export class EdgeProvisioningService {
 
     record.isRevoked = true;
     record.revokedReason = reason;
+    this.store?.saveProvisioningToken({ ...record, token: `[HASHED:${hash.slice(0, 12)}]` });
     return true;
   }
 
@@ -186,13 +238,43 @@ export class EdgeProvisioningService {
         };
       }
 
-      // Atomic burn — mark as consumed immediately
-      record.isConsumed = true;
-      record.consumedAt = Date.now();
-
-      // Generate unique Gateway Identity
+      // Generate unique Gateway Identity BEFORE atomic DB commit
       const gatewayId = `egw_${crypto.randomUUID()}`;
       const authToken = `egw_sec_${crypto.randomBytes(32).toString("hex")}`;
+      const authTokenDigest = EdgeProvisioningService.hashToken(authToken);
+      const consumedAt = Date.now();
+
+      if (this.store) {
+        const atomicClaim = this.store.claimProvisioningTokenAtomic({
+          tokenHash,
+          consumedAt,
+          stationKey: `${record.organizationId}:${record.plantId}:${record.stationId}`,
+          gatewayId,
+          authTokenDigest,
+        });
+        if (!atomicClaim.claimed) {
+          return {
+            success: false,
+            gatewayId: "",
+            organizationId: "",
+            plantId: "",
+            stationId: "",
+            authToken: "",
+            cloudEndpoint: "",
+            issuedAt: new Date().toISOString(),
+            certValidUntil: "",
+            error:
+              atomicClaim.reason === "TOKEN_EXPIRED"
+                ? "TOKEN_EXPIRED: Código de provisionamento expirou."
+                : "TOKEN_ALREADY_USED: Código de provisionamento já foi consumido anteriormente.",
+          };
+        }
+      }
+
+      // Atomic burn — mark as consumed in memory as well
+      record.isConsumed = true;
+      record.consumedAt = consumedAt;
+
       const fingerprint =
         request.certificateFingerprint ||
         (request.publicCertPem
@@ -228,10 +310,36 @@ export class EdgeProvisioningService {
 
       this.gateways.set(gatewayId, identity);
       this.certificates.set(gatewayId, certRecord);
-      this.activeAuthTokens.set(authToken, {
+      const sessionScope = {
         gatewayId,
         organizationId: record.organizationId,
         plantId: record.plantId,
+      };
+      this.activeAuthTokens.set(authToken, sessionScope);
+      this.activeAuthTokenDigests.set(authTokenDigest, sessionScope);
+      this.store?.saveRegisteredGateway(
+        {
+          gatewayId,
+          organizationId: record.organizationId,
+          plantId: record.plantId,
+          stationId: record.stationId,
+          gatewayVersion: request.gatewayVersion,
+          installationId: identity.installationId,
+          certificateFingerprint: fingerprint,
+          registeredAt: now,
+          lastSeenAt: now,
+          operationalState: "ONLINE",
+          isRevoked: false,
+        },
+        `sha256:${authTokenDigest}`,
+        0,
+      );
+      this.store?.saveCertificate(gatewayId, {
+        fingerprint,
+        issuedAt: now,
+        expiresAt: certExpiresAt,
+        state: "VALID",
+        isRevoked: false,
       });
 
       return {
@@ -255,7 +363,9 @@ export class EdgeProvisioningService {
    * Enforces certificate lifecycle, rejects revoked gateways, and stops cross-organization forgery.
    */
   public authenticateGateway(authToken: string): GatewayIdentity | null {
-    const session = this.activeAuthTokens.get(authToken);
+    const tokenDigest = EdgeProvisioningService.hashToken(authToken);
+    const session =
+      this.activeAuthTokens.get(authToken) ?? this.activeAuthTokenDigests.get(tokenDigest);
     if (!session) return null;
 
     if (this.revokedGateways.has(session.gatewayId)) {
@@ -314,6 +424,23 @@ export class EdgeProvisioningService {
       expiresAt,
       isRevoked: false,
     });
+    this.store?.saveCertificate(gatewayId, {
+      fingerprint,
+      issuedAt: now,
+      expiresAt,
+      state: "VALID",
+      isRevoked: false,
+    });
+    const persisted = this.store
+      ?.loadRegisteredGateways()
+      .find((g) => g.gateway.gatewayId === gatewayId);
+    if (persisted) {
+      this.store?.saveRegisteredGateway(
+        { ...persisted.gateway, certificateFingerprint: fingerprint },
+        persisted.authTokenDigest,
+        persisted.lastBatchSequence,
+      );
+    }
 
     return {
       success: true,
@@ -340,18 +467,51 @@ export class EdgeProvisioningService {
       cert.revokedReason = reason;
     }
 
-    // Invalidate active auth tokens
+    // Invalidate active auth tokens and digests
     for (const [token, session] of this.activeAuthTokens.entries()) {
       if (session.gatewayId === gatewayId) {
         this.activeAuthTokens.delete(token);
       }
+    }
+    for (const [digest, session] of this.activeAuthTokenDigests.entries()) {
+      if (session.gatewayId === gatewayId) {
+        this.activeAuthTokenDigests.delete(digest);
+      }
+    }
+    const persisted = this.store
+      ?.loadRegisteredGateways()
+      .find((g) => g.gateway.gatewayId === gatewayId);
+    if (persisted) {
+      this.store?.saveRegisteredGateway(
+        {
+          ...persisted.gateway,
+          isRevoked: true,
+          operationalState: "REVOKED",
+          revocationReason: reason,
+        },
+        persisted.authTokenDigest,
+        persisted.lastBatchSequence,
+      );
     }
 
     return true;
   }
 
   public isCertificateExpired(gatewayId: string): boolean {
-    const cert = this.certificates.get(gatewayId);
+    const cert =
+      this.certificates.get(gatewayId) ??
+      (() => {
+        const loaded = this.store?.loadCertificates().find((c) => c.gatewayId === gatewayId);
+        if (!loaded) return undefined;
+        return {
+          gatewayId,
+          fingerprint: loaded.cert.fingerprint,
+          issuedAt: loaded.cert.issuedAt,
+          expiresAt: loaded.cert.expiresAt,
+          isRevoked: loaded.cert.isRevoked,
+          revokedReason: loaded.cert.revokedReason,
+        };
+      })();
     if (!cert) return true;
     if (cert.isRevoked) return true;
     return Date.now() > new Date(cert.expiresAt).getTime();

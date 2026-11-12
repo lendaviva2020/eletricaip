@@ -227,7 +227,7 @@ export const FixProposalSchema = z
 
 export const AiFixRequestSchema = z
   .object({
-    projectId: z.string().uuid("ID de projeto inválido"),
+    projectId: z.guid("ID de projeto inválido"),
     idempotencyKey: z.string().min(16).max(128),
     diagnostics: z.array(DiagnosticSchema).min(1).max(50),
     proposals: z.array(FixProposalSchema).min(1).max(20),

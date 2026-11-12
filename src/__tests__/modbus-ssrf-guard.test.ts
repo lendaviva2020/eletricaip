@@ -10,7 +10,7 @@ vi.mock("node:dns", () => ({
   },
 }));
 
-import { isHostAllowed, resolveToAllowedIPv4 } from "@/lib/modbus-server.functions";
+import { isHostAllowed, resolveToAllowedIPv4 } from "@/lib/edge/edge-network-allowlist";
 
 describe("isHostAllowed — política de range privado (RFC1918)", () => {
   it.each([

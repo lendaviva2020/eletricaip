@@ -3,7 +3,7 @@ import { z } from "zod";
 import { IndustrialWorkspace } from "@/components/industrial-workspace";
 
 const SearchSchema = z.object({
-  projectId: z.string().uuid().optional(),
+  projectId: z.guid().optional(),
 });
 
 export const Route = createFileRoute("/workspace")({

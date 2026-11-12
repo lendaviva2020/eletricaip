@@ -1,6 +1,9 @@
 import type { AuthContext } from "@/integrations/supabase/auth-middleware";
 import { isDevAuthAllowed } from "@/integrations/supabase/auth-middleware";
-import type { FleetRole, FleetUserContext } from "./types";
+import { logSecurityEvent } from "@/lib/security/security-audit-log.server";
+import { edgeFleetManager } from "./fleet-manager";
+import { ensurePersistentFleetRuntime } from "./fleet-runtime.server";
+import type { FleetGatewaySummary, FleetRole, FleetUserContext } from "./types";
 
 const DEV_AUDITOR_PLANTS = [
   "plant_ete_central",
@@ -107,4 +110,65 @@ export async function resolveAuthenticatedFleetContext(
     organizationId: tenantId,
     authorizedPlantIds,
   };
+}
+
+/**
+ * Server-authoritative gateway lookup for Fleet mutations.
+ * NEVER accepts client-supplied `organizationId` or `plantId` fallbacks.
+ * Returns HTTP 404 when gateway does not exist, and HTTP 403 on tenant/plant boundary violation.
+ */
+export function resolveAuthoritativeGatewayForActor(
+  gatewayId: string,
+  actor: FleetUserContext,
+  route: string,
+): FleetGatewaySummary {
+  ensurePersistentFleetRuntime();
+  const gw = edgeFleetManager.getGateway(gatewayId);
+  if (!gw) {
+    logSecurityEvent({
+      category: "RBAC_DENIED",
+      severity: "WARNING",
+      route,
+      actorId: actor.userId,
+      tenantId: actor.organizationId,
+      reason: `Tentativa de operação em gateway inexistente (${gatewayId}).`,
+    });
+    throw new Response("Not Found: Gateway não encontrado no registro autoritativo.", {
+      status: 404,
+    });
+  }
+
+  if (actor.role !== "PLATFORM_ADMIN") {
+    if (gw.organizationId !== actor.organizationId) {
+      logSecurityEvent({
+        category: "CROSS_TENANT_DENIED",
+        severity: "CRITICAL",
+        route,
+        actorId: actor.userId,
+        tenantId: actor.organizationId,
+        reason: `Violação cross-tenant no gateway ${gatewayId} (owner=${gw.organizationId}).`,
+      });
+      throw new Response("Forbidden: Gateway pertence a outro tenant.", { status: 403 });
+    }
+
+    if (
+      actor.role !== "TENANT_ADMIN" &&
+      actor.authorizedPlantIds.length > 0 &&
+      !actor.authorizedPlantIds.includes(gw.plantId)
+    ) {
+      logSecurityEvent({
+        category: "CROSS_TENANT_DENIED",
+        severity: "WARNING",
+        route,
+        actorId: actor.userId,
+        tenantId: actor.organizationId,
+        reason: `Violação de fronteira de planta no gateway ${gatewayId} (plant=${gw.plantId}).`,
+      });
+      throw new Response("Forbidden: Gateway pertence a outra planta industrial.", {
+        status: 403,
+      });
+    }
+  }
+
+  return gw;
 }

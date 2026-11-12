@@ -60,6 +60,7 @@ export const ALLOWED_OPCUA_SERVICES = new Set([
 ]);
 
 export class OpcUaClientDriver implements IndustrialDriver {
+  public readonly implementationClass = "LAB_EDGE_ADAPTER" as const;
   public readonly driverId: string;
   public readonly protocol: IndustrialProtocol = "OPC_UA";
   public readonly connectionId: string;

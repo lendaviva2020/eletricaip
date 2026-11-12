@@ -2,9 +2,9 @@ name: CI — Test & Lint
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, "gate-*"]
   pull_request:
-    branches: [main]
+    branches: [main, "gate-*"]
 
 permissions:
   contents: read
@@ -34,21 +34,51 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Security — Dependency Audit & Source Secret Check
+      - name: Security — Dependency Audit & Source Boundary Verification
         run: |
-          bun audit --audit-level=critical
+          bun audit --audit-level=high
           ! grep -rn --exclude-dir=__tests__ "egw_token_lab_ete_secret_123\|SECRET_ELETRICAI_PRIVATE_RELEASE_SIGNER\|ELETRICAI_REMOTE_CONFIG_SIGNING_KEY" src/
+          ! grep -n "node:dns\|node:net\|\"net\"" src/lib/modbus-server.functions.ts src/lib/opcua-server.functions.ts
 
       - name: Tests
         run: bun run test
 
       - name: Production build & Client Bundle Secret Scan
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           bun run build
-          ! grep -rn "egw_token_lab_ete_secret_123\|SERVICE_ROLE_KEY\|STRIPE_WEBHOOK_SECRET\|MP_ACCESS_TOKEN" .vercel/output/static/
+          ! grep -rn "egw_token_lab_ete_secret_123\|SERVICE_ROLE_KEY\|STRIPE_WEBHOOK_SECRET\|MP_ACCESS_TOKEN\|ELETRICAI_RELEASE_PRIVATE_KEY" .vercel/output/static/
+
+  e2e-browser:
+    needs: quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install chromium --with-deps
+
+      - name: Run Playwright Security & Core E2E Suite
+        run: |
+          bun run dev -- --host 127.0.0.1 --port 3000 &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000 >/dev/null && break; sleep 1; done
+          bunx playwright test tests/e2e/05-security-barrier-and-fleet.spec.ts
+          kill $SERVER_PID || true
 
   deploy-supabase:
-    needs: quality
+    needs: [quality, e2e-browser]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -70,7 +100,7 @@ jobs:
             --no-verify-jwt
 
   deploy-vercel:
-    needs: quality
+    needs: [quality, e2e-browser]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

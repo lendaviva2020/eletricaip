@@ -4,7 +4,6 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { cloudGatewayRegistry } from "../edge/cloud-gateway-registry";
 import { CLOUD_EDGE_PROTOCOL_VERSION } from "../edge/types";
 import type { EdgeTelemetryBatch, EdgeIngestAck } from "../edge/types";
 
@@ -47,6 +46,11 @@ export const ingestEdgeTelemetryBatch = createServerFn({ method: "POST" })
       .parse(d);
   })
   .handler(async ({ data }): Promise<EdgeIngestAck> => {
+    const [{ ensurePersistentFleetRuntime }, { cloudGatewayRegistry }] = await Promise.all([
+      import("../edge/fleet-runtime.server"),
+      import("../edge/cloud-gateway-registry"),
+    ]);
+    ensurePersistentFleetRuntime();
     const res = cloudGatewayRegistry.processTelemetryBatch(data.batch, data.authToken);
     if (!res.ack.success && (res.statusCode === 401 || res.statusCode === 403)) {
       throw new Response(res.ack.error || "Unauthorized gateway credential", {

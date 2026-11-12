@@ -72,6 +72,8 @@ export const getObservabilityOverviewFn = createServerFn({ method: "GET" })
       plantId,
     });
 
+    const { ensurePersistentFleetRuntime } = await import("@/lib/edge/fleet-runtime.server");
+    ensurePersistentFleetRuntime();
     const fleetGateways = edgeFleetManager.getFleetGateways(actor, {
       plantId,
     });

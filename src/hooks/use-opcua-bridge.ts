@@ -99,8 +99,12 @@ export function useOpcuaBridge() {
   }, [opcuaStatus.data, modbusStatus.data, applyTick, pushLog]);
 
   const opcuaConnect = useMutation({
-    mutationFn: (config: { endpoint: string; securityMode?: "None" | "Sign" | "SignAndEncrypt" }) =>
-      connectOpcua({ data: config }),
+    mutationFn: (config: {
+      mode?: "SIMULATOR" | "EDGE_READ_ONLY";
+      endpoint: string;
+      securityMode?: "None" | "Sign" | "SignAndEncrypt";
+      gatewayId?: string;
+    }) => connectOpcua({ data: { mode: config.mode ?? "SIMULATOR", ...config } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["opcua", "status"] }),
   });
 
@@ -115,8 +119,13 @@ export function useOpcuaBridge() {
   });
 
   const modbusConnect = useMutation({
-    mutationFn: (config: { host: string; port: number; unitId: number }) =>
-      connectModbus({ data: config }),
+    mutationFn: (config: {
+      mode?: "SIMULATOR" | "EDGE_READ_ONLY";
+      host: string;
+      port: number;
+      unitId: number;
+      gatewayId?: string;
+    }) => connectModbus({ data: { mode: config.mode ?? "SIMULATOR", ...config } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["modbus", "status"] }),
   });
 
@@ -133,7 +142,9 @@ export function useOpcuaBridge() {
   return {
     opcua: {
       status: opcuaStatus.data?.status ?? "disconnected",
-      endpoint: opcuaStatus.data?.endpoint ?? "opc.tcp://localhost:4840",
+      mode: opcuaStatus.data?.mode ?? "SIMULATOR",
+      provenance: opcuaStatus.data?.provenance ?? "NOT_CONNECTED",
+      endpoint: opcuaStatus.data?.endpoint ?? "opc.tcp://simulation:4840",
       connectedAt: opcuaStatus.data?.connectedAt,
       error: opcuaStatus.data?.error,
       tags: (opcuaStatus.data?.tags ?? []) as OpcuaTagValue[],
@@ -144,7 +155,9 @@ export function useOpcuaBridge() {
     },
     modbus: {
       status: modbusStatus.data?.status ?? "disconnected",
-      host: modbusStatus.data?.host ?? "192.168.1.100",
+      mode: modbusStatus.data?.mode ?? "SIMULATOR",
+      provenance: modbusStatus.data?.provenance ?? "NOT_CONNECTED",
+      host: modbusStatus.data?.host ?? "simulation",
       port: modbusStatus.data?.port ?? 502,
       connectedAt: modbusStatus.data?.connectedAt,
       error: modbusStatus.data?.error,

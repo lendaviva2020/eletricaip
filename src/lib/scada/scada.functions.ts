@@ -131,7 +131,7 @@ function parseSafeIsoTimestamp(input: string | number): string {
  */
 export const resolveScadaProjectContext = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: unknown) => z.object({ projectId: z.string().uuid() }).parse(d))
+  .validator((d: unknown) => z.object({ projectId: z.guid() }).parse(d))
   .handler(async ({ data, context }): Promise<ScadaProjectContext> => {
     const authCtx = context as unknown as AuthContext;
     const { supabase, userId } = authCtx;
@@ -265,7 +265,7 @@ export const ingestTagSamplesBatch = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
+        projectId: z.guid(),
         samples: z.array(
           z.object({
             tagName: z.string().min(1),
@@ -338,7 +338,7 @@ export const queryHistorianRange = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
+        projectId: z.guid(),
         tagNames: z.array(z.string()).default([]),
         startTime: z.string(),
         endTime: z.string(),
@@ -491,7 +491,7 @@ export const saveProjectAlarmConfigs = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
+        projectId: z.guid(),
         configs: z.array(
           z.object({
             id: z.string(),
@@ -580,7 +580,7 @@ export const recordAlarmHistoryBatch = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
+        projectId: z.guid(),
         alarms: z.array(
           z.object({
             id: z.string().optional(),
@@ -670,10 +670,10 @@ export const recordScadaAuditEvent = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
+        projectId: z.guid(),
         category: z.string(),
         action: z.string(),
-        details: z.record(z.unknown()),
+        details: z.record(z.string(), z.unknown()),
         resourceId: z.string().optional(),
         resourceType: z.string().default("scada"),
       })
@@ -739,7 +739,7 @@ export const verifyProjectAuditChain = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
+        projectId: z.guid(),
         limit: z.number().min(1).max(5000).default(500),
       })
       .parse(d),
@@ -794,7 +794,7 @@ export const generateOperationalReportData = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z
       .object({
-        projectId: z.string().uuid(),
+        projectId: z.guid(),
         reportType: z.enum([
           "ALARM_PARETO",
           "ALARM_HISTORY",

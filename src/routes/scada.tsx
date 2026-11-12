@@ -7,7 +7,7 @@ import { ScadaLayout } from "@/components/scada/scada-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 
 const SearchSchema = z.object({
-  projectId: z.string().uuid().optional(),
+  projectId: z.guid().optional(),
 });
 
 export const Route = createFileRoute("/scada")({

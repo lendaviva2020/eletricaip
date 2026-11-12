@@ -80,7 +80,7 @@ export const fbdDocumentSchema = z.object({
       instanceName: identifier,
       blockType: z.string().min(1),
       networkId: z.string().min(1),
-      params: z.record(valueSchema),
+      params: z.record(z.string(), valueSchema),
       position: z.object({ x: z.number().finite(), y: z.number().finite() }),
     }),
   ),

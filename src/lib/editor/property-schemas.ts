@@ -16,7 +16,7 @@ export function paramSpecToZod(spec: ParamSpec): z.ZodType {
     }
     case "time":
     case "number": {
-      let s = z.number({ invalid_type_error: `${spec.label} precisa ser numérico` });
+      let s = z.number({ error: `${spec.label} precisa ser numérico` });
       if (typeof spec.min === "number") s = s.min(spec.min, `Mínimo: ${spec.min}`);
       if (typeof spec.max === "number") s = s.max(spec.max, `Máximo: ${spec.max}`);
       return s;
@@ -41,7 +41,7 @@ export function componentParamsToZod(
 export function validateParam(spec: ParamSpec, value: unknown): string | null {
   const result = paramSpecToZod(spec).safeParse(value);
   if (result.success) return null;
-  return result.error.errors[0]?.message ?? "Valor inválido";
+  return result.error.issues[0]?.message ?? "Valor inválido";
 }
 
 /** Tag name validation — used by the property panel for binding tags to nodes. */
@@ -54,5 +54,5 @@ export const tagNameSchema = z
 
 export function validateTagName(value: string): string | null {
   const r = tagNameSchema.safeParse(value);
-  return r.success ? null : (r.error.errors[0]?.message ?? "Tag inválida");
+  return r.success ? null : (r.error.issues[0]?.message ?? "Tag inválida");
 }

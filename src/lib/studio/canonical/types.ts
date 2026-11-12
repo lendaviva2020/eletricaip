@@ -18,7 +18,7 @@ export const SAFETY_CONFIG = Object.freeze({
   OPERATIONAL_MODE: "OBSERVATIONAL_ONLY" as const,
 });
 
-export const UUIDSchema = z.string().uuid();
+export const UUIDSchema = z.guid();
 export type UUID = z.infer<typeof UUIDSchema>;
 
 // ----------------------------------------------------------------------------
@@ -32,7 +32,7 @@ export const IECValueSchema = z.union([
   z.number(),
   z.string(),
   z.array(z.union([z.boolean(), z.number(), z.string()])),
-  z.record(z.union([z.boolean(), z.number(), z.string(), z.null()])),
+  z.record(z.string(), z.union([z.boolean(), z.number(), z.string(), z.null()])),
 ]);
 export type IECValue = z.infer<typeof IECValueSchema>;
 export const ElementaryDataTypeSchema = z.enum([
@@ -226,9 +226,11 @@ export const HardwareModuleSchema = z.object({
   channelsCount: z.number().int().nonnegative().default(0),
   channels: z.array(IOChannelSchema).default([]),
   hardwareParameters: z
-    .record(z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
     .default({}),
-  diagnostics: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
+  diagnostics: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .default({}),
 });
 export type HardwareModule = z.infer<typeof HardwareModuleSchema>;
 
@@ -352,7 +354,9 @@ export const LadderElementSchema = z.object({
   symbolName: z.string().default(""),
   negated: z.boolean().default(false),
   blockName: z.string().optional(),
-  params: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
+  params: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .default({}),
 });
 export type LadderElement = z.infer<typeof LadderElementSchema>;
 
@@ -533,7 +537,9 @@ export const HMIWidgetSchema = z.object({
   height: z.number().default(40),
   bindingTagId: UUIDSchema.optional(),
   bindingVariableId: UUIDSchema.optional(),
-  properties: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
+  properties: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .default({}),
   securityRoleRequired: z.string().default("OPERATOR"),
 });
 export type HMIWidget = z.infer<typeof HMIWidgetSchema>;
@@ -837,9 +843,15 @@ export type DigitalTwinSyncStatus = z.infer<typeof DigitalTwinSyncStatusSchema>;
 
 export const DigitalTwinStateSchema = z.object({
   deviceId: UUIDSchema,
-  observedState: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
-  declaredState: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
-  inferredState: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
+  observedState: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .default({}),
+  declaredState: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .default({}),
+  inferredState: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .default({}),
   lastSyncTimestamp: z.string().default(() => new Date().toISOString()),
   syncStatus: DigitalTwinSyncStatusSchema.default("SYNCHRONIZED"),
   driftDetails: z.array(z.string()).default([]),
@@ -888,7 +900,7 @@ export const ProjectDiffItemSchema = z.object({
   entityType: z.string(),
   entityName: z.string(),
   changeKind: DiffChangeKindSchema,
-  propertyDiffs: z.record(PropertyDiffSchema).default({}),
+  propertyDiffs: z.record(z.string(), PropertyDiffSchema).default({}),
   description: z.string(),
 });
 export type ProjectDiffItem = z.infer<typeof ProjectDiffItemSchema>;

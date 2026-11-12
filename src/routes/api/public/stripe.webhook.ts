@@ -1,66 +1,107 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { FleetStorageBackend } from "@/lib/edge/types";
+import {
+  assertSupabaseWriteOk,
+  runTransactionalWebhookHandler,
+  type DbWriteResult,
+} from "@/lib/security/webhook-ledger.server";
 
 /**
- * Stripe webhook receiver.
- * Verifies `Stripe-Signature` (HMAC-SHA256 over `${t}.${payload}`).
- * Handles: checkout.session.completed, customer.subscription.{created,updated,deleted},
- * invoice.{paid,payment_failed}.
+ * Stripe webhook receiver (Gate 4.3.1 transactional state machine).
+ * Verifies `Stripe-Signature` (HMAC-SHA256 over `${t}.${payload}`), tracks ledger states
+ * (`RECEIVED -> PROCESSING -> PROCESSED | FAILED | RETRYABLE`), and fails closed (HTTP 500)
+ * if ANY Supabase billing write fails.
  */
 export const Route = createFileRoute("/api/public/stripe/webhook")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const secret = process.env.STRIPE_WEBHOOK_SECRET;
-        if (!secret) return new Response("not_configured", { status: 503 });
-
-        const sig = request.headers.get("stripe-signature");
-        if (!sig) return new Response("missing_signature", { status: 400 });
-
-        let body: string;
-        let event: StripeEvent;
-        try {
-          body = await request.text();
-          const ok = await verifyStripeSig(body, sig, secret, 300);
-          if (!ok) return new Response("invalid_signature", { status: 400 });
-          event = JSON.parse(body) as StripeEvent;
-        } catch {
-          return new Response("invalid_payload", { status: 400 });
-        }
-
-        // Idempotency reservation: roll back row if event handling fails so Stripe retries recover.
-        const { error: dupErr } = await supabaseAdmin
-          .from("stripe_webhook_events")
-          .insert({ event_id: event.id, event_type: event.type });
-        if (dupErr) {
-          const msg = String(dupErr.message ?? "").toLowerCase();
-          const isDuplicate =
-            msg.includes("duplicate") || (dupErr as { code?: string }).code === "23505";
-          if (isDuplicate) return new Response("ok", { status: 200 });
-          console.error("[stripe] insert event log failed", dupErr);
-          return new Response("event_log_failed", { status: 500 });
-        }
-
-        try {
-          await handleStripeEvent(event);
-        } catch (e) {
-          console.error("[stripe] handler error", e);
-          await supabaseAdmin.from("stripe_webhook_events").delete().eq("event_id", event.id);
-          return new Response("handler_error", { status: 500 });
-        }
-        return new Response("ok", { status: 200 });
-      },
+      POST: async ({ request }) => processStripeWebhookRequest(request),
     },
   },
 });
 
-interface StripeEvent {
+export interface StripeEvent {
   id: string;
   type: string;
   data: { object: Record<string, unknown> };
 }
 
-async function handleStripeEvent(event: StripeEvent): Promise<void> {
+export interface StripeWebhookDeps {
+  adminClient?: typeof supabaseAdmin;
+  store?: FleetStorageBackend;
+  webhookSecret?: string;
+}
+
+export async function processStripeWebhookRequest(
+  request: Request,
+  deps?: StripeWebhookDeps,
+): Promise<Response> {
+  const secret = deps?.webhookSecret ?? process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) return new Response("not_configured", { status: 503 });
+
+  const sig = request.headers.get("stripe-signature");
+  if (!sig) return new Response("missing_signature", { status: 400 });
+
+  const db = deps?.adminClient ?? supabaseAdmin;
+
+  let body: string;
+  let event: StripeEvent;
+  try {
+    body = await request.text();
+    const ok = await verifyStripeSig(body, sig, secret, 300);
+    if (!ok) return new Response("invalid_signature", { status: 400 });
+    event = JSON.parse(body) as StripeEvent;
+  } catch {
+    return new Response("invalid_payload", { status: 400 });
+  }
+
+  if (!event?.id || !event?.type) {
+    return new Response("invalid_payload", { status: 400 });
+  }
+
+  // Secondary Postgres idempotency reservation backed by unique PK constraint
+  const { error: dupErr } = await db
+    .from("stripe_webhook_events")
+    .insert({ event_id: event.id, event_type: event.type });
+
+  if (dupErr) {
+    const msg = String(dupErr.message ?? "").toLowerCase();
+    const isDuplicate = msg.includes("duplicate") || (dupErr as { code?: string }).code === "23505";
+    if (!isDuplicate) {
+      console.error("[stripe] insert event log failed", dupErr);
+      return new Response("event_log_failed", { status: 500 });
+    }
+    const existingLedger = deps?.store?.getWebhookEvent("stripe", event.id);
+    if (!existingLedger || existingLedger.state === "PROCESSED") {
+      return new Response("ok", { status: 200 });
+    }
+  }
+
+  try {
+    const res = await runTransactionalWebhookHandler({
+      provider: "stripe",
+      eventId: event.id,
+      rawPayload: body,
+      route: "/api/public/stripe/webhook",
+      store: deps?.store,
+      execute: async () => handleStripeEvent(event, db),
+      onRollbackReservation: async () => {
+        await db.from("stripe_webhook_events").delete().eq("event_id", event.id);
+      },
+    });
+
+    if (res.statusCode === 409) {
+      return new Response("in_flight_conflict", { status: 409 });
+    }
+    return new Response("ok", { status: 200 });
+  } catch (e) {
+    console.error("[stripe] transactional handler error", e);
+    return new Response("handler_error", { status: 500 });
+  }
+}
+
+async function handleStripeEvent(event: StripeEvent, db: typeof supabaseAdmin): Promise<void> {
   const obj = event.data.object as Record<string, unknown>;
   switch (event.type) {
     case "checkout.session.completed": {
@@ -73,7 +114,8 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
       const customerId = obj.customer ? String(obj.customer) : null;
       const subId = obj.subscription ? String(obj.subscription) : null;
       if (!tenantId) return;
-      await supabaseAdmin
+
+      const tenantRes = (await db
         .from("tenants")
         .update({
           plan,
@@ -82,9 +124,8 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
           subscription_status: "active",
           updated_at: new Date().toISOString(),
         })
-        .eq("id", tenantId);
-      // Audit log skipped: requires user_id (webhook has no auth context).
-
+        .eq("id", tenantId)) as DbWriteResult;
+      assertSupabaseWriteOk(tenantRes, "tenants.update(checkout.session.completed)");
       break;
     }
     case "customer.subscription.created":
@@ -103,7 +144,7 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
         : null;
       const subId = String(obj.id);
 
-      await supabaseAdmin.from("subscriptions").upsert(
+      const subRes = (await db.from("subscriptions").upsert(
         {
           tenant_id: tenantId,
           stripe_subscription_id: subId,
@@ -113,8 +154,10 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
           current_period_end: periodEnd,
         },
         { onConflict: "stripe_subscription_id" },
-      );
-      await supabaseAdmin
+      )) as DbWriteResult;
+      assertSupabaseWriteOk(subRes, "subscriptions.upsert(subscription.updated)");
+
+      const tenantRes = (await db
         .from("tenants")
         .update({
           plan: status === "active" || status === "trialing" ? plan : "free",
@@ -122,7 +165,8 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
           stripe_subscription_id: subId,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", tenantId);
+        .eq("id", tenantId)) as DbWriteResult;
+      assertSupabaseWriteOk(tenantRes, "tenants.update(subscription.updated)");
       break;
     }
     case "customer.subscription.deleted": {
@@ -131,19 +175,21 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
       );
       const subId = String(obj.id);
       if (tenantId) {
-        await supabaseAdmin
+        const tenantRes = (await db
           .from("tenants")
           .update({
             plan: "free",
             subscription_status: "canceled",
             updated_at: new Date().toISOString(),
           })
-          .eq("id", tenantId);
+          .eq("id", tenantId)) as DbWriteResult;
+        assertSupabaseWriteOk(tenantRes, "tenants.update(subscription.deleted)");
       }
-      await supabaseAdmin
+      const subRes = (await db
         .from("subscriptions")
         .update({ status: "canceled" })
-        .eq("stripe_subscription_id", subId);
+        .eq("stripe_subscription_id", subId)) as DbWriteResult;
+      assertSupabaseWriteOk(subRes, "subscriptions.update(subscription.deleted)");
       break;
     }
     case "invoice.paid":
@@ -152,7 +198,7 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
         (obj.metadata as Record<string, string> | undefined)?.tenant_id ?? "",
       );
       if (!tenantId) return;
-      await supabaseAdmin.from("invoices").upsert(
+      const invRes = (await db.from("invoices").upsert(
         {
           tenant_id: tenantId,
           stripe_invoice_id: String(obj.id),
@@ -162,7 +208,8 @@ async function handleStripeEvent(event: StripeEvent): Promise<void> {
           pdf_url: obj.invoice_pdf ? String(obj.invoice_pdf) : null,
         },
         { onConflict: "stripe_invoice_id" },
-      );
+      )) as DbWriteResult;
+      assertSupabaseWriteOk(invRes, "invoices.upsert(invoice.event)");
       break;
     }
   }

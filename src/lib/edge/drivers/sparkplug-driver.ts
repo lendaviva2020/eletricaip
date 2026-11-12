@@ -55,6 +55,7 @@ export interface SparkplugDriverConfig {
 }
 
 export class SparkplugBDriver implements IndustrialDriver {
+  public readonly implementationClass = "LAB_EDGE_ADAPTER" as const;
   public readonly driverId: string;
   public readonly protocol: IndustrialProtocol = "MQTT_SPARKPLUG_B";
   public readonly connectionId: string;

@@ -5,14 +5,15 @@
 import type {
   FleetGatewaySummary,
   FleetMetricsSummary,
+  FleetStorageBackend,
   EdgeOperationalState,
   EdgeFailureClassification,
   FleetUserContext,
   EdgeHardwareArch,
 } from "./types";
 import { fleetRbacEngine } from "./fleet-rbac";
-import { fleetAuditManager } from "./fleet-audit";
-import { fleetCertificateManager } from "./fleet-certificates";
+import { fleetAuditManager, type FleetAuditManager } from "./fleet-audit";
+import { fleetCertificateManager, type FleetCertificateManager } from "./fleet-certificates";
 
 export interface GatewayHeartbeatTelemetry {
   cpuUsagePercent: number;
@@ -31,9 +32,36 @@ export interface GatewayHeartbeatTelemetry {
 export class EdgeFleetManager {
   private gateways: Map<string, FleetGatewaySummary> = new Map();
   private heartbeatTimeoutMs: number = 30000; // 30 seconds without heartbeat marks gateway OFFLINE
+  private store?: FleetStorageBackend;
+  private auditManager: FleetAuditManager;
+  private certManager: FleetCertificateManager;
 
-  constructor() {
+  constructor(options?: {
+    store?: FleetStorageBackend;
+    auditManager?: FleetAuditManager;
+    certManager?: FleetCertificateManager;
+  }) {
+    this.auditManager = options?.auditManager ?? fleetAuditManager;
+    this.certManager = options?.certManager ?? fleetCertificateManager;
     this.seedDefaultFleet();
+    if (options?.store) {
+      this.attachStorageBackend(options.store);
+    }
+  }
+
+  public attachStorageBackend(store: FleetStorageBackend): void {
+    this.store = store;
+    const persisted = store.loadFleetGateways();
+    if (persisted.length > 0) {
+      for (const gw of persisted) {
+        this.gateways.set(gw.gatewayId, gw);
+      }
+      return;
+    }
+
+    for (const gw of this.gateways.values()) {
+      store.saveFleetGateway(gw);
+    }
   }
 
   private seedDefaultFleet(): void {
@@ -82,6 +110,7 @@ export class EdgeFleetManager {
       updateState: "UP_TO_DATE",
       currentConfigVersion: 1,
       activeAlarmsCount: 0,
+      authorizedEndpoints: ["opc.tcp://192.168.1.10:4840", "192.168.1.20:502"],
     });
 
     // 2. Gateway Subestação (Tenant A, Plant Subestação SP)
@@ -254,11 +283,20 @@ export class EdgeFleetManager {
       currentConfigVersion: 1,
       activeAlarmsCount: 2,
     });
+
+    // Ensure every seeded fleet gateway also has its certificate lifecycle entry tracked
+    for (const gw of this.gateways.values()) {
+      if (!this.certManager.getCertificate(gw.gatewayId)) {
+        this.certManager.registerCertificate(gw.certificate, gw.gatewayId);
+      }
+    }
   }
 
   public registerGateway(gateway: FleetGatewaySummary): void {
-    this.gateways.set(gateway.gatewayId, { ...gateway });
-    fleetCertificateManager.registerCertificate(gateway.certificate, gateway.gatewayId);
+    const copy = { ...gateway };
+    this.gateways.set(gateway.gatewayId, copy);
+    this.certManager.registerCertificate(gateway.certificate, gateway.gatewayId);
+    this.store?.saveFleetGateway(copy);
   }
 
   public getGateway(gatewayId: string): FleetGatewaySummary | undefined {
@@ -321,7 +359,12 @@ export class EdgeFleetManager {
           ? "DEGRADED"
           : "DISCONNECTED";
 
-    const cert = fleetCertificateManager.getCertificate(gw.gatewayId) || gw.certificate;
+    const cert = this.certManager.getCertificate(gw.gatewayId) || gw.certificate;
+    const stateChanged =
+      operationalState !== gw.operationalState ||
+      connectivityState !== gw.connectivityState ||
+      cert.state !== gw.certificate.state ||
+      cert.isRevoked !== gw.certificate.isRevoked;
 
     const resolved: FleetGatewaySummary = {
       ...gw,
@@ -331,6 +374,9 @@ export class EdgeFleetManager {
     };
 
     this.gateways.set(gw.gatewayId, resolved);
+    if (stateChanged && this.store) {
+      this.store.saveFleetGateway(resolved, gw.recordVersion);
+    }
     return resolved;
   }
 
@@ -393,10 +439,11 @@ export class EdgeFleetManager {
       newState === "ONLINE" ? "CONNECTED" : newState === "DEGRADED" ? "DEGRADED" : "DISCONNECTED";
 
     this.gateways.set(gatewayId, gw);
+    this.store?.saveFleetGateway(gw);
 
     // Audit state changes (e.g. from OFFLINE to ONLINE or ONLINE to DEGRADED)
     if (previousState !== newState) {
-      fleetAuditManager.recordEvent({
+      this.auditManager.recordEvent({
         actor: { id: "daemon_heartbeat", email: "edge@daemon.local", role: "EDGE_OPERATOR" },
         source: "EDGE_DAEMON",
         gatewayId,

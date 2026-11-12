@@ -36,6 +36,7 @@ export interface ModbusResponsePDU {
 }
 
 export class ModbusProtocolEngine {
+  public static readonly implementationClass = "PARSER" as const;
   /**
    * Cálculo de CRC16 para frames Modbus RTU (Polinômio 0xA001)
    */
@@ -181,6 +182,7 @@ export type OPCUAStatusCode =
   "Good" | "Bad_NotFound" | "Bad_TypeMismatch" | "Bad_SecurityChecksFailed";
 
 export class OPCUAProtocolEngine {
+  public static readonly implementationClass = "PARSER" as const;
   /**
    * Faz o parsing de strings padronizadas de NodeId (ex: 'ns=2;s=Device1.TankLevel')
    */
@@ -253,6 +255,7 @@ export interface SparkplugBPayload {
 }
 
 export class SparkplugBProtocolEngine {
+  public static readonly implementationClass = "PARSER" as const;
   /**
    * Valida tópicos no padrão Sparkplug B: spBv1.0/group_id/message_type/edge_node_id/[device_id]
    */
@@ -304,6 +307,7 @@ export class SparkplugBProtocolEngine {
 // ============================================================================
 
 export class MQTTProtocolEngine {
+  public static readonly implementationClass = "PARSER" as const;
   public static publishCommand(topic: string, payload: any): never {
     throw new Error(
       "[SAFETY_VIOLATION] MQTT command publish blocked: IS_PHYSICAL_CONTROL_ALLOWED=false. Operational mode is OBSERVATIONAL_ONLY.",

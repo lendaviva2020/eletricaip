@@ -62,6 +62,7 @@ export interface ModbusDriverConfig {
 export const ALLOWED_MODBUS_FUNCTION_CODES = new Set([1, 2, 3, 4]);
 
 export class ModbusTcpClientDriver implements IndustrialDriver {
+  public readonly implementationClass = "LAB_EDGE_ADAPTER" as const;
   public readonly driverId: string;
   public readonly protocol: IndustrialProtocol = "MODBUS_TCP";
   public readonly connectionId: string;

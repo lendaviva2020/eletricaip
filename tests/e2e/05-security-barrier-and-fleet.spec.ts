@@ -68,7 +68,51 @@ test.describe("Phase 5: Security Barrier & Edge Fleet Operations", () => {
   }) => {
     await page.goto("/settings/protocols", { waitUntil: "domcontentloaded" });
     await expect(page.locator("text=Protocolos").first()).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.locator("text=Classificação Arquitetural das Camadas de Protocolo"),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("text=LAB_EDGE_ADAPTER").first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("text=IS_PHYSICAL_CONTROL_ALLOWED = false")).toBeVisible({
+      timeout: 15000,
+    });
 
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, "settings_protocols_page.png") });
+  });
+
+  test("gate 4.3.1: protocols SIMULATOR vs EDGE_READ_ONLY fail-closed, synthetic SCADA UUID, and open-redirect defense", async ({
+    page,
+  }) => {
+    await page.goto("/settings/protocols", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("text=Protocolos").first()).toBeVisible({ timeout: 15000 });
+
+    // 1. OPC-UA SIMULATOR interactive test button
+    const testButtons = page.getByRole("button", { name: /Testar conexão/i });
+    await testButtons.nth(0).click();
+    await expect(page.locator("text=/Validado \\(SIMULATED/i")).toBeVisible({ timeout: 15000 });
+
+    // 2. Modbus EDGE_READ_ONLY with IMDS SSRF target fails closed in UI
+    const modeSelects = page.locator("select").filter({ hasText: "EDGE_READ_ONLY" });
+    await modeSelects.nth(1).selectOption("EDGE_READ_ONLY");
+    const modbusHostInput = page.locator('input[placeholder="192.168.10.20"]').last();
+    await modbusHostInput.fill("169.254.169.254");
+    await testButtons.nth(1).click();
+    await expect(page.locator("text=/SSRF_POLICY_BLOCKED|bloqueado|Falha/i").first()).toBeVisible({
+      timeout: 15000,
+    });
+
+    await page.screenshot({
+      path: path.join(SCREENSHOTS_DIR, "gate_4_3_1_protocols_interactive.png"),
+    });
+
+    // 3. Synthetic demo UUID project loads SCADA cleanly under Zod 4.6.7
+    await page.goto("/scada?projectId=00000000-0000-4000-8000-000000000001", {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator('[data-testid="scada-sidebar"]')).toBeVisible({ timeout: 15000 });
+
+    // 4. Open redirect payload stays strictly same-origin
+    await page.goto("/login?redirect=/%09/evil.com?x=1", { waitUntil: "domcontentloaded" });
+    expect(page.url()).toContain("127.0.0.1:3000");
+    expect(page.url()).not.toContain("evil.com");
   });
 });
