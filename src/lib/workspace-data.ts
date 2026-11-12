@@ -1,4 +1,5 @@
 // Workspace data — shared types for the industrial workspace
+import { PRODUCT_NAME } from "./compact-studio/branding";
 
 export type WorkspaceMode =
   | "unifilar"
@@ -10,7 +11,8 @@ export type WorkspaceMode =
   | "plc"
   | "sim"
   | "alarms"
-  | "studio";
+  | "studio"
+  | "compactStudio";
 
 export type ConsoleTab =
   | "Logs"
@@ -38,6 +40,7 @@ export const MODES: { id: WorkspaceMode; label: string; hint: string }[] = [
   { id: "sim", label: "Simulação", hint: "Runtime" },
   { id: "alarms", label: "Alarmes", hint: "ISA-18.2" },
   { id: "studio", label: "Studio IEC", hint: "CODESYS Parity" },
+  { id: "compactStudio", label: PRODUCT_NAME, hint: "CLP Compacto" },
 ];
 
 export const CONSOLE_TABS: ConsoleTab[] = [

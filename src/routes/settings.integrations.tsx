@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useTenantSetting } from "@/hooks/use-tenant-setting";
+import { PRODUCT_NAME } from "@/lib/compact-studio/branding";
+import { useCompactStudioFeatureFlags } from "@/lib/compact-studio/feature-flags";
 
 export const Route = createFileRoute("/settings/integrations")({
   head: () => ({ meta: [{ title: "Integrações · EletricAI" }] }),
@@ -26,6 +28,7 @@ const DEFAULTS: ProtoConfig = {
 
 function IntegrationsPage() {
   const { value, update, isSaving } = useTenantSetting<ProtoConfig>("integrations", DEFAULTS);
+  const compactFlags = useCompactStudioFeatureFlags();
 
   const save = () => toast.success("Configurações salvas no workspace");
 
@@ -90,6 +93,33 @@ function IntegrationsPage() {
 
         {/* MQTT oculto (Fase 7.1): cliente MQTT over WebSockets ainda não implementado.
             Reexibir o card quando a integração real existir. */}
+
+        <Card>
+          <CardContent className="p-5 space-y-3">
+            <h2 className="text-sm font-semibold">{PRODUCT_NAME} (CLP Compacto)</h2>
+            <div className="space-y-2 text-xs">
+              <label className="flex items-center justify-between gap-2 cursor-pointer">
+                <span>Habilitar ambiente {PRODUCT_NAME} no Workspace (flag logoStudio)</span>
+                <input
+                  type="checkbox"
+                  checked={compactFlags.isStudioEnabled}
+                  onChange={(e) => compactFlags.setLogoStudioEnabled(e.target.checked)}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 cursor-pointer">
+                <span>
+                  Habilitar ponte observacional de protocolos abertos em campo (flag
+                  fieldDeviceComms)
+                </span>
+                <input
+                  type="checkbox"
+                  checked={compactFlags.isFieldCommsEnabled}
+                  onChange={(e) => compactFlags.setFieldCommsEnabled(e.target.checked)}
+                />
+              </label>
+            </div>
+          </CardContent>
+        </Card>
 
         <Button onClick={save} disabled={isSaving}>
           {isSaving ? "Salvando..." : "Salvar configurações"}

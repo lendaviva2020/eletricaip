@@ -114,6 +114,8 @@ export const en: TranslationCatalog = {
       alarmsHint: "ISA-18.2",
       studio: "Studio IEC",
       studioHint: "CODESYS Parity",
+      compactStudio: "eletric Studio",
+      compactStudioHint: "Compact PLC",
     },
     console: {
       logs: "Logs",

@@ -64,6 +64,11 @@ const AlarmsCanvas = lazy(() =>
 const EngineeringStudio = lazy(() =>
   import("@/components/studio/engineering-studio").then((m) => ({ default: m.EngineeringStudio })),
 );
+const CompactStudioWorkspace = lazy(() =>
+  import("@/components/compact-studio/compact-studio-workspace").then((m) => ({
+    default: m.CompactStudioWorkspace,
+  })),
+);
 
 export function IndustrialWorkspace({ projectId = null }: { projectId?: string | null }) {
   const router = useRouter();
@@ -175,7 +180,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         orientation="horizontal"
         className="flex-1 min-h-0 min-w-0 h-full w-full"
       >
-        {!leftCollapsed && mode !== "scada" && mode !== "studio" && (
+        {!leftCollapsed && mode !== "scada" && mode !== "studio" && mode !== "compactStudio" && (
           <>
             <ResizablePanel
               id="workspace-left-panel"
@@ -251,6 +256,9 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
                     {mode === "sim" && <SimCanvas />}
                     {mode === "alarms" && <AlarmsCanvas />}
                     {mode === "studio" && <EngineeringStudio projectId={projectId} />}
+                    {mode === "compactStudio" && (
+                      <CompactStudioWorkspace projectId={projectId ?? undefined} />
+                    )}
                   </Suspense>
                 </ClientOnly>
               </ErrorBoundary>
@@ -259,7 +267,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
                 <CanvasAiChat />
               </ErrorBoundary>
             </div>
-            {mode !== "scada" && mode !== "studio" && (
+            {mode !== "scada" && mode !== "studio" && mode !== "compactStudio" && (
               <ErrorBoundary fallback={null}>
                 <UnifiedBottomDock />
               </ErrorBoundary>
@@ -267,7 +275,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
           </div>
         </ResizablePanel>
 
-        {!rightCollapsed && mode !== "scada" && mode !== "studio" && (
+        {!rightCollapsed && mode !== "scada" && mode !== "studio" && mode !== "compactStudio" && (
           <>
             <ResizableHandle withHandle className="hidden lg:flex" />
             <ResizablePanel
@@ -295,7 +303,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       </ResizablePanelGroup>
 
       {/* Gaveta direita em mobile/tablet (< 1024px) */}
-      {!rightCollapsed && mode !== "scada" && mode !== "studio" && (
+      {!rightCollapsed && mode !== "scada" && mode !== "studio" && mode !== "compactStudio" && (
         <div className="lg:hidden flex absolute right-0 inset-y-0 z-40 border-l border-border bg-panel h-full">
           <button
             onClick={toggleRightPanel}

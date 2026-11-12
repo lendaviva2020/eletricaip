@@ -4,16 +4,18 @@ import { Pulse } from "@phosphor-icons/react";
 import { useEditorStore } from "@/lib/editor/store";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { useI18n } from "@/lib/i18n";
+import { useCompactStudioFeatureFlags } from "@/lib/compact-studio/feature-flags";
 
 export function ModeTabs() {
   const mode = useEditorStore((s) => s.activeMode);
   const setMode = useEditorStore((s) => s.setActiveMode);
+  const { isStudioEnabled } = useCompactStudioFeatureFlags();
   const { t } = useI18n();
 
   return (
     <div className="h-9 shrink-0 flex items-end border-b border-border bg-panel">
       <div className="flex-1 min-w-0 flex items-end gap-0.5 px-2 overflow-x-auto scrollbar-none">
-        {MODES.map((m) => {
+        {MODES.filter((m) => m.id !== "compactStudio" || isStudioEnabled).map((m) => {
           const active = m.id === mode;
           const label = t(`workspace.modes.${m.id}`);
           const hint = t(`workspace.modes.${m.id}Hint`);
