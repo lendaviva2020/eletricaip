@@ -2,7 +2,7 @@
  * Zod-validated data-driven catalog loader for Compact Studio hardware modules.
  */
 import { z } from "zod";
-import rawCatalog from "../../../../data/compact-hardware-catalog.v1.json";
+import rawCatalog from "./compact-hardware-catalog.v1.json";
 
 export const CompactCatalogItemSchema = z.object({
   id: z.string().min(1),
