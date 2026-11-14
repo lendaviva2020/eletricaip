@@ -14,7 +14,7 @@ export const Route = createFileRoute("/workspace")({
       {
         name: "description",
         content:
-          "Ambiente unificado: unifilar, ladder, FBD, SCADA, Digital Twin, PLC, simulação e alarmes.",
+          "Ambiente unificado: unifilar, ladder, FBD, SCADA, PLC, simulação, alarmes e Studio.",
       },
     ],
   }),

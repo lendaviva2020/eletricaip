@@ -108,7 +108,6 @@ export function createEmptyUnifiedDoc(partialMeta?: Partial<ProjectMetadata>): U
       unifilar: { nodes: {}, edges: {} },
       multifilar: { nodes: {}, edges: {} },
       scada: { widgets: {}, edges: [] },
-      twin: { mappings: [], nameplates: {}, modelUrl: null },
     },
     studies: {},
     diagnostics: [],

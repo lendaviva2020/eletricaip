@@ -107,19 +107,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "EletricAI Industrial OS - IA, PLC, SCADA, Digital Twin" },
+      { title: "EletricAI Industrial OS - IA, PLC, SCADA, Engenharia Elétrica" },
       {
         name: "description",
         content:
-          "Sistema operacional industrial unificado com IA nativa: unifilar, ladder, FBD, SCADA, Digital Twin, PLC e simulação em tempo real.",
+          "Sistema operacional industrial unificado com IA nativa: unifilar, ladder, FBD, SCADA, PLC, Studio e simulação em tempo real.",
       },
-      { property: "og:title", content: "EletricAI Industrial OS - IA, PLC, SCADA, Digital Twin" },
+      { property: "og:title", content: "EletricAI Industrial OS - IA, PLC, SCADA, Engenharia Elétrica" },
       {
         property: "og:description",
         content:
           "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation.",
       },
-      { name: "twitter:title", content: "EletricAI Industrial OS - IA, PLC, SCADA, Digital Twin" },
+      { name: "twitter:title", content: "EletricAI Industrial OS - IA, PLC, SCADA, Engenharia Elétrica" },
       {
         name: "twitter:description",
         content:

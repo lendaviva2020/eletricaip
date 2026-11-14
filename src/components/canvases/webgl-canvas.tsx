@@ -36,8 +36,12 @@ import {
   MagnifyingGlassPlus,
   MagnifyingGlassMinus,
   Octagon,
+  Crosshair,
+  FrameCorners,
+  GitBranch,
 } from "@phosphor-icons/react";
 import { computeCircuitEnergization } from "@/lib/diagram/electrical-simulation";
+import { evaluateNormativeEngineeringCompliance } from "@/lib/diagram/connection";
 import { useSafetyStore } from "@/lib/simulation/safety-core";
 import {
   Dialog,
@@ -67,6 +71,8 @@ import {
 } from "@/lib/diagram/multifilar";
 import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import type { SheetKind, NodeKind } from "@/lib/diagram/schema";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { buildDiagnosticContextFromMultifilar } from "@/lib/diagnostics/ai-repair-context";
 import {
   type VoltaiComponentType,
   VOLTAI_COMPONENT_BY_TYPE,
@@ -272,9 +278,14 @@ export function WebglCanvas({ sheet, projectId }: Props) {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [zoomPercent, setZoomPercent] = useState(100);
+  const [autoZoom, setAutoZoom] = useState(true);
+  const lastFittedDocIdRef = useRef<string | null>(null);
+  const hadSheetNodesRef = useRef<boolean>(false);
 
-  // Cálculos, Simulação e Diagnósticos em tempo real
+  // Cálculos, Simulação, Conformidade Normativa e Diagnósticos em tempo real
   const diagnostics = useMemo(() => runDiagramDiagnostics(doc), [doc]);
+  const complianceReport = useMemo(() => evaluateNormativeEngineeringCompliance(doc), [doc]);
   const voltageDrops = useMemo(() => calculateVoltageDropNbr5410(doc), [doc]);
   const energization = useMemo(
     () => computeCircuitEnergization(doc, simulationStatus, deviceStates),
@@ -379,6 +390,14 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             }),
           );
         },
+        onUpdateEdgeWaypoints: (edgeId, waypoints) => {
+          const curEdge = useDiagramStore.getState().doc.edges[edgeId];
+          if (!curEdge) return;
+          dispatch(cmd.updateEdgeWaypoints(edgeId, curEdge.waypoints, waypoints));
+        },
+        onZoomChange: (pct) => {
+          setZoomPercent(pct);
+        },
         onContextMenu: ({ nodeId, edgeId, clientX, clientY }) => {
           const hostRect = host.getBoundingClientRect();
           openContextMenu({
@@ -393,6 +412,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         if (disposed) return;
         const currentSheet = effectiveSheetRef.current;
         const currentDoc = useDiagramStore.getState().doc;
+        const sheetNodes = Object.values(currentDoc.nodes).filter((n) => n.sheet === currentSheet);
         stage.sync(
           currentDoc,
           currentSheet,
@@ -400,7 +420,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           useDiagramStore.getState().selectedEdgeIds,
           energization,
         );
-        stage.fitView(Object.values(currentDoc.nodes).filter((n) => n.sheet === currentSheet));
+        lastFittedDocIdRef.current = currentDoc.id;
+        hadSheetNodesRef.current = sheetNodes.length > 0;
+        stage.fitView(sheetNodes, { recordHistory: false });
       });
     return () => {
       disposed = true;
@@ -435,14 +457,44 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     );
     stageRef.current?.fitView(
       Object.values(latestDoc.nodes).filter((n) => n.sheet === effectiveSheet),
+      { recordHistory: false },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSheet]);
 
-  // sync em qualquer mudança relevante
+  // sync em qualquer mudança relevante; auto-fit APENAS na troca/hidratação de documento
+  // (nunca durante arraste/edição manual contínua)
   useEffect(() => {
     stageRef.current?.sync(doc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization);
-  }, [doc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization]);
+    const sheetNodes = Object.values(doc.nodes).filter((n) => n.sheet === effectiveSheet);
+    const hasNodes = sheetNodes.length > 0;
+    const docChanged = lastFittedDocIdRef.current !== null && lastFittedDocIdRef.current !== doc.id;
+    const hydratedFromEmpty = !hadSheetNodesRef.current && hasNodes;
+
+    if (autoZoom && (docChanged || hydratedFromEmpty)) {
+      lastFittedDocIdRef.current = doc.id;
+      requestAnimationFrame(() => {
+        stageRef.current?.fitView(sheetNodes, { recordHistory: false });
+      });
+    } else if (lastFittedDocIdRef.current !== doc.id) {
+      lastFittedDocIdRef.current = doc.id;
+    }
+    hadSheetNodesRef.current = hasNodes;
+  }, [doc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization, autoZoom]);
+
+  // Evento explícito para reenquadramento após IA / Importação em lote
+  useEffect(() => {
+    const onFitRequest = () => {
+      if (!autoZoom) return;
+      requestAnimationFrame(() => {
+        const curDoc = useDiagramStore.getState().doc;
+        const sheetNodes = Object.values(curDoc.nodes).filter((n) => n.sheet === effectiveSheet);
+        stageRef.current?.fitView(sheetNodes, { recordHistory: false });
+      });
+    };
+    window.addEventListener("eletricai-fit-view", onFitRequest);
+    return () => window.removeEventListener("eletricai-fit-view", onFitRequest);
+  }, [autoZoom, effectiveSheet]);
 
   // atalhos
   useEffect(() => {
@@ -467,6 +519,31 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       ) {
         e.preventDefault();
         redo();
+        return;
+      }
+      if ((meta && e.key === "0") || (e.shiftKey && e.key === "1")) {
+        e.preventDefault();
+        stageRef.current?.fitView();
+        return;
+      }
+      if (e.shiftKey && e.key === "2") {
+        e.preventDefault();
+        stageRef.current?.fitSelection();
+        return;
+      }
+      if (meta && e.key === "1") {
+        e.preventDefault();
+        stageRef.current?.resetZoom();
+        return;
+      }
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        stageRef.current?.zoomIn();
+        return;
+      }
+      if (e.key === "-") {
+        e.preventDefault();
+        stageRef.current?.zoomOut();
         return;
       }
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -599,14 +676,21 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     useEditorStore.getState().setConsoleOpen(true);
     const errors = diagnostics.filter((d) => d.type === "ERRO");
     const warnings = diagnostics.filter((d) => d.type === "AVISO");
-    if (errors.length > 0) {
-      toast.error(`Validação concluída: ${errors.length} erro(s) e ${warnings.length} aviso(s).`);
-    } else if (warnings.length > 0) {
-      toast.warning(`Validação concluída com ${warnings.length} aviso(s). Conectividade OK.`);
+    const status = complianceReport.overallStatus;
+    if (errors.length > 0 || status === "INVALID") {
+      toast.error(
+        `Status [${status}]: ${errors.length} erro(s), ${warnings.length} aviso(s). Verifique diagnósticos e conformidade.`,
+      );
+    } else if (status === "INCOMPLETE" || status === "REQUIRES_ENGINEERING_REVIEW" || status === "NOT_VERIFIABLE") {
+      toast.warning(
+        `Status [${status}]: ${complianceReport.findings.length} ponto(s) normativo(s) requerem dados ou revisão técnica.`,
+      );
+    } else if (warnings.length > 0 || status === "WARNING") {
+      toast.warning(`Status [${status}]: ${warnings.length} aviso(s) identificados.`);
     } else {
-      toast.success("Validação concluída com sucesso! 100% em conformidade com NBR 5410.");
+      toast.success("Status [VALID]: Topologia e critérios verificáveis conformes.");
     }
-  }, [diagnostics]);
+  }, [diagnostics, complianceReport]);
 
   const handleSave = useCallback(() => {
     toast.success(`Projeto "${doc.metadata.title || "MCC-01_REFORCO"}" salvo no documento ativo.`);
@@ -971,6 +1055,16 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             <span className="hidden sm:inline">Validar</span>
           </Button>
 
+          {diagnostics.some((d) => d.type === "ERRO" || d.type === "AVISO") && (
+            <AiFixButton
+              batch={diagnostics
+                .filter((d) => d.type === "ERRO" || d.type === "AVISO")
+                .map((d) => buildDiagnosticContextFromMultifilar(d, doc.id || "proj_active"))}
+              size="sm"
+              variant="primary"
+            />
+          )}
+
           <Button
             size="icon"
             variant="ghost"
@@ -1012,43 +1106,109 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             <Magnet className="size-3.5 text-[#38bdf8]" />
           </Button>
 
-          {/* Controles de Zoom Dedicados */}
-          <div className="flex items-center gap-0.5 border-l border-border/60 pl-1">
+          {/* Controles Completos de Zoom & Enquadramento Inteligente */}
+          <div
+            className="flex items-center gap-0.5 border-l border-border/60 pl-1"
+            data-testid="canvas-zoom-controls"
+          >
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => stageRef.current?.zoomOut()}
+              className="h-8 w-8"
+              title="Afastar Zoom (-)"
+              data-testid="canvas-zoom-out"
+            >
+              <MagnifyingGlassMinus className="size-3.5" />
+            </Button>
+            <span
+              className="px-1.5 text-[10px] font-mono text-[#38bdf8] tabular-nums min-w-[38px] text-center"
+              title="Nível de Zoom Atual"
+              data-testid="canvas-zoom-percent"
+            >
+              {zoomPercent}%
+            </span>
             <Button
               size="icon"
               variant="ghost"
               onClick={() => stageRef.current?.zoomIn()}
               className="h-8 w-8"
-              title="Aproximar (+15%)"
+              title="Aproximar Zoom (+)"
+              data-testid="canvas-zoom-in"
             >
               <MagnifyingGlassPlus className="size-3.5" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => stageRef.current?.zoomOut()}
-              className="h-8 w-8"
-              title="Afastar (-15%)"
-            >
-              <MagnifyingGlassMinus className="size-3.5" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
               onClick={() => stageRef.current?.resetZoom()}
               className="h-8 w-8 text-[10px] font-mono"
-              title="Redefinir Zoom para 100%"
+              title="Zoom 1:1 (100% · Ctrl+1)"
+              data-testid="canvas-zoom-100"
             >
               1:1
             </Button>
             <Button
               size="icon"
               variant="ghost"
+              onClick={() => stageRef.current?.previousZoom()}
+              className="h-8 w-8"
+              title="Restaurar Zoom Anterior"
+              data-testid="canvas-zoom-prev"
+            >
+              <ArrowCounterClockwise className="size-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
               onClick={() => stageRef.current?.fitView()}
               className="h-8 w-8"
-              title="Ajustar Visualização ao Diagrama (Fit View)"
+              title="Enquadrar Tudo no Canvas (Ctrl+0)"
+              data-testid="canvas-fit-all"
             >
               <ArrowsOutSimple className="size-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              disabled={selectedNodeIds.length === 0}
+              onClick={() => stageRef.current?.fitSelection()}
+              className="h-8 w-8"
+              title="Enquadrar Seleção (Shift+2)"
+              data-testid="canvas-fit-selection"
+            >
+              <FrameCorners className="size-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              disabled={selectedNodeIds.length === 0}
+              onClick={() => stageRef.current?.fitNetwork()}
+              className="h-8 w-8"
+              title="Enquadrar Rede Conectada"
+              data-testid="canvas-fit-network"
+            >
+              <GitBranch className="size-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => stageRef.current?.centerView()}
+              className="h-8 w-8"
+              title="Centralizar Diagrama"
+              data-testid="canvas-center-view"
+            >
+              <Crosshair className="size-3.5" />
+            </Button>
+            <Button
+              size="sm"
+              variant={autoZoom ? "secondary" : "ghost"}
+              onClick={() => setAutoZoom((v) => !v)}
+              className="h-7 px-1.5 text-[10px] font-mono"
+              title="Auto-Zoom ao Abrir/Importar/Gerar com IA"
+              data-testid="canvas-auto-zoom"
+            >
+              AUTO
             </Button>
           </div>
         </div>

@@ -10,7 +10,6 @@ import { useDiagramStore } from "@/lib/diagram/store";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { usePlcStore } from "@/lib/plc/store";
-import { useDigitalTwinStore } from "@/lib/digital-twin-store";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { ProjectSnapshot } from "@/lib/projects.functions";
 import {
@@ -139,15 +138,6 @@ export function syncLegacyStoresFromUnifiedDoc(doc: UnifiedProjectDoc): void {
       fbdSim: useRuntimeStore.getState().fbdSim,
     });
     usePlcStore.getState().setProject(projected.plcProject);
-
-    // Sync Digital Twin nameplates & mappings
-    const twinStore = useDigitalTwinStore.getState();
-    if (doc.views.twin.mappings.length > 0) {
-      twinStore.setMappings(doc.views.twin.mappings, { isDemo: false });
-    }
-    for (const np of Object.values(doc.views.twin.nameplates)) {
-      twinStore.upsertNameplate(np);
-    }
 
     // Seed RuntimeStore with canonical tags
     useRuntimeStore.getState().seedFromCanonicalTags(
@@ -293,22 +283,6 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
           };
         }
 
-        // Auto-populate Digital Twin nameplate for motors
-        if (normalized.catalogType === "motor") {
-          const existingNp = d.views.twin.nameplates[normalized.id];
-          d.views.twin.nameplates[normalized.id] = {
-            equipmentId: normalized.id,
-            potenciaKw: normalized.specs.powerKw ?? existingNp?.potenciaKw ?? 7.5,
-            tensaoV: normalized.specs.voltageV ?? existingNp?.tensaoV ?? 380,
-            correnteNominalA:
-              normalized.specs.nominalCurrentA ?? existingNp?.correnteNominalA ?? 16,
-            rpm: existingNp?.rpm ?? 1750,
-            eficiencia: normalized.specs.efficiency ?? existingNp?.eficiencia ?? 0.92,
-            fatorPotencia: normalized.specs.powerFactor ?? existingNp?.fatorPotencia ?? 0.85,
-            fatorServico: existingNp?.fatorServico ?? 1.15,
-          };
-        }
-
         invalidateStudiesInDraft(d, [normalized.id]);
       });
 
@@ -345,21 +319,6 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
           }
         }
 
-        // Sync Twin Nameplate if present or motor
-        const np = d.views.twin.nameplates[equipmentId];
-        if (np || eq.catalogType === "motor") {
-          d.views.twin.nameplates[equipmentId] = {
-            equipmentId,
-            potenciaKw: eq.specs.powerKw ?? np?.potenciaKw ?? 7.5,
-            tensaoV: eq.specs.voltageV ?? np?.tensaoV ?? 380,
-            correnteNominalA: eq.specs.nominalCurrentA ?? np?.correnteNominalA ?? 16,
-            rpm: np?.rpm ?? 1750,
-            eficiencia: eq.specs.efficiency ?? np?.eficiencia ?? 0.92,
-            fatorPotencia: eq.specs.powerFactor ?? np?.fatorPotencia ?? 0.85,
-            fatorServico: np?.fatorServico ?? 1.15,
-          };
-        }
-
         invalidateStudiesInDraft(d, [equipmentId]);
         d.metadata.revision += 1;
         d.metadata.updatedAt = new Date().toISOString();
@@ -389,8 +348,6 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
       const nextDoc = produce(get().doc, (d) => {
         invalidateStudiesInDraft(d, [equipmentId]);
         delete d.engineering.equipments[equipmentId];
-        delete d.views.twin.nameplates[equipmentId];
-        d.views.twin.mappings = d.views.twin.mappings.filter((m) => m.equipmentId !== equipmentId);
 
         // Remove connections touching equipment
         const removedConnIds = new Set<string>();
@@ -550,11 +507,6 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
             if (w.boundTagId === tag.id || w.params.tag === oldName) {
               w.boundTagId = tag.id;
               w.params.tag = tag.name;
-            }
-          }
-          for (const m of d.views.twin.mappings) {
-            for (const h of m.hotspots) {
-              if (h.tag === oldName) h.tag = tag.name;
             }
           }
         }

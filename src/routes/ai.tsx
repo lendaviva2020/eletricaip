@@ -50,7 +50,7 @@ function AiPage() {
   const [history, setHistory] = useState<ChatMsg[]>([
     {
       role: "ai",
-      text: "Descreva uma planta, um equipamento ou só um briefing curto. Eu projeto o sistema elétrico completo: trafo, CCM, motores, proteções, cabos, instrumentação e topologia. Tudo aparece simultaneamente em Unifilar, Ladder, FBD, SCADA e Twin.",
+      text: "Descreva uma planta, um equipamento ou só um briefing curto. Eu projeto o sistema elétrico completo: trafo, CCM, motores, proteções, cabos, instrumentação e topologia. Tudo aparece simultaneamente em Unifilar, Ladder, FBD e SCADA.",
     },
   ]);
 

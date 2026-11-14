@@ -4,7 +4,6 @@ import { useDiagramStore } from "@/lib/diagram/store";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { usePlcStore } from "@/lib/plc/store";
-import { useDigitalTwinStore } from "@/lib/digital-twin-store";
 import { buildProjectSnapshot } from "@/lib/use-project-persistence";
 import { SnapshotSchema } from "@/lib/projects.functions";
 import { createDefaultPlcProject } from "@/lib/plc/types";
@@ -81,43 +80,10 @@ describe("Fase D — Persistência Completa e Round-Trip (T5)", () => {
       status: "valid",
     });
 
-    // 4. Cadastra Gêmeo Digital
-    useDigitalTwinStore.getState().upsertNameplate({
-      equipmentId: "eq_motor_rt",
-      potenciaKw: 22,
-      tensaoV: 380,
-      correnteNominalA: 42,
-      rpm: 1760,
-      eficiencia: 0.93,
-      fatorPotencia: 0.88,
-      fatorServico: 1.15,
-    });
-    useDigitalTwinStore.getState().setMappings([
-      {
-        equipmentId: "eq_motor_rt",
-        equipmentLabel: "Motor Bomba RT",
-        hotspots: [
-          {
-            id: "hs_temp_m101",
-            label: "Temp Mancal",
-            tag: "TI_M101",
-            type: "temperature",
-            unit: "°C",
-            position: { x: 1, y: 2, z: 3 },
-            color: "#ff0000",
-            alarmActive: false,
-          },
-        ],
-      },
-    ]);
-
-    // 5. Gera snapshot v3
+    // 4. Gera snapshot v3
     const snap = buildProjectSnapshot();
 
     expect(snap.schemaVersion).toBe(3);
-    expect(snap.twin).toBeDefined();
-    expect(snap.twin?.mappings.length).toBe(1);
-    expect(snap.twin?.nameplates["eq_motor_rt"]).toBeDefined();
     expect(snap.studies).toBeDefined();
     expect(Object.keys(snap.studies ?? {})).toHaveLength(1);
     expect(snap.controlBindings).toBeDefined();

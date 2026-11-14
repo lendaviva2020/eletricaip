@@ -16,7 +16,6 @@ const routesToTest = [
   { path: "/dashboard", title: "Dashboard", expectedText: "Dashboard" },
   { path: "/projects", title: "Projetos", expectedText: "Projeto" },
   { path: "/scada", title: "SCADA", expectedText: "SCADA" },
-  { path: "/digital-twin", title: "Digital Twin", expectedText: "Twin" },
   { path: "/analytics", title: "Analytics", expectedText: "Analytics" },
   { path: "/catalog", title: "Catálogo", expectedText: "Catálogo" },
   { path: "/clients", title: "Clientes", expectedText: "Clientes" },

@@ -6,7 +6,7 @@ import {
 } from "../communication/protocol-engine";
 import { ControllerFleetManager } from "../fleet/fleet-manager";
 import { IndustrialCertificateManager } from "../fleet/certificate-manager";
-import { Controller, DigitalTwinState, X509Certificate } from "../canonical/types";
+import { Controller, ControllerShadowState, X509Certificate } from "../canonical/types";
 
 describe("Milestones 8 & 9: Industrial Communication, Fleet Management & Certificates", () => {
   it("ModbusProtocolEngine calcula CRC16 e decodifica quadros TCP", () => {
@@ -98,7 +98,7 @@ describe("Milestones 8 & 9: Industrial Communication, Fleet Management & Certifi
       simulationActive: true,
     };
 
-    const twin: DigitalTwinState = {
+    const shadow: ControllerShadowState = {
       deviceId: ctrl.id,
       observedState: { checksum: "HASH_VERSAO_ANTIGA" },
       declaredState: {},
@@ -108,12 +108,12 @@ describe("Milestones 8 & 9: Industrial Communication, Fleet Management & Certifi
       driftDetails: ["Checksum mismatch"],
     };
 
-    const fleetMgr = new ControllerFleetManager([ctrl], [twin]);
+    const fleetMgr = new ControllerFleetManager([ctrl], [shadow]);
     // O projeto compilou com HASH_VERSAO_NOVA -> deve detectar DRIFT
     const health = fleetMgr.getFleetHealth("HASH_VERSAO_NOVA");
     expect(health.length).toBe(1);
     expect(health[0].status).toBe("DRIFT_DETECTED");
-    expect(health[0].isTwinInSync).toBe(false);
+    expect(health[0].isShadowInSync).toBe(false);
 
     // Validação de RBAC
     expect(ControllerFleetManager.checkPermission("LEAD_ENGINEER", "POU", "WRITE")).toBe(true);

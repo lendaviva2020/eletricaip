@@ -112,13 +112,6 @@ export const SnapshotSchema = z
         programBlocks: [],
         cycleTimeMs: 10,
       }),
-    twin: z
-      .object({
-        mappings: z.array(z.any()).default([]),
-        nameplates: z.record(z.string(), z.any()).default({}),
-        modelUrl: z.string().nullable().optional(),
-      })
-      .optional(),
     studies: z.record(z.string(), z.any()).optional(),
     controlBindings: z.record(z.string(), z.any()).optional(),
     diagnostics: z.array(z.any()).optional(),
@@ -145,7 +138,6 @@ const EMPTY_SNAPSHOT: ProjectSnapshot = {
     programBlocks: [],
     cycleTimeMs: 10,
   },
-  twin: { mappings: [], nameplates: {} },
   studies: {},
   controlBindings: {},
   diagnostics: [],
@@ -593,7 +585,6 @@ export const archiveProject = createServerFn({ method: "POST" })
 
 // Tabelas filhas com coluna project_id e cobertura de DELETE para owner/admin
 // do tenant (ver policies no baseline + migration 20261012110000).
-// twin_hotspots sai por ON DELETE CASCADE (migration 20261012090000).
 // tag_samples (telemetria, sem policy de DELETE p/ cliente) e comments
 // (só próprios) ficam de fora — limpeza via rotina de expurgo com service role.
 const PROJECT_CHILD_TABLES = [

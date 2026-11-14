@@ -11,6 +11,10 @@ import type {
   NodeParams,
 } from "@/lib/diagram/schema";
 import { makeEdge, makeNode } from "@/lib/diagram/model";
+import { repairDiagramConnections } from "@/lib/diagram/connection/connection-repair-engine";
+import { resolveTerminalCode } from "@/lib/diagram/connection/connection-engine";
+import { resolveVisualPort, rotatePort } from "@/lib/diagram/render/ports";
+import { computeNodeBoundingBox, routeOrthogonalEdge } from "@/lib/diagram/render/wire-router";
 import type { IndustrialEdge, IndustrialNode } from "@/lib/project-store";
 import { type LadderRung, type LadderCell, normalizeLadderRungs } from "@/lib/ladder/types";
 import { parseJsonBundle } from "./adapters/json-adapter";
@@ -20,6 +24,7 @@ import { parsePlcopenXml } from "./adapters/plcopen-adapter";
 import { parseNetlistProject } from "./adapters/netlist-adapter";
 import { parseStructuredText } from "./adapters/st-adapter";
 import { parseTxtSpecification } from "./adapters/txt-spec-adapter";
+export { resolveComponentKind } from "./bundle-schema";
 import { resolveComponentKind } from "./bundle-schema";
 import {
   DEFAULT_IMPORTER_LIMITS,
@@ -501,12 +506,16 @@ export function convertBundleToDiagramDoc(
   }
 
   const idMap = new Map<string, string>();
+  const tagOrIdMap = new Map<string, string>();
 
   // 1. Inserir nós
   for (const n of bundle.nodes) {
     const kind = (resolveComponentKind(n.type) || "load") as NodeKind;
     const finalId = mode === "merge" && doc.nodes[n.id] ? `${n.id}_${ulid().slice(-4)}` : n.id;
     idMap.set(n.id, finalId);
+    tagOrIdMap.set(n.id, finalId);
+    if (n.label) tagOrIdMap.set(n.label, finalId);
+    if (n.properties?.tag) tagOrIdMap.set(String(n.properties.tag), finalId);
 
     const canonicalParams = buildCanonicalDiagramParams(kind, n.properties ?? {});
 
@@ -526,19 +535,45 @@ export function convertBundleToDiagramDoc(
   }
 
   // 2. Inserir edges
+  const busbarTapCount = new Map<string, number>();
   for (let i = 0; i < bundle.edges.length; i++) {
     const e = bundle.edges[i];
-    const srcId = idMap.get(e.source) || e.source;
-    const tgtId = idMap.get(e.target) || e.target;
+    const srcId = tagOrIdMap.get(e.source) || idMap.get(e.source) || e.source;
+    const tgtId = tagOrIdMap.get(e.target) || idMap.get(e.target) || e.target;
 
     if (!doc.nodes[srcId] || !doc.nodes[tgtId]) continue;
 
     const edgeId = mode === "merge" ? `edge_imp_${ulid().slice(-6)}` : e.id || `edge_${i + 1}`;
     const circuitConfig = e.circuitConfig === "3F+PE" ? "3F+N+PE" : e.circuitConfig;
+
+    const srcNode = doc.nodes[srcId];
+    const tgtNode = doc.nodes[tgtId];
+    const rawSourcePort = e.fromTerminal || (e as any).sourcePort;
+    const rawTargetPort = e.toTerminal || (e as any).targetPort;
+
+    let sourcePort: string | undefined = rawSourcePort
+      ? resolveTerminalCode(srcNode, rawSourcePort, "source")
+      : undefined;
+    if (!sourcePort) {
+      if (srcNode?.params.kind === "busbar") {
+        const count = (busbarTapCount.get(srcId) || 0) + 1;
+        busbarTapCount.set(srcId, count);
+        const taps = ["B1", "B2", "B3", "B4", "B"];
+        sourcePort = taps[(count - 1) % taps.length];
+      } else {
+        sourcePort = resolveTerminalCode(srcNode, undefined, "source");
+      }
+    }
+    const targetPort = rawTargetPort
+      ? resolveTerminalCode(tgtNode, rawTargetPort, "target")
+      : resolveTerminalCode(tgtNode, undefined, "target");
+
     const newEdge = makeEdge({
       id: edgeId,
       source: srcId,
       target: tgtId,
+      sourcePort,
+      targetPort,
       kind: e.kind || "power",
       sheet: "unifilar",
       circuitConfig: circuitConfig as any,
@@ -546,7 +581,53 @@ export function convertBundleToDiagramDoc(
     doc.edges[edgeId] = newEdge;
   }
 
-  return doc;
+  // 3. Reparar topologia para garantir conectividade de ponta a ponta (sem sobrescrever layout importado)
+  const repair = repairDiagramConnections(doc);
+  const repairedDoc = repair.repairedDoc;
+
+  // 4. Gerar waypoints ortogonais consistentes para condutores (O(N) rápido em bundles 28k+)
+  const allNodes = Object.values(repairedDoc.nodes);
+  const useObstacles = allNodes.length <= 250;
+  const nodeBoxes = new Map<string, ReturnType<typeof computeNodeBoundingBox>>();
+  if (useObstacles) {
+    for (const node of allNodes) {
+      nodeBoxes.set(node.id, computeNodeBoundingBox(node));
+    }
+  }
+
+  for (const [edgeId, edge] of Object.entries(repairedDoc.edges)) {
+    if (edge.waypoints && edge.waypoints.length >= 2) continue;
+    const src = repairedDoc.nodes[edge.source];
+    const tgt = repairedDoc.nodes[edge.target];
+    if (!src || !tgt) continue;
+
+    const srcPort = resolveVisualPort(src.params.kind, edge.sourcePort, "source", src.params);
+    const tgtPort = resolveVisualPort(tgt.params.kind, edge.targetPort, "target", tgt.params);
+    const srcOff = srcPort ? rotatePort(srcPort, src.rotation ?? 0) : { x: 0, y: 0 };
+    const tgtOff = tgtPort ? rotatePort(tgtPort, tgt.rotation ?? 0) : { x: 0, y: 0 };
+
+    const obstacles: ReturnType<typeof computeNodeBoundingBox>[] = [];
+    if (useObstacles) {
+      for (const n of allNodes) {
+        if (n.sheet !== edge.sheet || n.id === src.id || n.id === tgt.id) continue;
+        const b = nodeBoxes.get(n.id);
+        if (b) obstacles.push(b);
+      }
+    }
+
+    repairedDoc.edges[edgeId] = {
+      ...edge,
+      waypoints: routeOrthogonalEdge({
+        from: { x: src.position.x + srcOff.x, y: src.position.y + srcOff.y },
+        to: { x: tgt.position.x + tgtOff.x, y: tgt.position.y + tgtOff.y },
+        srcSide: srcPort?.side ?? "bottom",
+        tgtSide: tgtPort?.side ?? "top",
+        obstacles,
+      }),
+    };
+  }
+
+  return repairedDoc;
 }
 
 /**

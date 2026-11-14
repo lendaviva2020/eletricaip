@@ -68,7 +68,7 @@ const STEPS: Step[] = [
   {
     id: "done",
     title: "Tudo pronto",
-    body: "Explore também Digital Twin, PLC, Simulação e Alarmes na barra superior. Bom trabalho!",
+    body: "Explore também SCADA, PLC, Simulação, Alarmes e Studio na barra superior. Bom trabalho!",
   },
 ];
 

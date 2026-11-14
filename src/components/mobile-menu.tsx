@@ -22,7 +22,6 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: SquaresFour },
   { title: "Projetos", url: "/projects", icon: FolderOpenIcon },
   { title: "Workspace", url: "/workspace", icon: Cpu, accent: true },
-  { title: "Digital Twin", url: "/digital-twin", icon: Cube },
   { title: "IA Industrial", url: "/ai", icon: Sparkle, core: true },
   { title: "Analytics", url: "/analytics", icon: ChartBar },
   { title: "Clientes", url: "/clients", icon: Users },

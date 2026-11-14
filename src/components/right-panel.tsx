@@ -71,7 +71,7 @@ function PropsPanel() {
     return <RightPropertyPanel />;
   }
 
-  // Legacy demo path for SCADA / Twin / generic project nodes
+  // Legacy demo path for SCADA / generic project nodes
   return <LegacyProjectNodeProps />;
 }
 

@@ -49,9 +49,6 @@ const FbdCanvas = lazy(() =>
 const ScadaLayout = lazy(() =>
   import("@/components/scada/scada-layout").then((m) => ({ default: m.ScadaLayout })),
 );
-const TwinCanvas = lazy(() =>
-  import("@/components/canvases/twin-canvas").then((m) => ({ default: m.TwinCanvas })),
-);
 const PlcCanvas = lazy(() =>
   import("@/components/canvases/plc-canvas").then((m) => ({ default: m.PlcCanvas })),
 );
@@ -238,7 +235,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
                   ao canvas ativo e cria um boundary fresco ao trocar de aba. */}
               <ErrorBoundary key={mode}>
                 {/* ClientOnly é obrigatório: sem ele o SSR resolve os React.lazy abaixo
-                    e avalia Pixi/Three/Konva no servidor (Worker), o que derruba a
+                    e avalia Pixi/Konva no servidor (Worker), o que derruba a
                     renderização inteira da rota. */}
                 <ClientOnly fallback={<CanvasFallback />}>
                   <Suspense fallback={<CanvasFallback />}>
@@ -251,7 +248,6 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
                     {mode === "ladder" && <LadderCanvas />}
                     {mode === "fbd" && <FbdCanvas />}
                     {mode === "scada" && <ScadaLayout projectId={projectId} />}
-                    {mode === "twin" && <TwinCanvas />}
                     {mode === "plc" && <PlcCanvas />}
                     {mode === "sim" && <SimCanvas />}
                     {mode === "alarms" && <AlarmsCanvas />}

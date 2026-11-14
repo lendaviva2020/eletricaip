@@ -10,7 +10,6 @@ import {
   PositionSchema,
 } from "@/lib/diagram/schema";
 import type { PlcProject } from "@/lib/plc/types";
-import type { MotorNameplate, TwinMapping } from "@/lib/digital-twin-store";
 import type { CompactProgramModel } from "@/lib/compact-studio/domain/types";
 import { getCanonicalTerminalsForEquipment } from "@/lib/diagram/connection/terminal-library";
 
@@ -280,7 +279,6 @@ export const RepresentationKindSchema = z.enum([
   "fbd",
   "plc",
   "scada",
-  "twin",
   "studies",
   "persistence",
 ]);
@@ -359,12 +357,6 @@ export const ScadaEdgeLayoutSchema = z.object({
 });
 export type ScadaEdgeLayout = z.infer<typeof ScadaEdgeLayoutSchema>;
 
-export interface TwinViewState {
-  mappings: TwinMapping[];
-  nameplates: Record<string, MotorNameplate>;
-  modelUrl: string | null;
-}
-
 export interface ViewsState {
   diagramDocId: string;
   sheets: Array<"unifilar" | "multifilar" | "ladder">;
@@ -380,7 +372,6 @@ export interface ViewsState {
     widgets: Record<string, ScadaWidgetLayout>;
     edges: ScadaEdgeLayout[];
   };
-  twin: TwinViewState;
 }
 
 export interface UnifiedProjectDoc {

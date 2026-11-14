@@ -329,6 +329,16 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
 
           for (const id of finalPatch.removeEdgeIds) delete workingDoc.edges[id];
           for (const id of finalPatch.removeNodeIds) delete workingDoc.nodes[id];
+          for (const u of finalPatch.updateNodes ?? []) {
+            const cur = workingDoc.nodes[u.id];
+            if (!cur) continue;
+            workingDoc.nodes[u.id] = {
+              ...cur,
+              position: u.position ?? cur.position,
+              label: u.label !== undefined ? u.label : cur.label,
+              params: u.params ?? cur.params,
+            };
+          }
           for (const n of finalPatch.addNodes) workingDoc.nodes[n.id] = n;
           for (const e of finalPatch.addEdges) workingDoc.edges[e.id] = e;
 
@@ -342,7 +352,8 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
           // 3. Run electrical topology validation
           const validation = validateElectricalTopology(workingDoc);
 
-          // 4. Synchronize updated nodes and repaired edges back into finalPatch
+          // 4. Synchronize ALL updated nodes and repaired edges back into finalPatch
+          const addedNodeIds = new Set(finalPatch.addNodes.map((n) => n.id));
           const patchEdgesMap = new Map<string, DiagramEdge>();
           for (const e of finalPatch.addEdges) patchEdgesMap.set(e.id, e);
           for (const e of repairResult.addedEdges) patchEdgesMap.set(e.id, e);
@@ -358,10 +369,43 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
             return docNode ? { ...n, position: docNode.position } : n;
           });
 
+          // Propagate position adjustments for pre-existing nodes & waypoints for pre-existing edges
+          const synchronizedUpdateNodesMap = new Map(
+            (finalPatch.updateNodes ?? []).map((u) => [u.id, { ...u }]),
+          );
+          for (const [id, docNode] of Object.entries(workingDoc.nodes)) {
+            if (addedNodeIds.has(id)) continue;
+            const origNode = baseDoc.nodes[id];
+            if (
+              origNode &&
+              (origNode.position.x !== docNode.position.x || origNode.position.y !== docNode.position.y)
+            ) {
+              const prev = synchronizedUpdateNodesMap.get(id) ?? { id };
+              synchronizedUpdateNodesMap.set(id, { ...prev, position: docNode.position });
+            }
+          }
+
+          const addedEdgeIds = new Set(synchronizedEdges.map((e) => e.id));
+          const synchronizedUpdateEdges: NonNullable<AiDiagramPatch["updateEdges"]> = [];
+          for (const [eId, docEdge] of Object.entries(workingDoc.edges)) {
+            if (addedEdgeIds.has(eId)) continue;
+            const origEdge = baseDoc.edges[eId];
+            if (origEdge) {
+              synchronizedUpdateEdges.push({
+                id: eId,
+                sourcePort: docEdge.sourcePort,
+                targetPort: docEdge.targetPort,
+                waypoints: docEdge.waypoints,
+              });
+            }
+          }
+
           finalPatch = {
             ...finalPatch,
             addNodes: synchronizedNodes,
             addEdges: synchronizedEdges,
+            updateNodes: Array.from(synchronizedUpdateNodesMap.values()),
+            updateEdges: synchronizedUpdateEdges,
           };
 
           const report: ConnectivityReport = {

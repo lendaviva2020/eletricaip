@@ -19,7 +19,7 @@ import {
   TraceConfiguration,
   ProtocolConfiguration,
   X509Certificate,
-  DigitalTwinState,
+  ControllerShadowState,
   UserRole,
   RBACPermission,
 } from "./types";
@@ -732,7 +732,7 @@ END_PROGRAM`,
       ],
     };
 
-    // 11. Certificado X.509 e Digital Twin
+    // 11. Certificado X.509 e Estado do Controlador
     const certOpcUa: X509Certificate = {
       id: uuidv4(),
       controllerId: ctrlId,
@@ -746,7 +746,7 @@ END_PROGRAM`,
       trustStatus: "TRUSTED",
     };
 
-    const twinState: DigitalTwinState = {
+    const shadowState: ControllerShadowState = {
       deviceId: ctrlId,
       observedState: { checksum: "VER_COMPILED_HASH_2026" },
       declaredState: {},
@@ -822,7 +822,7 @@ END_PROGRAM`,
       ],
       traceConfigurations: [traceCfg],
       certificates: [certOpcUa],
-      digitalTwinStates: [twinState],
+      controllerShadowStates: [shadowState],
       rbacPermissions: [],
       simulationScenarios: [],
       diagnosticEvents: [],

@@ -74,7 +74,6 @@ const DUMMY_SNAPSHOT: ProjectSnapshot = {
     programBlocks: [],
     cycleTimeMs: 10,
   },
-  twin: { mappings: [], nameplates: {} },
   studies: {},
   controlBindings: {},
   diagnostics: [],

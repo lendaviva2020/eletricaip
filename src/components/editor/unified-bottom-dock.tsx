@@ -42,6 +42,11 @@ import { cmd, type Command } from "@/lib/diagram/commands";
 import { evaluateAllRules, proposeFixes } from "@/lib/diagnostics/draft-orchestrator";
 import { AiFixDialog } from "./ai-fix-dialog";
 import type { FixProposal } from "@/lib/diagnostics/contract";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import {
+  buildDiagnosticContextFromMultifilar,
+  buildDiagnosticContextFromLadder,
+} from "@/lib/diagnostics/ai-repair-context";
 
 /**
  * Retorna o conjunto de abas contextuais de acordo com o modo de canvas ativo.
@@ -57,7 +62,6 @@ export function getContextualTabsForMode(mode: WorkspaceMode): ConsoleTab[] {
       return ["diagnosticos", "simulacao", "Logs", "Alarmes"];
     case "scada":
       return ["Alarmes", "Eventos", "Logs", "OPC-UA", "Modbus"];
-    case "twin":
     case "plc":
     case "sim":
     case "alarms":
@@ -154,6 +158,7 @@ export function UnifiedBottomDock() {
   // Dados de Telemetria e Runtime
   const liveLogs = useProjectStore((s) => s.logs);
   const runtime = useProjectStore((s) => s.runtime);
+  const projectId = useProjectStore((s) => s.projectId);
   const bridge = useOpcuaBridge();
 
   // Abas válidas contextualmente para o modo ativo
@@ -586,20 +591,29 @@ export function UnifiedBottomDock() {
                     {actionableDiagnostics.length} não conformidade(s) detectada(s) segundo a NBR
                     5410
                   </span>
-                  <button
-                    onClick={handleOpenAiFix}
-                    disabled={computedProposals.length === 0}
-                    className={cn(
-                      "h-6 px-2 rounded text-[11px] font-mono font-semibold flex items-center gap-1 border transition-colors",
-                      computedProposals.length > 0
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90 border-primary"
-                        : "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-60",
-                    )}
-                    data-testid="ai-fix-action-button"
-                  >
-                    <Cpu className="h-3 w-3" />
-                    <span>{t("aiFix.buttonLabel")}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <AiFixButton
+                      batch={actionableDiagnostics.map((d) =>
+                        buildDiagnosticContextFromMultifilar(d, projectId || "proj_active"),
+                      )}
+                      variant="primary"
+                      size="sm"
+                    />
+                    <button
+                      onClick={handleOpenAiFix}
+                      disabled={computedProposals.length === 0}
+                      className={cn(
+                        "h-6 px-2 rounded text-[11px] font-mono font-semibold flex items-center gap-1 border transition-colors",
+                        computedProposals.length > 0
+                          ? "bg-muted text-foreground hover:bg-muted/80 border-border"
+                          : "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-60",
+                      )}
+                      data-testid="ai-fix-action-button"
+                    >
+                      <Cpu className="h-3 w-3" />
+                      <span>{t("aiFix.buttonLabel")}</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -662,11 +676,21 @@ export function UnifiedBottomDock() {
                     )}
 
                     <span className="flex-1 truncate">{diag.message}</span>
-                    {diag.nodeId && (
-                      <span className="text-[10px] text-[#38bdf8] underline shrink-0 hover:text-white">
-                        Ver componente
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <AiFixButton
+                        diagnostic={buildDiagnosticContextFromMultifilar(
+                          diag,
+                          projectId || "proj_active",
+                        )}
+                        size="xs"
+                        variant="compact"
+                      />
+                      {diag.nodeId && (
+                        <span className="text-[10px] text-[#38bdf8] underline shrink-0 hover:text-white">
+                          Ver componente
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
@@ -676,6 +700,21 @@ export function UnifiedBottomDock() {
           {/* ABA 1: DIAGNÓSTICOS LADDER */}
           {tab === "diagnosticos" && activeMode === "ladder" && (
             <div className="space-y-1.5">
+              {ladderIssues.length > 0 && (
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/60">
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {ladderIssues.length} inconsistência(s) detectada(s) segundo a IEC 61131-3
+                  </span>
+                  <AiFixButton
+                    batch={ladderIssues.map((i) =>
+                      buildDiagnosticContextFromLadder(i, projectId || "proj_active"),
+                    )}
+                    variant="primary"
+                    size="sm"
+                  />
+                </div>
+              )}
+
               {ladderIssues.length === 0 ? (
                 <div className="flex items-center gap-2 text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 p-3 rounded">
                   <CheckCircle className="h-4 w-4 shrink-0" />
@@ -724,9 +763,19 @@ export function UnifiedBottomDock() {
                         Dica: {issue.fixHint}
                       </span>
                     )}
-                    <span className="text-[10px] text-[#38bdf8] underline shrink-0 hover:text-white">
-                      Focar rede
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <AiFixButton
+                        diagnostic={buildDiagnosticContextFromLadder(
+                          issue,
+                          projectId || "proj_active",
+                        )}
+                        size="xs"
+                        variant="compact"
+                      />
+                      <span className="text-[10px] text-[#38bdf8] underline shrink-0 hover:text-white">
+                        Focar rede
+                      </span>
+                    </div>
                   </div>
                 ))
               )}

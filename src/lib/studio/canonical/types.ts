@@ -833,15 +833,15 @@ export const X509CertificateSchema = z.object({
 });
 export type X509Certificate = z.infer<typeof X509CertificateSchema>;
 
-export const DigitalTwinSyncStatusSchema = z.enum([
+export const ControllerShadowSyncStatusSchema = z.enum([
   "SYNCHRONIZED",
   "DRIFT_DETECTED",
   "DESYNCHRONIZED",
   "OFFLINE",
 ]);
-export type DigitalTwinSyncStatus = z.infer<typeof DigitalTwinSyncStatusSchema>;
+export type ControllerShadowSyncStatus = z.infer<typeof ControllerShadowSyncStatusSchema>;
 
-export const DigitalTwinStateSchema = z.object({
+export const ControllerShadowStateSchema = z.object({
   deviceId: UUIDSchema,
   observedState: z
     .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
@@ -853,10 +853,10 @@ export const DigitalTwinStateSchema = z.object({
     .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
     .default({}),
   lastSyncTimestamp: z.string().default(() => new Date().toISOString()),
-  syncStatus: DigitalTwinSyncStatusSchema.default("SYNCHRONIZED"),
+  syncStatus: ControllerShadowSyncStatusSchema.default("SYNCHRONIZED"),
   driftDetails: z.array(z.string()).default([]),
 });
-export type DigitalTwinState = z.infer<typeof DigitalTwinStateSchema>;
+export type ControllerShadowState = z.infer<typeof ControllerShadowStateSchema>;
 
 export const UserRoleSchema = z.enum([
   "ADMIN",
@@ -964,9 +964,9 @@ export const IndustrialProjectSchema = z.object({
   lastCompilationResult: CompilationResultSchema.optional(),
   diagnosticEvents: z.array(DiagnosticEventSchema).default([]),
 
-  // Gestão de Frota, Segurança e Digital Twin
+  // Gestão de Frota, Segurança e Estado de Controladores
   certificates: z.array(X509CertificateSchema).default([]),
-  digitalTwinStates: z.array(DigitalTwinStateSchema).default([]),
+  controllerShadowStates: z.array(ControllerShadowStateSchema).default([]),
   rbacPermissions: z.array(RBACPermissionSchema).default([]),
 });
 export type IndustrialProject = z.infer<typeof IndustrialProjectSchema>;

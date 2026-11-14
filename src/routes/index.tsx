@@ -978,7 +978,7 @@ function PricingSection({ authed }: { authed: boolean }) {
       premium: "Completo + Customizado",
     },
     {
-      feature: "Telemetria em Tempo Real (OPC-UA / Modbus) & Digital Twin",
+      feature: "Telemetria em Tempo Real (OPC-UA / Modbus) & SCADA Supervisório",
       free: false,
       basic: false,
       pro: true,

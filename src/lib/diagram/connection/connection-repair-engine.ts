@@ -105,6 +105,20 @@ export function repairDiagramConnections(doc: DiagramDoc): RepairResult {
           addedEdges.push(e);
         }
       }
+    } else {
+      // If no branch breakers exist, connect busbar directly to unpowered branch devices
+      const directBranchDevices = [...contactors, ...vfds, ...softstarters, ...motors].filter(
+        (d) => getIncomingEdges(d.id).length === 0,
+      );
+      if (directBranchDevices.length > 0) {
+        const busEdges = connectBusbarToBranches(busbar, directBranchDevices);
+        for (const e of busEdges) {
+          if (!hasEdgeBetween(e.source, e.target)) {
+            nextDoc.edges[e.id] = e;
+            addedEdges.push(e);
+          }
+        }
+      }
     }
   }
 
@@ -286,6 +300,45 @@ export function repairDiagramConnections(doc: DiagramDoc): RepairResult {
     }
   }
 
+  // 2.5 Direct Motor Starter & General Loads (Breaker -> Motor / Load / Lamp / Socket)
+  const generalLoads = nodes.filter(
+    (n) => n.params.kind === "load" || n.params.kind === "lamp" || n.params.kind === "socket",
+  );
+
+  // Remaining unpowered motors
+  for (const m of motors) {
+    if (getIncomingEdges(m.id).length === 0) {
+      const candidateBreaker = sortedBranchBreakers.find(
+        (b) => getOutgoingEdges(b.id).length === 0,
+      );
+      if (candidateBreaker) {
+        const edge = createDeterministicConnection(candidateBreaker, m, {
+          sourcePort: "B",
+          targetPort: "T",
+        });
+        nextDoc.edges[edge.id] = edge;
+        addedEdges.push(edge);
+      }
+    }
+  }
+
+  // General loads
+  for (const ld of generalLoads) {
+    if (getIncomingEdges(ld.id).length === 0) {
+      const candidateBreaker = sortedBranchBreakers.find(
+        (b) => getOutgoingEdges(b.id).length === 0,
+      );
+      if (candidateBreaker) {
+        const edge = createDeterministicConnection(candidateBreaker, ld, {
+          sourcePort: "B",
+          targetPort: "T",
+        });
+        nextDoc.edges[edge.id] = edge;
+        addedEdges.push(edge);
+      }
+    }
+  }
+
   // 3. Post-Repair Validation
   const validation = validateElectricalTopology(nextDoc);
   const remainingIssues = validation.diagnostics
@@ -298,4 +351,105 @@ export function repairDiagramConnections(doc: DiagramDoc): RepairResult {
     repairedCount: addedEdges.length,
     remainingIssues,
   };
+}
+
+/**
+ * Reconstructs a full DiagramDoc from project nodes and edges, guaranteeing complete connectivity.
+ */
+export function synthesizeDiagramDocFromProject(
+  nodes: Array<{
+    id: string;
+    kind?: string;
+    label?: string;
+    position?: { x: number; y: number };
+    params?: Record<string, unknown>;
+  }>,
+  edges: Array<{
+    id?: string;
+    source: string;
+    target: string;
+    kind?: string;
+  }>,
+): DiagramDoc {
+  const newDoc: DiagramDoc = {
+    version: 1,
+    id: `doc_synth_${Date.now().toString(36)}`,
+    metadata: { title: "Projeto Recuperado", norms: ["NBR 5410", "IEC 60947"] },
+    sheets: ["unifilar"],
+    nodes: {},
+    edges: {},
+  };
+
+  const idMap = new Map<string, string>();
+  for (const n of nodes) {
+    const rawKind = (n.kind || "load").toLowerCase();
+    const kind = (
+      rawKind.includes("breaker") || rawKind.includes("disjuntor") || rawKind.includes("dj")
+        ? "breaker"
+        : rawKind.includes("busbar") || rawKind.includes("barra")
+          ? "busbar"
+          : rawKind.includes("contactor") || rawKind.includes("contator")
+            ? "contactor"
+            : rawKind.includes("motor")
+              ? "motor"
+              : rawKind.includes("trafo") || rawKind.includes("transformer")
+                ? "transformer"
+                : rawKind.includes("vfd") || rawKind.includes("inversor")
+                  ? "vfd"
+                  : rawKind.includes("soft")
+                    ? "softstarter"
+                    : rawKind.includes("psu") || rawKind.includes("fonte")
+                      ? "psu"
+                      : "load"
+    ) as any;
+
+    idMap.set(n.id, n.id);
+    newDoc.nodes[n.id] = {
+      id: n.id,
+      sheet: "unifilar",
+      position: n.position || { x: 100, y: 100 },
+      label: n.label || n.id,
+      rotation: 0,
+      params: {
+        kind,
+        tag: n.label || n.id,
+        in_A: 32,
+        voltage_V: 380,
+        power_kW: 7.5,
+        poles: 3,
+        curve: "C",
+        ...(n.params ?? {}),
+      } as any,
+    };
+  }
+
+  const busbarCount = new Map<string, number>();
+  for (let i = 0; i < edges.length; i++) {
+    const e = edges[i];
+    if (!newDoc.nodes[e.source] || !newDoc.nodes[e.target]) continue;
+    const edgeId = e.id || `edge_synth_${i + 1}`;
+
+    let sourcePort = "B";
+    if (newDoc.nodes[e.source]?.params.kind === "busbar") {
+      const c = (busbarCount.get(e.source) || 0) + 1;
+      busbarCount.set(e.source, c);
+      const taps = ["B1", "B2", "B3", "B4", "B"];
+      sourcePort = taps[(c - 1) % taps.length];
+    }
+
+    newDoc.edges[edgeId] = {
+      id: edgeId,
+      source: e.source,
+      target: e.target,
+      sourcePort,
+      targetPort: "T",
+      kind: e.kind === "signal" ? "signal" : "power",
+      sheet: "unifilar",
+      circuitConfig: "3F+N+PE",
+    };
+  }
+
+  // Run repair to seal any missing links
+  const repair = repairDiagramConnections(newDoc);
+  return repair.repairedDoc;
 }

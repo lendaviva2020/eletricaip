@@ -5,13 +5,16 @@ import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { usePlcStore } from "@/lib/plc/store";
-import { useDigitalTwinStore } from "@/lib/digital-twin-store";
 import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { loadProject, saveProject } from "@/lib/projects.functions";
 import type { ProjectSnapshot } from "@/lib/projects.functions";
 import type { DiagramDoc } from "@/lib/diagram/schema";
 import type { PlcProject } from "@/lib/plc/types";
 import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
+import {
+  repairDiagramConnections,
+  synthesizeDiagramDocFromProject,
+} from "@/lib/diagram/connection/connection-repair-engine";
 import { useAutosaveLog } from "@/lib/autosave-log";
 import { toast } from "sonner";
 
@@ -93,8 +96,24 @@ export function useProjectPersistence(projectId: string | null) {
       useProjectStore.getState().setProjectId(projectId);
 
       const ds = useDiagramStore.getState();
-      if (snap.diagram) {
-        ds.loadDoc(snap.diagram as DiagramDoc);
+      let loadedDiagramDoc = snap.diagram as DiagramDoc | undefined;
+      if (loadedDiagramDoc && Object.keys(loadedDiagramDoc.nodes ?? {}).length > 0) {
+        // Se houver nós mas as conexões estiverem vazias ou desconectadas, repara
+        if (
+          Object.keys(loadedDiagramDoc.nodes).length > 1 &&
+          (!loadedDiagramDoc.edges || Object.keys(loadedDiagramDoc.edges).length === 0)
+        ) {
+          const repaired = repairDiagramConnections(loadedDiagramDoc);
+          loadedDiagramDoc = repaired.repairedDoc;
+        }
+        ds.loadDoc(loadedDiagramDoc);
+      } else if (snap.project?.nodes && snap.project.nodes.length > 0) {
+        // Fallback: Sintetiza DiagramDoc completo a partir do grafo do projeto
+        const synthDoc = synthesizeDiagramDocFromProject(
+          snap.project.nodes as IndustrialNode[],
+          snap.project.edges as IndustrialEdge[],
+        );
+        ds.loadDoc(synthDoc);
       } else {
         ds.resetDoc();
       }
@@ -119,18 +138,6 @@ export function useProjectPersistence(projectId: string | null) {
 
       if (snap.plc) {
         usePlcStore.getState().setProject(snap.plc as PlcProject);
-      }
-
-      if (snap.twin?.mappings) {
-        useDigitalTwinStore.getState().setMappings(snap.twin.mappings, { isDemo: false });
-      }
-      if (snap.twin?.nameplates) {
-        for (const np of Object.values(snap.twin.nameplates)) {
-          useDigitalTwinStore.getState().upsertNameplate(np as any);
-        }
-      }
-      if (snap.twin?.modelUrl !== undefined) {
-        useDigitalTwinStore.getState().setModelUrl(snap.twin.modelUrl);
       }
 
       useUnifiedProjectStore.getState().hydrateFromV2Snapshot(
@@ -381,7 +388,6 @@ export function buildProjectSnapshot(): ProjectSnapshot {
   const es = useEditorStore.getState();
   const ds = useDiagramStore.getState();
   const pls = usePlcStore.getState();
-  const ts = useDigitalTwinStore.getState();
   const us = useUnifiedProjectStore.getState();
 
   return {
@@ -408,11 +414,6 @@ export function buildProjectSnapshot(): ProjectSnapshot {
     },
     diagram: ds.doc as DiagramDoc,
     plc: pls.project as PlcProject,
-    twin: {
-      mappings: ts.mappings,
-      nameplates: ts.nameplates,
-      modelUrl: ts.modelUrl,
-    },
     studies: us.doc.studies,
     controlBindings: us.doc.engineering.controlBindings,
     diagnostics: us.doc.diagnostics,

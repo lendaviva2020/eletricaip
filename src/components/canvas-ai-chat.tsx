@@ -26,6 +26,14 @@ import { useDiagramStore } from "@/lib/diagram/store";
 import { AiPatchPreview } from "@/components/ai-patch-preview";
 import { detectFormat } from "@/lib/importer/universal-importer";
 import { useI18n } from "@/lib/i18n";
+import {
+  getOrCreateProjectConversation,
+  persistChatMessage,
+} from "@/lib/ai-chat.functions";
+import {
+  formatDiagnosticFor7StepRemediation,
+  type DiagnosticContext,
+} from "@/lib/diagnostics/ai-repair-context";
 
 interface Msg {
   role: "user" | "ai";
@@ -68,12 +76,65 @@ export function CanvasAiChat() {
   const applyAiPatch = useDiagramStore((s) => s.applyAiPatch);
   const diagramDoc = useDiagramStore((s) => s.doc);
 
+  const projectId = useProjectStore((s) => s.projectId);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const getOrCreateConv = useServerFn(getOrCreateProjectConversation);
+  const persistMsg = useServerFn(persistChatMessage);
+
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
       text: t("aiChat.initialGreeting"),
     },
   ]);
+
+  // Carrega ou recupera a sessão contínua de engenharia vinculada ao projeto ativo
+  useEffect(() => {
+    if (!projectId) return;
+    let mounted = true;
+    getOrCreateConv({
+      data: { projectId, title: "Engenharia Industrial ElétricAi" },
+    })
+      .then((res) => {
+        if (!mounted || !res) return;
+        setActiveConvId(res.conversation.id);
+        if (res.messages && res.messages.length > 0) {
+          const loaded: Msg[] = res.messages.map((m) => ({
+            role: m.role === "assistant" ? "ai" : "user",
+            text: m.content,
+          }));
+          setMsgs(loaded);
+        }
+      })
+      .catch((err) => {
+        // Fallback gracioso em modo offline ou teste
+        console.warn("[CanvasAiChat] Memória contínua Supabase:", err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [projectId, getOrCreateConv]);
+
+  // Captura eventos do botão "CORRIGIR COM IA" disparados em qualquer módulo
+  useEffect(() => {
+    const handler = (evt: any) => {
+      setOpen(true);
+      const detail = evt?.detail;
+      const target =
+        detail?.batch && detail.batch.length > 0 ? detail.batch : detail?.context;
+      if (target) {
+        const prompt = formatDiagnosticFor7StepRemediation(
+          target,
+          locale === "en" ? "en" : "pt-BR",
+        );
+        setPatchMode(true);
+        void send(prompt);
+      }
+    };
+    window.addEventListener("eletricai-ai-repair", handler as EventListener);
+    return () =>
+      window.removeEventListener("eletricai-ai-repair", handler as EventListener);
+  }, [locale]);
 
   // Keep first greeting in sync if user changes language before sending prompts
   useEffect(() => {
@@ -191,6 +252,15 @@ export function CanvasAiChat() {
         text: patchMode ? t("aiChat.generatingPatch") : t("aiChat.processingPrompt"),
       },
     ]);
+    if (activeConvId) {
+      persistMsg({
+        data: {
+          conversationId: activeConvId,
+          role: "user",
+          content: p,
+        },
+      }).catch((err) => console.warn("[CanvasAiChat] persist user turn:", err));
+    }
     setBusy(true);
 
     try {
@@ -232,6 +302,7 @@ export function CanvasAiChat() {
         } else {
           applyAiPatch(res.patch);
           window.dispatchEvent(new Event("ai-usage-event"));
+          window.dispatchEvent(new CustomEvent("eletricai-fit-view"));
           const {
             addNodes = [],
             addEdges = [],
@@ -246,9 +317,20 @@ export function CanvasAiChat() {
             const reportSummary = res.report?.summary
               ? `\n\n⚡ **Relatório de Conectividade:**\n${res.report.summary}`
               : "";
+            const responseText = `**${title}**\n\n${rationale ?? ""}\n\n• +${addNodes.length} ${isEn ? "nodes" : "nós"} · +${addEdges.length} conexões elétricas\n• ~${updateNodes.length} updates · −${removeNodeIds.length} ${isEn ? "nodes" : "nós"} / −${removeEdgeIds.length} edges${reportSummary}`;
+            if (activeConvId) {
+              persistMsg({
+                data: {
+                  conversationId: activeConvId,
+                  role: "assistant",
+                  content: responseText,
+                  tokensUsed: res.tokensUsed,
+                },
+              }).catch((err) => console.warn("[CanvasAiChat] persist ai patch:", err));
+            }
             c[c.length - 1] = {
               role: "ai",
-              text: `**${title}**\n\n${rationale ?? ""}\n\n• +${addNodes.length} ${isEn ? "nodes" : "nós"} · +${addEdges.length} conexões elétricas\n• ~${updateNodes.length} updates · −${removeNodeIds.length} ${isEn ? "nodes" : "nós"} / −${removeEdgeIds.length} edges${reportSummary}`,
+              text: responseText,
               patchApplied: true,
             };
             return c;
@@ -256,11 +338,21 @@ export function CanvasAiChat() {
         }
       } else {
         const r = await callArchitect(contextualPrompt, true, briefingDocument, locale);
+        const legacyText = `**${r.title}**\n\n${r.rationale}\n\n* CCM: ${r.ccm.columns} colunas / ${r.ccm.cells} gavetas\n* Trafo: ${r.transformer.kVA}kVA (${r.transformer.primary_kV}kV → ${r.transformer.secondary_V}V)\n* Motores adicionados: ${r.motors.map((mo) => `${mo.id} (${mo.power_kW}kW)`).join(", ")}`;
+        if (activeConvId) {
+          persistMsg({
+            data: {
+              conversationId: activeConvId,
+              role: "assistant",
+              content: legacyText,
+            },
+          }).catch((err) => console.warn("[CanvasAiChat] persist legacy architect:", err));
+        }
         setMsgs((m) => {
           const c = [...m];
           c[c.length - 1] = {
             role: "ai",
-            text: `**${r.title}**\n\n${r.rationale}\n\n* CCM: ${r.ccm.columns} colunas / ${r.ccm.cells} gavetas\n* Trafo: ${r.transformer.kVA}kVA (${r.transformer.primary_kV}kV → ${r.transformer.secondary_V}V)\n* Motores adicionados: ${r.motors.map((mo) => `${mo.id} (${mo.power_kW}kW)`).join(", ")}`,
+            text: legacyText,
             hasPatch: true,
             patchData: r,
           };
@@ -428,9 +520,19 @@ export function CanvasAiChat() {
       <div className="h-10 shrink-0 flex items-center gap-2 px-3 border-b border-border bg-panel">
         <Sparkle className="h-4 w-4 text-primary" />
         <div className="flex flex-col">
-          <span className="text-[11px] font-display font-bold tracking-wider text-foreground">
-            {t("aiChat.title")}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-display font-bold tracking-wider text-foreground">
+              {t("aiChat.title")}
+            </span>
+            {activeConvId && (
+              <span
+                className="text-[8px] bg-emerald-950/70 text-emerald-400 border border-emerald-500/40 px-1 py-0.2 rounded font-mono font-semibold uppercase tracking-wider"
+                title="Memória técnica contínua persistida no Supabase ativa para este projeto"
+              >
+                Memória Ativa
+              </span>
+            )}
+          </div>
           <span className="text-[9px] text-primary/80 font-mono tracking-tight font-medium uppercase">
             {creditInfo.remainingLabel}
           </span>

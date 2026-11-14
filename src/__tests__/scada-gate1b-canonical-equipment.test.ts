@@ -216,7 +216,6 @@ describe("GATE 1B — RSK-P1-01: Modelo Canônico de Equipamentos & Single Sourc
         },
         multifilar: { nodes: {}, edges: {} },
         scada: { widgets: {}, edges: [] },
-        twin: { mappings: [], nameplates: {}, modelUrl: null },
       },
       studies: {},
       diagnostics: [],

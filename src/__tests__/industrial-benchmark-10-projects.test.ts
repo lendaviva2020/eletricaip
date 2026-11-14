@@ -14,7 +14,7 @@
 // 7. Projeto G: Circuito de distribuição longo (120 m) com queda de tensão e curto mínimo
 // 8. Projeto H: Subestação abrigada 1000 kVA com estudo de arco elétrico e EPI (IEEE 1584)
 // 9. Projeto I: Sistema SCADA com supervisão de grandezas elétricas e alarmes
-// 10. Projeto J: Digital Twin com sincronização de telemetria e integridade do modelo unificado
+// 10. Projeto J: Determinismo e integridade do modelo unificado
 // ==============================================================================
 
 import { describe, expect, it } from "vitest";
@@ -432,10 +432,10 @@ describe("PROJETO I: Supervisão SCADA e Gerenciamento de Alarmes", () => {
   });
 });
 
-describe("PROJETO J: Digital Twin com Integridade do Modelo Unificado", () => {
+describe("PROJETO J: Determinismo e Integridade do Modelo Unificado", () => {
   it("mantém determinismo e ausência de valores randômicos em simulação técnica", () => {
-    const p1 = calcMotor({ id: "M_TWIN", power_kW: 15, voltage_V: 380 });
-    const p2 = calcMotor({ id: "M_TWIN", power_kW: 15, voltage_V: 380 });
+    const p1 = calcMotor({ id: "M_UNIF_1", power_kW: 15, voltage_V: 380 });
+    const p2 = calcMotor({ id: "M_UNIF_1", power_kW: 15, voltage_V: 380 });
 
     // Determinismo matemático estrito (sem Math.random ou ruído espúrio)
     expect(p1.In_A).toBe(p2.In_A);

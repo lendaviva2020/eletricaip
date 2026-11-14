@@ -2,7 +2,8 @@
 // Cada porta tem id estável, posição local e "side" (lado lógico — útil para
 // roteamento ortogonal de edges). Mapeamos kinds para arquétipos para evitar
 // duplicação; novos kinds caem no fallback "twoTerminal".
-import type { NodeKind } from "../schema";
+import type { NodeKind, NodeParams } from "../schema";
+import { getEquipmentTerminalProfile } from "../connection/terminal-library";
 
 export type PortSide = "left" | "right" | "top" | "bottom" | "center";
 
@@ -109,4 +110,145 @@ export function rotatePort(p: PortDef, rotationDeg: number): { x: number; y: num
 export function findPort(kind: NodeKind, portId: string | undefined): PortDef | null {
   if (!portId) return null;
   return getPorts(kind).find((p) => p.id === portId) ?? null;
+}
+
+const INPUT_PORT_ALIASES = new Set([
+  "IN",
+  "INPUT",
+  "PRI",
+  "PRIMARY",
+  "LINE",
+  "SUPPLY",
+  "L1",
+  "L2",
+  "L3",
+  "IN_R",
+  "IN_S",
+  "IN_T",
+  "R",
+  "S",
+  "U1",
+  "V1",
+  "W1",
+  "1",
+  "3",
+  "5",
+  "1/L1",
+  "3/L2",
+  "5/L3",
+  "A1",
+  "X1",
+  "TOP",
+  "T",
+]);
+
+const OUTPUT_PORT_ALIASES = new Set([
+  "OUT",
+  "OUTPUT",
+  "SEC",
+  "SECONDARY",
+  "LOAD",
+  "OUT_U",
+  "OUT_V",
+  "OUT_W",
+  "T1",
+  "T2",
+  "T3",
+  "U",
+  "V",
+  "W",
+  "U2",
+  "V2",
+  "W2",
+  "2",
+  "4",
+  "6",
+  "2/T1",
+  "4/T2",
+  "6/T3",
+  "A2",
+  "X2",
+  "BOTTOM",
+  "B",
+]);
+
+/**
+ * Resolves a visual canvas port from a logical terminal code, canonical terminal ID,
+ * or raw visual port ID. Prevents vertical IEC components from falling back to L/R ports.
+ */
+export function resolveVisualPort(
+  kind: NodeKind,
+  portId: string | undefined,
+  role: "source" | "target" = "source",
+  params?: NodeParams,
+): PortDef | undefined {
+  const ports = getPorts(kind);
+  if (ports.length === 0) return undefined;
+
+  const findById = (id: string | undefined): PortDef | undefined => {
+    if (!id) return undefined;
+    const upper = id.toUpperCase();
+    return ports.find((p) => p.id === id) ?? ports.find((p) => p.id.toUpperCase() === upper);
+  };
+
+  const shortId = portId?.includes(":")
+    ? portId.slice(portId.lastIndexOf(":") + 1).trim()
+    : portId?.trim();
+
+  // 1. Direct match on visual port id ("T", "B", "L", "R", "B1".."B4", "C")
+  const direct = findById(portId) ?? findById(shortId);
+  if (direct) return direct;
+
+  const profile = getEquipmentTerminalProfile(kind, params);
+
+  // 2. Canonical terminal profile lookup (IEC terminal code -> visual portId)
+  if (shortId) {
+    const shortUpper = shortId.toUpperCase();
+    const matchedTerm =
+      profile.terminals.find((t) => t.code.toUpperCase() === shortUpper) ??
+      profile.terminals.find((t) => {
+        const tc = t.code.toUpperCase();
+        return tc.startsWith(`${shortUpper}/`) || tc.endsWith(`/${shortUpper}`);
+      });
+    if (matchedTerm) {
+      const mappedPort = findById(matchedTerm.portId);
+      if (mappedPort) return mappedPort;
+    }
+
+    // 3. Semantic IEC alias fallback (IN/OUT, 1/2, L1/T1, PRI/SEC, etc.)
+    if (INPUT_PORT_ALIASES.has(shortUpper)) {
+      return (
+        findById(profile.defaultInPort) ??
+        findById("T") ??
+        findById("L") ??
+        ports[0]
+      );
+    }
+    if (OUTPUT_PORT_ALIASES.has(shortUpper)) {
+      return (
+        findById(profile.defaultOutPort) ??
+        findById("B") ??
+        findById("R") ??
+        ports[ports.length - 1] ??
+        ports[0]
+      );
+    }
+  }
+
+  // 4. Role-based power-flow fallback when portId is omitted
+  if (role === "source") {
+    return (
+      findById(profile.defaultOutPort) ??
+      findById("B") ??
+      findById("R") ??
+      ports[ports.length - 1] ??
+      ports[0]
+    );
+  }
+  return (
+    findById(profile.defaultInPort) ??
+    findById("T") ??
+    findById("L") ??
+    ports[0]
+  );
 }

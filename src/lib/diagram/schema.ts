@@ -306,5 +306,16 @@ export const AiDiagramPatchSchema = z.object({
     )
     .max(200)
     .default([]),
+  updateEdges: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(128),
+        sourcePort: z.string().max(128).optional(),
+        targetPort: z.string().max(128).optional(),
+        waypoints: z.array(PositionSchema).optional(),
+      }),
+    )
+    .max(400)
+    .default([]),
 });
 export type AiDiagramPatch = z.infer<typeof AiDiagramPatchSchema>;

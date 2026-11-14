@@ -81,7 +81,7 @@ describe("Milestone 6: Project Comparison, Semantic Diff & Version Control", () 
     libraryReferences: [],
     traceConfigurations: [],
     certificates: [],
-    digitalTwinStates: [],
+    controllerShadowStates: [],
     rbacPermissions: [],
     simulationScenarios: [],
     diagnosticEvents: [],

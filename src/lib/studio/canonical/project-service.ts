@@ -178,7 +178,7 @@ export class CanonicalProjectService {
       libraryReferences: [],
       traceConfigurations: [],
       certificates: [],
-      digitalTwinStates: [],
+      controllerShadowStates: [],
       rbacPermissions: [],
       simulationScenarios: [],
       diagnosticEvents: [],

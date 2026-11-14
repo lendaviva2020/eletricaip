@@ -31,13 +31,24 @@ export function resolveTerminalCode(
   const profile = getEquipmentTerminalProfile(node.params.kind, node.params);
   const terms = profile.terminals;
 
-  // 1. If portId matches a terminal code directly
-  const exactTerm = terms.find((t) => t.code === portId || `${node.id}:${t.code}` === portId);
-  if (exactTerm) return exactTerm.code;
+  // 1. If portId matches a terminal code directly (case-insensitive)
+  if (portId) {
+    const shortId = portId.includes(":") ? portId.slice(portId.lastIndexOf(":") + 1) : portId;
+    const shortUpper = shortId.toUpperCase();
+    const exactTerm =
+      terms.find((t) => t.code === portId || `${node.id}:${t.code}` === portId) ??
+      terms.find((t) => t.code.toUpperCase() === shortUpper) ??
+      terms.find((t) => {
+        const tc = t.code.toUpperCase();
+        return tc.startsWith(`${shortUpper}/`) || tc.endsWith(`/${shortUpper}`);
+      });
+    if (exactTerm) return exactTerm.code;
+  }
 
   // 2. If portId matches a canvas render portId (e.g. "T", "B", "B1")
   if (portId) {
-    const portMatch = terms.find((t) => t.portId === portId);
+    const pUpper = portId.toUpperCase();
+    const portMatch = terms.find((t) => t.portId === portId || t.portId.toUpperCase() === pUpper);
     if (portMatch) return portMatch.code;
   }
 

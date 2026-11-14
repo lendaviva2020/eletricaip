@@ -1,4 +1,4 @@
-// Chrome compartilhado entre canvases (unifilar, twin, plc, fbd, sim, alarmes,
+// Chrome compartilhado entre canvases (unifilar, plc, fbd, sim, alarmes,
 // konva). Extraído de `unifilar-canvas.tsx` como parte do descomissionamento
 // do shim Voltai (#WGL-07 · etapa 1) — sem dependência do `useVoltaiStore`.
 

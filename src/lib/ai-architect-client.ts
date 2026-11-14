@@ -15,6 +15,15 @@ import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { buildProjectSnapshot } from "@/lib/use-project-persistence";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { VerificationReport } from "@/lib/ai/verification-types";
+import { useDiagramStore } from "@/lib/diagram/store";
+import { makeNode, makeEdge, createEmptyDoc } from "@/lib/diagram/model";
+import { repairDiagramConnections } from "@/lib/diagram/connection/connection-repair-engine";
+import { autoLayoutIndustrialDiagram } from "@/lib/diagram/connection/auto-layout-router";
+import {
+  buildCanonicalDiagramParams,
+  resolveComponentKind,
+} from "@/lib/importer/universal-importer";
+import type { DiagramDoc, NodeKind as DiagramNodeKind } from "@/lib/diagram/schema";
 
 export interface ArchitectResult {
   title: string;
@@ -233,6 +242,105 @@ async function runHealthPing(): Promise<unknown> {
   }
 }
 
+/**
+ * Converts ArchitectResult into a fully connected, standards-compliant DiagramDoc.
+ * Guarantees that busbar branches, contactors, overloads, and motors are wired.
+ */
+export function convertArchitectResultToDiagramDoc(
+  result: ArchitectResult,
+  baseDoc?: DiagramDoc,
+  mode: "replace" | "merge" = "replace",
+): DiagramDoc {
+  const doc: DiagramDoc =
+    mode === "merge" && baseDoc
+      ? JSON.parse(JSON.stringify(baseDoc))
+      : createEmptyDoc();
+
+  doc.metadata = {
+    title: result.title || doc.metadata.title,
+    norms: ["NBR 5410", "IEC 60947", "IEC 60204-1"],
+  };
+
+  const idMap = new Map<string, string>();
+  const tagOrLabelToId = new Map<string, string>();
+
+  // 1. Process and add Diagram Nodes
+  for (const n of result.nodes) {
+    const kind = (resolveComponentKind(n.kind) || n.kind || "motor") as DiagramNodeKind;
+    const finalId =
+      mode === "merge" && doc.nodes[n.id]
+        ? `${n.id}_${Date.now().toString(36).slice(-4)}`
+        : n.id;
+    idMap.set(n.id, finalId);
+    tagOrLabelToId.set(n.id, finalId);
+    if (n.label) tagOrLabelToId.set(n.label, finalId);
+
+    const canonicalParams = buildCanonicalDiagramParams(
+      kind,
+      (n.params as Record<string, any>) ?? {},
+    );
+
+    const newNode = makeNode({
+      id: finalId,
+      sheet: "unifilar",
+      params: canonicalParams,
+      position: n.position || { x: 100, y: 100 },
+      label: n.label || n.id,
+      rotation: 0,
+    });
+    doc.nodes[finalId] = newNode;
+  }
+
+  // 2. Process and add Diagram Edges
+  const busbarTapCount = new Map<string, number>();
+  for (let i = 0; i < result.edges.length; i++) {
+    const e = result.edges[i];
+    const srcId = tagOrLabelToId.get(e.source) || idMap.get(e.source) || e.source;
+    const tgtId = tagOrLabelToId.get(e.target) || idMap.get(e.target) || e.target;
+
+    if (!doc.nodes[srcId] || !doc.nodes[tgtId]) continue;
+
+    const edgeId =
+      mode === "merge"
+        ? `e_ai_${Date.now().toString(36)}_${i}`
+        : `e_ai_${i + 1}`;
+
+    let sourcePort = "B";
+    if (doc.nodes[srcId]?.params.kind === "busbar") {
+      const count = (busbarTapCount.get(srcId) || 0) + 1;
+      busbarTapCount.set(srcId, count);
+      const taps = ["B1", "B2", "B3", "B4", "B"];
+      sourcePort = taps[(count - 1) % taps.length];
+    }
+    const targetPort = "T";
+
+    const newEdge = makeEdge({
+      id: edgeId,
+      source: srcId,
+      target: tgtId,
+      sourcePort,
+      targetPort,
+      kind: e.kind === "signal" ? "signal" : "power",
+      sheet: "unifilar",
+      circuitConfig: "3F+N+PE",
+    });
+    doc.edges[edgeId] = newEdge;
+  }
+
+  // 3. Deterministically repair any missing or broken topological links
+  const repaired = repairDiagramConnections(doc);
+  let finalDoc = repaired.repairedDoc;
+
+  // 4. Auto-layout spacing
+  try {
+    finalDoc = autoLayoutIndustrialDiagram(finalDoc);
+  } catch (layoutErr) {
+    console.warn("[convertArchitectResultToDiagramDoc] autoLayout:", layoutErr);
+  }
+
+  return finalDoc;
+}
+
 export function applyArchitectToStore(
   result: ArchitectResult,
   opts: { mode: "replace" | "merge" } = { mode: "replace" },
@@ -273,10 +381,16 @@ export function applyArchitectToStore(
     ].slice(0, 200),
   }));
 
-  // 2. (#WGL-07 · etapa 4) O deploy no antigo `useVoltaiStore` foi removido.
-  // O canvas unifilar hoje é WebGL sobre o `useDiagramStore`; a IA passa a
-  // publicar o desenho via `applyAiPatch`/preview no fluxo do DiagramStore
-  // (ver `src/lib/diagram/ai.functions.ts` + `ai-patch-preview.tsx`).
+  // 2. Map and deploy Unifilar Diagram (useDiagramStore)
+  const diagramDoc = convertArchitectResultToDiagramDoc(
+    result,
+    useDiagramStore.getState().doc,
+    opts.mode,
+  );
+  useDiagramStore.getState().loadDoc(diagramDoc);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("eletricai-fit-view"));
+  }
 
   // 3. Map and deploy standard compliant Ladder rungs & Shared tags (useEditorStore)
   const ladderRungs: LadderRung[] = [];

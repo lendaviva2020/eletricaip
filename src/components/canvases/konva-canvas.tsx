@@ -6,7 +6,7 @@ import { useEditorStore } from "@/lib/editor/store";
 import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { ArrowsOutSimple, Minus, Plus } from "@phosphor-icons/react";
 
-type Variant = "scada" | "twin";
+type Variant = "scada" | "sim";
 
 // Helper to sync flat tags to EditorStore
 const syncTag = (name: string, value: any) => {
@@ -68,7 +68,7 @@ export function KonvaCanvas({ variant }: { variant: Variant }) {
     addNode(label, { x, y });
   };
 
-  // Pulse for SCADA / Twin animations
+  // Pulse for SCADA / Sim animations
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => (t + 1) % 1000), 50);
@@ -118,7 +118,7 @@ export function KonvaCanvas({ variant }: { variant: Variant }) {
       }}
     >
       <FloatingLegend
-        title={variant === "scada" ? "SCADA · HMI Runtime" : "Digital Twin · 2D"}
+        title={variant === "scada" ? "SCADA · HMI Runtime" : "Simulação · 2D"}
         items={
           variant === "scada"
             ? [
@@ -128,7 +128,7 @@ export function KonvaCanvas({ variant }: { variant: Variant }) {
                 "Controle Interativo Ativo",
               ]
             : [
-                "Simulação Twin",
+                "Simulação em Runtime",
                 `${nodes.length} ativos físicos`,
                 `Zoom ${Math.round(view.scale * 100)}%`,
                 "Sincronizado",
@@ -786,7 +786,7 @@ function NodeShape({
     );
   }
 
-  // STANDARD INDUSTRIAL SYMBOL / DIGITAL TWIN
+  // STANDARD INDUSTRIAL SYMBOL / RUNTIME
   return (
     <Group
       x={node.position.x}
@@ -871,7 +871,7 @@ function Symbol({
   tick: number;
   variant: Variant;
 }) {
-  const animate = variant === "scada" || variant === "twin";
+  const animate = variant === "scada" || variant === "sim";
   switch (kind) {
     case "motor":
       return (

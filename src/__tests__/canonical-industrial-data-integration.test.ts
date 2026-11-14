@@ -1447,7 +1447,6 @@ describe("Gate 3.6 — Canonical Industrial Data Integration (30 Mandatory Scena
           },
           edges: [],
         },
-        twin: { mappings: [], nameplates: {}, modelUrl: null },
       },
       studies: {},
       diagnostics: [],

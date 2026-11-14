@@ -21,6 +21,12 @@ export type Command =
       from?: DiagramEdge["cable"];
       to: DiagramEdge["cable"];
     }
+  | {
+      type: "UpdateEdgeWaypoints";
+      edgeId: string;
+      from?: Position[];
+      to?: Position[];
+    }
   | { type: "ApplyAiPatch"; patch: AiDiagramPatch; inverse: Command[] }
   | { type: "Batch"; commands: Command[] };
 
@@ -72,6 +78,11 @@ export function applyCommand(doc: DiagramDoc, cmd: Command): DiagramDoc {
         const e = d.edges[cmd.edgeId];
         if (e) e.cable = cmd.to;
       });
+    case "UpdateEdgeWaypoints":
+      return applyDraft(doc, (d) => {
+        const e = d.edges[cmd.edgeId];
+        if (e) e.waypoints = cmd.to;
+      });
     case "ApplyAiPatch": {
       const p = cmd.patch;
       return applyDraft(doc, (d) => {
@@ -89,6 +100,13 @@ export function applyCommand(doc: DiagramDoc, cmd: Command): DiagramDoc {
           if (u.position) n.position = u.position;
           if (u.label !== undefined) n.label = u.label;
           if (u.params) n.params = u.params;
+        }
+        for (const ue of p.updateEdges ?? []) {
+          const e = d.edges[ue.id];
+          if (!e) continue;
+          if (ue.sourcePort !== undefined) e.sourcePort = ue.sourcePort;
+          if (ue.targetPort !== undefined) e.targetPort = ue.targetPort;
+          if (ue.waypoints !== undefined) e.waypoints = ue.waypoints;
         }
         for (const n of p.addNodes) d.nodes[n.id] = n;
         for (const e of p.addEdges) d.edges[e.id] = e;
@@ -136,6 +154,8 @@ export function invertCommand(doc: DiagramDoc, cmd: Command): Command | null {
     }
     case "UpdateEdgeCable":
       return { type: "UpdateEdgeCable", edgeId: cmd.edgeId, from: cmd.to, to: cmd.from };
+    case "UpdateEdgeWaypoints":
+      return { type: "UpdateEdgeWaypoints", edgeId: cmd.edgeId, from: cmd.to, to: cmd.from };
     case "ApplyAiPatch":
       return { type: "Batch", commands: cmd.inverse };
     case "Batch": {
@@ -178,6 +198,18 @@ export function buildAiPatchCommand(doc: DiagramDoc, patch: AiDiagramPatch): Com
     if (u.params)
       inverse.push({ type: "UpdateNodeParams", nodeId: u.id, from: u.params, to: cur.params });
   }
+  for (const ue of patch.updateEdges ?? []) {
+    const curE = doc.edges[ue.id];
+    if (!curE) continue;
+    if (ue.waypoints !== undefined) {
+      inverse.push({
+        type: "UpdateEdgeWaypoints",
+        edgeId: ue.id,
+        from: ue.waypoints,
+        to: curE.waypoints,
+      });
+    }
+  }
   return { type: "ApplyAiPatch", patch, inverse };
 }
 
@@ -198,6 +230,11 @@ export const cmd = {
     from: DiagramEdge["cable"] | undefined,
     to: DiagramEdge["cable"],
   ): Command => ({ type: "UpdateEdgeCable", edgeId, from, to }),
+  updateEdgeWaypoints: (
+    edgeId: string,
+    from: Position[] | undefined,
+    to: Position[] | undefined,
+  ): Command => ({ type: "UpdateEdgeWaypoints", edgeId, from, to }),
   move: (nodeId: string, from: Position, to: Position): Command => ({
     type: "MoveNode",
     nodeId,

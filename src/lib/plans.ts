@@ -39,7 +39,7 @@ export const SUBSCRIPTION_PLANS: Record<PlanId, SubscriptionPlan> = {
     maxProjects: -1,
     realtime: true,
     features: [
-      "IA avançada + Digital Twin",
+      "IA avançada + SCADA Supervisório",
       "Realtime OPC-UA / Modbus",
       "Projetos ilimitados",
       "Suporte prioritário",

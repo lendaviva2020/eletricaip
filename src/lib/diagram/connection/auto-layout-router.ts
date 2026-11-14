@@ -2,7 +2,9 @@
 // Standards: IEC 60617, ISA-101
 // Places nodes cleanly by topological levels and computes orthogonal wire routes
 
-import type { DiagramDoc, DiagramNode, DiagramEdge, Position } from "../schema";
+import type { DiagramDoc, DiagramNode, DiagramEdge } from "../schema";
+import { resolveVisualPort, rotatePort } from "../render/ports";
+import { computeNodeBoundingBox, routeOrthogonalEdge } from "../render/wire-router";
 
 export interface LayoutOptions {
   startX?: number;
@@ -181,25 +183,47 @@ export function autoLayoutIndustrialDiagram(doc: DiagramDoc, opts?: LayoutOption
     }
   });
 
-  // Calculate orthogonal waypoints for edges
+  // Calculate orthogonal waypoints using resolved ports and obstacle avoidance
+  const allNodes = Object.values(nextDoc.nodes);
+  const useObstacles = allNodes.length <= 300;
+  const nodeBoxById = new Map<string, ReturnType<typeof computeNodeBoundingBox>>();
+  if (useObstacles) {
+    for (const n of allNodes) {
+      nodeBoxById.set(n.id, computeNodeBoundingBox(n));
+    }
+  }
+
   for (const [eId, edge] of Object.entries(nextDoc.edges)) {
     const src = nextDoc.nodes[edge.source];
     const tgt = nextDoc.nodes[edge.target];
     if (!src || !tgt) continue;
 
-    // If source and target are in the same vertical column (same X)
-    if (Math.abs(src.position.x - tgt.position.x) < 5) {
-      // Straight vertical line: no waypoints needed
-      nextDoc.edges[eId] = { ...edge, waypoints: [] };
-    } else {
-      // Orthogonal step: go down, turn horizontal, go down into target
-      const midY = (src.position.y + tgt.position.y) / 2;
-      const waypoints: Position[] = [
-        { x: src.position.x, y: midY },
-        { x: tgt.position.x, y: midY },
-      ];
-      nextDoc.edges[eId] = { ...edge, waypoints };
+    const srcPort = resolveVisualPort(src.params.kind, edge.sourcePort, "source", src.params);
+    const tgtPort = resolveVisualPort(tgt.params.kind, edge.targetPort, "target", tgt.params);
+    const srcOffset = srcPort ? rotatePort(srcPort, src.rotation ?? 0) : { x: 0, y: 0 };
+    const tgtOffset = tgtPort ? rotatePort(tgtPort, tgt.rotation ?? 0) : { x: 0, y: 0 };
+
+    const from = { x: src.position.x + srcOffset.x, y: src.position.y + srcOffset.y };
+    const to = { x: tgt.position.x + tgtOffset.x, y: tgt.position.y + tgtOffset.y };
+
+    const obstacles: ReturnType<typeof computeNodeBoundingBox>[] = [];
+    if (useObstacles) {
+      for (const n of allNodes) {
+        if (n.sheet !== edge.sheet || n.id === src.id || n.id === tgt.id) continue;
+        const box = nodeBoxById.get(n.id);
+        if (box) obstacles.push(box);
+      }
     }
+
+    const waypoints = routeOrthogonalEdge({
+      from,
+      to,
+      srcSide: srcPort?.side ?? "bottom",
+      tgtSide: tgtPort?.side ?? "top",
+      obstacles,
+    });
+
+    nextDoc.edges[eId] = { ...edge, waypoints };
   }
 
   return nextDoc;

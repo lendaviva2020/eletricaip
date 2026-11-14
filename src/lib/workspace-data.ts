@@ -7,7 +7,6 @@ export type WorkspaceMode =
   | "ladder"
   | "fbd"
   | "scada"
-  | "twin"
   | "plc"
   | "sim"
   | "alarms"
@@ -35,7 +34,6 @@ export const MODES: { id: WorkspaceMode; label: string; hint: string }[] = [
   { id: "ladder", label: "Ladder", hint: "IEC 61131-3" },
   { id: "fbd", label: "FBD", hint: "IEC 61131-3" },
   { id: "scada", label: "SCADA Supervisório", hint: "ISA-101" },
-  { id: "twin", label: "Digital Twin", hint: "3D" },
   { id: "plc", label: "PLC", hint: "Config" },
   { id: "sim", label: "Simulação", hint: "Runtime" },
   { id: "alarms", label: "Alarmes", hint: "ISA-18.2" },

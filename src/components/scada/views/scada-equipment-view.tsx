@@ -47,7 +47,7 @@ export function ScadaEquipmentView() {
             Inventário Unificado de Equipamentos Industriais
           </h2>
           <p className="text-[11px] text-zinc-400 font-mono">
-            Sincronizado com diagramas Unifilar, Multifilar, Ladder e Digital Twin
+            Sincronizado com diagramas Unifilar, Multifilar, Ladder, FBD e SCADA
           </p>
         </div>
 

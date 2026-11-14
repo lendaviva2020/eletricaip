@@ -35,7 +35,6 @@ const VALID_SNAPSHOT: ProjectSnapshot = {
     programBlocks: [],
     cycleTimeMs: 10,
   },
-  twin: { mappings: [], nameplates: {} },
   studies: {
     st_1: {
       studyType: "arc_flash",

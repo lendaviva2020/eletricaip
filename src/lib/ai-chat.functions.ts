@@ -96,6 +96,171 @@ export const deleteConversation = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/**
+ * Recupera ou inicializa a conversa contínua de engenharia vinculada ao projeto.
+ * Garante que a memória técnica persista entre abas, recarregamentos e navegação.
+ */
+export const getOrCreateProjectConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        projectId: z.string().uuid(),
+        title: z.string().min(1).max(120).default("Engenharia Industrial ElétricAi"),
+      })
+      .parse(input),
+  )
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{
+      conversation: ChatConversation;
+      messages: ChatMessage[];
+    }> => {
+      const { supabase, userId } = context;
+
+      // Busca conversa ativa mais recente para este projeto
+      const { data: existing, error: searchErr } = await supabase
+        .from("ai_conversations")
+        .select("id, title, created_at, updated_at")
+        .eq("project_id", data.projectId)
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(1);
+
+      if (searchErr) throw new Error(searchErr.message);
+
+      let conversation = existing?.[0] as ChatConversation | undefined;
+
+      if (!conversation) {
+        const { data: created, error: createErr } = await supabase
+          .from("ai_conversations")
+          .insert({
+            user_id: userId,
+            project_id: data.projectId,
+            title: data.title,
+          })
+          .select("id, title, created_at, updated_at")
+          .single();
+
+        if (createErr) throw new Error(createErr.message);
+        conversation = created as ChatConversation;
+      }
+
+      // Carrega o histórico completo de mensagens
+      const { data: msgs, error: msgErr } = await supabase
+        .from("ai_messages")
+        .select("id, conversation_id, role, content, created_at, tokens_used")
+        .eq("conversation_id", conversation.id)
+        .order("created_at", { ascending: true });
+
+      if (msgErr) throw new Error(msgErr.message);
+
+      return {
+        conversation,
+        messages: (msgs ?? []) as ChatMessage[],
+      };
+    },
+  );
+
+/**
+ * Persiste uma mensagem no histórico da conversa e atualiza o timestamp da conversa.
+ */
+export const persistChatMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        conversationId: z.string().uuid(),
+        role: z.enum(["user", "assistant", "system"]),
+        content: z.string().min(1),
+        tokensUsed: z.number().int().optional(),
+        toolCalls: z.record(z.string(), z.any()).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<ChatMessage> => {
+    const { supabase } = context;
+
+    const { data: row, error } = await supabase
+      .from("ai_messages")
+      .insert({
+        conversation_id: data.conversationId,
+        role: data.role,
+        content: data.content,
+        tokens_used: data.tokensUsed ?? null,
+        tool_calls: (data.toolCalls as any) ?? {},
+      })
+      .select("id, conversation_id, role, content, created_at, tokens_used")
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    await supabase
+      .from("ai_conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", data.conversationId);
+
+    return row as ChatMessage;
+  });
+
+/**
+ * Recupera o resumo da memória de engenharia de um projeto (decisões técnicas acumuladas).
+ */
+export const getProjectEngineeringMemory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{
+      totalConversations: number;
+      totalMessages: number;
+      recentFixes: Array<{ role: string; content: string; created_at: string }>;
+    }> => {
+      const { supabase, userId } = context;
+
+      const { count: convCount } = await supabase
+        .from("ai_conversations")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", data.projectId)
+        .eq("user_id", userId);
+
+      const { data: convs } = await supabase
+        .from("ai_conversations")
+        .select("id")
+        .eq("project_id", data.projectId)
+        .eq("user_id", userId)
+        .limit(10);
+
+      const convIds = (convs ?? []).map((c) => c.id);
+
+      if (convIds.length === 0) {
+        return { totalConversations: 0, totalMessages: 0, recentFixes: [] };
+      }
+
+      const { count: msgCount } = await supabase
+        .from("ai_messages")
+        .select("id", { count: "exact", head: true })
+        .in("conversation_id", convIds);
+
+      const { data: recentMsgs } = await supabase
+        .from("ai_messages")
+        .select("role, content, created_at")
+        .in("conversation_id", convIds)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      return {
+        totalConversations: convCount ?? 0,
+        totalMessages: msgCount ?? 0,
+        recentFixes: (recentMsgs ?? []).reverse(),
+      };
+    },
+  );
+
 export function getChatSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
   if (locale === "en") {
     return `You are the EletricAI Copilot — a senior industrial electrical engineer.

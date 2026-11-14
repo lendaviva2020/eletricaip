@@ -1,13 +1,13 @@
 /**
- * ElétricAi Industrial OS — Controller Fleet Management & Digital Twin Engine
+ * ElétricAi Industrial OS — Controller Fleet Management & Controller Shadow Engine
  * Paridade com as capacidades do CODESYS Automation Server:
- * Inventário de controladores, sincronismo com Gêmeo Digital (Digital Twin),
+ * Inventário de controladores, sincronismo de estado runtime (Shadow),
  * detecção de desvio de versão (Drift) e controle de acesso granular (RBAC).
  */
 
 import {
   Controller,
-  DigitalTwinState,
+  ControllerShadowState,
   UserRole,
   RBACPermission,
   IndustrialProject,
@@ -22,7 +22,7 @@ export interface FleetNodeStatus {
   cpuUsagePct: number;
   memoryUsagePct: number;
   runtimeChecksum: string;
-  isTwinInSync: boolean;
+  isShadowInSync: boolean;
   lastSyncTimestamp: string;
 }
 
@@ -32,19 +32,19 @@ export type RBACResourceType =
 
 export class ControllerFleetManager {
   private controllers: Map<string, Controller> = new Map();
-  private twinStates: Map<string, DigitalTwinState> = new Map();
+  private shadowStates: Map<string, ControllerShadowState> = new Map();
 
-  constructor(controllers: Controller[] = [], twins: DigitalTwinState[] = []) {
+  constructor(controllers: Controller[] = [], shadows: ControllerShadowState[] = []) {
     for (const c of controllers) this.controllers.set(c.id, c);
-    for (const t of twins) this.twinStates.set(t.deviceId, t);
+    for (const s of shadows) this.shadowStates.set(s.deviceId, s);
   }
 
   public registerController(controller: Controller): void {
     this.controllers.set(controller.id, controller);
   }
 
-  public updateDigitalTwin(twin: DigitalTwinState): void {
-    this.twinStates.set(twin.deviceId, twin);
+  public updateControllerShadow(shadow: ControllerShadowState): void {
+    this.shadowStates.set(shadow.deviceId, shadow);
   }
 
   /**
@@ -54,14 +54,14 @@ export class ControllerFleetManager {
     const report: FleetNodeStatus[] = [];
 
     for (const [id, ctrl] of this.controllers.entries()) {
-      const twin = this.twinStates.get(id);
-      const runtimeChecksum = String(twin?.observedState?.checksum || "UNKNOWN");
-      const isTwinInSync = runtimeChecksum === projectCompiledChecksum;
+      const shadow = this.shadowStates.get(id);
+      const runtimeChecksum = String(shadow?.observedState?.checksum || "UNKNOWN");
+      const isShadowInSync = runtimeChecksum === projectCompiledChecksum;
 
       let status: "ONLINE" | "OFFLINE" | "DRIFT_DETECTED" | "FAULT" = "ONLINE";
       if (!ctrl.connected) {
         status = "OFFLINE";
-      } else if (!isTwinInSync) {
+      } else if (!isShadowInSync) {
         status = "DRIFT_DETECTED";
       }
 
@@ -71,19 +71,19 @@ export class ControllerFleetManager {
         ipAddress: ctrl.ipAddress,
         firmwareVersion: ctrl.firmwareVersion,
         status,
-        cpuUsagePct: twin
-          ? typeof (twin.observedState as any)?.cpuUsagePct === "number"
-            ? (twin.observedState as any).cpuUsagePct
+        cpuUsagePct: shadow
+          ? typeof (shadow.observedState as any)?.cpuUsagePct === "number"
+            ? (shadow.observedState as any).cpuUsagePct
             : 24.5
           : 0,
-        memoryUsagePct: twin
-          ? typeof (twin.observedState as any)?.memoryUsagePct === "number"
-            ? (twin.observedState as any).memoryUsagePct
+        memoryUsagePct: shadow
+          ? typeof (shadow.observedState as any)?.memoryUsagePct === "number"
+            ? (shadow.observedState as any).memoryUsagePct
             : 42.5
           : 0,
         runtimeChecksum,
-        isTwinInSync,
-        lastSyncTimestamp: twin?.lastSyncTimestamp || new Date().toISOString(),
+        isShadowInSync,
+        lastSyncTimestamp: shadow?.lastSyncTimestamp || new Date().toISOString(),
       });
     }
 

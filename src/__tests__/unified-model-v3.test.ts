@@ -11,7 +11,6 @@ import { cmd } from "@/lib/diagram/commands";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { usePlcStore } from "@/lib/plc/store";
-import { useDigitalTwinStore } from "@/lib/digital-twin-store";
 import type { ProjectSnapshot } from "@/lib/projects.functions";
 
 describe("Fase B — Modelo Técnico Unificado (v3) e Separação de Runtime", () => {
@@ -32,7 +31,7 @@ describe("Fase B — Modelo Técnico Unificado (v3) e Separação de Runtime", (
     expect(doc.plc.project.programBlocks.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("mantém o mesmo equipmentId canônico entre Unifilar, Multifilar, ProjectStore e Digital Twin e preserva posições (x,y) independentes", () => {
+  it("mantém o mesmo equipmentId canônico entre Unifilar, Multifilar e ProjectStore e preserva posições (x,y) independentes", () => {
     const store = useUnifiedProjectStore.getState();
 
     store.upsertEquipment(
@@ -94,12 +93,9 @@ describe("Fase B — Modelo Técnico Unificado (v3) e Separação de Runtime", (
     expect(diagramNodes.uni_m1.position).toEqual({ x: 120, y: 240 });
     expect(diagramNodes.mf_m1.position).toEqual({ x: 525, y: 650 });
 
-    // ProjectStore e Digital Twin Nameplate sincronizados
+    // ProjectStore sincronizado
     const projMotor = useProjectStore.getState().nodes.find((n) => n.id === "eq_m1");
     expect(projMotor?.params.P).toBe(15);
-    const nameplate = useDigitalTwinStore.getState().nameplates.eq_m1;
-    expect(nameplate?.potenciaKw).toBe(15);
-    expect(nameplate?.correnteNominalA).toBe(30);
   });
 
   it("invalida automaticamente estudos dependentes (status: stale) quando especificações ou condutores mudam", () => {
@@ -167,7 +163,7 @@ describe("Fase B — Modelo Técnico Unificado (v3) e Separação de Runtime", (
     expect(useUnifiedProjectStore.getState().doc.studies.study_vd_m1.status).toBe("stale");
   });
 
-  it("propaga renomeação de CanonicalTag para Ladder, FBD, SCADA e Digital Twin mantendo tagId imutável", () => {
+  it("propaga renomeação de CanonicalTag para Ladder, FBD e SCADA mantendo tagId imutável", () => {
     const store = useUnifiedProjectStore.getState();
 
     // Cria tag canônica
@@ -183,7 +179,7 @@ describe("Fase B — Modelo Técnico Unificado (v3) e Separação de Runtime", (
       description: "Comando Contator KM1",
     });
 
-    // Configura um rung no bloco OB1, um widget SCADA e um hotspot Twin apontando para KM1_CMD
+    // Configura um rung no bloco OB1 e um widget SCADA apontando para KM1_CMD
     const curDoc = useUnifiedProjectStore.getState().doc;
     const mutatedDoc = structuredClone(curDoc);
     mutatedDoc.plc.project.programBlocks[0].ladder = {
@@ -212,24 +208,6 @@ describe("Fase B — Modelo Técnico Unificado (v3) e Separação de Runtime", (
       boundEquipmentId: null,
       params: { tag: "KM1_CMD" },
     };
-    mutatedDoc.views.twin.mappings = [
-      {
-        equipmentId: "eq_m1",
-        equipmentLabel: "M1",
-        hotspots: [
-          {
-            id: "hs_1",
-            label: "Status Comando",
-            tag: "KM1_CMD",
-            type: "status",
-            unit: "",
-            position: { x: 0, y: 1, z: 0 },
-            color: "#00ff00",
-            alarmActive: false,
-          },
-        ],
-      },
-    ];
     store.loadUnifiedDoc(mutatedDoc);
 
     // Renomeia a tag mantendo o mesmo ID ("tag_cmd_m1")
@@ -248,7 +226,6 @@ describe("Fase B — Modelo Técnico Unificado (v3) e Separação de Runtime", (
     expect(rungCell.operand).toBe("BOMBA_RECALQUE_CMD");
     expect(updated.views.scada.widgets.w_btn_1.boundTagId).toBe("tag_cmd_m1");
     expect(updated.views.scada.widgets.w_btn_1.params.tag).toBe("BOMBA_RECALQUE_CMD");
-    expect(updated.views.twin.mappings[0].hotspots[0].tag).toBe("BOMBA_RECALQUE_CMD");
     expect(useEditorStore.getState().editorTags.tag_cmd_m1.name).toBe("BOMBA_RECALQUE_CMD");
     expect(usePlcStore.getState().project.variables.find((v) => v.id === "tag_cmd_m1")?.name).toBe(
       "BOMBA_RECALQUE_CMD",

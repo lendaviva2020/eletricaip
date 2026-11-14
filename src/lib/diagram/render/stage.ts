@@ -9,51 +9,38 @@
 
 import { Application, Container, FederatedPointerEvent, Graphics, Text } from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import type { DiagramDoc, DiagramEdge, DiagramNode, EdgeKind, SheetKind } from "../schema";
+import type { DiagramDoc, DiagramEdge, DiagramNode, EdgeKind, Position, SheetKind } from "../schema";
 import { drawSymbol } from "./symbols";
 import { CONDUCTOR_LABELS } from "../multifilar";
-import { getPorts, rotatePort, type PortDef } from "./ports";
+import { getPorts, resolveVisualPort, rotatePort, type PortDef } from "./ports";
+import {
+  computeDiagramBounds,
+  computeEdgeAnnotations,
+  computeNodeBoundingBox,
+  createPolylineHitArea,
+  routeOrthogonalEdge,
+  simplifyOrthogonalPoints,
+  type BoundingBox,
+  type CrossingPoint,
+  type DiagramBounds,
+  type Point,
+} from "./wire-router";
 import type { CircuitEnergizationState } from "../electrical-simulation";
 import { isSwitchingDevice } from "../electrical-simulation";
 
-const PORT_HIT_RADIUS = 6;
+const PORT_HIT_RADIUS = 7;
 const PORT_COLOR = 0x60a5fa;
 const PORT_COLOR_HOVER = 0xfbbf24;
 
-function distToSegmentSquared(
-  px: number,
-  py: number,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-): number {
-  const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
-  if (l2 === 0) return (px - x1) ** 2 + (py - y1) ** 2;
-  let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
-  t = Math.max(0, Math.min(1, t));
-  const projX = x1 + t * (x2 - x1);
-  const projY = y1 + t * (y2 - y1);
-  return (px - projX) ** 2 + (py - projY) ** 2;
-}
-
-function createOrthogonalWireHitArea(
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  midX: number,
-  tolerance: number,
-) {
-  const tol2 = tolerance * tolerance;
-  return {
-    contains: (x: number, y: number) => {
-      const d1 = distToSegmentSquared(x, y, from.x, from.y, midX, from.y);
-      if (d1 <= tol2) return true;
-      const d2 = distToSegmentSquared(x, y, midX, from.y, midX, to.y);
-      if (d2 <= tol2) return true;
-      const d3 = distToSegmentSquared(x, y, midX, to.y, to.x, to.y);
-      return d3 <= tol2;
-    },
-  };
+interface SegmentDragState {
+  pointerId: number;
+  edgeId: string;
+  segIndex: number;
+  orientation: "H" | "V";
+  basePoints: Point[];
+  startWorld: Point;
+  currentPoints: Point[];
+  moved: boolean;
 }
 
 export interface MoveDelta {
@@ -76,6 +63,8 @@ export interface StageEvents {
   onSelectMany?: (ids: string[], additive: boolean) => void;
   onMoveNodes?: (deltas: MoveDelta[]) => void;
   onCommitEdge?: (edge: EdgeDraftCommit) => void;
+  onUpdateEdgeWaypoints?: (edgeId: string, waypoints: Position[]) => void;
+  onZoomChange?: (zoomPercent: number) => void;
   onContextMenu?: (target: {
     nodeId: string | null;
     edgeId?: string | null;
@@ -132,6 +121,7 @@ export class DiagramStage {
   viewport!: Viewport;
   private nodesLayer = new Container();
   private edgesLayer = new Container();
+  private junctionsLayer = new Graphics();
   private overlayLayer = new Container();
   private nodes = new Map<string, NodeView>();
   private edges = new Map<string, EdgeView>();
@@ -141,6 +131,7 @@ export class DiagramStage {
   private lastEnergization: CircuitEnergizationState | null = null;
   private lastDoc: DiagramDoc | null = null;
   private lastSheet: SheetKind = "unifilar";
+  private zoomHistory: Array<{ scale: number; centerX: number; centerY: number }> = [];
 
   private resizeObs?: ResizeObserver;
   private host?: HTMLElement;
@@ -149,6 +140,7 @@ export class DiagramStage {
   private destroyed = false;
 
   private drag: DragState | null = null;
+  private segmentDrag: SegmentDragState | null = null;
   private draft: EdgeDraft | null = null;
   private marquee: MarqueeState | null = null;
 
@@ -196,15 +188,19 @@ export class DiagramStage {
     this.viewport = new Viewport({
       screenWidth: host.clientWidth || 800,
       screenHeight: host.clientHeight || 600,
-      worldWidth: 4000,
-      worldHeight: 4000,
+      worldWidth: 20000,
+      worldHeight: 20000,
       events: this.app.renderer.events,
     });
 
-    // Limites de zoom estritos para evitar valores infinitos, NaN ou escala zero
-    this.viewport.drag().pinch().wheel().decelerate().clampZoom({ minScale: 0.25, maxScale: 3.0 });
+    // Limites amplos de zoom com trava contra escala zero / NaN
+    this.viewport.drag().pinch().wheel().decelerate().clampZoom({ minScale: 0.1, maxScale: 4.0 });
+    this.viewport.on("zoomed", () => {
+      this.events.onZoomChange?.(this.getZoomPercent());
+    });
     this.app.stage.addChild(this.viewport);
     this.viewport.addChild(this.edgesLayer);
+    this.viewport.addChild(this.junctionsLayer);
     this.viewport.addChild(this.nodesLayer);
     this.viewport.addChild(this.overlayLayer);
 
@@ -239,7 +235,7 @@ export class DiagramStage {
       if (this.destroyed || !this.viewport) return;
       const w = host.clientWidth;
       const h = host.clientHeight;
-      if (w && h) this.viewport.resize(w, h, 4000, 4000);
+      if (w && h) this.viewport.resize(w, h, 20000, 20000);
     });
     this.resizeObs.observe(host);
 
@@ -302,68 +298,171 @@ export class DiagramStage {
     this.viewport.addChildAt(grid, 0);
   }
 
-  /**
-   * Enquadramento inteligente baseado na caixa envolvente dos componentes reais.
-   * Não altera coordenadas persistidas e impede zoom infinito ou escalas extremas.
-   */
-  fitView(nodes?: DiagramNode[]) {
+  private pushZoomSnapshot() {
     if (this.destroyed || !this.initialized || !this.viewport) return;
+    const center = this.viewport.center;
+    const snap = { scale: this.viewport.scaled, centerX: center.x, centerY: center.y };
+    const top = this.zoomHistory[this.zoomHistory.length - 1];
+    if (
+      top &&
+      Math.abs(top.scale - snap.scale) < 0.01 &&
+      Math.abs(top.centerX - snap.centerX) < 5 &&
+      Math.abs(top.centerY - snap.centerY) < 5
+    ) {
+      return;
+    }
+    this.zoomHistory.push(snap);
+    if (this.zoomHistory.length > 15) this.zoomHistory.shift();
+  }
+
+  getContentBounds(nodes?: DiagramNode[]): DiagramBounds | null {
     const currentNodes =
       nodes ??
       (this.lastDoc
         ? Object.values(this.lastDoc.nodes).filter((n) => n.sheet === this.lastSheet)
         : []);
+    const currentEdges = this.lastDoc
+      ? Object.values(this.lastDoc.edges).filter((e) => e.sheet === this.lastSheet)
+      : [];
+    return computeDiagramBounds(currentNodes, currentEdges);
+  }
 
-    if (!currentNodes || currentNodes.length === 0) {
+  /**
+   * Enquadramento inteligente baseado na caixa envolvente real dos símbolos,
+   * rótulos e rotas de condutores. Nunca infla o viewport por palco fixo gigante
+   * nem altera coordenadas persistidas.
+   */
+  fitView(nodes?: DiagramNode[], opts?: { recordHistory?: boolean; screenPaddingPx?: number }) {
+    if (this.destroyed || !this.initialized || !this.viewport) return;
+    if (opts?.recordHistory !== false) this.pushZoomSnapshot();
+
+    const targetNodes =
+      nodes ??
+      (this.lastDoc
+        ? Object.values(this.lastDoc.nodes).filter((n) => n.sheet === this.lastSheet)
+        : []);
+    const nodeIds = new Set(targetNodes.map((n) => n.id));
+    const targetEdges = this.lastDoc
+      ? Object.values(this.lastDoc.edges).filter(
+          (e) =>
+            e.sheet === this.lastSheet &&
+            (nodes ? nodeIds.has(e.source) && nodeIds.has(e.target) : true),
+        )
+      : [];
+
+    const bounds = computeDiagramBounds(targetNodes, targetEdges);
+    if (!bounds) {
       this.viewport.setZoom(1, true);
-      this.viewport.moveCenter(1000, 800);
+      this.viewport.moveCenter(400, 300);
+      this.events.onZoomChange?.(this.getZoomPercent());
       return;
     }
 
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
+    const screenW = Math.max(240, this.viewport.screenWidth || 800);
+    const screenH = Math.max(200, this.viewport.screenHeight || 600);
+    const padPx = opts?.screenPaddingPx ?? Math.min(72, Math.round(Math.min(screenW, screenH) * 0.1));
+    const availW = Math.max(120, screenW - padPx * 2);
+    const availH = Math.max(120, screenH - padPx * 2);
 
-    for (const n of currentNodes) {
-      minX = Math.min(minX, n.position.x);
-      minY = Math.min(minY, n.position.y);
-      maxX = Math.max(maxX, n.position.x);
-      maxY = Math.max(maxY, n.position.y);
-    }
+    const worldPad = 40;
+    const contentW = Math.max(120, bounds.width + worldPad * 2);
+    const contentH = Math.max(100, bounds.height + worldPad * 2);
 
-    const pad = 120;
-    const boxW = Math.max(maxX - minX + pad * 2, 400);
-    const boxH = Math.max(maxY - minY + pad * 2, 300);
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    const screenW = this.viewport.screenWidth || 800;
-    const screenH = this.viewport.screenHeight || 600;
-
-    let scale = Math.min(screenW / boxW, screenH / boxH);
-    // Limite confortável entre 0.5x e 1.4x
-    scale = Math.max(0.5, Math.min(scale, 1.4));
+    let scale = Math.min(availW / contentW, availH / contentH);
+    if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+    // Permite diagramas grandes reduzirem o suficiente para caberem inteiros e pequenos crescerem até 1.5x
+    scale = Math.max(0.12, Math.min(scale, 1.5));
 
     this.viewport.setZoom(scale, true);
-    this.viewport.moveCenter(centerX, centerY);
+    this.viewport.moveCenter(bounds.centerX, bounds.centerY);
+    this.events.onZoomChange?.(this.getZoomPercent());
+  }
+
+  fitSelection() {
+    if (!this.lastDoc || this.selectedNodeIds.size === 0) return;
+    const selected = Array.from(this.selectedNodeIds)
+      .map((id) => this.lastDoc?.nodes[id])
+      .filter((n): n is DiagramNode => Boolean(n && n.sheet === this.lastSheet));
+    if (selected.length > 0) this.fitView(selected);
+  }
+
+  fitNetwork(seedNodeId?: string) {
+    if (!this.lastDoc) return;
+    const seed = seedNodeId ?? Array.from(this.selectedNodeIds)[0];
+    if (!seed || !this.lastDoc.nodes[seed]) {
+      this.fitView();
+      return;
+    }
+    const visited = new Set<string>([seed]);
+    const queue = [seed];
+    const sheetEdges = Object.values(this.lastDoc.edges).filter((e) => e.sheet === this.lastSheet);
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      for (const e of sheetEdges) {
+        if (e.source === cur && !visited.has(e.target)) {
+          visited.add(e.target);
+          queue.push(e.target);
+        } else if (e.target === cur && !visited.has(e.source)) {
+          visited.add(e.source);
+          queue.push(e.source);
+        }
+      }
+    }
+    const netNodes = Array.from(visited)
+      .map((id) => this.lastDoc?.nodes[id])
+      .filter((n): n is DiagramNode => Boolean(n && n.sheet === this.lastSheet));
+    if (netNodes.length > 0) this.fitView(netNodes);
+  }
+
+  centerView() {
+    if (this.destroyed || !this.initialized || !this.viewport) return;
+    this.pushZoomSnapshot();
+    const bounds = this.getContentBounds();
+    if (!bounds) {
+      this.viewport.moveCenter(400, 300);
+      return;
+    }
+    this.viewport.moveCenter(bounds.centerX, bounds.centerY);
   }
 
   zoomIn() {
     if (this.destroyed || !this.initialized || !this.viewport) return;
+    this.pushZoomSnapshot();
     const cur = this.viewport.scaled;
-    this.viewport.setZoom(Math.min(cur * 1.15, 3.0), true);
+    this.viewport.setZoom(Math.min(cur * 1.18, 4.0), true);
+    this.events.onZoomChange?.(this.getZoomPercent());
   }
 
   zoomOut() {
     if (this.destroyed || !this.initialized || !this.viewport) return;
+    this.pushZoomSnapshot();
     const cur = this.viewport.scaled;
-    this.viewport.setZoom(Math.max(cur / 1.15, 0.25), true);
+    this.viewport.setZoom(Math.max(cur / 1.18, 0.1), true);
+    this.events.onZoomChange?.(this.getZoomPercent());
+  }
+
+  zoomTo(scaleFactor: number) {
+    if (this.destroyed || !this.initialized || !this.viewport) return;
+    if (!Number.isFinite(scaleFactor) || scaleFactor <= 0) return;
+    this.pushZoomSnapshot();
+    this.viewport.setZoom(Math.max(0.1, Math.min(scaleFactor, 4.0)), true);
+    this.events.onZoomChange?.(this.getZoomPercent());
   }
 
   resetZoom() {
     if (this.destroyed || !this.initialized || !this.viewport) return;
+    this.pushZoomSnapshot();
     this.viewport.setZoom(1.0, true);
+    this.events.onZoomChange?.(this.getZoomPercent());
+  }
+
+  previousZoom() {
+    if (this.destroyed || !this.initialized || !this.viewport) return;
+    const prev = this.zoomHistory.pop();
+    if (!prev) return;
+    this.viewport.setZoom(prev.scale, true);
+    this.viewport.moveCenter(prev.centerX, prev.centerY);
+    this.events.onZoomChange?.(this.getZoomPercent());
   }
 
   getZoomPercent(): number {
@@ -413,7 +512,7 @@ export class DiagramStage {
     }
 
     for (const n of wantNodes) this.upsertNode(n, energization);
-    for (const e of wantEdges) this.upsertEdge(e, doc, energization);
+    this.renderSheetEdges(wantNodes, wantEdges, doc, energization);
 
     for (const [id, v] of this.nodes) this.applySelectionTo(id, v);
   }
@@ -538,8 +637,8 @@ export class DiagramStage {
     const selected = this.selectedNodeIds.has(id);
     view.selection.clear();
     if (selected) {
-      const w = 32;
-      const h = 26;
+      const w = view.kind === "busbar" ? 66 : 32;
+      const h = view.kind === "busbar" ? 14 : 26;
       // Moldura interna translúcida ciano
       view.selection.rect(-w, -h, w * 2, h * 2).stroke({ width: 1.5, color: 0x38bdf8, alpha: 0.8 });
 
@@ -568,39 +667,173 @@ export class DiagramStage {
     node: DiagramNode,
     portId: string | undefined,
     role: "source" | "target" = "source",
-  ): { x: number; y: number } {
-    const ports = getPorts(node.params.kind);
-    const shortId = portId?.includes(":") ? portId.slice(portId.lastIndexOf(":") + 1) : portId;
-    let port =
-      (portId && ports.find((p) => p.id === portId)) ||
-      (shortId && ports.find((p) => p.id === shortId));
-    if (!port) {
-      if (shortId === "out" || (!shortId && role === "source")) {
-        port = ports[1] ?? ports[0];
-      } else {
-        port = ports[0];
+    positionOverride?: Position,
+  ): { x: number; y: number; side: PortDef["side"] } {
+    const pos = positionOverride ?? node.position;
+    const port = resolveVisualPort(node.params.kind, portId, role, node.params);
+    if (!port) return { x: pos.x, y: pos.y, side: role === "source" ? "bottom" : "top" };
+    const rotated = rotatePort(port, node.rotation ?? 0);
+    return { x: pos.x + rotated.x, y: pos.y + rotated.y, side: port.side };
+  }
+
+  private renderSheetEdges(
+    wantNodes: DiagramNode[],
+    wantEdges: DiagramEdge[],
+    doc: DiagramDoc,
+    energization?: CircuitEnergizationState | null,
+    positionOverrides?: Map<string, Position>,
+  ) {
+    const useObstacles = wantNodes.length <= 250 && wantEdges.length <= 300;
+    const nodeBoxById = new Map<string, BoundingBox>();
+    if (useObstacles) {
+      for (const n of wantNodes) {
+        const pos = positionOverrides?.get(n.id) ?? n.position;
+        nodeBoxById.set(
+          n.id,
+          pos === n.position ? computeNodeBoundingBox(n) : computeNodeBoundingBox({ ...n, position: pos }),
+        );
       }
     }
-    if (!port) return { ...node.position };
-    const rotated = rotatePort(port, node.rotation ?? 0);
-    return { x: node.position.x + rotated.x, y: node.position.y + rotated.y };
+
+    const edgePlans: Array<{
+      edge: DiagramEdge;
+      id: string;
+      source: string;
+      sourcePort?: string;
+      target: string;
+      targetPort?: string;
+      isBusbarTap: boolean;
+      busbarPoint?: Point;
+      points: Point[];
+    }> = [];
+
+    for (const e of wantEdges) {
+      const srcNode = doc.nodes[e.source];
+      const tgtNode = doc.nodes[e.target];
+      if (!srcNode || !tgtNode) continue;
+
+      const from = this.portWorld(srcNode, e.sourcePort, "source", positionOverrides?.get(e.source));
+      const to = this.portWorld(tgtNode, e.targetPort, "target", positionOverrides?.get(e.target));
+
+      const obstacles: BoundingBox[] = [];
+      if (useObstacles) {
+        for (const n of wantNodes) {
+          if (n.id === srcNode.id || n.id === tgtNode.id) continue;
+          const b = nodeBoxById.get(n.id);
+          if (b) obstacles.push(b);
+        }
+      }
+
+      const points = routeOrthogonalEdge({
+        from: { x: from.x, y: from.y },
+        to: { x: to.x, y: to.y },
+        srcSide: from.side,
+        tgtSide: to.side,
+        obstacles,
+        existingWaypoints: e.waypoints,
+      });
+
+      const isSrcBus = srcNode.params.kind === "busbar";
+      const isTgtBus = tgtNode.params.kind === "busbar";
+      edgePlans.push({
+        edge: e,
+        id: e.id,
+        source: e.source,
+        sourcePort: e.sourcePort,
+        target: e.target,
+        targetPort: e.targetPort,
+        isBusbarTap: isSrcBus || isTgtBus,
+        busbarPoint: isSrcBus ? { x: from.x, y: from.y } : isTgtBus ? { x: to.x, y: to.y } : undefined,
+        points,
+      });
+    }
+
+    const { junctions, crossingsByEdge } = computeEdgeAnnotations(edgePlans);
+
+    this.junctionsLayer.clear();
+    const isSimRunning = energization && energization.status !== "stopped";
+    const defaultDotColor = isSimRunning ? 0x10b981 : 0x1e293b;
+    for (const j of junctions) {
+      this.junctionsLayer
+        .circle(j.x, j.y, 4)
+        .fill({ color: defaultDotColor })
+        .stroke({ width: 1, color: 0xf0f2f3 });
+    }
+
+    for (const plan of edgePlans) {
+      this.upsertEdge(
+        plan.edge,
+        doc,
+        plan.points,
+        crossingsByEdge.get(plan.edge.id) ?? [],
+        energization,
+      );
+    }
+  }
+
+  private drawOrthogonalPathWithBridges(
+    g: Graphics,
+    points: ReadonlyArray<Point>,
+    crossings: ReadonlyArray<CrossingPoint>,
+  ) {
+    if (points.length < 2) return;
+    const JUMP_R = 5;
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      const isHoriz = Math.abs(a.y - b.y) < 0.5 && Math.abs(b.x - a.x) > 1;
+      if (!isHoriz || crossings.length === 0) {
+        g.moveTo(a.x, a.y).lineTo(b.x, b.y);
+        continue;
+      }
+
+      const dir = b.x >= a.x ? 1 : -1;
+      const minX = Math.min(a.x, b.x);
+      const maxX = Math.max(a.x, b.x);
+      const segCrossings = crossings
+        .filter((c) => Math.abs(c.y - a.y) < 1 && c.x > minX + JUMP_R && c.x < maxX - JUMP_R)
+        .sort((c1, c2) => (dir > 0 ? c1.x - c2.x : c2.x - c1.x));
+
+      if (segCrossings.length === 0) {
+        g.moveTo(a.x, a.y).lineTo(b.x, b.y);
+        continue;
+      }
+
+      let cursorX = a.x;
+      for (const c of segCrossings) {
+        const enterX = c.x - dir * JUMP_R;
+        const exitX = c.x + dir * JUMP_R;
+        g.moveTo(cursorX, a.y).lineTo(enterX, a.y);
+        // Pequena ponte semicircular para cruzamento sem conexão elétrica
+        if (dir > 0) {
+          g.arc(c.x, a.y, JUMP_R, Math.PI, 0, false);
+        } else {
+          g.arc(c.x, a.y, JUMP_R, 0, Math.PI, true);
+        }
+        cursorX = exitX;
+      }
+      g.moveTo(cursorX, a.y).lineTo(b.x, b.y);
+    }
   }
 
   private upsertEdge(
     e: DiagramEdge,
     doc: DiagramDoc,
+    points: ReadonlyArray<Point>,
+    crossings: ReadonlyArray<CrossingPoint>,
     energization?: CircuitEnergizationState | null,
   ) {
     const srcNode = doc.nodes[e.source];
     const tgtNode = doc.nodes[e.target];
-    if (!srcNode || !tgtNode) return;
+    if (!srcNode || !tgtNode || points.length < 2) return;
 
-    const from = this.portWorld(srcNode, e.sourcePort, "source");
-    const to = this.portWorld(tgtNode, e.targetPort, "target");
+    const from = points[0];
+    const to = points[points.length - 1];
     const isSelected = this.selectedEdgeIds.has(e.id);
     const isSimRunning = energization && energization.status !== "stopped";
 
-    // Hash inclui seleção e status de energização para atualização reativa instantânea
+    // Hash inclui pontos, cruzamentos, seleção e energização para diff preciso
     const simFlag = isSimRunning
       ? energization.faultEdgeIds.has(e.id)
         ? "fault"
@@ -608,13 +841,13 @@ export class DiagramStage {
           ? "on"
           : "off"
       : "idle";
+    const ptsKey = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
+    const crossKey = crossings.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(";");
 
-    const hash = `${e.source}:${from.x.toFixed(1)},${from.y.toFixed(1)}->${e.target}:${to.x.toFixed(1)},${to.y.toFixed(1)}:${e.kind}:${e.circuitConfig ?? ""}:sel=${isSelected}:sim=${simFlag}`;
+    const hash = `${e.source}:${ptsKey}:${crossKey}:${e.kind}:${e.circuitConfig ?? ""}:sel=${isSelected}:sim=${simFlag}`;
     const existing = this.edges.get(e.id);
     if (existing && existing.hash === hash) return;
-    if (existing) existing.graphics.destroy();
-
-    const midX = (from.x + to.x) / 2;
+    if (existing) existing.graphics.destroy({ children: true });
 
     // Determina cor do condutor
     let strokeColor = 0x334155; // Padrão grafite escuro em repouso
@@ -641,7 +874,7 @@ export class DiagramStage {
       const container = new Container();
       container.eventMode = "static";
       container.cursor = "pointer";
-      container.hitArea = createOrthogonalWireHitArea(from, to, midX, 14);
+      container.hitArea = createPolylineHitArea(points, 14);
 
       conductors.forEach((label, i) => {
         const offset = (i - (total - 1) / 2) * spacing;
@@ -650,14 +883,26 @@ export class DiagramStage {
           cColor = label === "N" ? 0x0284c7 : label === "PE" ? 0x15803d : 0x334155;
         }
 
+        const shifted = points.map((pt, idx) => {
+          const prev = points[Math.max(0, idx - 1)];
+          const next = points[Math.min(points.length - 1, idx + 1)];
+          const isHoriz = Math.abs(next.x - prev.x) > Math.abs(next.y - prev.y);
+          return {
+            x: pt.x + (isHoriz ? 0 : offset),
+            y: pt.y + (isHoriz ? offset : 0),
+          };
+        });
+
         const g = new Graphics();
-        g.moveTo(from.x, from.y + offset)
-          .lineTo(midX + offset, from.y + offset)
-          .lineTo(midX + offset, to.y + offset)
-          .lineTo(to.x, to.y + offset);
+        g.moveTo(shifted[0].x, shifted[0].y);
+        for (let k = 1; k < shifted.length; k++) {
+          g.lineTo(shifted[k].x, shifted[k].y);
+        }
         g.stroke({ width: isSelected ? 2.5 : 1.6, color: cColor });
         container.addChild(g);
 
+        const midIdx = Math.floor(shifted.length / 2);
+        const anchor = shifted[midIdx];
         const text = new Text({
           text: label,
           style: {
@@ -668,7 +913,7 @@ export class DiagramStage {
           },
           resolution: 2,
         });
-        text.position.set(midX + offset + 3, (from.y + to.y) / 2 + offset - 10);
+        text.position.set(anchor.x + 3, anchor.y - 10);
         container.addChild(text);
       });
 
@@ -678,22 +923,20 @@ export class DiagramStage {
       return;
     }
 
-    // Unifilar: Condutor único
+    // Unifilar: Condutor único com suporte a waypoints, cruzamentos e alças de ajuste
+    const container = new Container();
     const g = new Graphics();
     g.eventMode = "static";
     g.cursor = "pointer";
-    g.hitArea = createOrthogonalWireHitArea(from, to, midX, 10);
+    g.hitArea = createPolylineHitArea(points, 11);
 
     if (e.kind === "signal") {
       // Linha tracejada industrial para controle/sinal
-      const segments = [
-        { x1: from.x, y1: from.y, x2: midX, y2: from.y },
-        { x1: midX, y1: from.y, x2: midX, y2: to.y },
-        { x1: midX, y1: to.y, x2: to.x, y2: to.y },
-      ];
-      for (const seg of segments) {
-        const dx = seg.x2 - seg.x1;
-        const dy = seg.y2 - seg.y1;
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
         const dist = Math.hypot(dx, dy);
         if (dist === 0) continue;
         const ux = dx / dist;
@@ -706,10 +949,7 @@ export class DiagramStage {
           const len = drawing ? dash : gap;
           const next = Math.min(curr + len, dist);
           if (drawing) {
-            g.moveTo(seg.x1 + ux * curr, seg.y1 + uy * curr).lineTo(
-              seg.x1 + ux * next,
-              seg.y1 + uy * next,
-            );
+            g.moveTo(a.x + ux * curr, a.y + uy * curr).lineTo(a.x + ux * next, a.y + uy * next);
           }
           curr = next;
           drawing = !drawing;
@@ -719,20 +959,54 @@ export class DiagramStage {
       g.circle(from.x, from.y, 3).fill({ color: strokeColor });
       g.circle(to.x, to.y, 2.5).fill({ color: strokeColor });
     } else {
-      // Condutor de potência
-      g.moveTo(from.x, from.y).lineTo(midX, from.y).lineTo(midX, to.y).lineTo(to.x, to.y);
-      g.stroke({ width: isSelected ? 3.2 : 2.0, color: strokeColor });
-
-      if (srcNode.params.kind === "busbar" || tgtNode.params.kind === "busbar") {
-        const dotX = srcNode.params.kind === "busbar" ? from.x : to.x;
-        const dotY = srcNode.params.kind === "busbar" ? from.y : to.y;
-        g.circle(dotX, dotY, 4).fill({ color: strokeColor });
-      }
+      // Condutor de potência com rotas ortogonais e pontes para cruzamentos sem ligação
+      this.drawOrthogonalPathWithBridges(g, points, crossings);
+      g.stroke({ width: isSelected ? 3.2 : 2.1, color: strokeColor });
     }
 
     this.attachEdgeEvents(g, e.id);
-    this.edgesLayer.addChild(g);
-    this.edges.set(e.id, { graphics: g, hash });
+    container.addChild(g);
+
+    // Alças interativas de segmento quando o condutor está selecionado
+    if (isSelected && points.length >= 4) {
+      for (let i = 1; i <= points.length - 3; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const isHoriz = Math.abs(a.y - b.y) < 0.5 && Math.abs(a.x - b.x) >= 16;
+        const isVert = Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) >= 16;
+        if (!isHoriz && !isVert) continue;
+
+        const hx = (a.x + b.x) / 2;
+        const hy = (a.y + b.y) / 2;
+        const handle = new Graphics();
+        handle.eventMode = "static";
+        handle.cursor = isHoriz ? "ns-resize" : "ew-resize";
+        handle.rect(-4.5, -4.5, 9, 9).fill({ color: 0xf97316 }).stroke({ width: 1, color: 0xffffff });
+        handle.position.set(hx, hy);
+        const segIdx = i;
+        const orientation: "H" | "V" = isHoriz ? "H" : "V";
+        handle.on("pointerdown", (ev: FederatedPointerEvent) => {
+          if (ev.button !== 0) return;
+          ev.stopPropagation();
+          const world = this.viewport.toWorld(ev.global);
+          this.viewport.plugins.pause("drag");
+          this.segmentDrag = {
+            pointerId: ev.pointerId,
+            edgeId: e.id,
+            segIndex: segIdx,
+            orientation,
+            basePoints: points.map((p) => ({ ...p })),
+            startWorld: { x: world.x, y: world.y },
+            currentPoints: points.map((p) => ({ ...p })),
+            moved: false,
+          };
+        });
+        container.addChild(handle);
+      }
+    }
+
+    this.edgesLayer.addChild(container);
+    this.edges.set(e.id, { graphics: container, hash });
   }
 
   private attachEdgeEvents(target: Container, edgeId: string) {
@@ -754,14 +1028,15 @@ export class DiagramStage {
     });
   }
 
-  private refreshEdgesFor(nodeIds: Iterable<string>) {
-    const set = new Set(nodeIds);
-    for (const [id, v] of this.edges) {
-      if ([...set].some((nid) => v.hash.includes(nid))) {
-        v.graphics.destroy();
-        this.edges.delete(id);
-      }
+  private refreshEdgesFor(_nodeIds: Iterable<string>) {
+    if (!this.lastDoc) return;
+    const wantNodes = Object.values(this.lastDoc.nodes).filter((n) => n.sheet === this.lastSheet);
+    const wantEdges = Object.values(this.lastDoc.edges).filter((e) => e.sheet === this.lastSheet);
+    const overrides = new Map<string, Position>();
+    for (const [id, v] of this.nodes) {
+      overrides.set(id, { x: v.container.x, y: v.container.y });
     }
+    this.renderSheetEdges(wantNodes, wantEdges, this.lastDoc, this.lastEnergization, overrides);
   }
 
   // ============== pointer pipeline ==============
@@ -842,6 +1117,29 @@ export class DiagramStage {
   }
 
   private onPointerMove(e: FederatedPointerEvent) {
+    if (this.segmentDrag && e.pointerId === this.segmentDrag.pointerId) {
+      const world = this.viewport.toWorld(e.global);
+      const sd = this.segmentDrag;
+      const snap = this.events.snap ?? ((v: number) => v);
+      const pts = sd.basePoints.map((p) => ({ ...p }));
+      if (sd.orientation === "H") {
+        const dy = snap(world.y) - sd.startWorld.y;
+        pts[sd.segIndex].y += dy;
+        pts[sd.segIndex + 1].y += dy;
+      } else {
+        const dx = snap(world.x) - sd.startWorld.x;
+        pts[sd.segIndex].x += dx;
+        pts[sd.segIndex + 1].x += dx;
+      }
+      sd.currentPoints = simplifyOrthogonalPoints(pts);
+      sd.moved = true;
+      const edge = this.lastDoc?.edges[sd.edgeId];
+      if (edge && this.lastDoc) {
+        this.upsertEdge(edge, this.lastDoc, sd.currentPoints, [], this.lastEnergization);
+      }
+      return;
+    }
+
     if (this.drag && e.pointerId === this.drag.pointerId) {
       const world = this.viewport.toWorld(e.global);
       const dx = world.x - this.drag.start.x;
@@ -861,21 +1159,29 @@ export class DiagramStage {
       const src = this.findNode(this.draft.source);
       if (!src) return;
       const from = this.portWorldFromView(src, this.draft.sourcePort);
-      this.draft.preview.clear();
-      const midX = (from.x + world.x) / 2;
-      this.draft.preview
-        .moveTo(from.x, from.y)
-        .lineTo(midX, from.y)
-        .lineTo(midX, world.y)
-        .lineTo(world.x, world.y)
-        .stroke({ width: 1.8, color: 0xf59e0b, alpha: 0.9 });
       this.draft.hoverTarget = this.findPortAt(world.x, world.y, this.draft.source);
+      const tgtSide = this.draft.hoverTarget?.port.side ?? "top";
+      let targetPt = { x: world.x, y: world.y };
       if (this.draft.hoverTarget) {
         const t = this.findNode(this.draft.hoverTarget.nodeId);
-        if (t) {
-          const tw = this.portWorldFromView(t, this.draft.hoverTarget.port);
-          this.draft.preview.circle(tw.x, tw.y, 6).stroke({ width: 1.8, color: 0x0284c7 });
+        if (t) targetPt = this.portWorldFromView(t, this.draft.hoverTarget.port);
+      }
+      const previewPts = routeOrthogonalEdge({
+        from,
+        to: targetPt,
+        srcSide: this.draft.sourcePort.side,
+        tgtSide,
+      });
+      this.draft.preview.clear();
+      if (previewPts.length >= 2) {
+        this.draft.preview.moveTo(previewPts[0].x, previewPts[0].y);
+        for (let i = 1; i < previewPts.length; i++) {
+          this.draft.preview.lineTo(previewPts[i].x, previewPts[i].y);
         }
+        this.draft.preview.stroke({ width: 1.8, color: 0xf59e0b, alpha: 0.9 });
+      }
+      if (this.draft.hoverTarget) {
+        this.draft.preview.circle(targetPt.x, targetPt.y, 6).stroke({ width: 1.8, color: 0x0284c7 });
       }
       return;
     }
@@ -895,6 +1201,16 @@ export class DiagramStage {
   }
 
   private onPointerUp(e: FederatedPointerEvent) {
+    if (this.segmentDrag && e.pointerId === this.segmentDrag.pointerId) {
+      const sd = this.segmentDrag;
+      this.segmentDrag = null;
+      this.viewport.plugins.resume("drag");
+      if (sd.moved && sd.currentPoints.length >= 2) {
+        this.events.onUpdateEdgeWaypoints?.(sd.edgeId, sd.currentPoints);
+      }
+      return;
+    }
+
     if (this.drag && e.pointerId === this.drag.pointerId) {
       const d = this.drag;
       this.drag = null;

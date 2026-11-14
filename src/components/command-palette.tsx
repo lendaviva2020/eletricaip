@@ -96,11 +96,6 @@ export function CommandPalette() {
             <span>Copiloto Técnico (Chat)</span>
             <CommandShortcut>/chat</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.navigate({ to: "/digital-twin" }))}>
-            <Cube className="mr-2 h-4 w-4 text-muted-foreground" />
-            <span>Digital Twin</span>
-            <CommandShortcut>/digital-twin</CommandShortcut>
-          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.navigate({ to: "/realtime" }))}>
             <Pulse className="mr-2 h-4 w-4 text-muted-foreground" />
             <span>Telemetria em Tempo Real</span>

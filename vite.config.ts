@@ -28,16 +28,6 @@ export default defineConfig({
           manualChunks(id: string) {
             if (!id.includes("node_modules")) return undefined;
 
-            // Three.js / @react-three — só Digital Twin
-            if (
-              id.includes("/three/") ||
-              id.includes("@react-three") ||
-              id.includes("camera-controls") ||
-              id.includes("troika-")
-            ) {
-              return "vendor-3d";
-            }
-
             // Konva — canvases gráficos
             if (id.includes("/konva/") || id.includes("react-konva")) {
               return "vendor-konva";

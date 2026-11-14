@@ -45,6 +45,8 @@ import {
   convertBundleToLadderRungs,
   detectFormat,
 } from "@/lib/importer/universal-importer";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { buildDiagnosticContextFromImportIssue } from "@/lib/diagnostics/ai-repair-context";
 import {
   exportCurrentCanvasToBundle,
   generateExternalAiPrompt,
@@ -253,6 +255,9 @@ export function UniversalImportModal({
     // 1. Atualizar DiagramDoc (WebGL Canvas)
     const newDoc = convertBundleToDiagramDoc(bundle, currentDiagramDoc, importMode);
     loadDoc(newDoc);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("eletricai-fit-view"));
+    }
 
     // 2. Atualizar Simulation Nodes & Edges (Project Store)
     const industrial = convertBundleToIndustrialElements(bundle);
@@ -643,9 +648,19 @@ export function UniversalImportModal({
                 {/* Issues List */}
                 {validationReport.issues.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                      Relatório de Conformidade & Avisos ({validationReport.issues.length})
-                    </h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                        Relatório de Conformidade & Avisos ({validationReport.issues.length})
+                      </h4>
+                      <AiFixButton
+                        batch={validationReport.issues.map((i) =>
+                          buildDiagnosticContextFromImportIssue(i, "proj_import"),
+                        )}
+                        label="CORRIGIR PACOTE COM IA"
+                        size="xs"
+                        variant="primary"
+                      />
+                    </div>
                     <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
                       {validationReport.issues.map((issue) => (
                         <div
@@ -669,6 +684,14 @@ export function UniversalImportModal({
                             </span>
                             {issue.message}
                           </div>
+                          <AiFixButton
+                            diagnostic={buildDiagnosticContextFromImportIssue(
+                              issue,
+                              "proj_import",
+                            )}
+                            size="xs"
+                            variant="compact"
+                          />
                         </div>
                       ))}
                     </div>

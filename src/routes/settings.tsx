@@ -167,14 +167,6 @@ function SettingsPage() {
               to="/settings/catalog-import"
               badge="Admin"
             />
-
-            <SettingsLinkCard
-              icon={Cube}
-              title="Digital Twin 3D"
-              desc="Gêmeo Digital interativo com visualização 3D e telemetria ao vivo"
-              to="/digital-twin"
-              badge="Novo"
-            />
           </div>
         </section>
 
