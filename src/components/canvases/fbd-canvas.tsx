@@ -40,6 +40,9 @@ import { compileFbdNodesToSt, editorSpecFor, getFbdRegistry } from "@/lib/fbd/ed
 import { useFbdEngine } from "@/hooks/use-fbd-engine";
 import { FbdEnginePanel } from "@/components/fbd/fbd-engine-panel";
 import type { FbdValue } from "@/lib/fbd/engine";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { buildDiagnosticContextFromFbd } from "@/lib/diagnostics/ai-repair-context";
+import { useProjectStore } from "@/lib/project-store";
 
 /** Valores ao vivo da simulação por bloco → pino (inclui ENO). */
 const FbdLiveContext = createContext<Readonly<Record<string, Readonly<Record<string, FbdValue>>>>>(
@@ -473,6 +476,28 @@ function FbdCanvasInner() {
           <Trash className="h-3.5 w-3.5" />
           <span>Apagar</span>
         </button>
+
+        {engine.result.diagnostics.length > 0 && (
+          <AiFixButton
+            batch={engine.result.diagnostics.slice(0, 15).map((diag, idx) =>
+              buildDiagnosticContextFromFbd(
+                {
+                  id: `fbd_${diag.code}_${diag.nodeId ?? idx}`,
+                  code: diag.code,
+                  severity: diag.severity === "error" ? "critical" : "warning",
+                  message: diag.message,
+                  nodeId: diag.nodeId,
+                  edgeId: diag.connectionId,
+                  portId: diag.port,
+                  fixHint: diag.suggestion,
+                },
+                useProjectStore.getState().projectId || "proj_active",
+              ),
+            )}
+            size="sm"
+            variant="primary"
+          />
+        )}
       </div>
 
       {/* REACT FLOW SURFACE */}

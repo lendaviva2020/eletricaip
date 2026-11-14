@@ -9,7 +9,7 @@ import type {
   ConnectivityStatus,
 } from "./types";
 import { getEquipmentTerminalProfile } from "./terminal-library";
-import { buildNetlistFromDiagram, resolveTerminalCode } from "./connection-engine";
+import { buildNetlistFromDiagram, resolveTerminalAllocation } from "./connection-engine";
 
 export function validateElectricalTopology(doc: DiagramDoc): TopologyValidationResult {
   const nodes = Object.values(doc.nodes).filter(
@@ -28,13 +28,17 @@ export function validateElectricalTopology(doc: DiagramDoc): TopologyValidationR
   // Map degrees of nodes (in and out)
   const incomingEdges = new Map<string, typeof edges>();
   const outgoingEdges = new Map<string, typeof edges>();
+  const terminalUsageCount = new Map<
+    string,
+    { node: DiagramNode; code: string; count: number; max?: number }
+  >();
 
   for (const n of nodes) {
     incomingEdges.set(n.id, []);
     outgoingEdges.set(n.id, []);
   }
 
-  // 1. Structural edge validation & orphan checks
+  // 1. Structural edge validation, orphan & terminal catalog checks
   const seenPairTerminals = new Set<string>();
 
   for (const e of edges) {
@@ -59,6 +63,24 @@ export function validateElectricalTopology(doc: DiagramDoc): TopologyValidationR
       continue;
     }
 
+    if ((e.kind as string) === "pipe") {
+      invalidConnections.push({
+        edgeId: e.id,
+        source: e.source,
+        target: e.target,
+        reason: `Aresta '${e.id}' possui semântica não elétrica (tubulação/pipe) e não representa ligação elétrica válida.`,
+        severity: "error",
+      });
+      diagnostics.push({
+        id: `diag_non_electrical_${e.id}`,
+        code: "NON_ELECTRICAL_EDGE",
+        message: `Conexão '${e.id}' tem tipo não elétrico ('${e.kind}') no diagrama elétrico.`,
+        severity: "error",
+        entityIds: [e.id, srcNode.id, tgtNode.id],
+      });
+      continue;
+    }
+
     if (e.source === e.target) {
       invalidConnections.push({
         edgeId: e.id,
@@ -76,8 +98,77 @@ export function validateElectricalTopology(doc: DiagramDoc): TopologyValidationR
       });
     }
 
-    const fromCode = resolveTerminalCode(srcNode, e.sourcePort, "source");
-    const toCode = resolveTerminalCode(tgtNode, e.targetPort, "target");
+    const srcAlloc = resolveTerminalAllocation(srcNode, e.sourcePort, "source");
+    const tgtAlloc = resolveTerminalAllocation(tgtNode, e.targetPort, "target");
+
+    if (!srcAlloc.valid) {
+      const code =
+        srcAlloc.status === "ambiguous_terminal"
+          ? "AMBIGUOUS_TERMINAL_ALLOCATION"
+          : "INVALID_TERMINAL_REFERENCE";
+      const reason =
+        srcAlloc.reason ||
+        `Terminal de origem '${e.sourcePort ?? ""}' inválido ou incompatível em '${srcNode.label || srcNode.id}'.`;
+      invalidConnections.push({
+        edgeId: e.id,
+        source: e.source,
+        target: e.target,
+        reason,
+        severity: "error",
+      });
+      diagnostics.push({
+        id: `diag_src_term_${e.id}`,
+        code,
+        message: reason,
+        severity: "error",
+        entityIds: [srcNode.id, e.id],
+      });
+    }
+
+    if (!tgtAlloc.valid) {
+      const code =
+        tgtAlloc.status === "ambiguous_terminal"
+          ? "AMBIGUOUS_TERMINAL_ALLOCATION"
+          : "INVALID_TERMINAL_REFERENCE";
+      const reason =
+        tgtAlloc.reason ||
+        `Terminal de destino '${e.targetPort ?? ""}' inválido ou incompatível em '${tgtNode.label || tgtNode.id}'.`;
+      invalidConnections.push({
+        edgeId: e.id,
+        source: e.source,
+        target: e.target,
+        reason,
+        severity: "error",
+      });
+      diagnostics.push({
+        id: `diag_tgt_term_${e.id}`,
+        code,
+        message: reason,
+        severity: "error",
+        entityIds: [tgtNode.id, e.id],
+      });
+    }
+
+    const fromCode = srcAlloc.code;
+    const toCode = tgtAlloc.code;
+
+    const srcUsageKey = `${srcNode.id}:${fromCode}`;
+    const prevSrcUsage = terminalUsageCount.get(srcUsageKey);
+    terminalUsageCount.set(srcUsageKey, {
+      node: srcNode,
+      code: fromCode,
+      count: (prevSrcUsage?.count ?? 0) + 1,
+      max: srcAlloc.terminal?.maxConnections,
+    });
+
+    const tgtUsageKey = `${tgtNode.id}:${toCode}`;
+    const prevTgtUsage = terminalUsageCount.get(tgtUsageKey);
+    terminalUsageCount.set(tgtUsageKey, {
+      node: tgtNode,
+      code: toCode,
+      count: (prevTgtUsage?.count ?? 0) + 1,
+      max: tgtAlloc.terminal?.maxConnections,
+    });
 
     const pairKey = `${e.source}:${fromCode}->${e.target}:${toCode}`;
     if (seenPairTerminals.has(pairKey)) {
@@ -95,11 +186,8 @@ export function validateElectricalTopology(doc: DiagramDoc): TopologyValidationR
     outgoingEdges.get(e.source)?.push(e);
 
     // Verify electrical nature compatibility (e.g. power vs control short)
-    const srcProfile = getEquipmentTerminalProfile(srcNode.params.kind, srcNode.params);
-    const tgtProfile = getEquipmentTerminalProfile(tgtNode.params.kind, tgtNode.params);
-
-    const srcTerm = srcProfile.terminals.find((t) => t.code === fromCode);
-    const tgtTerm = tgtProfile.terminals.find((t) => t.code === toCode);
+    const srcTerm = srcAlloc.terminal;
+    const tgtTerm = tgtAlloc.terminal;
 
     if (srcTerm && tgtTerm) {
       if (
@@ -107,13 +195,80 @@ export function validateElectricalTopology(doc: DiagramDoc): TopologyValidationR
         tgtTerm.nature === "control" &&
         tgtNode.params.kind !== "psu"
       ) {
-        // Warning: Direct power wired to control input without PSU/step-down
+        // Direct power wired to control input without PSU/step-down
         diagnostics.push({
           id: `diag_nature_mismatch_${e.id}`,
           code: "POWER_TO_CONTROL_SHORT",
           message: `Incompatibilidade de natureza elétrica: terminal de potência '${srcTerm.code}' de ${srcNode.label || srcNode.id} conectado diretamente a terminal de comando '${tgtTerm.code}' de ${tgtNode.label || tgtNode.id}.`,
           severity: "error",
           entityIds: [srcNode.id, tgtNode.id, e.id],
+        });
+      }
+    }
+  }
+
+  // 1b. Terminal allocation capacity check (busbar tap limit & configured hardware capacity)
+  for (const n of nodes) {
+    if (n.params.kind === "busbar" && "taps" in n.params && typeof n.params.taps === "number") {
+      const configuredTaps = n.params.taps;
+      const outConns = outgoingEdges.get(n.id) ?? [];
+      if (outConns.length > configuredTaps) {
+        const msg = `Barramento '${n.label || n.id}' possui ${outConns.length} derivações conectadas para apenas ${configuredTaps} pontos configurados (taps).`;
+        invalidConnections.push({
+          edgeId: outConns[configuredTaps].id,
+          source: n.id,
+          target: outConns[configuredTaps].target,
+          reason: msg,
+          severity: "error",
+        });
+        diagnostics.push({
+          id: `diag_bus_cap_${n.id}`,
+          code: "BUSBAR_TAP_CAPACITY_EXCEEDED",
+          message: msg,
+          severity: "error",
+          entityIds: [n.id, ...outConns.map((o) => o.id)],
+        });
+      }
+    }
+  }
+
+  for (const [, usage] of terminalUsageCount.entries()) {
+    if (usage.max !== undefined && usage.count > usage.max) {
+      const hasExplicitBusbarConfig =
+        usage.node.params.kind === "busbar" &&
+        "taps" in usage.node.params &&
+        typeof usage.node.params.taps === "number";
+      if (hasExplicitBusbarConfig) {
+        const msg = `Terminal '${usage.code}' de '${usage.node.label || usage.node.id}' excedeu capacidade (${usage.count}/${usage.max}).`;
+        diagnostics.push({
+          id: `diag_term_cap_${usage.node.id}_${usage.code}`,
+          code: "TERMINAL_CAPACITY_EXCEEDED",
+          message: msg,
+          severity: "error",
+          entityIds: [usage.node.id],
+        });
+        const offendingEdge = outgoingEdges
+          .get(usage.node.id)
+          ?.find(
+            (edge) =>
+              resolveTerminalAllocation(usage.node, edge.sourcePort, "source").code === usage.code,
+          );
+        if (offendingEdge) {
+          invalidConnections.push({
+            edgeId: offendingEdge.id,
+            source: offendingEdge.source,
+            target: offendingEdge.target,
+            reason: msg,
+            severity: "error",
+          });
+        }
+      } else if (usage.node.params.kind === "busbar" && usage.code.startsWith("TAP_")) {
+        diagnostics.push({
+          id: `diag_term_shared_${usage.node.id}_${usage.code}`,
+          code: "MULTIPLE_CONDUCTORS_ON_TERMINAL",
+          message: `Terminal '${usage.code}' do barramento '${usage.node.label || usage.node.id}' compartilha ${usage.count} condutores sem configuração explícita de taps.`,
+          severity: "warning",
+          entityIds: [usage.node.id],
         });
       }
     }

@@ -4,6 +4,13 @@ import { GoogleGenAI } from "@google/genai";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-3.1-pro-preview";
 
+export const FALLBACK_GEMINI_MODELS = [
+  "gemini-3-flash-preview",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-lite-latest",
+] as const;
+
 export function getGeminiModel(): string {
   return process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
 }
@@ -170,22 +177,49 @@ export async function pingGemini(): Promise<GeminiPingResult> {
 
   try {
     const ai = getGeminiClient(key);
-    const response = await ai.models.generateContent({
-      model,
-      contents: "ping",
-      config: {
-        maxOutputTokens: 1,
-        temperature: 0,
-      },
-    });
+    const candidateModels = Array.from(new Set([model, ...FALLBACK_GEMINI_MODELS]));
+    let lastError: GeminiStandardError | null = null;
 
-    const hasText = Boolean(response.text !== undefined);
+    for (const candidateModel of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model: candidateModel,
+          contents: "Reply with OK",
+          config: {
+            maxOutputTokens: 64,
+            temperature: 0,
+          },
+        });
+
+        const hasText = Boolean(response.text !== undefined && response.text.trim().length > 0);
+        if (hasText) {
+          return {
+            ok: true,
+            keyConfigured: true,
+            keyFormatValid: true,
+            pingOk: true,
+            pingStatus: 200,
+            provider: "gemini",
+            model: candidateModel,
+            checkedAt: new Date().toISOString(),
+          };
+        }
+      } catch (innerErr) {
+        const mapped = mapGeminiError(innerErr);
+        lastError = mapped;
+        if (mapped.code === "AUTH_401" || mapped.code === "MISSING_KEY") {
+          break;
+        }
+      }
+    }
+
     return {
-      ok: hasText,
+      ok: false,
       keyConfigured: true,
       keyFormatValid: true,
-      pingOk: hasText,
-      pingStatus: 200,
+      pingOk: false,
+      pingStatus: lastError?.status ?? 503,
+      pingError: lastError?.message ?? "Modelo não retornou conteúdo no ping.",
       provider: "gemini",
       model,
       checkedAt: new Date().toISOString(),

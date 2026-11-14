@@ -46,6 +46,7 @@ import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
 import {
   buildDiagnosticContextFromMultifilar,
   buildDiagnosticContextFromLadder,
+  buildDiagnosticContextFromComms,
 } from "@/lib/diagnostics/ai-repair-context";
 
 /**
@@ -1067,6 +1068,23 @@ export function UnifiedBottomDock() {
                           : "Desconectado"}
                   </span>
                 </span>
+                {bridge.opcua.status === "error" && (
+                  <AiFixButton
+                    diagnostic={buildDiagnosticContextFromComms(
+                      {
+                        code: "ERR_OPCUA_BRIDGE",
+                        protocol: "OPC-UA",
+                        endpoint: bridge.opcua.endpoint,
+                        severity: "critical",
+                        message: bridge.opcua.error || "Falha de conexão com servidor OPC-UA.",
+                        errorCode: "OPCUA_CONN_ERR",
+                      },
+                      projectId || "proj_active",
+                    )}
+                    size="xs"
+                    variant="primary"
+                  />
+                )}
                 {bridge.opcua.tags.length > 0 && (
                   <span className="text-muted-foreground">
                     Tags Ativas:{" "}
@@ -1143,6 +1161,23 @@ export function UnifiedBottomDock() {
                           : "Desconectado"}
                   </span>
                 </span>
+                {bridge.modbus.status === "error" && (
+                  <AiFixButton
+                    diagnostic={buildDiagnosticContextFromComms(
+                      {
+                        code: "ERR_MODBUS_BRIDGE",
+                        protocol: "Modbus-TCP",
+                        endpoint: `${bridge.modbus.host}:${bridge.modbus.port}`,
+                        severity: "critical",
+                        message: bridge.modbus.error || "Falha de conexão no gateway Modbus TCP.",
+                        errorCode: "MODBUS_CONN_ERR",
+                      },
+                      projectId || "proj_active",
+                    )}
+                    size="xs"
+                    variant="primary"
+                  />
+                )}
                 {bridge.modbus.values.length > 0 && (
                   <span className="text-muted-foreground">
                     Registros:{" "}

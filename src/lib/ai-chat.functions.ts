@@ -8,13 +8,22 @@ import {
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { sanitizePromptText } from "@/lib/ai/context-sanitizer";
+import { assertProjectTenantAccess, loadProjectAiMemoryContext } from "@/lib/ai/memory.server";
 import {
-  getGeminiClient,
-  getGeminiModel,
   getGeminiApiKey,
   validateGeminiKey,
-  mapGeminiError,
 } from "@/lib/ai/gemini-client.server";
+import { gatewayExecute, gatewayStreamChat } from "@/lib/ai/gateway/ai-gateway.server";
+import {
+  buildUnifiedEngineeringSystemPrompt,
+  extractEngineeringSnapshotFromState,
+} from "@/lib/ai/gateway/engineering-context.server";
+import {
+  ENGINEERING_TOOL_DECLARATIONS,
+  executeAuthorizedEngineeringTool,
+  type EngineeringToolName,
+} from "@/lib/ai/gateway/engineering-tools.server";
+import { AI_MODULE_DISCIPLINES, type AiModuleDiscipline } from "@/lib/ai/gateway/types";
 
 export type ChatConversation = {
   id: string;
@@ -30,6 +39,7 @@ export type ChatMessage = {
   content: string;
   created_at: string;
   tokens_used: number | null;
+  tool_calls?: Record<string, unknown> | null;
 };
 
 export const listConversations = createServerFn({ method: "GET" })
@@ -65,10 +75,18 @@ export const getConversationMessages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ conversationId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<ChatMessage[]> => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    const { data: conv } = await supabase
+      .from("ai_conversations")
+      .select("id, project_id")
+      .eq("id", data.conversationId)
+      .maybeSingle();
+    if (conv?.project_id) {
+      await assertProjectTenantAccess(supabase, userId, conv.project_id);
+    }
     const { data: rows, error } = await supabase
       .from("ai_messages")
-      .select("id, conversation_id, role, content, created_at, tokens_used")
+      .select("id, conversation_id, role, content, created_at, tokens_used, tool_calls")
       .eq("conversation_id", data.conversationId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
@@ -120,12 +138,13 @@ export const getOrCreateProjectConversation = createServerFn({ method: "POST" })
     }> => {
       const { supabase, userId } = context;
 
-      // Busca conversa ativa mais recente para este projeto
+      await assertProjectTenantAccess(supabase, userId, data.projectId);
+
+      // Busca conversa ativa mais recente para este projeto (visível aos membros autorizados)
       const { data: existing, error: searchErr } = await supabase
         .from("ai_conversations")
         .select("id, title, created_at, updated_at")
         .eq("project_id", data.projectId)
-        .eq("user_id", userId)
         .order("updated_at", { ascending: false })
         .limit(1);
 
@@ -148,10 +167,10 @@ export const getOrCreateProjectConversation = createServerFn({ method: "POST" })
         conversation = created as ChatConversation;
       }
 
-      // Carrega o histórico completo de mensagens
+      // Carrega o histórico completo em ordem cronológica (zero truncamento destrutivo)
       const { data: msgs, error: msgErr } = await supabase
         .from("ai_messages")
-        .select("id, conversation_id, role, content, created_at, tokens_used")
+        .select("id, conversation_id, role, content, created_at, tokens_used, tool_calls")
         .eq("conversation_id", conversation.id)
         .order("created_at", { ascending: true });
 
@@ -167,6 +186,12 @@ export const getOrCreateProjectConversation = createServerFn({ method: "POST" })
 /**
  * Persiste uma mensagem no histórico da conversa e atualiza o timestamp da conversa.
  */
+const JsonPrimitiveSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([JsonPrimitiveSchema, z.array(JsonValueSchema), z.record(z.string(), JsonValueSchema)]),
+);
+
 export const persistChatMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -174,14 +199,23 @@ export const persistChatMessage = createServerFn({ method: "POST" })
       .object({
         conversationId: z.string().uuid(),
         role: z.enum(["user", "assistant", "system"]),
-        content: z.string().min(1),
+        content: z.string().min(1).max(64000),
         tokensUsed: z.number().int().optional(),
-        toolCalls: z.record(z.string(), z.any()).optional(),
+        toolCalls: z.record(z.string(), JsonValueSchema).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }): Promise<ChatMessage> => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+
+    const { data: conv } = await supabase
+      .from("ai_conversations")
+      .select("id, project_id")
+      .eq("id", data.conversationId)
+      .maybeSingle();
+    if (conv?.project_id) {
+      await assertProjectTenantAccess(supabase, userId, conv.project_id);
+    }
 
     const { data: row, error } = await supabase
       .from("ai_messages")
@@ -190,7 +224,7 @@ export const persistChatMessage = createServerFn({ method: "POST" })
         role: data.role,
         content: data.content,
         tokens_used: data.tokensUsed ?? null,
-        tool_calls: (data.toolCalls as any) ?? {},
+        tool_calls: data.toolCalls ?? {},
       })
       .select("id, conversation_id, role, content, created_at, tokens_used")
       .single();
@@ -219,44 +253,18 @@ export const getProjectEngineeringMemory = createServerFn({ method: "GET" })
       totalConversations: number;
       totalMessages: number;
       recentFixes: Array<{ role: string; content: string; created_at: string }>;
+      summaryBlock: string;
     }> => {
       const { supabase, userId } = context;
-
-      const { count: convCount } = await supabase
-        .from("ai_conversations")
-        .select("id", { count: "exact", head: true })
-        .eq("project_id", data.projectId)
-        .eq("user_id", userId);
-
-      const { data: convs } = await supabase
-        .from("ai_conversations")
-        .select("id")
-        .eq("project_id", data.projectId)
-        .eq("user_id", userId)
-        .limit(10);
-
-      const convIds = (convs ?? []).map((c) => c.id);
-
-      if (convIds.length === 0) {
-        return { totalConversations: 0, totalMessages: 0, recentFixes: [] };
-      }
-
-      const { count: msgCount } = await supabase
-        .from("ai_messages")
-        .select("id", { count: "exact", head: true })
-        .in("conversation_id", convIds);
-
-      const { data: recentMsgs } = await supabase
-        .from("ai_messages")
-        .select("role, content, created_at")
-        .in("conversation_id", convIds)
-        .order("created_at", { ascending: false })
-        .limit(5);
+      const mem = await loadProjectAiMemoryContext(supabase, userId, {
+        projectId: data.projectId,
+      });
 
       return {
-        totalConversations: convCount ?? 0,
-        totalMessages: msgCount ?? 0,
-        recentFixes: (recentMsgs ?? []).reverse(),
+        totalConversations: mem.totalConversations,
+        totalMessages: mem.totalMessages,
+        recentFixes: mem.recentFixes,
+        summaryBlock: mem.summaryBlock,
       };
     },
   );
@@ -282,8 +290,11 @@ export const streamChat = createServerFn({ method: "POST" })
     z
       .object({
         conversationId: z.string().uuid(),
+        projectId: z.string().uuid().optional(),
         prompt: z.string().min(1).max(32000),
         locale: z.enum(["pt-BR", "en"]).default("pt-BR"),
+        module: z.enum(AI_MODULE_DISCIPLINES).optional(),
+        projectContext: z.record(z.string(), z.unknown()).optional(),
       })
       .parse(input),
   )
@@ -330,81 +341,85 @@ export const streamChat = createServerFn({ method: "POST" })
       content: data.prompt,
     });
 
-    // Load full history for context.
-    const { data: history } = await supabase
-      .from("ai_messages")
-      .select("role, content")
-      .eq("conversation_id", data.conversationId)
-      .order("created_at", { ascending: true })
-      .limit(40);
+    // Load newest chronological window + condensed engineering summary for long conversations (>24 turns).
+    const mem = await loadProjectAiMemoryContext(supabase, userId, {
+      conversationId: data.conversationId,
+      projectId: data.projectId,
+      recentLimit: 24,
+    });
 
-    const rawMessages = [
-      ...((history ?? []) as Array<{ role: string; content: string }>).map((m) => ({
-        role: m.role === "assistant" ? ("model" as const) : ("user" as const),
-        text: sanitizePromptText(m.content, 2000),
-      })),
-    ];
-    if (rawMessages.length === 0 || rawMessages[rawMessages.length - 1].role !== "user") {
-      rawMessages.push({
+    const gatewayMessages: Array<{ role: "user" | "assistant"; content: string }> = mem.recentTurns.map(
+      (t) => ({
+        role: t.role === "model" ? ("assistant" as const) : ("user" as const),
+        content: t.parts.map((p) => p.text).join("\n"),
+      }),
+    );
+    const sanitizedLatestPrompt = sanitizePromptText(data.prompt, 2000);
+    if (
+      gatewayMessages.length === 0 ||
+      gatewayMessages[gatewayMessages.length - 1].role !== "user"
+    ) {
+      gatewayMessages.push({
         role: "user" as const,
-        text: sanitizePromptText(data.prompt, 2000),
+        content: sanitizedLatestPrompt,
       });
     }
 
-    // Consolidate adjacent turns of the same role for strict Gemini adherence
-    const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
-    for (const msg of rawMessages) {
-      if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
-        contents[contents.length - 1].parts.push({ text: msg.text });
-      } else {
-        contents.push({ role: msg.role, parts: [{ text: msg.text }] });
-      }
-    }
-
-    let streamResponse;
-    try {
-      const ai = getGeminiClient();
-      const model = getGeminiModel();
-      streamResponse = await ai.models.generateContentStream({
-        model,
-        contents,
-        config: {
-          systemInstruction: getChatSystemPrompt(data.locale ?? "pt-BR"),
-          temperature: 0.4,
-        },
-      });
-    } catch (e) {
-      const mapped = mapGeminiError(e);
-      yield { type: "error" as const, message: mapped.message };
-      return;
-    }
+    const activeModule: AiModuleDiscipline = data.module ?? "general";
+    const snapshot = extractEngineeringSnapshotFromState(
+      activeModule,
+      data.projectContext ?? null,
+      mem.summaryBlock,
+    );
+    const baseInstruction = getChatSystemPrompt(data.locale ?? "pt-BR");
+    const unifiedInstruction = buildUnifiedEngineeringSystemPrompt({
+      module: activeModule,
+      locale: data.locale ?? "pt-BR",
+      snapshot,
+      memorySummaryBlock: mem.summaryBlock,
+    });
+    const systemInstruction = `${baseInstruction}\n\n${unifiedInstruction}`;
 
     let accumulated = "";
     let totalTokens = 0;
-    try {
-      for await (const chunk of streamResponse) {
-        const delta = chunk.text || "";
-        if (delta) {
-          accumulated += delta;
-          yield { type: "delta" as const, text: delta };
-        }
-        if (chunk.usageMetadata?.totalTokenCount) {
-          totalTokens = chunk.usageMetadata.totalTokenCount;
-        }
+    let usedProvider = "gemini";
+    let usedModel = "gemini-3-flash-preview";
+
+    for await (const ev of gatewayStreamChat({
+      operation: "stream_chat",
+      module: activeModule,
+      systemPrompt: systemInstruction,
+      messages: gatewayMessages,
+      temperature: 0.3,
+      projectId: data.projectId,
+      conversationId: data.conversationId,
+    })) {
+      if (ev.type === "delta") {
+        accumulated += ev.text;
+        yield { type: "delta" as const, text: ev.text };
+      } else if (ev.type === "done") {
+        totalTokens = ev.tokens;
+        usedProvider = ev.provider;
+        usedModel = ev.model;
+      } else if (ev.type === "error") {
+        yield { type: "error" as const, message: ev.message };
+        return;
       }
-    } catch (err) {
-      const mapped = mapGeminiError(err);
-      yield { type: "error" as const, message: mapped.message };
-      return;
     }
 
-    // Persist assistant message + real or estimated tokens
+    // Persist assistant message + real or estimated tokens + provider/model metadata
     const tokens = totalTokens > 0 ? totalTokens : Math.ceil(accumulated.length / 4);
     await supabase.from("ai_messages").insert({
       conversation_id: data.conversationId,
       role: "assistant",
       content: accumulated,
       tokens_used: tokens,
+      tool_calls: {
+        provider: usedProvider,
+        model: usedModel,
+        module: activeModule,
+        executedAt: new Date().toISOString(),
+      },
     });
     if (tokens > 0) {
       await supabaseAdmin.rpc("increment_ai_tokens_for_user", {
@@ -417,5 +432,131 @@ export const streamChat = createServerFn({ method: "POST" })
       .update({ updated_at: new Date().toISOString() })
       .eq("id", data.conversationId);
 
-    yield { type: "done" as const, tokens };
+    yield {
+      type: "done" as const,
+      tokens,
+      provider: usedProvider,
+      model: usedModel,
+    };
+  });
+
+/**
+ * Executes a non-streaming Engineering Agent chat turn with authorized tool calling support.
+ */
+export const sendEngineeringAgentMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth, requireAiQuota, requireBurstLimit])
+  .inputValidator((input) =>
+    z
+      .object({
+        conversationId: z.string().uuid().optional(),
+        projectId: z.string().uuid().optional(),
+        prompt: z.string().min(1).max(32000),
+        module: z.enum(AI_MODULE_DISCIPLINES).default("general"),
+        projectContext: z.record(z.string(), z.unknown()).optional(),
+        enableTools: z.boolean().default(true),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    if (data.projectId) {
+      await assertProjectTenantAccess(supabase, userId, data.projectId);
+    }
+
+    const mem =
+      data.projectId || data.conversationId
+        ? await loadProjectAiMemoryContext(supabase, userId, {
+            conversationId: data.conversationId,
+            projectId: data.projectId,
+            recentLimit: 16,
+          })
+        : { recentTurns: [], summaryBlock: "" };
+
+    const snapshot = extractEngineeringSnapshotFromState(
+      data.module,
+      data.projectContext ?? null,
+      mem.summaryBlock,
+    );
+    const systemPrompt = buildUnifiedEngineeringSystemPrompt({
+      module: data.module,
+      snapshot,
+      memorySummaryBlock: mem.summaryBlock,
+    });
+
+    const messages = [
+      ...mem.recentTurns.map((t) => ({
+        role: t.role === "model" ? ("assistant" as const) : ("user" as const),
+        content: t.parts.map((p) => p.text).join("\n"),
+      })),
+      { role: "user" as const, content: sanitizePromptText(data.prompt, 4000) },
+    ];
+
+    const res = await gatewayExecute({
+      operation: "engineering_agent_turn",
+      module: data.module,
+      systemPrompt,
+      messages,
+      tools: data.enableTools ? ENGINEERING_TOOL_DECLARATIONS : undefined,
+      projectId: data.projectId,
+      conversationId: data.conversationId,
+    });
+
+    const executedTools: Array<{
+      name: string;
+      ok: boolean;
+      result?: Record<string, unknown>;
+      error?: string;
+    }> = [];
+
+    if (res.ok && res.toolCalls && res.toolCalls.length > 0) {
+      for (const tc of res.toolCalls) {
+        const toolRes = await executeAuthorizedEngineeringTool(
+          tc.name as EngineeringToolName,
+          {
+            ...tc.arguments,
+            ...(data.projectId ? { projectId: data.projectId } : {}),
+            ...(data.projectContext?.doc ? { doc: data.projectContext.doc } : {}),
+          },
+        );
+        executedTools.push({
+          name: tc.name,
+          ok: toolRes.ok,
+          result: toolRes.result,
+          error: toolRes.error?.message,
+        });
+      }
+    }
+
+    if (data.conversationId && res.ok) {
+      await supabase.from("ai_messages").insert([
+        {
+          conversation_id: data.conversationId,
+          role: "user",
+          content: data.prompt,
+        },
+        {
+          conversation_id: data.conversationId,
+          role: "assistant",
+          content: res.text || `Ferramentas executadas: ${executedTools.map((t) => t.name).join(", ")}`,
+          tokens_used: res.totalTokens,
+          tool_calls: {
+            provider: res.provider,
+            model: res.model,
+            module: data.module,
+            executedTools,
+          },
+        },
+      ]);
+    }
+
+    return {
+      ok: res.ok,
+      text: res.text,
+      provider: res.provider,
+      model: res.model,
+      tokensUsed: res.totalTokens,
+      durationMs: res.durationMs,
+      executedTools,
+      error: res.error,
+    };
   });

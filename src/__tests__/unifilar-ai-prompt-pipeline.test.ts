@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import { createEmptyDoc, makeNode, makeEdge } from "@/lib/diagram/model";
 import type { DiagramDoc } from "@/lib/diagram/schema";
 import {
+  applyApprovedEngineeringProposals,
   repairDiagramConnections,
   autoLayoutIndustrialDiagram,
   validateElectricalTopology,
@@ -124,12 +125,23 @@ describe("UNIFILAR AI PROMPT PIPELINE — TOPOLOGIA INDUSTRIAL MESTRE (QGBT)", (
     expect(preValidation.status).not.toBe("COMPLETE");
     expect(preValidation.disconnectedNodes.length).toBe(allNodes.length);
 
-    // Executa a Reparação Determinística de Conexões
+    // Reparo Estrutural NÃO inventa conexões ausentes em diagrama desconectado:
+    // emite diagnóstico claro e gera Proposta de Engenharia separada que exige aprovação.
     const repairResult = repairDiagramConnections(doc);
-    expect(repairResult.repairedCount).toBeGreaterThanOrEqual(8);
-    expect(repairResult.remainingIssues).toHaveLength(0);
+    expect(repairResult.addedEdges).toHaveLength(0);
+    expect(repairResult.repairedCount).toBe(0);
+    expect(Object.keys(repairResult.repairedDoc.edges)).toHaveLength(0);
+    expect(repairResult.remainingIssues.length).toBeGreaterThan(0);
+    expect(repairResult.engineeringProposal.requiresEngineerApproval).toBe(true);
+    expect(repairResult.engineeringProposal.suggestedConnections.length).toBeGreaterThanOrEqual(8);
+    expect(repairResult.engineeringProposal.requiredAssumptions.length).toBeGreaterThan(0);
+    expect(repairResult.engineeringProposal.missingTechnicalInformation.length).toBeGreaterThan(0);
 
-    let repairedDoc = repairResult.repairedDoc;
+    // Somente após aprovação explícita do engenheiro responsável as conexões propostas entram no diagrama
+    let repairedDoc = applyApprovedEngineeringProposals(
+      repairResult.repairedDoc,
+      repairResult.engineeringProposal.suggestedConnections,
+    );
 
     // Executa Auto-Layout e Roteamento Ortogonal
     repairedDoc = autoLayoutIndustrialDiagram(repairedDoc);

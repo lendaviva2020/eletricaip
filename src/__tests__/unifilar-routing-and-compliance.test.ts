@@ -405,7 +405,7 @@ describe("P0.1/P0.2/P0.3 — Conectividade Unifilar, Roteamento Ortogonal, Bound
           id: "e3",
           sheet: "unifilar",
           source: "m1",
-          sourcePort: "R",
+          sourcePort: "B",
           target: "pe",
           targetPort: "T",
           kind: "ground",

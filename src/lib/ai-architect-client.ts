@@ -18,6 +18,9 @@ import type { VerificationReport } from "@/lib/ai/verification-types";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { makeNode, makeEdge, createEmptyDoc } from "@/lib/diagram/model";
 import { repairDiagramConnections } from "@/lib/diagram/connection/connection-repair-engine";
+import { resolveTerminalAllocation } from "@/lib/diagram/connection/connection-engine";
+import { getEquipmentTerminalProfile } from "@/lib/diagram/connection/terminal-library";
+import { extractPreservedUiMetadata } from "@/lib/diagram/connection/canonical-params";
 import { autoLayoutIndustrialDiagram } from "@/lib/diagram/connection/auto-layout-router";
 import {
   buildCanonicalDiagramParams,
@@ -172,16 +175,19 @@ export async function callArchitect(
     encoding?: "utf8" | "base64";
   },
   locale: "pt-BR" | "en" = "pt-BR",
+  conversationId?: string,
 ): Promise<ArchitectResult> {
-  const context = includeContext
-    ? { nodes: useProjectStore.getState().nodes, edges: useProjectStore.getState().edges }
-    : undefined;
+  const storeState = useProjectStore.getState();
+  const context = includeContext ? { nodes: storeState.nodes, edges: storeState.edges } : undefined;
+  const projectId = storeState.projectId ?? undefined;
   const t0 = Date.now();
   try {
     const res = await generateArchitecture({
       data: {
         prompt,
         context,
+        projectId,
+        conversationId,
         locale,
         ...(briefingDocument
           ? {
@@ -271,10 +277,12 @@ export function convertArchitectResultToDiagramDoc(
     tagOrLabelToId.set(n.id, finalId);
     if (n.label) tagOrLabelToId.set(n.label, finalId);
 
-    const canonicalParams = buildCanonicalDiagramParams(
-      kind,
-      (n.params as Record<string, any>) ?? {},
-    );
+    const rawNodeParams = (n.params as Record<string, any>) ?? {};
+    const canonicalParams = buildCanonicalDiagramParams(kind, rawNodeParams);
+    const preservedUi = extractPreservedUiMetadata({
+      ...rawNodeParams,
+      ...(n.category ? { originalCategory: n.category } : {}),
+    });
 
     const newNode = makeNode({
       id: finalId,
@@ -283,29 +291,45 @@ export function convertArchitectResultToDiagramDoc(
       position: n.position || { x: 100, y: 100 },
       label: n.label || n.id,
       rotation: 0,
+      ...(preservedUi ? { ui: preservedUi } : {}),
     });
     doc.nodes[finalId] = newNode;
   }
 
-  // 2. Process and add Diagram Edges
+  // 2. Process and add Diagram Edges without assuming universal B/T or modulo wraparound
   const busbarTapCount = new Map<string, number>();
   for (let i = 0; i < result.edges.length; i++) {
-    const e = result.edges[i];
+    const e = result.edges[i] as ArchitectResult["edges"][number] & {
+      sourcePort?: string;
+      targetPort?: string;
+    };
     const srcId = tagOrLabelToId.get(e.source) || idMap.get(e.source) || e.source;
     const tgtId = tagOrLabelToId.get(e.target) || idMap.get(e.target) || e.target;
 
-    if (!doc.nodes[srcId] || !doc.nodes[tgtId]) continue;
+    const srcNode = doc.nodes[srcId];
+    const tgtNode = doc.nodes[tgtId];
+    if (!srcNode || !tgtNode) continue;
 
     const edgeId = mode === "merge" ? `e_ai_${Date.now().toString(36)}_${i}` : `e_ai_${i + 1}`;
 
-    let sourcePort = "B";
-    if (doc.nodes[srcId]?.params.kind === "busbar") {
+    let sourcePort: string | undefined;
+    if (e.sourcePort) {
+      sourcePort = resolveTerminalAllocation(srcNode, e.sourcePort, "source").code;
+    } else if (srcNode.params.kind === "busbar") {
+      const profile = getEquipmentTerminalProfile(srcNode.params.kind, srcNode.params);
+      const taps = profile.terminals.filter(
+        (t) => t.code.startsWith("TAP_") && t.direction === "out",
+      );
       const count = (busbarTapCount.get(srcId) || 0) + 1;
       busbarTapCount.set(srcId, count);
-      const taps = ["B1", "B2", "B3", "B4", "B"];
-      sourcePort = taps[(count - 1) % taps.length];
+      sourcePort = count <= taps.length ? taps[count - 1].code : `TAP_${count}`;
+    } else {
+      const alloc = resolveTerminalAllocation(srcNode, undefined, "source");
+      sourcePort = alloc.valid ? alloc.code : undefined;
     }
-    const targetPort = "T";
+
+    const tgtAlloc = resolveTerminalAllocation(tgtNode, e.targetPort, "target");
+    const targetPort = e.targetPort ? tgtAlloc.code : tgtAlloc.valid ? tgtAlloc.code : undefined;
 
     const newEdge = makeEdge({
       id: edgeId,
@@ -320,7 +344,7 @@ export function convertArchitectResultToDiagramDoc(
     doc.edges[edgeId] = newEdge;
   }
 
-  // 3. Deterministically repair any missing or broken topological links
+  // 3. Structural repair (normalizes valid terminals/IDs and computes waypoints; never invents missing edges)
   const repaired = repairDiagramConnections(doc);
   let finalDoc = repaired.repairedDoc;
 

@@ -17,6 +17,7 @@ import {
 } from "@/lib/importer/universal-importer";
 import { buildProjectSnapshot } from "@/lib/use-project-persistence";
 import {
+  applyApprovedEngineeringProposals,
   repairDiagramConnections,
   synthesizeDiagramDocFromProject,
 } from "@/lib/diagram/connection/connection-repair-engine";
@@ -519,19 +520,35 @@ describe("ELÉTRICAI — Unifilar Canvas Connectivity & Pipeline Validation (P0)
       edges: {}, // Sem arestas!
     };
 
-    // Executa o motor determinístico de reparo
+    // Executa o motor determinístico de reparo estrutural: NÃO deve inventar arestas ausentes!
     const repaired = repairDiagramConnections(brokenDoc);
-    expect(repaired.repairedCount).toBeGreaterThan(0);
+    expect(repaired.addedEdges).toHaveLength(0);
+    expect(repaired.repairedCount).toBe(0);
 
     const finalDoc = repaired.repairedDoc;
-    // O motor de reparo sintetizou conexões entre Geral -> Barramento, Barramento -> Contator, Contator -> Motor
-    expect(Object.keys(finalDoc.edges).length).toBeGreaterThanOrEqual(3);
+    // Documentos desconectados permanecem sem arestas inventadas e com diagnóstico claro
+    expect(Object.keys(finalDoc.edges)).toHaveLength(0);
+    expect(repaired.validation.status).not.toBe("COMPLETE");
+    expect(repaired.remainingIssues.length).toBeGreaterThan(0);
+
+    // Proposta de Engenharia separada exige aprovação explícita do engenheiro
+    expect(repaired.engineeringProposal.requiresEngineerApproval).toBe(true);
+    expect(repaired.engineeringProposal.suggestedConnections.length).toBeGreaterThanOrEqual(3);
+    expect(repaired.engineeringProposal.requiredAssumptions.length).toBeGreaterThan(0);
+    expect(repaired.engineeringProposal.missingTechnicalInformation.length).toBeGreaterThan(0);
+
+    // Somente após aprovação explícita do engenheiro as conexões propostas entram no documento
+    const approvedDoc = applyApprovedEngineeringProposals(
+      finalDoc,
+      repaired.engineeringProposal.suggestedConnections,
+    );
+    expect(Object.keys(approvedDoc.edges).length).toBeGreaterThanOrEqual(3);
 
     // Nenhuma aresta com source === target (sem loops)
-    for (const e of Object.values(finalDoc.edges)) {
+    for (const e of Object.values(approvedDoc.edges)) {
       expect(e.source).not.toBe(e.target);
-      expect(finalDoc.nodes[e.source]).toBeDefined();
-      expect(finalDoc.nodes[e.target]).toBeDefined();
+      expect(approvedDoc.nodes[e.source]).toBeDefined();
+      expect(approvedDoc.nodes[e.target]).toBeDefined();
     }
   });
 

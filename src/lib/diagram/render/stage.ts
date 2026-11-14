@@ -123,6 +123,45 @@ interface MarqueeState {
   additive: boolean;
 }
 
+export function computeEdgeRenderHash(params: {
+  edge: DiagramEdge;
+  srcNode: DiagramNode;
+  tgtNode: DiagramNode;
+  points: ReadonlyArray<Point>;
+  crossings: ReadonlyArray<CrossingPoint>;
+  sheet: SheetKind;
+  isSelected: boolean;
+  simFlag: "idle" | "on" | "off" | "fault";
+}): string {
+  const { edge: e, srcNode, tgtNode, points, crossings, sheet, isSelected, simFlag } = params;
+  const ptsKey = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
+  const wpKey = (e.waypoints ?? []).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
+  const crossKey = crossings.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(";");
+  const cableKey = e.cable
+    ? `${e.cable.section_mm2 ?? ""}:${e.cable.length_m ?? ""}:${e.cable.insulation ?? ""}:${e.cable.installation ?? ""}`
+    : "";
+  const srcGeom = `${srcNode.position.x.toFixed(1)},${srcNode.position.y.toFixed(1)},${srcNode.rotation ?? 0},${srcNode.params.kind}`;
+  const tgtGeom = `${tgtNode.position.x.toFixed(1)},${tgtNode.position.y.toFixed(1)},${tgtNode.rotation ?? 0},${tgtNode.params.kind}`;
+  return [
+    e.id,
+    e.source,
+    e.target,
+    e.sourcePort ?? "",
+    e.targetPort ?? "",
+    srcGeom,
+    tgtGeom,
+    ptsKey,
+    wpKey,
+    crossKey,
+    e.kind,
+    e.circuitConfig ?? "",
+    cableKey,
+    sheet,
+    `sel=${isSelected}`,
+    `sim=${simFlag}`,
+  ].join("::");
+}
+
 export class DiagramStage {
   app: Application;
   viewport!: Viewport;
@@ -145,6 +184,9 @@ export class DiagramStage {
   private wheelListener?: (e: WheelEvent) => void;
   private initialized = false;
   private destroyed = false;
+  private hasValidSize = false;
+  private contextLostListener?: (e: Event) => void;
+  private contextRestoredListener?: () => void;
 
   private drag: DragState | null = null;
   private segmentDrag: SegmentDragState | null = null;
@@ -160,17 +202,33 @@ export class DiagramStage {
     this.events = events;
 
     // Fundo cinza técnico claro (#F0F2F3) conforme norma e preferência industrial.
-    // Resolução técnica para alta nitidez: mínimo 2x no framebuffer para sub-pixels nítidos.
+    // Cap em 2x evita estourar framebuffer WebGL em celulares DPR 3x/4x com antialias.
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-    const targetResolution = Math.max(dpr, 2);
+    const targetResolution = Math.min(Math.max(dpr, 1), 2);
 
-    await this.app.init({
-      background: 0xf0f2f3,
-      antialias: true,
-      resolution: targetResolution,
-      autoDensity: true,
-      resizeTo: host,
-    });
+    try {
+      await this.app.init({
+        background: 0xf0f2f3,
+        antialias: true,
+        resolution: targetResolution,
+        autoDensity: true,
+        resizeTo: host,
+      });
+    } catch {
+      try {
+        this.app.destroy(true, { children: true });
+      } catch {
+        // Ignora falha parcial no teardown antes do fallback
+      }
+      this.app = new Application();
+      await this.app.init({
+        background: 0xf0f2f3,
+        antialias: false,
+        resolution: 1,
+        autoDensity: true,
+        resizeTo: host,
+      });
+    }
 
     // Se o componente desmontou enquanto app.init aguardava resolução assíncrona (StrictMode / HMR),
     // descarta imediatamente a instância Pixi sem anexar um canvas órfão no DOM.
@@ -238,11 +296,40 @@ export class DiagramStage {
     };
     this.app.canvas.addEventListener("wheel", this.wheelListener, { passive: false });
 
+    this.hasValidSize = host.clientWidth > 0 && host.clientHeight > 0;
+    this.contextLostListener = (e: Event) => {
+      e.preventDefault();
+    };
+    this.contextRestoredListener = () => {
+      if (this.destroyed || !this.initialized || !this.lastDoc) return;
+      this.sync(
+        this.lastDoc,
+        this.lastSheet,
+        Array.from(this.selectedNodeIds),
+        Array.from(this.selectedEdgeIds),
+        this.lastEnergization,
+      );
+      this.fitView(undefined, { recordHistory: false });
+    };
+    this.app.canvas.addEventListener("webglcontextlost", this.contextLostListener);
+    this.app.canvas.addEventListener("webglcontextrestored", this.contextRestoredListener);
+
     this.resizeObs = new ResizeObserver(() => {
       if (this.destroyed || !this.viewport) return;
       const w = host.clientWidth;
       const h = host.clientHeight;
-      if (w && h) this.viewport.resize(w, h, 20000, 20000);
+      if (w > 0 && h > 0) {
+        try {
+          this.app.renderer?.resize(w, h);
+        } catch {
+          // Ignora caso renderer ainda não esteja pronto
+        }
+        this.viewport.resize(w, h, 20000, 20000);
+        if (!this.hasValidSize) {
+          this.hasValidSize = true;
+          this.fitView(undefined, { recordHistory: false });
+        }
+      }
     });
     this.resizeObs.observe(host);
 
@@ -253,8 +340,16 @@ export class DiagramStage {
     this.destroyed = true;
     this.initialized = false;
     this.resizeObs?.disconnect();
-    if (this.wheelListener && this.app.renderer && this.app.canvas) {
-      this.app.canvas.removeEventListener("wheel", this.wheelListener);
+    if (this.app.renderer && this.app.canvas) {
+      if (this.wheelListener) {
+        this.app.canvas.removeEventListener("wheel", this.wheelListener);
+      }
+      if (this.contextLostListener) {
+        this.app.canvas.removeEventListener("webglcontextlost", this.contextLostListener);
+      }
+      if (this.contextRestoredListener) {
+        this.app.canvas.removeEventListener("webglcontextrestored", this.contextRestoredListener);
+      }
     }
     if (this.app.renderer) {
       if (this.host && this.app.canvas?.parentElement === this.host) {
@@ -611,7 +706,7 @@ export class DiagramStage {
   }
 
   private syncPorts(node: DiagramNode, view: NodeView) {
-    const ports = getPorts(node.params.kind);
+    const ports = getPorts(node.params.kind, node.params);
     const wantPortIds = new Set(ports.map((p) => p.id));
 
     for (const [pid, g] of view.portGraphics) {
@@ -852,18 +947,25 @@ export class DiagramStage {
     const isSelected = this.selectedEdgeIds.has(e.id);
     const isSimRunning = energization && energization.status !== "stopped";
 
-    // Hash inclui pontos, cruzamentos, seleção e energização para diff preciso
-    const simFlag = isSimRunning
+    // Hash completo inclui extremidades, portas/terminais, geometria dos nós, waypoints, cruzamentos, circuito, folha, seleção e energização
+    const simFlag: "idle" | "on" | "off" | "fault" = isSimRunning
       ? energization.faultEdgeIds.has(e.id)
         ? "fault"
         : energization.energizedEdgeIds.has(e.id)
           ? "on"
           : "off"
       : "idle";
-    const ptsKey = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
-    const crossKey = crossings.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(";");
 
-    const hash = `${e.source}:${ptsKey}:${crossKey}:${e.kind}:${e.circuitConfig ?? ""}:sel=${isSelected}:sim=${simFlag}`;
+    const hash = computeEdgeRenderHash({
+      edge: e,
+      srcNode,
+      tgtNode,
+      points,
+      crossings,
+      sheet: this.lastSheet,
+      isSelected,
+      simFlag,
+    });
     const existing = this.edges.get(e.id);
     if (existing && existing.hash === hash) return;
     if (existing) existing.graphics.destroy({ children: true });

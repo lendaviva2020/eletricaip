@@ -133,10 +133,10 @@ function SettingsPage() {
             />
             <SettingsLinkCard
               icon={Sparkle}
-              title="Status da IA"
-              desc="Diagnóstico da chave Google Gemini, ping e histórico de chamadas"
+              title="Inteligência Artificial"
+              desc="Provedores de IA, roteador de modelos, conexões, capacidades, consumo de tokens e agente de engenharia"
               to="/settings/ai-status"
-              badge="Gemini 3.1 Pro"
+              badge="AI Gateway"
             />
             <SettingsLinkCard
               icon={Shield}

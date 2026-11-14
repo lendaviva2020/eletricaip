@@ -3,7 +3,7 @@
 
 import type { DiagramDoc, DiagramNode, DiagramEdge, EdgeKind } from "../schema";
 import type { ElectricalConnection } from "@/lib/model/unified-schema";
-import type { CanonicalNet, NetMember } from "./types";
+import type { CanonicalNet, NetMember, TerminalDefinition } from "./types";
 import { getEquipmentTerminalProfile } from "./terminal-library";
 
 export interface ResolvedEdgeConnection {
@@ -20,46 +20,191 @@ export interface NetlistExtractionResult {
   orphanEdges: string[];
 }
 
+export interface TerminalResolutionResult {
+  code: string;
+  valid: boolean;
+  status:
+    | "exact"
+    | "compound_alias"
+    | "visual_port_role"
+    | "default_by_role"
+    | "unknown_terminal"
+    | "ambiguous_terminal"
+    | "direction_mismatch";
+  terminal?: TerminalDefinition;
+  candidates?: string[];
+  reason?: string;
+}
+
+const INPUT_SEMANTIC_ALIASES = new Set(["IN", "INPUT", "LINE", "SUPPLY", "IN_R", "IN_S", "IN_T"]);
+const OUTPUT_SEMANTIC_ALIASES = new Set(["OUT", "OUTPUT", "LOAD", "OUT_U", "OUT_V", "OUT_W"]);
+
 /**
- * Resolves the terminal code on a node given an explicit port or fallback direction.
+ * Resolves and validates a terminal allocation against TERMINAL_LIBRARY semantics.
+ * Never silently falls back to an unrelated terminal when an explicit invalid port is given,
+ * and never assumes universal B/T conventions across incompatible component kinds.
+ */
+export function resolveTerminalAllocation(
+  node: DiagramNode,
+  portId?: string,
+  role: "source" | "target" = "source",
+): TerminalResolutionResult {
+  const profile = getEquipmentTerminalProfile(node.params.kind, node.params);
+  const terms = profile.terminals;
+  const trimmed = portId?.trim();
+
+  if (trimmed) {
+    const shortId = trimmed.includes(":")
+      ? trimmed.slice(trimmed.lastIndexOf(":") + 1).trim()
+      : trimmed;
+    const shortUpper = shortId.toUpperCase();
+    const normalizedTap = /^TAP_?(\d+)$/.test(shortUpper)
+      ? `TAP_${shortUpper.replace(/^TAP_?/, "")}`
+      : shortUpper;
+
+    // 1. Exact code match or normalized busbar tap code (TAP_1 / TAP1)
+    const exactTerm =
+      terms.find((t) => t.code === trimmed || `${node.id}:${t.code}` === trimmed) ??
+      terms.find(
+        (t) => t.code.toUpperCase() === shortUpper || t.code.toUpperCase() === normalizedTap,
+      );
+    if (exactTerm) {
+      return {
+        code: exactTerm.code,
+        valid: true,
+        status: "exact",
+        terminal: exactTerm,
+      };
+    }
+
+    // 2. Transformer-specific PRI/SEC conventions
+    if (node.params.kind === "transformer") {
+      if (shortUpper === "PRI" || shortUpper === "PRIMARY") {
+        const pri = terms.find((t) => t.code === "H1");
+        if (pri) return { code: pri.code, valid: true, status: "compound_alias", terminal: pri };
+      }
+      if (shortUpper === "SEC" || shortUpper === "SECONDARY") {
+        const sec = terms.find((t) => t.code === "X1");
+        if (sec) return { code: sec.code, valid: true, status: "compound_alias", terminal: sec };
+      }
+    }
+
+    // 3. Compound IEC terminal pole alias (e.g. "L1" -> "1/L1", "T1" -> "2/T1")
+    const compoundMatches = terms.filter((t) => {
+      const tc = t.code.toUpperCase();
+      return tc.startsWith(`${shortUpper}/`) || tc.endsWith(`/${shortUpper}`);
+    });
+    if (compoundMatches.length === 1) {
+      return {
+        code: compoundMatches[0].code,
+        valid: true,
+        status: "compound_alias",
+        terminal: compoundMatches[0],
+      };
+    }
+    if (compoundMatches.length > 1) {
+      return {
+        code: shortId,
+        valid: false,
+        status: "ambiguous_terminal",
+        candidates: compoundMatches.map((m) => m.code),
+        reason: `Terminal abreviado '${shortId}' é ambíguo em '${node.label || node.id}' (${compoundMatches.map((m) => m.code).join(", ")}).`,
+      };
+    }
+
+    // 4. Canvas visual port match (only ports physically present on this component profile)
+    const pUpper = shortUpper;
+    const portMatches = terms.filter(
+      (t) => t.portId === shortId || t.portId.toUpperCase() === pUpper,
+    );
+    if (portMatches.length > 0) {
+      const dirMatches = portMatches.filter((t) =>
+        role === "source"
+          ? t.direction === "out" || t.direction === "bidirectional"
+          : t.direction === "in" || t.direction === "bidirectional",
+      );
+      const picked = dirMatches[0] ?? portMatches[0];
+      return {
+        code: picked.code,
+        valid: true,
+        status: "visual_port_role",
+        terminal: picked,
+      };
+    }
+
+    // 5. Semantic flow aliases (only if component actually declares a role-compatible terminal)
+    if (INPUT_SEMANTIC_ALIASES.has(shortUpper)) {
+      const inTerm = terms.find((t) => t.direction === "in" || t.direction === "bidirectional");
+      if (inTerm) {
+        return { code: inTerm.code, valid: true, status: "compound_alias", terminal: inTerm };
+      }
+    }
+    if (OUTPUT_SEMANTIC_ALIASES.has(shortUpper)) {
+      const outTerm = terms.find((t) => t.direction === "out" || t.direction === "bidirectional");
+      if (outTerm) {
+        return { code: outTerm.code, valid: true, status: "compound_alias", terminal: outTerm };
+      }
+    }
+
+    // 6. Explicitly provided terminal/port does NOT exist in this component's catalog
+    return {
+      code: shortId,
+      valid: false,
+      status: "unknown_terminal",
+      reason: `Terminal '${shortId}' não pertence ao catálogo de '${node.label || node.id}' (${node.params.kind}). Terminais válidos: ${terms.map((t) => t.code).join(", ")}.`,
+    };
+  }
+
+  // No portId supplied: select strictly by role & component's declared terminals (never coerce load IN as power OUT)
+  if (role === "source") {
+    const candidates = terms.filter(
+      (t) => t.direction === "out" || t.direction === "bidirectional",
+    );
+    const preferred = candidates.find((t) => t.portId === profile.defaultOutPort) ?? candidates[0];
+    if (preferred) {
+      return {
+        code: preferred.code,
+        valid: true,
+        status: "default_by_role",
+        terminal: preferred,
+      };
+    }
+    return {
+      code: terms[0]?.code ?? "UNRESOLVED_SOURCE",
+      valid: false,
+      status: "direction_mismatch",
+      reason: `Equipamento '${node.label || node.id}' (${node.params.kind}) não possui terminal de saída declarado para atuar como origem sem especificação explícita.`,
+    };
+  }
+
+  const inCandidates = terms.filter((t) => t.direction === "in" || t.direction === "bidirectional");
+  const inPreferred =
+    inCandidates.find((t) => t.portId === profile.defaultInPort) ?? inCandidates[0];
+  if (inPreferred) {
+    return {
+      code: inPreferred.code,
+      valid: true,
+      status: "default_by_role",
+      terminal: inPreferred,
+    };
+  }
+  return {
+    code: terms[0]?.code ?? "UNRESOLVED_TARGET",
+    valid: false,
+    status: "direction_mismatch",
+    reason: `Equipamento '${node.label || node.id}' (${node.params.kind}) não possui terminal de entrada declarado para receber alimentação.`,
+  };
+}
+
+/**
+ * Resolves the terminal code on a node given an explicit port or role.
  */
 export function resolveTerminalCode(
   node: DiagramNode,
   portId?: string,
   role: "source" | "target" = "source",
 ): string {
-  const profile = getEquipmentTerminalProfile(node.params.kind, node.params);
-  const terms = profile.terminals;
-
-  // 1. If portId matches a terminal code directly (case-insensitive)
-  if (portId) {
-    const shortId = portId.includes(":") ? portId.slice(portId.lastIndexOf(":") + 1) : portId;
-    const shortUpper = shortId.toUpperCase();
-    const exactTerm =
-      terms.find((t) => t.code === portId || `${node.id}:${t.code}` === portId) ??
-      terms.find((t) => t.code.toUpperCase() === shortUpper) ??
-      terms.find((t) => {
-        const tc = t.code.toUpperCase();
-        return tc.startsWith(`${shortUpper}/`) || tc.endsWith(`/${shortUpper}`);
-      });
-    if (exactTerm) return exactTerm.code;
-  }
-
-  // 2. If portId matches a canvas render portId (e.g. "T", "B", "B1")
-  if (portId) {
-    const pUpper = portId.toUpperCase();
-    const portMatch = terms.find((t) => t.portId === portId || t.portId.toUpperCase() === pUpper);
-    if (portMatch) return portMatch.code;
-  }
-
-  // 3. Fallback based on direction: source -> output, target -> input
-  if (role === "source") {
-    const outTerm = terms.find((t) => t.direction === "out") ?? terms[1] ?? terms[0];
-    return outTerm ? outTerm.code : "out";
-  } else {
-    const inTerm = terms.find((t) => t.direction === "in") ?? terms[0];
-    return inTerm ? inTerm.code : "in";
-  }
+  return resolveTerminalAllocation(node, portId, role).code;
 }
 
 /**
@@ -267,27 +412,44 @@ export function createDeterministicConnection(
 }
 
 /**
- * Connects multiple branch nodes to a central busbar distributing across
- * available tap ports (B1, B2, B, B3, B4, etc.).
+ * Connects multiple branch nodes to a central busbar using the exact tap terminals
+ * configured in the busbar's hardware profile (TAP_1..TAP_N).
+ * Never silently wraps around modulo tap count.
  */
 export function connectBusbarToBranches(
   busbarNode: DiagramNode,
   branchNodes: DiagramNode[],
 ): DiagramEdge[] {
-  const tapPorts = ["B1", "B2", "B", "B3", "B4", "L", "R"];
+  const profile = getEquipmentTerminalProfile(busbarNode.params.kind, busbarNode.params);
+  const tapTerminals = profile.terminals.filter(
+    (t) => t.code.startsWith("TAP_") && t.direction === "out",
+  );
+
+  if (branchNodes.length > tapTerminals.length) {
+    throw new Error(
+      `Barramento '${busbarNode.label || busbarNode.id}' suporta ${tapTerminals.length} derivações na configuração de hardware (taps), insuficiente para ${branchNodes.length} ramais.`,
+    );
+  }
+
   const edges: DiagramEdge[] = [];
 
   branchNodes.forEach((bNode, idx) => {
-    const tapPort = tapPorts[idx % tapPorts.length] || `B${idx + 1}`;
-    const targetInPort = resolveTerminalCode(bNode, undefined, "target");
+    const tapTerm = tapTerminals[idx];
+    const targetAlloc = resolveTerminalAllocation(bNode, undefined, "target");
+    if (!targetAlloc.valid) {
+      throw new Error(
+        targetAlloc.reason ||
+          `Componente destino '${bNode.label || bNode.id}' não possui terminal de entrada compatível.`,
+      );
+    }
 
     edges.push({
       id: `e_${busbarNode.id}_${bNode.id}_tap${idx + 1}`.replace(/[^a-zA-Z0-9_]/g, "_"),
       sheet: "unifilar",
       source: busbarNode.id,
       target: bNode.id,
-      sourcePort: tapPort,
-      targetPort: targetInPort,
+      sourcePort: tapTerm.code,
+      targetPort: targetAlloc.code,
       kind: "power",
       circuitConfig: "3F+N+PE",
     });

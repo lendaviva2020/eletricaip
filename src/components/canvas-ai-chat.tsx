@@ -29,8 +29,10 @@ import { useI18n } from "@/lib/i18n";
 import { getOrCreateProjectConversation, persistChatMessage } from "@/lib/ai-chat.functions";
 import {
   formatDiagnosticFor7StepRemediation,
+  validateAndSanitizeDiagnosticContext,
   type DiagnosticContext,
 } from "@/lib/diagnostics/ai-repair-context";
+import type { EngineeringProposalBundle } from "@/lib/diagram/connection/connection-repair-engine";
 
 interface Msg {
   role: "user" | "ai";
@@ -41,6 +43,8 @@ interface Msg {
   patchApplied?: boolean;
   hasPatch?: boolean;
   patchData?: any;
+  engineeringProposal?: EngineeringProposalBundle;
+  proposalApplied?: boolean;
 }
 
 export function CanvasAiChat() {
@@ -112,19 +116,36 @@ export function CanvasAiChat() {
     };
   }, [projectId, getOrCreateConv]);
 
+  const sendRef = useRef<
+    (
+      textToSend?: string,
+      briefingDocument?: BriefingDocumentInput,
+      forcePatchMode?: boolean,
+    ) => Promise<void>
+  >(async () => {});
+
   // Captura eventos do botão "CORRIGIR COM IA" disparados em qualquer módulo
   useEffect(() => {
     const handler = (evt: any) => {
       setOpen(true);
       const detail = evt?.detail;
-      const target = detail?.batch && detail.batch.length > 0 ? detail.batch : detail?.context;
-      if (target) {
+      const rawBatch: unknown[] =
+        detail?.batch && Array.isArray(detail.batch) && detail.batch.length > 0
+          ? detail.batch
+          : detail?.context
+            ? [detail.context]
+            : [];
+      const validated = rawBatch
+        .map((item) => validateAndSanitizeDiagnosticContext(item))
+        .filter((v): v is DiagnosticContext => v !== null);
+      if (validated.length > 0) {
+        const target = validated.length === 1 ? validated[0] : validated;
         const prompt = formatDiagnosticFor7StepRemediation(
           target,
           locale === "en" ? "en" : "pt-BR",
         );
         setPatchMode(true);
-        void send(prompt);
+        void sendRef.current(prompt, undefined, true);
       }
     };
     window.addEventListener("eletricai-ai-repair", handler as EventListener);
@@ -180,10 +201,15 @@ export function CanvasAiChat() {
     return () => window.removeEventListener("ai-usage-event", handler);
   }, [refetchCredits]);
 
-  const send = async (textToSend?: string, briefingDocument?: BriefingDocumentInput) => {
+  const send = async (
+    textToSend?: string,
+    briefingDocument?: BriefingDocumentInput,
+    forcePatchMode?: boolean,
+  ) => {
     const p = (textToSend ?? val).trim();
     if (!p || busy) return;
     if (!textToSend) setVal("");
+    const usePatch = forcePatchMode ?? patchMode;
 
     // Interceptação determinística de pacotes de projeto externos (0 créditos de IA)
     const detectedFmt = detectFormat(p);
@@ -244,7 +270,7 @@ export function CanvasAiChat() {
       { role: "user", text: p },
       {
         role: "ai",
-        text: patchMode ? t("aiChat.generatingPatch") : t("aiChat.processingPrompt"),
+        text: usePatch ? t("aiChat.generatingPatch") : t("aiChat.processingPrompt"),
       },
     ]);
     if (activeConvId) {
@@ -272,11 +298,14 @@ export function CanvasAiChat() {
           : `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:\n${activeViolationsText}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${p}\n\nPor favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`
         : p;
 
-      if (patchMode) {
+      const effectivePatchMode = forcePatchMode ?? patchMode;
+      if (effectivePatchMode) {
         const res: any = await genPatch({
           data: {
             prompt: contextualPrompt,
             doc: diagramDoc,
+            projectId: projectId ?? undefined,
+            conversationId: activeConvId ?? undefined,
             locale,
             ...(briefingDocument ? { briefingDocument } : {}),
           },
@@ -306,13 +335,27 @@ export function CanvasAiChat() {
             updateNodes = [],
             rationale,
           } = res.patch ?? {};
+          const proposal: EngineeringProposalBundle | undefined =
+            res.engineeringProposal &&
+            Array.isArray(res.engineeringProposal.suggestedConnections) &&
+            res.engineeringProposal.suggestedConnections.length > 0
+              ? res.engineeringProposal
+              : undefined;
           setMsgs((m) => {
             const c = [...m];
             const title = t("aiChat.patchAppliedTitle");
             const reportSummary = res.report?.summary
               ? `\n\n⚡ **Relatório de Conectividade:**\n${res.report.summary}`
               : "";
-            const responseText = `**${title}**\n\n${rationale ?? ""}\n\n• +${addNodes.length} ${isEn ? "nodes" : "nós"} · +${addEdges.length} conexões elétricas\n• ~${updateNodes.length} updates · −${removeNodeIds.length} ${isEn ? "nodes" : "nós"} / −${removeEdgeIds.length} edges${reportSummary}`;
+            const proposalSummary = proposal
+              ? `\n\n📐 **Proposta de Engenharia (requer aprovação do engenheiro — 0 conexões inventadas):**\n• ${proposal.suggestedConnections.length} conexões sugeridas\n${proposal.requiredAssumptions
+                  .slice(0, 3)
+                  .map((a) => `• Premissa: ${a}`)
+                  .join(
+                    "\n",
+                  )}${proposal.missingTechnicalInformation.length > 0 ? `\n• Info pendente: ${proposal.missingTechnicalInformation.slice(0, 2).join("; ")}` : ""}`
+              : "";
+            const responseText = `**${title}**\n\n${rationale ?? ""}\n\n• +${addNodes.length} ${isEn ? "nodes" : "nós"} · +${addEdges.length} conexões elétricas\n• ~${updateNodes.length} updates · −${removeNodeIds.length} ${isEn ? "nodes" : "nós"} / −${removeEdgeIds.length} edges${reportSummary}${proposalSummary}`;
             if (activeConvId) {
               persistMsg({
                 data: {
@@ -327,12 +370,19 @@ export function CanvasAiChat() {
               role: "ai",
               text: responseText,
               patchApplied: true,
+              engineeringProposal: proposal,
             };
             return c;
           });
         }
       } else {
-        const r = await callArchitect(contextualPrompt, true, briefingDocument, locale);
+        const r = await callArchitect(
+          contextualPrompt,
+          true,
+          briefingDocument,
+          locale,
+          activeConvId ?? undefined,
+        );
         const legacyText = `**${r.title}**\n\n${r.rationale}\n\n* CCM: ${r.ccm.columns} colunas / ${r.ccm.cells} gavetas\n* Trafo: ${r.transformer.kVA}kVA (${r.transformer.primary_kV}kV → ${r.transformer.secondary_V}V)\n* Motores adicionados: ${r.motors.map((mo) => `${mo.id} (${mo.power_kW}kW)`).join(", ")}`;
         if (activeConvId) {
           persistMsg({
@@ -391,6 +441,7 @@ export function CanvasAiChat() {
       setBusy(false);
     }
   };
+  sendRef.current = send;
 
   // Pipeline real de extração de documentos de briefing (CSV / TXT / JSON / PDF) no servidor (Fase 6.1)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -645,6 +696,48 @@ export function CanvasAiChat() {
               <div className="mt-3 pt-2 border-t border-border/60">
                 <span className="text-[9px] text-success font-mono">
                   {t("aiChat.patchAppliedSuccess")}
+                </span>
+              </div>
+            )}
+
+            {m.engineeringProposal &&
+              !m.proposalApplied &&
+              m.engineeringProposal.suggestedConnections.length > 0 && (
+                <div className="mt-2.5 p-2 rounded border border-amber-500/40 bg-amber-950/20 space-y-1.5">
+                  <div className="text-[10px] font-mono font-semibold text-amber-300">
+                    Proposta Pendente ({m.engineeringProposal.suggestedConnections.length} conexões)
+                    — requer aprovação explícita
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="approve-engineering-proposal"
+                    onClick={() => {
+                      const proposal = m.engineeringProposal!;
+                      applyAiPatch({
+                        addNodes: [],
+                        addEdges: proposal.suggestedConnections.map((c) => ({ ...c.edge })),
+                        removeNodeIds: [],
+                        removeEdgeIds: [],
+                        updateNodes: [],
+                        updateEdges: [],
+                        rationale: "Conexões da Proposta de Engenharia aprovadas pelo engenheiro.",
+                      });
+                      setMsgs((prev) =>
+                        prev.map((msg, idx) =>
+                          idx === i ? { ...msg, proposalApplied: true } : msg,
+                        ),
+                      );
+                    }}
+                    className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-mono font-bold cursor-pointer"
+                  >
+                    Aprovar &amp; Aplicar Proposta
+                  </button>
+                </div>
+              )}
+            {m.engineeringProposal && m.proposalApplied && (
+              <div className="mt-2 pt-1.5 border-t border-border/60">
+                <span className="text-[9px] text-emerald-400 font-mono">
+                  ✓ Proposta de Engenharia aprovada e aplicada ao Unifilar.
                 </span>
               </div>
             )}

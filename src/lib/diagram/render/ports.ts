@@ -41,16 +41,26 @@ const singleCenter: ReadonlyArray<PortDef> = [
   { id: "C", x: 0, y: 0, side: "center", accepts: ["any"] },
 ];
 
-const busbarPorts: ReadonlyArray<PortDef> = [
-  { id: "T", x: 0, y: -4, side: "top", accepts: ["power", "any"] },
-  { id: "B1", x: -40, y: 4, side: "bottom", accepts: ["power", "any"] },
-  { id: "B2", x: -20, y: 4, side: "bottom", accepts: ["power", "any"] },
-  { id: "B", x: 0, y: 4, side: "bottom", accepts: ["power", "any"] },
-  { id: "B3", x: 20, y: 4, side: "bottom", accepts: ["power", "any"] },
-  { id: "B4", x: 40, y: 4, side: "bottom", accepts: ["power", "any"] },
-  { id: "L", x: -60, y: 0, side: "left", accepts: ["power", "any"] },
-  { id: "R", x: 60, y: 0, side: "right", accepts: ["power", "any"] },
-];
+function buildBusbarPorts(tapCount = 8): ReadonlyArray<PortDef> {
+  const clamped = Math.max(1, Math.min(64, Math.floor(tapCount)));
+  const legacyIds = ["B1", "B2", "B", "B3", "B4"];
+  const span = Math.max(80, (clamped - 1) * 20);
+  const halfEdge = Math.max(60, Math.ceil(span / 2) + 20);
+  const taps: PortDef[] = [];
+  for (let i = 1; i <= clamped; i++) {
+    const id = i <= legacyIds.length ? legacyIds[i - 1] : `B${i}`;
+    const x = clamped === 1 ? 0 : Math.round(-span / 2 + ((i - 1) * span) / (clamped - 1));
+    taps.push({ id, x, y: 4, side: "bottom", accepts: ["power", "any"] });
+  }
+  return [
+    { id: "T", x: 0, y: -4, side: "top", accepts: ["power", "any"] },
+    ...taps,
+    { id: "L", x: -halfEdge, y: 0, side: "left", accepts: ["power", "any"] },
+    { id: "R", x: halfEdge, y: 0, side: "right", accepts: ["power", "any"] },
+  ];
+}
+
+const busbarPorts: ReadonlyArray<PortDef> = buildBusbarPorts(8);
 
 const REGISTRY: Partial<Record<NodeKind, ReadonlyArray<PortDef>>> = {
   // proteção / manobra (4 portas para suportar encaminhamento vertical e derivações)
@@ -91,7 +101,10 @@ const REGISTRY: Partial<Record<NodeKind, ReadonlyArray<PortDef>>> = {
   lightcurtain: twoTerminalH,
 };
 
-export function getPorts(kind: NodeKind): ReadonlyArray<PortDef> {
+export function getPorts(kind: NodeKind, params?: NodeParams): ReadonlyArray<PortDef> {
+  if (kind === "busbar" && params && "taps" in params && typeof params.taps === "number") {
+    return buildBusbarPorts(params.taps);
+  }
   return REGISTRY[kind] ?? twoTerminalH;
 }
 
@@ -107,74 +120,22 @@ export function rotatePort(p: PortDef, rotationDeg: number): { x: number; y: num
   return { x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos };
 }
 
-export function findPort(kind: NodeKind, portId: string | undefined): PortDef | null {
+export function findPort(
+  kind: NodeKind,
+  portId: string | undefined,
+  params?: NodeParams,
+): PortDef | null {
   if (!portId) return null;
-  return getPorts(kind).find((p) => p.id === portId) ?? null;
+  return getPorts(kind, params).find((p) => p.id === portId) ?? null;
 }
 
-const INPUT_PORT_ALIASES = new Set([
-  "IN",
-  "INPUT",
-  "PRI",
-  "PRIMARY",
-  "LINE",
-  "SUPPLY",
-  "L1",
-  "L2",
-  "L3",
-  "IN_R",
-  "IN_S",
-  "IN_T",
-  "R",
-  "S",
-  "U1",
-  "V1",
-  "W1",
-  "1",
-  "3",
-  "5",
-  "1/L1",
-  "3/L2",
-  "5/L3",
-  "A1",
-  "X1",
-  "TOP",
-  "T",
-]);
+const INPUT_PORT_ALIASES = new Set(["IN", "INPUT", "LINE", "SUPPLY", "IN_R", "IN_S", "IN_T"]);
 
-const OUTPUT_PORT_ALIASES = new Set([
-  "OUT",
-  "OUTPUT",
-  "SEC",
-  "SECONDARY",
-  "LOAD",
-  "OUT_U",
-  "OUT_V",
-  "OUT_W",
-  "T1",
-  "T2",
-  "T3",
-  "U",
-  "V",
-  "W",
-  "U2",
-  "V2",
-  "W2",
-  "2",
-  "4",
-  "6",
-  "2/T1",
-  "4/T2",
-  "6/T3",
-  "A2",
-  "X2",
-  "BOTTOM",
-  "B",
-]);
+const OUTPUT_PORT_ALIASES = new Set(["OUT", "OUTPUT", "LOAD", "OUT_U", "OUT_V", "OUT_W"]);
 
 /**
  * Resolves a visual canvas port from a logical terminal code, canonical terminal ID,
- * or raw visual port ID. Prevents vertical IEC components from falling back to L/R ports.
+ * or explicit visual port ID. Never coerces unknown explicit ports onto arbitrary handles.
  */
 export function resolveVisualPort(
   kind: NodeKind,
@@ -182,7 +143,7 @@ export function resolveVisualPort(
   role: "source" | "target" = "source",
   params?: NodeParams,
 ): PortDef | undefined {
-  const ports = getPorts(kind);
+  const ports = getPorts(kind, params);
   if (ports.length === 0) return undefined;
 
   const findById = (id: string | undefined): PortDef | undefined => {
@@ -195,50 +156,66 @@ export function resolveVisualPort(
     ? portId.slice(portId.lastIndexOf(":") + 1).trim()
     : portId?.trim();
 
-  // 1. Direct match on visual port id ("T", "B", "L", "R", "B1".."B4", "C")
-  const direct = findById(portId) ?? findById(shortId);
-  if (direct) return direct;
-
-  const profile = getEquipmentTerminalProfile(kind, params);
-
-  // 2. Canonical terminal profile lookup (IEC terminal code -> visual portId)
+  // 1. Direct match on visual port id declared for this component kind ("T", "B", "L", "R", "B1".."BN")
   if (shortId) {
+    const direct = findById(portId) ?? findById(shortId);
+    if (direct) return direct;
+
+    const profile = getEquipmentTerminalProfile(kind, params);
     const shortUpper = shortId.toUpperCase();
+    const normalizedTap = shortUpper.match(/^TAP_?(\d+)$/)
+      ? `TAP_${shortUpper.replace(/^TAP_?/, "")}`
+      : shortUpper;
+
+    // 2. Canonical terminal profile lookup (IEC terminal code -> visual portId)
     const matchedTerm =
       profile.terminals.find((t) => t.code.toUpperCase() === shortUpper) ??
+      profile.terminals.find((t) => t.code.toUpperCase() === normalizedTap) ??
       profile.terminals.find((t) => {
         const tc = t.code.toUpperCase();
         return tc.startsWith(`${shortUpper}/`) || tc.endsWith(`/${shortUpper}`);
       });
     if (matchedTerm) {
-      const mappedPort = findById(matchedTerm.portId);
-      if (mappedPort) return mappedPort;
+      return findById(matchedTerm.portId);
     }
 
-    // 3. Semantic IEC alias fallback (IN/OUT, 1/2, L1/T1, PRI/SEC, etc.)
+    // 3. Component-specific IEC semantic aliases (only if declared terminals satisfy that role)
+    if (kind === "transformer" && (shortUpper === "PRI" || shortUpper === "PRIMARY")) {
+      const pri = profile.terminals.find((t) => t.code === "H1");
+      if (pri) return findById(pri.portId);
+    }
+    if (kind === "transformer" && (shortUpper === "SEC" || shortUpper === "SECONDARY")) {
+      const sec = profile.terminals.find((t) => t.code === "X1");
+      if (sec) return findById(sec.portId);
+    }
+
     if (INPUT_PORT_ALIASES.has(shortUpper)) {
-      return findById(profile.defaultInPort) ?? findById("T") ?? findById("L") ?? ports[0];
+      const inTerm = profile.terminals.find(
+        (t) => t.direction === "in" || t.direction === "bidirectional",
+      );
+      if (inTerm) return findById(inTerm.portId);
     }
     if (OUTPUT_PORT_ALIASES.has(shortUpper)) {
-      return (
-        findById(profile.defaultOutPort) ??
-        findById("B") ??
-        findById("R") ??
-        ports[ports.length - 1] ??
-        ports[0]
+      const outTerm = profile.terminals.find(
+        (t) => t.direction === "out" || t.direction === "bidirectional",
       );
+      if (outTerm) return findById(outTerm.portId);
     }
+
+    // Explicit unknown or incompatible portId for this component: do NOT coerce blindly.
+    return undefined;
   }
 
-  // 4. Role-based power-flow fallback when portId is omitted
+  // 4. Role-based resolution only when portId was intentionally omitted
+  const profile = getEquipmentTerminalProfile(kind, params);
   if (role === "source") {
-    return (
-      findById(profile.defaultOutPort) ??
-      findById("B") ??
-      findById("R") ??
-      ports[ports.length - 1] ??
-      ports[0]
+    const outTerm = profile.terminals.find(
+      (t) => t.direction === "out" || t.direction === "bidirectional",
     );
+    return findById(outTerm?.portId ?? profile.defaultOutPort);
   }
-  return findById(profile.defaultInPort) ?? findById("T") ?? findById("L") ?? ports[0];
+  const inTerm = profile.terminals.find(
+    (t) => t.direction === "in" || t.direction === "bidirectional",
+  );
+  return findById(inTerm?.portId ?? profile.defaultInPort);
 }

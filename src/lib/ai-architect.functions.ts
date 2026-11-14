@@ -12,6 +12,7 @@ import {
   sanitizeProjectContext,
   wrapUserBriefing,
 } from "@/lib/ai/context-sanitizer";
+import { loadProjectAiMemoryContext } from "@/lib/ai/memory.server";
 import {
   BriefingDocumentInputSchema,
   parseBriefingDocument,
@@ -31,7 +32,9 @@ import {
   validateGeminiKey,
   mapGeminiError,
   pingGemini,
+  FALLBACK_GEMINI_MODELS,
 } from "@/lib/ai/gemini-client.server";
+import { recordAiAuditEvent } from "@/lib/ai/gateway/ai-gateway.server";
 
 export function getArchitectSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
   const isEn = locale === "en";
@@ -262,6 +265,8 @@ const TOOL = {
 const InputSchema = z.object({
   prompt: z.string().min(1).max(32000),
   context: z.unknown().optional(),
+  projectId: z.string().uuid().optional(),
+  conversationId: z.string().uuid().optional(),
   briefingDocument: BriefingDocumentInputSchema.optional(),
   locale: z.enum(["pt-BR", "en"]).default("pt-BR"),
 });
@@ -292,7 +297,7 @@ type ArchitectOk = {
 async function callArchitectModel(
   messages: Array<{ role: string; content: string }>,
 ): Promise<
-  | { ok: true; parsed: JsonValue; tokensUsed: number }
+  | { ok: true; parsed: JsonValue; tokensUsed: number; usedModel: string }
   | { ok: false; error: ArchitectError["error"] }
 > {
   const model = getGeminiModel();
@@ -312,49 +317,77 @@ async function callArchitectModel(
     }));
 
   const systemInstruction = messages.find((m) => m.role === "system")?.content || SYSTEM;
+  const candidates = Array.from(new Set([model, ...FALLBACK_GEMINI_MODELS]));
+  let lastMappedError: ArchitectError["error"] | null = null;
 
-  try {
-    const response = await ai.models.generateContent({
-      model,
-      contents,
-      config: {
-        systemInstruction,
-        temperature: 0.2,
-        responseMimeType: "application/json",
-        responseSchema: SCHEMA,
-      },
-    });
-
-    const text = response.text?.trim();
-    if (!text) {
-      console.error("Gemini empty response text:", response);
-      return {
-        ok: false,
-        error: { code: "BAD_RESPONSE", message: "A IA não devolveu estrutura válida." },
-      };
-    }
-
-    let parsed: JsonValue;
+  for (let i = 0; i < candidates.length; i++) {
+    const candidateModel = candidates[i];
+    const t0 = Date.now();
     try {
-      parsed = JSON.parse(text);
-    } catch (e) {
-      console.error("JSON parse error from Gemini output:", e);
-      return {
-        ok: false,
-        error: { code: "BAD_RESPONSE", message: "JSON inválido devolvido pela IA." },
-      };
-    }
+      const response = await ai.models.generateContent({
+        model: candidateModel,
+        contents,
+        config: {
+          systemInstruction,
+          temperature: 0.2,
+          responseMimeType: "application/json",
+          responseSchema: SCHEMA,
+        },
+      });
 
-    const tokensUsed = Number(response.usageMetadata?.totalTokenCount) || 0;
-    return { ok: true, parsed, tokensUsed };
-  } catch (e) {
-    console.error("Gemini call error:", e);
-    const mapped = mapGeminiError(e);
-    return {
-      ok: false,
-      error: { code: mapped.code, message: mapped.message },
-    };
+      const text = response.text?.trim();
+      if (!text) {
+        lastMappedError = {
+          code: "BAD_RESPONSE",
+          message: "A IA não devolveu estrutura válida.",
+        };
+        continue;
+      }
+
+      let parsed: JsonValue;
+      try {
+        parsed = JSON.parse(text);
+      } catch (e) {
+        console.error("JSON parse error from Gemini output:", e);
+        lastMappedError = {
+          code: "BAD_RESPONSE",
+          message: "JSON inválido devolvido pela IA.",
+        };
+        continue;
+      }
+
+      const tokensUsed = Number(response.usageMetadata?.totalTokenCount) || 0;
+      recordAiAuditEvent({
+        operation: "generate_architecture",
+        module: "unifilar",
+        provider: "gemini",
+        model: candidateModel,
+        durationMs: Date.now() - t0,
+        ok: true,
+        statusCode: 200,
+        promptTokens: Number(response.usageMetadata?.promptTokenCount) || 0,
+        completionTokens: Number(response.usageMetadata?.candidatesTokenCount) || 0,
+        totalTokens: tokensUsed,
+        estimatedCostUsd: Number(((tokensUsed / 1000) * 0.00035).toFixed(6)),
+        fallbackUsed: i > 0,
+      });
+      return { ok: true, parsed, tokensUsed, usedModel: candidateModel };
+    } catch (e) {
+      const mapped = mapGeminiError(e);
+      lastMappedError = { code: mapped.code, message: mapped.message };
+      if (mapped.code === "AUTH_401" || mapped.code === "MISSING_KEY") {
+        break;
+      }
+    }
   }
+
+  return {
+    ok: false,
+    error: lastMappedError ?? {
+      code: "BAD_RESPONSE",
+      message: "Falha ao consultar modelos de arquitetura.",
+    },
+  };
 }
 
 function nodesOf(parsed: JsonValue): any[] {
@@ -525,7 +558,35 @@ export const generateArchitecture = createServerFn({ method: "POST" })
     }
 
     const locale = data.locale ?? "pt-BR";
-    const systemPrompt = getArchitectSystemPrompt(locale);
+    const baseSystemPrompt = getArchitectSystemPrompt(locale);
+
+    let memorySummaryBlock = "";
+    const memoryHistoryMsgs: Array<{ role: string; content: string }> = [];
+    if (data.projectId || data.conversationId) {
+      try {
+        const mem = await loadProjectAiMemoryContext(supabase, context.userId, {
+          projectId: data.projectId,
+          conversationId: data.conversationId,
+          recentLimit: 16,
+        });
+        memorySummaryBlock = mem.summaryBlock;
+        for (const t of mem.recentTurns) {
+          const joined = t.parts.map((p) => p.text).join("\n");
+          if (joined) {
+            memoryHistoryMsgs.push({
+              role: t.role === "model" ? "assistant" : "user",
+              content: joined,
+            });
+          }
+        }
+      } catch (memErr) {
+        console.warn("[generateArchitecture] memory load skipped:", (memErr as Error).message);
+      }
+    }
+
+    const systemPrompt = memorySummaryBlock
+      ? `${baseSystemPrompt}\n\n[MEMÓRIA CONTÍNUA DE ENGENHARIA DO PROJETO]\n${memorySummaryBlock}`
+      : baseSystemPrompt;
 
     const userMsg =
       locale === "en"
@@ -534,6 +595,7 @@ export const generateArchitecture = createServerFn({ method: "POST" })
 
     const messages: Array<{ role: string; content: string }> = [
       { role: "system", content: systemPrompt },
+      ...memoryHistoryMsgs,
       { role: "user", content: userMsg },
     ];
 
@@ -604,7 +666,7 @@ ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed), plcLogic: (pa
       ok: true,
       system: parsed,
       provider: "gemini",
-      model: getGeminiModel(),
+      model: first.usedModel || getGeminiModel(),
       tokensUsed,
       ragHits: rag.hits,
       credits: gateInfo,

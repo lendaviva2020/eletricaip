@@ -67,6 +67,11 @@ export const TERMINAL_LIBRARY: Record<NodeKind, (params?: NodeParams) => Equipme
         terms.push(mkTerm("6/T3", "Saída Fase T3", "power", "out", "B", true, "L3"));
       }
 
+      terms.push(
+        mkTerm("MX", "Bobina de Disparo / Intertravamento", "control", "in", "L", false, "any"),
+        mkTerm("OF", "Contato Auxiliar de Estado", "control", "out", "R", false, "any"),
+      );
+
       return {
         kind: "breaker",
         description: `Disjuntor Termomagnético ${poles}P`,
@@ -171,42 +176,55 @@ export const TERMINAL_LIBRARY: Record<NodeKind, (params?: NodeParams) => Equipme
       defaultOutPort: "B",
     }),
 
-    busbar: () => ({
-      kind: "busbar",
-      description: "Barramento Principal de Distribuição (QGBT)",
-      terminals: [
-        mkTerm("IN_FEED", "Alimentação Geral", "power", "in", "T", true, "3F+N", undefined, 1),
-        mkTerm("TAP_1", "Derivação 1", "power", "out", "B1", false, "3F+N", undefined, 1),
-        mkTerm("TAP_2", "Derivação 2", "power", "out", "B2", false, "3F+N", undefined, 1),
-        mkTerm("TAP_3", "Derivação 3", "power", "out", "B", false, "3F+N", undefined, 1),
-        mkTerm("TAP_4", "Derivação 4", "power", "out", "B3", false, "3F+N", undefined, 1),
-        mkTerm("TAP_5", "Derivação 5", "power", "out", "B4", false, "3F+N", undefined, 1),
-        mkTerm(
-          "TAP_LEFT",
-          "Extensão Lateral Esquerda",
-          "power",
-          "bidirectional",
-          "L",
-          false,
-          "3F+N",
-          undefined,
-          1,
-        ),
-        mkTerm(
-          "TAP_RIGHT",
-          "Extensão Lateral Direita",
-          "power",
-          "bidirectional",
-          "R",
-          false,
-          "3F+N",
-          undefined,
-          1,
-        ),
-      ],
-      defaultInPort: "T",
-      defaultOutPort: "B",
-    }),
+    busbar: (params) => {
+      const explicitTaps =
+        params && "taps" in params && typeof params.taps === "number" ? params.taps : undefined;
+      const tapCount =
+        typeof explicitTaps === "number" && Number.isFinite(explicitTaps) && explicitTaps >= 1
+          ? Math.min(64, Math.floor(explicitTaps))
+          : 8;
+      const legacyPortIds = ["B1", "B2", "B", "B3", "B4"];
+      const tapTerms: TerminalDefinition[] = [];
+      for (let i = 1; i <= tapCount; i++) {
+        const portId = i <= legacyPortIds.length ? legacyPortIds[i - 1] : `B${i}`;
+        tapTerms.push(
+          mkTerm(`TAP_${i}`, `Derivação ${i}`, "power", "out", portId, false, "3F+N", undefined, 1),
+        );
+      }
+
+      return {
+        kind: "busbar",
+        description: `Barramento Principal de Distribuição (${tapCount} derivações)`,
+        terminals: [
+          mkTerm("IN_FEED", "Alimentação Geral", "power", "in", "T", true, "3F+N", undefined, 1),
+          ...tapTerms,
+          mkTerm(
+            "TAP_LEFT",
+            "Extensão Lateral Esquerda",
+            "power",
+            "bidirectional",
+            "L",
+            false,
+            "3F+N",
+            undefined,
+            1,
+          ),
+          mkTerm(
+            "TAP_RIGHT",
+            "Extensão Lateral Direita",
+            "power",
+            "bidirectional",
+            "R",
+            false,
+            "3F+N",
+            undefined,
+            1,
+          ),
+        ],
+        defaultInPort: "T",
+        defaultOutPort: tapCount >= 3 ? "B" : "B1",
+      };
+    },
 
     transformer: () => ({
       kind: "transformer",
@@ -499,7 +517,7 @@ export const TERMINAL_LIBRARY: Record<NodeKind, (params?: NodeParams) => Equipme
       kind: "pt100",
       description: "Termorresistência PT100",
       terminals: [
-        mkTerm("1", "Sinal +", "signal", "out", "T", true, "signal"),
+        mkTerm("1", "Sinal +", "signal", "in", "T", true, "signal"),
         mkTerm("2", "Sinal -", "signal", "out", "B", true, "signal"),
       ],
       defaultInPort: "T",

@@ -12,7 +12,13 @@ import type {
 } from "@/lib/diagram/schema";
 import { makeEdge, makeNode } from "@/lib/diagram/model";
 import { repairDiagramConnections } from "@/lib/diagram/connection/connection-repair-engine";
-import { resolveTerminalCode } from "@/lib/diagram/connection/connection-engine";
+import { resolveTerminalAllocation } from "@/lib/diagram/connection/connection-engine";
+import { getEquipmentTerminalProfile } from "@/lib/diagram/connection/terminal-library";
+import {
+  buildCanonicalDiagramParams,
+  extractPreservedUiMetadata,
+} from "@/lib/diagram/connection/canonical-params";
+export { buildCanonicalDiagramParams };
 import { resolveVisualPort, rotatePort } from "@/lib/diagram/render/ports";
 import { computeNodeBoundingBox, routeOrthogonalEdge } from "@/lib/diagram/render/wire-router";
 import type { IndustrialEdge, IndustrialNode } from "@/lib/project-store";
@@ -284,195 +290,6 @@ export function validateAndParseExternalPayload(
 }
 
 /**
- * Constrói NodeParams canônico estritamente válido e conforme o DiagramNodeSchema (NBR 5410/Zod).
- * Garante que campos obrigatórios (ex.: in_A em breaker/contactor, power_kW em motor)
- * nunca sejam undefined, convertendo sinônimos (In -> in_A, P -> power_kW, U -> voltage_V).
- */
-export function buildCanonicalDiagramParams(
-  kind: NodeKind,
-  rawProps: Record<string, any> = {},
-): NodeParams {
-  const tag = rawProps.tag ? String(rawProps.tag) : undefined;
-  // Corrente nominal: aceita in_A, In, current_A ou nominalCurrentA
-  const inRaw = rawProps.in_A ?? rawProps.In ?? rawProps.current_A ?? rawProps.nominalCurrentA;
-  const in_A = Number(inRaw);
-  // Potência nominal: aceita power_kW, P, kW ou powerKw
-  const pRaw = rawProps.power_kW ?? rawProps.P ?? rawProps.kW ?? rawProps.powerKw;
-  const power_kW = Number(pRaw);
-  // Tensão nominal: aceita voltage_V, U, V ou voltageV
-  const uRaw = rawProps.voltage_V ?? rawProps.U ?? rawProps.V ?? rawProps.voltageV;
-  const voltage_V = Number(uRaw);
-
-  switch (kind) {
-    case "breaker": {
-      const polesNum = Number(rawProps.poles);
-      const poles = polesNum >= 1 && polesNum <= 4 ? polesNum : 3;
-      const curveStr = String(rawProps.curve || "C").toUpperCase();
-      const curve = ["B", "C", "D"].includes(curveStr) ? (curveStr as "B" | "C" | "D") : "C";
-      return {
-        kind: "breaker",
-        tag,
-        in_A: Number.isFinite(in_A) && in_A > 0 ? in_A : 32,
-        curve,
-        poles,
-        icc_kA: rawProps.icc_kA ? Number(rawProps.icc_kA) : undefined,
-      };
-    }
-    case "contactor":
-      return {
-        kind: "contactor",
-        tag,
-        in_A: Number.isFinite(in_A) && in_A > 0 ? in_A : 25,
-        coil_V: Number(rawProps.coil_V) > 0 ? Number(rawProps.coil_V) : 24,
-      };
-    case "rcd": {
-      const polesNum = Number(rawProps.poles);
-      const poles = polesNum >= 2 && polesNum <= 4 ? polesNum : 4;
-      return {
-        kind: "rcd",
-        tag,
-        in_A: Number.isFinite(in_A) && in_A > 0 ? in_A : 40,
-        sensitivity_mA: Number(rawProps.sensitivity_mA) > 0 ? Number(rawProps.sensitivity_mA) : 30,
-        poles,
-      };
-    }
-    case "fuse":
-      return {
-        kind: "fuse",
-        tag,
-        in_A: Number.isFinite(in_A) && in_A > 0 ? in_A : 32,
-      };
-    case "disconnector":
-      return {
-        kind: "disconnector",
-        tag,
-        in_A: Number.isFinite(in_A) && in_A > 0 ? in_A : 63,
-      };
-    case "transformer": {
-      const kvaRaw = rawProps.kVA ?? rawProps.apparentPowerKva ?? rawProps.P;
-      const kVA = Number(kvaRaw);
-      return {
-        kind: "transformer",
-        tag,
-        kVA: Number.isFinite(kVA) && kVA > 0 ? kVA : 75,
-        primary_V: Number(rawProps.primary_V ?? rawProps.primaryV ?? 13800),
-        secondary_V: Number(
-          rawProps.secondary_V ?? rawProps.secondaryV ?? (voltage_V > 0 ? voltage_V : 380),
-        ),
-        vector: String(rawProps.vector || "Dyn11"),
-      };
-    }
-    case "psu":
-      return {
-        kind: "psu",
-        tag,
-        output_V: Number(rawProps.output_V ?? rawProps.voltage_V ?? 24),
-        output_A: Number.isFinite(in_A) && in_A > 0 ? in_A : 10,
-      };
-    case "vfd":
-      return {
-        kind: "vfd",
-        tag,
-        power_kW: Number.isFinite(power_kW) && power_kW > 0 ? power_kW : 7.5,
-        voltage_V: Number.isFinite(voltage_V) && voltage_V > 0 ? voltage_V : 380,
-      };
-    case "softstarter":
-      return {
-        kind: "softstarter",
-        tag,
-        power_kW: Number.isFinite(power_kW) && power_kW > 0 ? power_kW : 7.5,
-      };
-    case "busbar":
-      return {
-        kind: "busbar",
-        tag,
-        current_A: Number.isFinite(in_A) && in_A > 0 ? in_A : 63,
-        voltage_V: Number.isFinite(voltage_V) && voltage_V > 0 ? voltage_V : 380,
-      };
-    case "ccm":
-      return {
-        kind: "ccm",
-        tag,
-        columns: Number(rawProps.columns ?? 1),
-        cells: Number(rawProps.cells ?? 4),
-      };
-    case "motor": {
-      const sm = String(rawProps.startMethod || "DOL").toUpperCase();
-      const startMethod = sm.includes("SOFT")
-        ? "SOFT"
-        : sm.includes("VFD") || sm.includes("INV")
-          ? "VFD"
-          : "DOL";
-      return {
-        kind: "motor",
-        tag,
-        power_kW: Number.isFinite(power_kW) && power_kW > 0 ? power_kW : 5.5,
-        voltage_V: Number.isFinite(voltage_V) && voltage_V > 0 ? voltage_V : 380,
-        fla_A: Number.isFinite(in_A) && in_A > 0 ? in_A : undefined,
-        startMethod,
-      };
-    }
-    case "load":
-      return {
-        kind: "load",
-        tag,
-        power_W: Number(rawProps.power_W ?? (power_kW > 0 ? power_kW * 1000 : 1000)),
-        voltage_V: Number.isFinite(voltage_V) && voltage_V > 0 ? voltage_V : 220,
-        fp: Number(rawProps.fp ?? 0.92),
-      };
-    case "lamp":
-      return {
-        kind: "lamp",
-        tag,
-        power_W: Number(rawProps.power_W ?? (power_kW > 0 ? power_kW * 1000 : 100)),
-        voltage_V: Number.isFinite(voltage_V) && voltage_V > 0 ? voltage_V : 220,
-      };
-    case "socket":
-      return {
-        kind: "socket",
-        tag,
-        current_A: Number.isFinite(in_A) && in_A > 0 ? in_A : 10,
-        voltage_V: Number.isFinite(voltage_V) && voltage_V > 0 ? voltage_V : 220,
-      };
-    case "pt100":
-      return { kind: "pt100", tag, range_C: [-50, 200] };
-    case "pressure":
-      return { kind: "pressure", tag, range_bar: [0, 10] };
-    case "flow":
-      return { kind: "flow", tag, range: [0, 100] };
-    case "level":
-      return { kind: "level", tag, range_pct: [0, 100] };
-    case "encoder":
-      return { kind: "encoder", tag, ppr: Number(rawProps.ppr ?? 1024) };
-    case "estop":
-      return { kind: "estop", tag, category: "1" };
-    case "lightcurtain":
-      return { kind: "lightcurtain", tag, resolution_mm: 14 };
-    case "ground":
-      return { kind: "ground", tag };
-    case "neutral":
-      return { kind: "neutral", tag };
-    case "terminal":
-      return { kind: "terminal", tag };
-    case "relay":
-      return {
-        kind: "relay",
-        tag,
-        coil_V: Number(rawProps.coil_V) > 0 ? Number(rawProps.coil_V) : 24,
-        contacts: Number(rawProps.contacts) > 0 ? Number(rawProps.contacts) : 2,
-      };
-    default:
-      return {
-        kind: "load",
-        tag,
-        power_W: 1000,
-        voltage_V: 220,
-        fp: 0.92,
-      };
-  }
-}
-
-/**
  * Converte o Bundle validado para o modelo interno real `DiagramDoc` (WebGL Canvas).
  */
 export function convertBundleToDiagramDoc(
@@ -518,6 +335,7 @@ export function convertBundleToDiagramDoc(
     if (n.properties?.tag) tagOrIdMap.set(String(n.properties.tag), finalId);
 
     const canonicalParams = buildCanonicalDiagramParams(kind, n.properties ?? {});
+    const preservedUi = extractPreservedUiMetadata(n.properties);
 
     const newNode = makeNode({
       sheet: "unifilar",
@@ -529,12 +347,13 @@ export function convertBundleToDiagramDoc(
       id: finalId,
       label: n.label || (n.properties?.tag ? String(n.properties?.tag) : finalId),
       rotation: n.rotation || 0,
+      ...(preservedUi ? { ui: preservedUi } : {}),
     });
     (newNode as any).kind = kind;
     doc.nodes[finalId] = newNode;
   }
 
-  // 2. Inserir edges
+  // 2. Inserir edges sem inventar conexões ausentes nem wraparound de barramento
   const busbarTapCount = new Map<string, number>();
   for (let i = 0; i < bundle.edges.length; i++) {
     const e = bundle.edges[i];
@@ -551,22 +370,28 @@ export function convertBundleToDiagramDoc(
     const rawSourcePort = e.fromTerminal || (e as any).sourcePort;
     const rawTargetPort = e.toTerminal || (e as any).targetPort;
 
-    let sourcePort: string | undefined = rawSourcePort
-      ? resolveTerminalCode(srcNode, rawSourcePort, "source")
-      : undefined;
-    if (!sourcePort) {
-      if (srcNode?.params.kind === "busbar") {
-        const count = (busbarTapCount.get(srcId) || 0) + 1;
-        busbarTapCount.set(srcId, count);
-        const taps = ["B1", "B2", "B3", "B4", "B"];
-        sourcePort = taps[(count - 1) % taps.length];
-      } else {
-        sourcePort = resolveTerminalCode(srcNode, undefined, "source");
-      }
+    let sourcePort: string | undefined;
+    if (rawSourcePort) {
+      sourcePort = resolveTerminalAllocation(srcNode, rawSourcePort, "source").code;
+    } else if (srcNode?.params.kind === "busbar") {
+      const profile = getEquipmentTerminalProfile(srcNode.params.kind, srcNode.params);
+      const taps = profile.terminals.filter(
+        (t) => t.code.startsWith("TAP_") && t.direction === "out",
+      );
+      const count = (busbarTapCount.get(srcId) || 0) + 1;
+      busbarTapCount.set(srcId, count);
+      sourcePort = count <= taps.length ? taps[count - 1].code : `TAP_${count}`;
+    } else {
+      const alloc = resolveTerminalAllocation(srcNode, undefined, "source");
+      sourcePort = alloc.valid ? alloc.code : undefined;
     }
+
     const targetPort = rawTargetPort
-      ? resolveTerminalCode(tgtNode, rawTargetPort, "target")
-      : resolveTerminalCode(tgtNode, undefined, "target");
+      ? resolveTerminalAllocation(tgtNode, rawTargetPort, "target").code
+      : (() => {
+          const alloc = resolveTerminalAllocation(tgtNode, undefined, "target");
+          return alloc.valid ? alloc.code : undefined;
+        })();
 
     const newEdge = makeEdge({
       id: edgeId,
@@ -581,7 +406,7 @@ export function convertBundleToDiagramDoc(
     doc.edges[edgeId] = newEdge;
   }
 
-  // 3. Reparar topologia para garantir conectividade de ponta a ponta (sem sobrescrever layout importado)
+  // 3. Reparo puramente estrutural (normaliza terminais válidos e recalcula waypoints sem inventar conexões)
   const repair = repairDiagramConnections(doc);
   const repairedDoc = repair.repairedDoc;
 

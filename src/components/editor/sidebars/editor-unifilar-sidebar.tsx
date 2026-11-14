@@ -540,7 +540,9 @@ export function EditorUnifilarSidebar() {
 
       {/* Rodapé informativo de validação e atalhos úteis */}
       <div className="px-2.5 py-1.5 border-t border-border bg-panel text-[10px] text-muted-foreground font-mono flex items-center justify-between">
-        <span className="truncate">{dragValidation || "Arraste componentes para o canvas."}</span>
+        <span className="truncate">
+          {dragValidation || "Arraste ou toque para inserir no diagrama."}
+        </span>
       </div>
     </div>
   );
@@ -590,6 +592,8 @@ function LibraryAccordion({
  */
 function SymbolCard({ component }: { component: VoltaiComponentDefinition }) {
   const validateComponent = useEditorStore((s) => s.validateComponent);
+  const setPanelsCollapsed = useEditorStore((s) => s.setPanelsCollapsed);
+  const rightCollapsed = useEditorStore((s) => s.rightCollapsed);
   const meta = COMPONENT_METADATA[component.type] || {
     desc: component.name,
     norm: component.standard?.[0] || "IEC 60617",
@@ -597,6 +601,20 @@ function SymbolCard({ component }: { component: VoltaiComponentDefinition }) {
   };
 
   const tagLabel = meta.tag || component.tagPrefix || component.type;
+
+  const insertComponent = () => {
+    validateComponent?.(component.type);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("eletricai-insert-component", {
+          detail: { componentType: component.type },
+        }),
+      );
+      if (window.innerWidth < 1024) {
+        setPanelsCollapsed(true, rightCollapsed);
+      }
+    }
+  };
 
   return (
     <div
@@ -606,8 +624,13 @@ function SymbolCard({ component }: { component: VoltaiComponentDefinition }) {
         event.dataTransfer.setData("application/voltai-component", component.type);
         event.dataTransfer.effectAllowed = "move";
       }}
+      onClick={() => {
+        if (typeof window !== "undefined" && window.innerWidth < 1024) {
+          insertComponent();
+        }
+      }}
       title={`${component.name} [${tagLabel}] — ${meta.desc} (${meta.norm})`}
-      className="group relative flex items-center gap-2.5 p-2 rounded-md border border-border bg-card hover:bg-accent/40 hover:border-primary/40 transition-colors cursor-grab active:cursor-grabbing select-none"
+      className="group relative flex items-center gap-2.5 p-2 rounded-md border border-border bg-card hover:bg-accent/40 hover:border-primary/40 transition-colors cursor-pointer lg:cursor-grab lg:active:cursor-grabbing select-none"
       data-testid={`library-item-${component.type}`}
     >
       {/* Símbolo elétrico SVG distintivo em contêiner de alto contraste */}
@@ -630,6 +653,20 @@ function SymbolCard({ component }: { component: VoltaiComponentDefinition }) {
         </p>
         <span className="text-[9px] font-mono text-muted-foreground/50">{meta.norm}</span>
       </div>
+
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          insertComponent();
+        }}
+        title={`Inserir ${component.name} no diagrama`}
+        aria-label={`Inserir ${component.name} no diagrama`}
+        data-testid={`library-add-${component.type}`}
+        className="shrink-0 h-7 w-7 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground flex items-center justify-center text-sm font-bold lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
+      >
+        +
+      </button>
     </div>
   );
 }

@@ -42,6 +42,12 @@ import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { Icon } from "@phosphor-icons/react";
 import { FloatingLegend } from "./canvas-chrome";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import {
+  buildDiagnosticContextFromPlc,
+  buildDiagnosticContextFromIo,
+} from "@/lib/diagnostics/ai-repair-context";
+import { useProjectStore } from "@/lib/project-store";
 
 const LANG_LABELS: Record<ProgramLang, string> = { ladder: "LAD", fbd: "FBD", st: "ST" };
 
@@ -378,8 +384,30 @@ export function PlcCanvas() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="rounded-md border border-border glass p-4">
-                <div className="text-[11px] font-mono font-bold text-muted-foreground uppercase mb-3 flex items-center gap-2">
-                  <Terminal className="h-3.5 w-3.5 text-primary" /> Diagnóstico
+                <div className="text-[11px] font-mono font-bold text-muted-foreground uppercase mb-3 flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <Terminal className="h-3.5 w-3.5 text-primary" /> Diagnóstico
+                  </span>
+                  {diagMsgs.some((m) => m.startsWith("⚠")) && (
+                    <AiFixButton
+                      batch={diagMsgs
+                        .filter((m) => m.startsWith("⚠"))
+                        .map((msg, idx) =>
+                          buildDiagnosticContextFromPlc(
+                            {
+                              id: `plc_diag_${idx}`,
+                              code: "PLC_RACK_OR_BLOCK_WARN",
+                              severity: "warning",
+                              message: msg.replace(/^⚠\s*/, ""),
+                              cpuModel: project.vendor,
+                            },
+                            useProjectStore.getState().projectId || "proj_active",
+                          ),
+                        )}
+                      size="xs"
+                      variant="primary"
+                    />
+                  )}
                 </div>
                 <ul className="space-y-1.5">
                   {diagMsgs.map((msg, i) => (
@@ -523,6 +551,43 @@ export function PlcCanvas() {
                 {project.variables.length})
               </span>
               <div className="flex items-center gap-2">
+                {(() => {
+                  const addrCounts = new Map<string, number>();
+                  for (const v of project.variables) {
+                    const addr = (v.address || "").trim().toUpperCase();
+                    if (addr) addrCounts.set(addr, (addrCounts.get(addr) ?? 0) + 1);
+                  }
+                  const ioIssues = project.variables.filter(
+                    (v) =>
+                      !v.address?.trim() ||
+                      !v.name?.trim() ||
+                      (addrCounts.get((v.address || "").trim().toUpperCase()) ?? 0) > 1,
+                  );
+                  if (ioIssues.length === 0) return null;
+                  return (
+                    <AiFixButton
+                      batch={ioIssues.slice(0, 15).map((v) => {
+                        const normAddr = (v.address || "").trim().toUpperCase();
+                        const isDup = (addrCounts.get(normAddr) ?? 0) > 1;
+                        return buildDiagnosticContextFromIo(
+                          {
+                            id: `io_${v.id}`,
+                            code: isDup ? "IO_DUPLICATE_ADDRESS" : "IO_UNMAPPED_TAG",
+                            severity: isDup ? "critical" : "warning",
+                            message: isDup
+                              ? `Endereço I/O duplicado (${v.address}) na variável ${v.name || v.id}.`
+                              : `Variável I/O ${v.name || v.id} sem nome ou endereço físico atribuído.`,
+                            tagName: v.name || v.id,
+                            address: v.address || undefined,
+                          },
+                          useProjectStore.getState().projectId || "proj_active",
+                        );
+                      })}
+                      size="xs"
+                      variant="primary"
+                    />
+                  );
+                })()}
                 <button
                   onClick={handleAutoAddress}
                   title="Gerar endereços automáticos baseados nos módulos de hardware"

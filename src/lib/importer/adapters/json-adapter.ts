@@ -100,6 +100,14 @@ export function parseJsonBundle(
   const rawNodes = Array.isArray(rawObj.nodes) ? rawObj.nodes : [];
   const normalizedNodes: any[] = [];
   const seenNodeIds = new Set<string>();
+  const refCandidates = new Map<string, Set<string>>();
+  const registerRef = (ref: unknown, nodeId: string) => {
+    if (typeof ref !== "string") return;
+    const key = ref.trim();
+    if (!key) return;
+    if (!refCandidates.has(key)) refCandidates.set(key, new Set());
+    refCandidates.get(key)!.add(nodeId);
+  };
 
   for (let i = 0; i < rawNodes.length; i++) {
     const n = rawNodes[i];
@@ -117,6 +125,9 @@ export function parseJsonBundle(
     }
     const cleanId = seenNodeIds.has(rawId) ? `${rawId}_${i}` : rawId;
     seenNodeIds.add(cleanId);
+    registerRef(cleanId, cleanId);
+    registerRef(n.properties?.tag ?? n.tag, cleanId);
+    registerRef(n.label, cleanId);
 
     const resolvedKind = resolveComponentKind(n.type || n.kind);
     if (!resolvedKind) {
@@ -144,6 +155,15 @@ export function parseJsonBundle(
     });
   }
 
+  const resolveEndpointId = (rawRef: string): string | null => {
+    if (seenNodeIds.has(rawRef)) return rawRef;
+    const candidates = refCandidates.get(rawRef);
+    if (candidates && candidates.size === 1) {
+      return Array.from(candidates)[0];
+    }
+    return null;
+  };
+
   // Normalizar edges
   const rawEdges = Array.isArray(rawObj.edges) ? rawObj.edges : [];
   const normalizedEdges: any[] = [];
@@ -151,10 +171,10 @@ export function parseJsonBundle(
     const e = rawEdges[i];
     if (!e || typeof e !== "object") continue;
 
-    const src = String(e.source || e.from || "").trim();
-    const tgt = String(e.target || e.to || "").trim();
+    const rawSrc = String(e.source || e.from || "").trim();
+    const rawTgt = String(e.target || e.to || "").trim();
 
-    if (!src || !tgt) {
+    if (!rawSrc || !rawTgt) {
       issues.push({
         id: `invalid-edge-${i}`,
         severity: "warning",
@@ -165,12 +185,15 @@ export function parseJsonBundle(
       continue;
     }
 
-    if (!seenNodeIds.has(src) || !seenNodeIds.has(tgt)) {
+    const src = resolveEndpointId(rawSrc);
+    const tgt = resolveEndpointId(rawTgt);
+
+    if (!src || !tgt) {
       issues.push({
         id: `orphan-edge-${i}`,
         severity: "warning",
         category: "connection",
-        message: `Ligação conecta nó inexistente ("${src}" → "${tgt}"). Descartada para preservar integridade.`,
+        message: `Ligação conecta nó inexistente ou ambíguo ("${rawSrc}" → "${rawTgt}"). Descartada para preservar integridade.`,
         rejected: true,
       });
       continue;

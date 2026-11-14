@@ -24,6 +24,8 @@ import { plantTags } from "@/lib/simulation/plant-engine";
 import { useRuntimeStore, useUnifiedProjectStore } from "@/lib/model";
 import { cn } from "@/lib/utils";
 import { pushNotification } from "@/lib/notification-service";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { buildDiagnosticContextFromSimulation } from "@/lib/diagnostics/ai-repair-context";
 
 interface DataPoint {
   t: number;
@@ -345,6 +347,29 @@ export function SimCanvas() {
             </span>
           )}
         </button>
+
+        {activeAlarms.length > 0 && (
+          <AiFixButton
+            batch={activeAlarms.slice(0, 10).map((alarm) =>
+              buildDiagnosticContextFromSimulation(
+                {
+                  id: `sim_${alarm.id}`,
+                  code: `SIM_${alarm.priority}`,
+                  severity:
+                    alarm.priority === "CRITICAL" || alarm.priority === "HIGH"
+                      ? "critical"
+                      : "warning",
+                  message: `${alarm.tagName}: ${alarm.message}`,
+                  stepCount: dataPoints.length,
+                  overloadedEquipmentIds: [alarm.tagName],
+                },
+                useProjectStore.getState().projectId || "proj_active",
+              ),
+            )}
+            size="xs"
+            variant="primary"
+          />
+        )}
       </div>
 
       {/* WATCH TABLE PANEL */}

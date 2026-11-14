@@ -17,8 +17,12 @@ import { useScadaStore } from "@/lib/scada/scada-store";
 import type { AlarmSeverity, AlarmState, ScadaAlarmItem } from "@/lib/scada/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { buildDiagnosticContextFromScada } from "@/lib/diagnostics/ai-repair-context";
+import { useProjectStore } from "@/lib/project-store";
 
 export function ScadaAlarmsView() {
+  const projectId = useProjectStore((s) => s.projectId) || "proj_active";
   const alarms = useScadaStore((s) => s.alarms);
   const acknowledgeAlarm = useScadaStore((s) => s.acknowledgeAlarm);
   const acknowledgeAllAlarms = useScadaStore((s) => s.acknowledgeAllAlarms);
@@ -167,6 +171,40 @@ export function ScadaAlarmsView() {
 
         {/* Global Action Buttons */}
         <div className="flex items-center gap-2">
+          {validAlarms.length > 0 && (
+            <AiFixButton
+              batch={validAlarms
+                .filter(
+                  (a) => a.state === "UNACK" || a.priority === "CRITICAL" || a.priority === "HIGH",
+                )
+                .slice(0, 10)
+                .map((a) =>
+                  buildDiagnosticContextFromScada(
+                    {
+                      id: a.id,
+                      alarmId: a.id,
+                      tag: a.tag,
+                      code: `SCADA_${a.category}`,
+                      severity:
+                        a.priority === "CRITICAL" || a.priority === "HIGH" ? "critical" : "warning",
+                      message: `${a.tag}: ${a.description}`,
+                      isaPriority:
+                        a.priority === "CRITICAL"
+                          ? "CRITICAL"
+                          : a.priority === "HIGH"
+                            ? "HIGH"
+                            : a.priority === "MEDIUM"
+                              ? "MEDIUM"
+                              : "LOW",
+                      timestamp: new Date(a.timestamp).toISOString(),
+                    },
+                    projectId,
+                  ),
+                )}
+              size="sm"
+              variant="primary"
+            />
+          )}
           <button
             onClick={() => {
               acknowledgeAllAlarms();

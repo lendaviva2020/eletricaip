@@ -11,10 +11,7 @@ import type { ProjectSnapshot } from "@/lib/projects.functions";
 import type { DiagramDoc } from "@/lib/diagram/schema";
 import type { PlcProject } from "@/lib/plc/types";
 import type { IndustrialNode, IndustrialEdge } from "@/lib/project-store";
-import {
-  repairDiagramConnections,
-  synthesizeDiagramDocFromProject,
-} from "@/lib/diagram/connection/connection-repair-engine";
+import { synthesizeDiagramDocWithDiagnostics } from "@/lib/diagram/connection/connection-repair-engine";
 import { useAutosaveLog } from "@/lib/autosave-log";
 import { toast } from "sonner";
 
@@ -96,24 +93,23 @@ export function useProjectPersistence(projectId: string | null) {
       useProjectStore.getState().setProjectId(projectId);
 
       const ds = useDiagramStore.getState();
-      let loadedDiagramDoc = snap.diagram as DiagramDoc | undefined;
+      const loadedDiagramDoc = snap.diagram as DiagramDoc | undefined;
       if (loadedDiagramDoc && Object.keys(loadedDiagramDoc.nodes ?? {}).length > 0) {
-        // Se houver nós mas as conexões estiverem vazias ou desconectadas, repara
-        if (
-          Object.keys(loadedDiagramDoc.nodes).length > 1 &&
-          (!loadedDiagramDoc.edges || Object.keys(loadedDiagramDoc.edges).length === 0)
-        ) {
-          const repaired = repairDiagramConnections(loadedDiagramDoc);
-          loadedDiagramDoc = repaired.repairedDoc;
-        }
+        // Preserva integralmente o diagrama persistido sem inventar conexões ausentes no load.
         ds.loadDoc(loadedDiagramDoc);
       } else if (snap.project?.nodes && snap.project.nodes.length > 0) {
-        // Fallback: Sintetiza DiagramDoc completo a partir do grafo do projeto
-        const synthDoc = synthesizeDiagramDocFromProject(
+        // Fallback: converte somente nós e arestas elétricas válidas do grafo legado sem inventar ligações
+        const synth = synthesizeDiagramDocWithDiagnostics(
           snap.project.nodes as IndustrialNode[],
           snap.project.edges as IndustrialEdge[],
         );
-        ds.loadDoc(synthDoc);
+        if (synth.rejectedLegacyEdges.length > 0) {
+          console.warn(
+            "[useProjectPersistence] Arestas não elétricas ignoradas na síntese Unifilar:",
+            synth.rejectedLegacyEdges,
+          );
+        }
+        ds.loadDoc(synth.doc);
       } else {
         ds.resetDoc();
       }

@@ -9,11 +9,13 @@ import {
   listConversations,
   createConversation,
   getConversationMessages,
+  getOrCreateProjectConversation,
   deleteConversation,
   streamChat,
   type ChatMessage,
 } from "@/lib/ai-chat.functions";
 import { getAiCredits } from "@/lib/ai-architect.functions";
+import { useProjectStore } from "@/lib/project-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
@@ -30,8 +32,10 @@ export const Route = createFileRoute("/chat")({
 
 function ChatPage() {
   const { locale } = useI18n();
+  const activeProjectId = useProjectStore((s) => s.projectId);
   const list = useServerFn(listConversations);
   const create = useServerFn(createConversation);
+  const getOrCreateProjectConv = useServerFn(getOrCreateProjectConversation);
   const fetchMessages = useServerFn(getConversationMessages);
   const remove = useServerFn(deleteConversation);
   const stream = useServerFn(streamChat);
@@ -63,6 +67,22 @@ function ChatPage() {
   });
 
   useEffect(() => {
+    if (!activeProjectId) return;
+    let mounted = true;
+    getOrCreateProjectConv({
+      data: { projectId: activeProjectId, title: "Engenharia Industrial ElétricAi" },
+    })
+      .then((res) => {
+        if (!mounted || !res) return;
+        setActiveId((prev) => prev ?? res.conversation.id);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [activeProjectId, getOrCreateProjectConv]);
+
+  useEffect(() => {
     if (!activeId && convos.length) setActiveId(convos[0].id);
   }, [convos, activeId]);
 
@@ -72,7 +92,12 @@ function ChatPage() {
 
   async function handleNew() {
     try {
-      const c = await create({ data: { title: "Nova conversa" } });
+      const c = await create({
+        data: {
+          title: "Nova conversa",
+          ...(activeProjectId ? { projectId: activeProjectId } : {}),
+        },
+      });
       await qc.invalidateQueries({ queryKey: ["chat-convos"] });
       setActiveId(c.id);
     } catch (e) {
@@ -91,7 +116,12 @@ function ChatPage() {
     if (!draft.trim() || busy) return;
     let convId = activeId;
     if (!convId) {
-      const c = await create({ data: { title: draft.slice(0, 60) } });
+      const c = await create({
+        data: {
+          title: draft.slice(0, 60),
+          ...(activeProjectId ? { projectId: activeProjectId } : {}),
+        },
+      });
       convId = c.id;
       setActiveId(c.id);
       await qc.invalidateQueries({ queryKey: ["chat-convos"] });
@@ -102,7 +132,14 @@ function ChatPage() {
     setStreamingText("");
     try {
       // Optimistically refetch so user message appears immediately after server insert.
-      const generator = await stream({ data: { conversationId: convId, prompt, locale } });
+      const generator = await stream({
+        data: {
+          conversationId: convId,
+          prompt,
+          locale,
+          ...(activeProjectId ? { projectId: activeProjectId } : {}),
+        },
+      });
       let acc = "";
       for await (const chunk of generator) {
         if (chunk.type === "delta") {
@@ -182,7 +219,17 @@ function ChatPage() {
             </div>
           )}
           {messages.map((m: ChatMessage) => (
-            <Bubble key={m.id} role={m.role} content={m.content} />
+            <Bubble
+              key={m.id}
+              role={m.role}
+              content={m.content}
+              model={
+                typeof (m.tool_calls as any)?.model === "string"
+                  ? ((m.tool_calls as any).model as string)
+                  : undefined
+              }
+              tokens={m.tokens_used}
+            />
           ))}
           {streamingText && <Bubble role="assistant" content={streamingText} streaming />}
         </div>
@@ -219,10 +266,14 @@ function Bubble({
   role,
   content,
   streaming,
+  model,
+  tokens,
 }: {
   role: string;
   content: string;
   streaming?: boolean;
+  model?: string;
+  tokens?: number | null;
 }) {
   const isUser = role === "user";
   return (
@@ -238,6 +289,12 @@ function Bubble({
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <ReactMarkdown>{content}</ReactMarkdown>
             {streaming && <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />}
+            {!streaming && (model || tokens) && (
+              <div className="mt-1.5 pt-1 border-t border-border/50 text-[10px] font-mono text-muted-foreground flex items-center gap-2">
+                {model && <span>Modelo: {model}</span>}
+                {tokens ? <span>· {tokens} tok</span> : null}
+              </div>
+            )}
           </div>
         )}
       </div>

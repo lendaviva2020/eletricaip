@@ -13,20 +13,27 @@ export type AllowedNodeKind =
   | "rcd"
   | "contactor"
   | "relay"
+  | "thermal_relay"
   | "fuse"
   | "disconnector"
+  | "surge_arrester"
   // Fonte e Conversão
   | "transformer"
+  | "generator"
   | "psu"
   | "vfd"
   | "softstarter"
   | "busbar"
   | "ccm"
-  // Cargas
+  // Cargas e Compensação
   | "motor"
+  | "capacitor_bank"
   | "load"
   | "lamp"
   | "socket"
+  // Automação
+  | "plc"
+  | "hmi"
   // Instrumentação e Sensores
   | "pt100"
   | "pressure"

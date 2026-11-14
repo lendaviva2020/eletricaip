@@ -123,6 +123,7 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
     ...ParamsBase,
     current_A: z.number().positive().default(63),
     voltage_V: z.number().positive().default(380),
+    taps: z.number().int().min(1).max(64).optional(),
   }),
   z.object({
     kind: z.literal("ccm"),
@@ -204,6 +205,7 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
     ...ParamsBase,
     kvar: z.number().positive().default(25),
     voltage_V: z.number().positive().default(380),
+    stages: z.number().int().positive().optional(),
   }),
   z.object({
     kind: z.literal("generator"),

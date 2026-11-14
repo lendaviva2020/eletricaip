@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { useNotificationStore } from "@/lib/notification-store";
 import { useI18n } from "@/lib/i18n";
 import { formatDate } from "@/lib/i18n/format";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { buildDiagnosticContextFromScada } from "@/lib/diagnostics/ai-repair-context";
+import { useProjectStore } from "@/lib/project-store";
 
 const SEV_CONF = {
   critical: {
@@ -47,6 +50,7 @@ const SEV_CONF = {
 
 export function AlarmsCanvas() {
   const { t, locale } = useI18n();
+  const projectId = useProjectStore((s) => s.projectId) || "proj_active";
   const alarms = useAlarmStore((s) => s.alarms);
   const unackedCount = useAlarmStore((s) => s.unackedCount);
   const totalToday = useAlarmStore((s) => s.totalToday);
@@ -94,8 +98,8 @@ export function AlarmsCanvas() {
         ]}
       />
 
-      {unackedCount > 0 && (
-        <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {unackedCount > 0 && (
           <button
             onClick={ackAll}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary/40 bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 transition-colors cursor-pointer"
@@ -103,8 +107,40 @@ export function AlarmsCanvas() {
             <BellRinging className="h-3.5 w-3.5" />
             {t("canvases.alarms.acknowledgeAll", { count: unackedCount })}
           </button>
-        </div>
-      )}
+        )}
+        {alarms.length > 0 && (
+          <AiFixButton
+            batch={alarms
+              .filter((a) => a.isActive || a.state === "unacknowledged")
+              .slice(0, 10)
+              .map((a) =>
+                buildDiagnosticContextFromScada(
+                  {
+                    id: a.id,
+                    alarmId: a.id,
+                    tag: a.tagName,
+                    code: `ALARM_${a.category.toUpperCase()}`,
+                    severity:
+                      a.priority === "critical" || a.priority === "high" ? "critical" : "warning",
+                    message: a.message,
+                    isaPriority:
+                      a.priority === "critical"
+                        ? "CRITICAL"
+                        : a.priority === "high"
+                          ? "HIGH"
+                          : a.priority === "medium"
+                            ? "MEDIUM"
+                            : "LOW",
+                    timestamp: new Date(a.triggeredAt).toISOString(),
+                  },
+                  projectId,
+                ),
+              )}
+            size="sm"
+            variant="primary"
+          />
+        )}
+      </div>
 
       {alarms.length === 0 ? (
         <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">

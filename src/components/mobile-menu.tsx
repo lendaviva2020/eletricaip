@@ -103,6 +103,11 @@ export function MobileMenu() {
                     <Link
                       key={item.url}
                       to={item.url}
+                      search={
+                        project?.id && (item.url === "/workspace" || item.url === "/scada")
+                          ? { projectId: project.id }
+                          : undefined
+                      }
                       className={cn(
                         "group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all",
                         "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground",

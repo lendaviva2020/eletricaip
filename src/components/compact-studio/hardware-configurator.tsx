@@ -13,6 +13,9 @@ import {
   removeHardwareSlot,
   selectBaseController,
 } from "@/lib/compact-studio/hardware";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { buildDiagnosticContextFromHardware } from "@/lib/diagnostics/ai-repair-context";
+import { useProjectStore } from "@/lib/project-store";
 
 export interface HardwareConfiguratorProps {
   readonly model: CompactProgramModel;
@@ -20,8 +23,25 @@ export interface HardwareConfiguratorProps {
 }
 
 export function HardwareConfigurator({ model, onChangeModel }: HardwareConfiguratorProps) {
+  const projectId = useProjectStore((s) => s.projectId) || "proj_active";
   const catalog = useMemo(() => getCompactHardwareCatalog(), []);
   const report = useMemo(() => evaluateRackEngineering(model), [model]);
+  const hwDiagnosticContexts = useMemo(
+    () =>
+      report.diagnostics.map((d) =>
+        buildDiagnosticContextFromHardware(
+          {
+            id: d.id,
+            code: d.code,
+            severity: d.severity === "error" ? "critical" : "warning",
+            message: d.message,
+            incompatibleReason: d.message,
+          },
+          projectId,
+        ),
+      ),
+    [report.diagnostics, projectId],
+  );
 
   const baseModels = useMemo(
     () => catalog.items.filter((i) => i.family === "BASE_COMPACT"),
@@ -218,9 +238,14 @@ export function HardwareConfigurator({ model, onChangeModel }: HardwareConfigura
         {/* Diagnostics & BOM */}
         <div className="space-y-4">
           <div className="rounded-lg border border-border bg-card/50 p-3 space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Validação Elétrica &amp; Compatibilidade
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Validação Elétrica &amp; Compatibilidade
+              </h3>
+              {hwDiagnosticContexts.length > 0 && (
+                <AiFixButton batch={hwDiagnosticContexts} size="xs" variant="primary" />
+              )}
+            </div>
             {report.diagnostics.length === 0 ? (
               <div className="flex items-center gap-2 text-xs text-emerald-400">
                 <CheckCircle className="h-4 w-4 shrink-0" />
@@ -230,20 +255,29 @@ export function HardwareConfigurator({ model, onChangeModel }: HardwareConfigura
               </div>
             ) : (
               <ul className="space-y-1.5 text-xs">
-                {report.diagnostics.map((d) => (
+                {report.diagnostics.map((d, idx) => (
                   <li
                     key={d.id}
-                    className={`flex items-start gap-2 rounded p-2 border ${
+                    className={`flex items-start justify-between gap-2 rounded p-2 border ${
                       d.severity === "error"
                         ? "border-destructive/40 bg-destructive/10 text-destructive"
                         : "border-amber-500/40 bg-amber-500/10 text-amber-300"
                     }`}
                   >
-                    <WarningCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-mono font-semibold">[{d.code}] </span>
-                      {d.message}
+                    <div className="flex items-start gap-2">
+                      <WarningCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-mono font-semibold">[{d.code}] </span>
+                        {d.message}
+                      </div>
                     </div>
+                    {hwDiagnosticContexts[idx] && (
+                      <AiFixButton
+                        diagnostic={hwDiagnosticContexts[idx]}
+                        size="xs"
+                        variant="compact"
+                      />
+                    )}
                   </li>
                 ))}
               </ul>

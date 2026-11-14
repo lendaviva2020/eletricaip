@@ -100,13 +100,17 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
   }, [validateDraggedBreaker, setValidateComponent]);
 
   // Fase 8.1: em tablets (< 1280px, ex.: 1024x768) inicia com painéis recolhidos
-  // para maximizar a área de desenho. Roda só na montagem; o usuário reabre pelas alças.
+  // para maximizar a área de desenho. Em smartphones (< 768px) recolhe também o dock inferior.
   const setPanelsCollapsed = useEditorStore((s) => s.setPanelsCollapsed);
+  const setConsoleOpen = useEditorStore((s) => s.setConsoleOpen);
   useEffect(() => {
     if (typeof window !== "undefined" && shouldAutoCollapsePanels(window.innerWidth)) {
       setPanelsCollapsed(true, true);
+      if (window.innerWidth < 768) {
+        setConsoleOpen(false);
+      }
     }
-  }, [setPanelsCollapsed]);
+  }, [setPanelsCollapsed, setConsoleOpen]);
 
   const { loading, saveState, conflict, resolveConflict } = useProjectPersistence(projectId);
   const [dossierOpen, setDossierOpen] = useState(false);

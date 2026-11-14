@@ -57,7 +57,7 @@ import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { useEditorStore } from "@/lib/editor/store";
 import { useI18n } from "@/lib/i18n";
 import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
-import { exportDiagramSvg } from "@/lib/diagram/export-svg";
+import { diagramToSvg, exportDiagramSvg } from "@/lib/diagram/export-svg";
 import {
   buildMultifilarCommands,
   buildUnifilarFromMultifilarCommands,
@@ -280,6 +280,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [zoomPercent, setZoomPercent] = useState(100);
   const [autoZoom, setAutoZoom] = useState(true);
+  const [stageFallback, setStageFallback] = useState(false);
   const lastFittedDocIdRef = useRef<string | null>(null);
   const hadSheetNodesRef = useRef<boolean>(false);
 
@@ -291,6 +292,13 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     () => computeCircuitEnergization(doc, simulationStatus, deviceStates),
     [doc, simulationStatus, deviceStates],
   );
+  const energizationRef = useRef(energization);
+  energizationRef.current = energization;
+
+  const fallbackSvgUrl = useMemo(() => {
+    if (!stageFallback) return "";
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(diagramToSvg(doc, effectiveSheet))}`;
+  }, [stageFallback, doc, effectiveSheet]);
 
   // Loop de simulação ativa (incrementa ciclo)
   useEffect(() => {
@@ -418,11 +426,17 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           currentSheet,
           useDiagramStore.getState().selectedNodeIds,
           useDiagramStore.getState().selectedEdgeIds,
-          energization,
+          energizationRef.current,
         );
         lastFittedDocIdRef.current = currentDoc.id;
         hadSheetNodesRef.current = sheetNodes.length > 0;
+        setStageFallback(false);
         stage.fitView(sheetNodes, { recordHistory: false });
+      })
+      .catch((err) => {
+        if (disposed) return;
+        console.warn("[WebGLCanvas] Stage WebGL init failed; falling back to SVG view:", err);
+        setStageFallback(true);
       });
     return () => {
       disposed = true;
@@ -448,17 +462,17 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       }
     }
     const latestDoc = useDiagramStore.getState().doc;
+    const sheetNodes = Object.values(latestDoc.nodes).filter((n) => n.sheet === effectiveSheet);
     stageRef.current?.sync(
       latestDoc,
       effectiveSheet,
       useDiagramStore.getState().selectedNodeIds,
       useDiagramStore.getState().selectedEdgeIds,
-      energization,
+      energizationRef.current,
     );
-    stageRef.current?.fitView(
-      Object.values(latestDoc.nodes).filter((n) => n.sheet === effectiveSheet),
-      { recordHistory: false },
-    );
+    requestAnimationFrame(() => {
+      stageRef.current?.fitView(sheetNodes, { recordHistory: false });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSheet]);
 
@@ -495,6 +509,46 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     window.addEventListener("eletricai-fit-view", onFitRequest);
     return () => window.removeEventListener("eletricai-fit-view", onFitRequest);
   }, [autoZoom, effectiveSheet]);
+
+  // Inserção por toque/clique (mobile e acessibilidade sem depender de drag-and-drop HTML5)
+  useEffect(() => {
+    const onInsertComponent = (evt: Event) => {
+      const rawType = (evt as CustomEvent<{ componentType?: string }>).detail?.componentType;
+      if (!rawType || !isVoltaiComponentType(rawType)) return;
+
+      const host = hostRef.current;
+      const rect = host?.getBoundingClientRect();
+      const sheetNodes = Object.values(useDiagramStore.getState().doc.nodes).filter(
+        (n) => n.sheet === effectiveSheet,
+      );
+      const stagger = (sheetNodes.length % 5) * 40;
+      const centerX = rect && rect.width > 0 ? rect.width / 2 : 200;
+      const centerY = rect && rect.height > 0 ? rect.height / 2 : 200;
+
+      const world = stageRef.current?.screenToWorld(centerX, centerY) ?? {
+        x: 2000 + stagger,
+        y: 2000 + stagger,
+      };
+      const position = {
+        x: snapToGrid(world.x + stagger),
+        y: snapToGrid(world.y + stagger),
+      };
+      const kind = voltaiComponentToNodeKind(rawType);
+
+      dispatch(
+        cmd.addNode({
+          sheet: effectiveSheet,
+          position,
+          params: defaultNodeParams(kind) as Parameters<typeof cmd.addNode>[0]["params"],
+          label: rawType,
+        }),
+      );
+      toast.success(`Componente ${rawType} adicionado ao diagrama ${effectiveSheet}.`);
+    };
+
+    window.addEventListener("eletricai-insert-component", onInsertComponent);
+    return () => window.removeEventListener("eletricai-insert-component", onInsertComponent);
+  }, [effectiveSheet, dispatch]);
 
   // atalhos
   useEffect(() => {
@@ -1219,8 +1273,16 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       </div>
 
       {/* 2. ÁREA CENTRAL DO CANVAS PIXI.JS (Fundo Cinza Técnico #F0F2F3) */}
-      <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-[#F0F2F3]">
+      <div className="relative flex-1 min-h-[220px] w-full overflow-hidden bg-[#F0F2F3]">
         <div ref={hostRef} className="absolute inset-0" />
+        {stageFallback && (
+          <img
+            src={fallbackSvgUrl}
+            alt="Diagrama Elétrico"
+            data-testid="diagram-svg-fallback"
+            className="absolute inset-0 w-full h-full object-contain bg-[#0b0f17] p-2"
+          />
+        )}
 
         {/* Toolbar flutuante de apoio à direita */}
         <div className="absolute right-3 top-3 z-10 flex gap-1 rounded-md border border-border/50 bg-[#101929]/95 p-1 shadow-md">
@@ -1248,7 +1310,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         </div>
 
         {/* Legenda de atalhos rápidos industrial */}
-        <div className="absolute bottom-3 right-3 z-10 rounded-md border border-border/40 bg-[#0e1626]/95 px-3 py-1 text-[11px] font-mono text-muted-foreground shadow-sm">
+        <div className="hidden md:block absolute bottom-3 right-3 z-10 rounded-md border border-border/40 bg-[#0e1626]/95 px-3 py-1 text-[11px] font-mono text-muted-foreground shadow-sm">
           <span className="text-[#38bdf8]">Shift+arraste:</span> seleção em área ·{" "}
           <span className="text-[#38bdf8]">Porta:</span> ligação ·{" "}
           <span className="text-[#38bdf8]">R:</span> rotaciona ·{" "}

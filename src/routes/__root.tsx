@@ -195,7 +195,7 @@ function AuthGate() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+    <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">
       {!isFocusWorkspace && (
         <Suspense
           fallback={

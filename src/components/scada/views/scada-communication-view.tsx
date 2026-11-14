@@ -18,11 +18,42 @@ import {
 import { useScadaStore } from "@/lib/scada/scada-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { buildDiagnosticContextFromComms } from "@/lib/diagnostics/ai-repair-context";
+import { useProjectStore } from "@/lib/project-store";
 
 export function ScadaCommunicationView() {
+  const projectId = useProjectStore((s) => s.projectId) || "proj_active";
   const gatewayStatus = useScadaStore((s) => s.gatewayStatus);
   const gatewayTelemetry = useScadaStore((s) => s.gatewayTelemetry);
   const [testRunning, setTestRunning] = useState(false);
+
+  const commsDiagnosticContexts = [
+    buildDiagnosticContextFromComms(
+      {
+        code: "COMMS_OPCUA_DIAGNOSTIC",
+        protocol: "OPC-UA",
+        endpoint: gatewayStatus.opcua.endpoint,
+        severity: gatewayStatus.opcua.sessions === 0 ? "warning" : "info",
+        message: `Auditoria de comunicação OPC-UA (${gatewayStatus.opcua.endpoint}): ${gatewayStatus.opcua.sessions} sessões, ${gatewayStatus.opcua.subscriptions} tags assinadas.`,
+      },
+      projectId,
+    ),
+    ...(gatewayStatus.modbus.crcErrors > 0
+      ? [
+          buildDiagnosticContextFromComms(
+            {
+              code: "COMMS_MODBUS_CRC_ERRORS",
+              protocol: "Modbus-TCP",
+              endpoint: `${gatewayStatus.modbus.host}:${gatewayStatus.modbus.port}`,
+              severity: "critical" as const,
+              message: `Erros CRC detectados no Gateway Modbus TCP (${gatewayStatus.modbus.crcErrors} erros).`,
+            },
+            projectId,
+          ),
+        ]
+      : []),
+  ];
 
   const handleRunPingTest = () => {
     setTestRunning(true);
@@ -49,6 +80,7 @@ export function ScadaCommunicationView() {
         </div>
 
         <div className="flex items-center gap-2">
+          <AiFixButton batch={commsDiagnosticContexts} size="sm" variant="primary" />
           <Link
             to="/settings/edge-fleet"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono text-xs font-semibold border border-zinc-700 shadow-sm transition-colors"

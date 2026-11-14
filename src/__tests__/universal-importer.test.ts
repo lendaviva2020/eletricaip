@@ -140,7 +140,7 @@ describe("Universal Importer - Format Detection & Parsing", () => {
     const doc = convertBundleToDiagramDoc(report.bundle!);
     expect(doc.nodes["Q1"].params.kind).toBe("breaker");
     expect(doc.nodes["K1"].params.kind).toBe("contactor");
-    expect(doc.nodes["RT1"].params.kind).toBe("relay");
+    expect(doc.nodes["RT1"].params.kind).toBe("thermal_relay");
     expect(doc.nodes["TRAFO"].params.kind).toBe("transformer");
   });
 });
