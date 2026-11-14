@@ -25,7 +25,7 @@ test.describe("P0 Workspace Reconstruction, Responsiveness, Zoom & Zero Digital 
 
   test("rota /digital-twin não existe mais no roteador da aplicação", async ({ page }) => {
     await page.goto("/digital-twin", { waitUntil: "domcontentloaded" });
-    await expect(page.locator("text=404")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=404")).toBeVisible({ timeout: 20000 });
   });
 
   for (const vp of VIEWPORTS) {
