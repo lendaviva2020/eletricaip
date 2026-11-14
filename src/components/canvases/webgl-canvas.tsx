@@ -681,7 +681,11 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       toast.error(
         `Status [${status}]: ${errors.length} erro(s), ${warnings.length} aviso(s). Verifique diagnósticos e conformidade.`,
       );
-    } else if (status === "INCOMPLETE" || status === "REQUIRES_ENGINEERING_REVIEW" || status === "NOT_VERIFIABLE") {
+    } else if (
+      status === "INCOMPLETE" ||
+      status === "REQUIRES_ENGINEERING_REVIEW" ||
+      status === "NOT_VERIFIABLE"
+    ) {
       toast.warning(
         `Status [${status}]: ${complianceReport.findings.length} ponto(s) normativo(s) requerem dados ou revisão técnica.`,
       );

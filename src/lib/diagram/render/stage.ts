@@ -9,7 +9,14 @@
 
 import { Application, Container, FederatedPointerEvent, Graphics, Text } from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import type { DiagramDoc, DiagramEdge, DiagramNode, EdgeKind, Position, SheetKind } from "../schema";
+import type {
+  DiagramDoc,
+  DiagramEdge,
+  DiagramNode,
+  EdgeKind,
+  Position,
+  SheetKind,
+} from "../schema";
 import { drawSymbol } from "./symbols";
 import { CONDUCTOR_LABELS } from "../multifilar";
 import { getPorts, resolveVisualPort, rotatePort, type PortDef } from "./ports";
@@ -360,7 +367,8 @@ export class DiagramStage {
 
     const screenW = Math.max(240, this.viewport.screenWidth || 800);
     const screenH = Math.max(200, this.viewport.screenHeight || 600);
-    const padPx = opts?.screenPaddingPx ?? Math.min(72, Math.round(Math.min(screenW, screenH) * 0.1));
+    const padPx =
+      opts?.screenPaddingPx ?? Math.min(72, Math.round(Math.min(screenW, screenH) * 0.1));
     const availW = Math.max(120, screenW - padPx * 2);
     const availH = Math.max(120, screenH - padPx * 2);
 
@@ -690,7 +698,9 @@ export class DiagramStage {
         const pos = positionOverrides?.get(n.id) ?? n.position;
         nodeBoxById.set(
           n.id,
-          pos === n.position ? computeNodeBoundingBox(n) : computeNodeBoundingBox({ ...n, position: pos }),
+          pos === n.position
+            ? computeNodeBoundingBox(n)
+            : computeNodeBoundingBox({ ...n, position: pos }),
         );
       }
     }
@@ -712,7 +722,12 @@ export class DiagramStage {
       const tgtNode = doc.nodes[e.target];
       if (!srcNode || !tgtNode) continue;
 
-      const from = this.portWorld(srcNode, e.sourcePort, "source", positionOverrides?.get(e.source));
+      const from = this.portWorld(
+        srcNode,
+        e.sourcePort,
+        "source",
+        positionOverrides?.get(e.source),
+      );
       const to = this.portWorld(tgtNode, e.targetPort, "target", positionOverrides?.get(e.target));
 
       const obstacles: BoundingBox[] = [];
@@ -743,7 +758,11 @@ export class DiagramStage {
         target: e.target,
         targetPort: e.targetPort,
         isBusbarTap: isSrcBus || isTgtBus,
-        busbarPoint: isSrcBus ? { x: from.x, y: from.y } : isTgtBus ? { x: to.x, y: to.y } : undefined,
+        busbarPoint: isSrcBus
+          ? { x: from.x, y: from.y }
+          : isTgtBus
+            ? { x: to.x, y: to.y }
+            : undefined,
         points,
       });
     }
@@ -981,7 +1000,10 @@ export class DiagramStage {
         const handle = new Graphics();
         handle.eventMode = "static";
         handle.cursor = isHoriz ? "ns-resize" : "ew-resize";
-        handle.rect(-4.5, -4.5, 9, 9).fill({ color: 0xf97316 }).stroke({ width: 1, color: 0xffffff });
+        handle
+          .rect(-4.5, -4.5, 9, 9)
+          .fill({ color: 0xf97316 })
+          .stroke({ width: 1, color: 0xffffff });
         handle.position.set(hx, hy);
         const segIdx = i;
         const orientation: "H" | "V" = isHoriz ? "H" : "V";
@@ -1181,7 +1203,9 @@ export class DiagramStage {
         this.draft.preview.stroke({ width: 1.8, color: 0xf59e0b, alpha: 0.9 });
       }
       if (this.draft.hoverTarget) {
-        this.draft.preview.circle(targetPt.x, targetPt.y, 6).stroke({ width: 1.8, color: 0x0284c7 });
+        this.draft.preview
+          .circle(targetPt.x, targetPt.y, 6)
+          .stroke({ width: 1.8, color: 0x0284c7 });
       }
       return;
     }

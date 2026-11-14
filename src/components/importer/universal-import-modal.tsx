@@ -685,10 +685,7 @@ export function UniversalImportModal({
                             {issue.message}
                           </div>
                           <AiFixButton
-                            diagnostic={buildDiagnosticContextFromImportIssue(
-                              issue,
-                              "proj_import",
-                            )}
+                            diagnostic={buildDiagnosticContextFromImportIssue(issue, "proj_import")}
                             size="xs"
                             variant="compact"
                           />

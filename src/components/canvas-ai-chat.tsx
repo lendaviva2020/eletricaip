@@ -26,10 +26,7 @@ import { useDiagramStore } from "@/lib/diagram/store";
 import { AiPatchPreview } from "@/components/ai-patch-preview";
 import { detectFormat } from "@/lib/importer/universal-importer";
 import { useI18n } from "@/lib/i18n";
-import {
-  getOrCreateProjectConversation,
-  persistChatMessage,
-} from "@/lib/ai-chat.functions";
+import { getOrCreateProjectConversation, persistChatMessage } from "@/lib/ai-chat.functions";
 import {
   formatDiagnosticFor7StepRemediation,
   type DiagnosticContext,
@@ -120,8 +117,7 @@ export function CanvasAiChat() {
     const handler = (evt: any) => {
       setOpen(true);
       const detail = evt?.detail;
-      const target =
-        detail?.batch && detail.batch.length > 0 ? detail.batch : detail?.context;
+      const target = detail?.batch && detail.batch.length > 0 ? detail.batch : detail?.context;
       if (target) {
         const prompt = formatDiagnosticFor7StepRemediation(
           target,
@@ -132,8 +128,7 @@ export function CanvasAiChat() {
       }
     };
     window.addEventListener("eletricai-ai-repair", handler as EventListener);
-    return () =>
-      window.removeEventListener("eletricai-ai-repair", handler as EventListener);
+    return () => window.removeEventListener("eletricai-ai-repair", handler as EventListener);
   }, [locale]);
 
   // Keep first greeting in sync if user changes language before sending prompts

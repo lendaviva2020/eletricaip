@@ -217,12 +217,7 @@ export function resolveVisualPort(
 
     // 3. Semantic IEC alias fallback (IN/OUT, 1/2, L1/T1, PRI/SEC, etc.)
     if (INPUT_PORT_ALIASES.has(shortUpper)) {
-      return (
-        findById(profile.defaultInPort) ??
-        findById("T") ??
-        findById("L") ??
-        ports[0]
-      );
+      return findById(profile.defaultInPort) ?? findById("T") ?? findById("L") ?? ports[0];
     }
     if (OUTPUT_PORT_ALIASES.has(shortUpper)) {
       return (
@@ -245,10 +240,5 @@ export function resolveVisualPort(
       ports[0]
     );
   }
-  return (
-    findById(profile.defaultInPort) ??
-    findById("T") ??
-    findById("L") ??
-    ports[0]
-  );
+  return findById(profile.defaultInPort) ?? findById("T") ?? findById("L") ?? ports[0];
 }

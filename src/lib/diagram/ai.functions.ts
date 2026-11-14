@@ -378,7 +378,8 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
             const origNode = baseDoc.nodes[id];
             if (
               origNode &&
-              (origNode.position.x !== docNode.position.x || origNode.position.y !== docNode.position.y)
+              (origNode.position.x !== docNode.position.x ||
+                origNode.position.y !== docNode.position.y)
             ) {
               const prev = synchronizedUpdateNodesMap.get(id) ?? { id };
               synchronizedUpdateNodesMap.set(id, { ...prev, position: docNode.position });

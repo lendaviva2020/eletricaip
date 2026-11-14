@@ -8,6 +8,7 @@ import {
   GitBranch,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+import { NormativeCompliancePanel } from "@/components/diagnostics/normative-compliance-panel";
 import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { RightPropertyPanel } from "@/components/editor/right-property-panel";
@@ -178,33 +179,9 @@ function AiPanel() {
 }
 
 function NormsPanel() {
-  const items = [
-    { id: "NBR 5410", status: "ok", note: "Instalações BT em conformidade" },
-    { id: "NBR 14039", status: "ok", note: "Instalações de média tensão OK" },
-    { id: "NR-10", status: "warn", note: "Falta laudo de ATPV em 2 painéis" },
-    { id: "NR-12", status: "ok", note: "Intertravamentos validados" },
-    { id: "IEC 61131", status: "ok", note: "Ladder e FBD compliant" },
-    { id: "IEC 60617", status: "ok", note: "Símbolos unifilar OK" },
-    { id: "ISA-18.2", status: "warn", note: "2 alarmes sem prioridade definida" },
-  ];
   return (
-    <div className="p-4 space-y-2">
-      {items.map((i) => (
-        <div key={i.id} className="rounded-md border border-border bg-card p-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] font-semibold">{i.id}</span>
-            <span
-              className={cn(
-                "text-[10px] font-mono uppercase",
-                i.status === "ok" ? "text-success" : "text-warning",
-              )}
-            >
-              {i.status === "ok" ? "✓ OK" : "⚠ Revisar"}
-            </span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-1">{i.note}</p>
-        </div>
-      ))}
+    <div className="p-4 space-y-3">
+      <NormativeCompliancePanel />
       <div
         role="note"
         className="rounded-md border border-warning/40 bg-warning/10 p-3 text-[10px] text-muted-foreground leading-relaxed"

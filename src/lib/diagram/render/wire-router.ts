@@ -176,7 +176,10 @@ function segmentIntersectsBox(a: Point, b: Point, box: BoundingBox): boolean {
   return maxX > box.minX && minX < box.maxX && maxY > box.minY && minY < box.maxY;
 }
 
-function pathHitsAnyObstacle(pts: ReadonlyArray<Point>, obstacles: ReadonlyArray<BoundingBox>): boolean {
+function pathHitsAnyObstacle(
+  pts: ReadonlyArray<Point>,
+  obstacles: ReadonlyArray<BoundingBox>,
+): boolean {
   if (obstacles.length === 0) return false;
   for (let i = 0; i < pts.length - 1; i++) {
     for (const obs of obstacles) {
@@ -233,7 +236,11 @@ export function simplifyOrthogonalPoints(raw: ReadonlyArray<Point>): Point[] {
  * Checks whether an existing persisted waypoint polyline still attaches cleanly
  * to `from` and `to` and can be updated smoothly while preserving manual interior legs.
  */
-function adaptExistingWaypoints(from: Point, to: Point, existing: ReadonlyArray<Point>): Point[] | null {
+function adaptExistingWaypoints(
+  from: Point,
+  to: Point,
+  existing: ReadonlyArray<Point>,
+): Point[] | null {
   if (existing.length < 3) return null;
   for (const pt of existing) {
     if (!isValidCoord(pt.x) || !isValidCoord(pt.y)) return null;
@@ -296,7 +303,10 @@ export function routeOrthogonalEdge(params: {
 
   // Self-loop / degenerate
   if (Math.hypot(from.x - to.x, from.y - to.y) < 1) {
-    return [{ x: from.x, y: from.y }, { x: to.x, y: to.y }];
+    return [
+      { x: from.x, y: from.y },
+      { x: to.x, y: to.y },
+    ];
   }
 
   const sDir = sideDir(srcSide);
@@ -326,14 +336,7 @@ export function routeOrthogonalEdge(params: {
     const baseMaxX = Math.max(from.x, to.x);
     for (const dx of sideOffsets) {
       const laneX = dx > 0 ? baseMaxX + dx : baseMinX + dx;
-      candidates.push([
-        from,
-        p1,
-        { x: laneX, y: p1.y },
-        { x: laneX, y: p2.y },
-        p2,
-        to,
-      ]);
+      candidates.push([from, p1, { x: laneX, y: p1.y }, { x: laneX, y: p2.y }, p2, to]);
     }
   } else if (isHorizontalSide(srcSide) && isHorizontalSide(tgtSide)) {
     const alignedRight = srcSide === "right" && tgtSide === "left" && to.x >= from.x;
@@ -353,32 +356,19 @@ export function routeOrthogonalEdge(params: {
     const baseMaxY = Math.max(from.y, to.y);
     for (const dy of sideOffsets) {
       const laneY = dy > 0 ? baseMaxY + dy : baseMinY + dy;
-      candidates.push([
-        from,
-        p1,
-        { x: p1.x, y: laneY },
-        { x: p2.x, y: laneY },
-        p2,
-        to,
-      ]);
+      candidates.push([from, p1, { x: p1.x, y: laneY }, { x: p2.x, y: laneY }, p2, to]);
     }
   } else if (isVerticalSide(srcSide) && isHorizontalSide(tgtSide)) {
     // Clean L-turn or stubbed Z
     const corner = { x: from.x, y: to.y };
-    if (
-      (srcSide === "bottom" && to.y >= from.y) ||
-      (srcSide === "top" && to.y <= from.y)
-    ) {
+    if ((srcSide === "bottom" && to.y >= from.y) || (srcSide === "top" && to.y <= from.y)) {
       candidates.push([from, corner, to]);
     }
     candidates.push([from, p1, { x: p2.x, y: p1.y }, p2, to]);
     candidates.push([from, p1, { x: p1.x, y: p2.y }, p2, to]);
   } else if (isHorizontalSide(srcSide) && isVerticalSide(tgtSide)) {
     const corner = { x: to.x, y: from.y };
-    if (
-      (srcSide === "right" && to.x >= from.x) ||
-      (srcSide === "left" && to.x <= from.x)
-    ) {
+    if ((srcSide === "right" && to.x >= from.x) || (srcSide === "left" && to.x <= from.x)) {
       candidates.push([from, corner, to]);
     }
     candidates.push([from, p1, { x: p1.x, y: p2.y }, p2, to]);
@@ -406,7 +396,12 @@ export function routeOrthogonalEdge(params: {
   }
 
   // Fallback to simplest candidate if every route intersects crowded boxes
-  const fallback = candidates[0] ?? [from, { x: from.x, y: (from.y + to.y) / 2 }, { x: to.x, y: (from.y + to.y) / 2 }, to];
+  const fallback = candidates[0] ?? [
+    from,
+    { x: from.x, y: (from.y + to.y) / 2 },
+    { x: to.x, y: (from.y + to.y) / 2 },
+    to,
+  ];
   return simplifyOrthogonalPoints(fallback);
 }
 
@@ -448,8 +443,24 @@ export function computeEdgeAnnotations(
     const endPt = e.points[e.points.length - 1];
     const sKey = `${e.source}:${e.sourcePort ?? "default"}@${Math.round(startPt.x)},${Math.round(startPt.y)}`;
     const tKey = `${e.target}:${e.targetPort ?? "default"}@${Math.round(endPt.x)},${Math.round(endPt.y)}`;
-    addPortUse(sKey, startPt, Boolean(e.isBusbarTap && e.busbarPoint && Math.hypot(e.busbarPoint.x - startPt.x, e.busbarPoint.y - startPt.y) < 2));
-    addPortUse(tKey, endPt, Boolean(e.isBusbarTap && e.busbarPoint && Math.hypot(e.busbarPoint.x - endPt.x, e.busbarPoint.y - endPt.y) < 2));
+    addPortUse(
+      sKey,
+      startPt,
+      Boolean(
+        e.isBusbarTap &&
+        e.busbarPoint &&
+        Math.hypot(e.busbarPoint.x - startPt.x, e.busbarPoint.y - startPt.y) < 2,
+      ),
+    );
+    addPortUse(
+      tKey,
+      endPt,
+      Boolean(
+        e.isBusbarTap &&
+        e.busbarPoint &&
+        Math.hypot(e.busbarPoint.x - endPt.x, e.busbarPoint.y - endPt.y) < 2,
+      ),
+    );
   }
 
   for (const entry of portUseCount.values()) {
@@ -460,7 +471,15 @@ export function computeEdgeAnnotations(
 
   // 2. Non-connecting orthogonal crossings (skip if dataset is huge to stay O(1)-feel interactive)
   if (edgesData.length <= 250) {
-    type Seg = { edgeId: string; x1: number; y1: number; x2: number; y2: number; src: string; tgt: string };
+    type Seg = {
+      edgeId: string;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      src: string;
+      tgt: string;
+    };
     const horiz: Seg[] = [];
     const vert: Seg[] = [];
 
@@ -496,12 +515,7 @@ export function computeEdgeAnnotations(
       for (const v of vert) {
         if (h.edgeId === v.edgeId) continue;
         // Skip crossings at a shared endpoint (already joined electrically)
-        if (
-          v.x1 > h.x1 + 6 &&
-          v.x1 < h.x2 - 6 &&
-          h.y1 > v.y1 + 6 &&
-          h.y1 < v.y2 - 6
-        ) {
+        if (v.x1 > h.x1 + 6 && v.x1 < h.x2 - 6 && h.y1 > v.y1 + 6 && h.y1 < v.y2 - 6) {
           const list = crossingsByEdge.get(h.edgeId) ?? [];
           list.push({ edgeId: h.edgeId, x: v.x1, y: h.y1 });
           crossingsByEdge.set(h.edgeId, list);

@@ -73,6 +73,9 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
   const setMode = useEditorStore((s) => s.setActiveMode);
   const leftCollapsed = useEditorStore((s) => s.leftCollapsed);
   const rightCollapsed = useEditorStore((s) => s.rightCollapsed);
+  const focusMode = useEditorStore((s) => s.focusMode);
+  const toggleFocusMode = useEditorStore((s) => s.toggleFocusMode);
+  const setFocusMode = useEditorStore((s) => s.setFocusMode);
   const toggleLeftPanel = useEditorStore((s) => s.toggleLeftPanel);
   const toggleRightPanel = useEditorStore((s) => s.toggleRightPanel);
   const setDragValidation = useEditorStore((s) => s.setDragValidation);
@@ -126,6 +129,21 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
     return () => window.removeEventListener("eletricai-open-importer", handler);
   }, []);
 
+  // Atalho global Ctrl+Shift+F para Modo Foco de Engenharia e restauração ao sair do workspace
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        toggleFocusMode();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      setFocusMode(false);
+    };
+  }, [toggleFocusMode, setFocusMode]);
+
   if (!projectId) {
     return <WorkspaceEmptyState />;
   }
@@ -147,7 +165,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
 
       {/* Gaveta esquerda em mobile/tablet (< 1024px) */}
       {!leftCollapsed && mode !== "scada" && (
-        <div className="lg:hidden flex absolute left-0 inset-y-0 z-40 border-r border-border bg-panel h-full overflow-hidden">
+        <div className="lg:hidden flex absolute left-0 inset-y-0 z-40 max-w-[85vw] border-r border-border bg-panel h-full overflow-hidden">
           <LeftSidebarHost mode={mode} />
           <button
             onClick={toggleLeftPanel}
@@ -300,7 +318,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
 
       {/* Gaveta direita em mobile/tablet (< 1024px) */}
       {!rightCollapsed && mode !== "scada" && mode !== "studio" && mode !== "compactStudio" && (
-        <div className="lg:hidden flex absolute right-0 inset-y-0 z-40 border-l border-border bg-panel h-full">
+        <div className="lg:hidden flex absolute right-0 inset-y-0 z-40 max-w-[85vw] border-l border-border bg-panel h-full overflow-hidden">
           <button
             onClick={toggleRightPanel}
             className="flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 h-10 w-3 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-7 [@media(pointer:coarse)]:-left-7 bg-panel border border-border border-r-0 rounded-l-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors touch-manipulation"
@@ -457,7 +475,8 @@ function SaveBadge({
   onOpenImporter?: () => void;
   onOpenPrompt?: () => void;
 }) {
-  if (!projectId) return null;
+  const focusMode = useEditorStore((s) => s.focusMode);
+  if (!projectId || focusMode) return null;
   return (
     <div className="h-7 px-3 flex items-center justify-between gap-2 text-[11px] text-muted-foreground border-b border-border bg-panel/40 overflow-x-auto scrollbar-none">
       <div className="flex items-center gap-1.5 text-[10px] shrink-0">

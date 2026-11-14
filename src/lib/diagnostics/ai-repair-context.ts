@@ -242,8 +242,12 @@ export function formatDiagnosticFor7StepRemediation(
         `[${idx + 1}] Módulo: ${d.module.toUpperCase()} | Código: ${d.error_code} | Severidade: ${d.severity.toUpperCase()}\n` +
         `    Mensagem: ${d.error_message}\n` +
         (d.technical_details ? `    Detalhes: ${d.technical_details}\n` : "") +
-        (d.affected_components.length ? `    Componentes Afetados: ${d.affected_components.join(", ")}\n` : "") +
-        (d.affected_variables.length ? `    Variáveis Afetadas: ${d.affected_variables.join(", ")}\n` : ""),
+        (d.affected_components.length
+          ? `    Componentes Afetados: ${d.affected_components.join(", ")}\n`
+          : "") +
+        (d.affected_variables.length
+          ? `    Variáveis Afetadas: ${d.affected_variables.join(", ")}\n`
+          : ""),
     )
     .join("\n");
 

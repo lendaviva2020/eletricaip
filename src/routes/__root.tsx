@@ -16,6 +16,7 @@ import { AuthProvider, useAuth, getIsExplicitLogoutInProgress } from "@/hooks/us
 import { Toaster } from "@/components/ui/sonner";
 import { installDiagnosticsInterceptor } from "@/lib/diagnostics-counter";
 import { captureException, maskSensitiveString } from "@/lib/error-capture";
+import { useEditorStore } from "@/lib/editor/store";
 
 // Lazy-load authenticated shells and heavy modals so public routes (like Landing /)
 // don't download billing, workspace chrome, and diagnostics bundles upfront.
@@ -113,13 +114,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Sistema operacional industrial unificado com IA nativa: unifilar, ladder, FBD, SCADA, PLC, Studio e simulação em tempo real.",
       },
-      { property: "og:title", content: "EletricAI Industrial OS - IA, PLC, SCADA, Engenharia Elétrica" },
+      {
+        property: "og:title",
+        content: "EletricAI Industrial OS - IA, PLC, SCADA, Engenharia Elétrica",
+      },
       {
         property: "og:description",
         content:
           "EletricAI Industrial OS is a unified SaaS platform for electrical engineering and industrial automation.",
       },
-      { name: "twitter:title", content: "EletricAI Industrial OS - IA, PLC, SCADA, Engenharia Elétrica" },
+      {
+        name: "twitter:title",
+        content: "EletricAI Industrial OS - IA, PLC, SCADA, Engenharia Elétrica",
+      },
       {
         name: "twitter:description",
         content:
@@ -159,6 +166,8 @@ function AuthGate() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user, loading, isLoggingOut } = useAuth();
   const router = useRouter();
+  const focusMode = useEditorStore((s) => s.focusMode);
+  const isFocusWorkspace = focusMode && path.startsWith("/workspace");
   const isPublic = isPublicPath(path);
 
   useAuthRedirect(loading, user, isPublic, path, router, isLoggingOut);
@@ -187,17 +196,21 @@ function AuthGate() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      <Suspense
-        fallback={
-          <div className="w-[240px] hidden md:block border-r border-border bg-sidebar shrink-0" />
-        }
-      >
-        <LazyAppSidebar />
-      </Suspense>
-      <div className="flex-1 flex flex-col min-w-0">
-        <Suspense fallback={<div className="h-10 border-b border-border bg-card shrink-0" />}>
-          <LazyTopbar />
+      {!isFocusWorkspace && (
+        <Suspense
+          fallback={
+            <div className="w-[240px] hidden md:block border-r border-border bg-sidebar shrink-0" />
+          }
+        >
+          <LazyAppSidebar />
         </Suspense>
+      )}
+      <div className="flex-1 flex flex-col min-w-0">
+        {!isFocusWorkspace && (
+          <Suspense fallback={<div className="h-10 border-b border-border bg-card shrink-0" />}>
+            <LazyTopbar />
+          </Suspense>
+        )}
         <Outlet />
       </div>
     </div>

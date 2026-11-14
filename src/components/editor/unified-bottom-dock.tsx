@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useCallback } from "react";
+import { useMemo, useEffect, useState, useCallback, useRef } from "react";
 import {
   Warning,
   Pulse,
@@ -394,14 +394,52 @@ export function UnifiedBottomDock() {
   };
   const CurrentIcon = currentTabMeta.icon;
 
+  const focusMode = useEditorStore((s) => s.focusMode);
+  const [customHeight, setCustomHeight] = useState<number | null>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+
+  const startResize = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = dockRef.current?.getBoundingClientRect().height || 224;
+    const onMove = (ev: PointerEvent) => {
+      const next = Math.max(140, Math.min(440, Math.round(startHeight + (startY - ev.clientY))));
+      setCustomHeight(next);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, []);
+
+  if (focusMode) {
+    return null;
+  }
+
   return (
     <div
+      ref={dockRef}
+      style={open && customHeight ? { height: customHeight } : undefined}
       className={cn(
-        "z-30 shrink-0 border-t border-border bg-panel flex flex-col transition-all duration-200 select-none",
+        "z-30 shrink-0 border-t border-border bg-panel flex flex-col transition-all duration-200 select-none relative",
         open ? "h-56" : "h-9",
       )}
       data-testid="unified-bottom-dock"
     >
+      {open && (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Redimensionar painel inferior"
+          data-testid="dock-resize-handle"
+          onPointerDown={startResize}
+          onDoubleClick={() => setCustomHeight(null)}
+          title="Arraste para redimensionar (duplo clique para padrão)"
+          className="h-1.5 w-full cursor-row-resize hover:bg-primary/40 transition-colors shrink-0"
+        />
+      )}
       {/* 1. Barra de Abas Unificada e Controles */}
       <div className="h-9 shrink-0 flex items-center justify-between px-2.5 bg-panel border-b border-border">
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">

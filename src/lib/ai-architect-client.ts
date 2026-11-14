@@ -252,9 +252,7 @@ export function convertArchitectResultToDiagramDoc(
   mode: "replace" | "merge" = "replace",
 ): DiagramDoc {
   const doc: DiagramDoc =
-    mode === "merge" && baseDoc
-      ? JSON.parse(JSON.stringify(baseDoc))
-      : createEmptyDoc();
+    mode === "merge" && baseDoc ? JSON.parse(JSON.stringify(baseDoc)) : createEmptyDoc();
 
   doc.metadata = {
     title: result.title || doc.metadata.title,
@@ -268,9 +266,7 @@ export function convertArchitectResultToDiagramDoc(
   for (const n of result.nodes) {
     const kind = (resolveComponentKind(n.kind) || n.kind || "motor") as DiagramNodeKind;
     const finalId =
-      mode === "merge" && doc.nodes[n.id]
-        ? `${n.id}_${Date.now().toString(36).slice(-4)}`
-        : n.id;
+      mode === "merge" && doc.nodes[n.id] ? `${n.id}_${Date.now().toString(36).slice(-4)}` : n.id;
     idMap.set(n.id, finalId);
     tagOrLabelToId.set(n.id, finalId);
     if (n.label) tagOrLabelToId.set(n.label, finalId);
@@ -300,10 +296,7 @@ export function convertArchitectResultToDiagramDoc(
 
     if (!doc.nodes[srcId] || !doc.nodes[tgtId]) continue;
 
-    const edgeId =
-      mode === "merge"
-        ? `e_ai_${Date.now().toString(36)}_${i}`
-        : `e_ai_${i + 1}`;
+    const edgeId = mode === "merge" ? `e_ai_${Date.now().toString(36)}_${i}` : `e_ai_${i + 1}`;
 
     let sourcePort = "B";
     if (doc.nodes[srcId]?.params.kind === "busbar") {

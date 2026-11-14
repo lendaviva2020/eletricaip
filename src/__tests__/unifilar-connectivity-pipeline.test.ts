@@ -44,14 +44,70 @@ describe("ELÉTRICAI — Unifilar Canvas Connectivity & Pipeline Validation (P0)
         { id: "M2", power_kW: 11, voltage_V: 380, startMethod: "DOL" },
       ],
       nodes: [
-        { id: "QG_MAIN", kind: "breaker", category: "power", label: "QF-GERAL 125A", position: { x: 400, y: 100 }, params: { in_A: 125, poles: 3 } },
-        { id: "BUS_01", kind: "busbar", category: "power", label: "BARRA 160A", position: { x: 400, y: 220 }, params: { current_A: 160, voltage_V: 380 } },
-        { id: "QF_1", kind: "breaker", category: "power", label: "QF-M1 32A", position: { x: 300, y: 350 }, params: { in_A: 32, poles: 3 } },
-        { id: "KM_1", kind: "contactor", category: "power", label: "KM1 25A", position: { x: 300, y: 470 }, params: { in_A: 25, coil_V: 24 } },
-        { id: "M1", kind: "motor", category: "mech", label: "M1 7.5kW", position: { x: 300, y: 590 }, params: { power_kW: 7.5, voltage_V: 380 } },
-        { id: "QF_2", kind: "breaker", category: "power", label: "QF-M2 50A", position: { x: 500, y: 350 }, params: { in_A: 50, poles: 3 } },
-        { id: "KM_2", kind: "contactor", category: "power", label: "KM2 32A", position: { x: 500, y: 470 }, params: { in_A: 32, coil_V: 24 } },
-        { id: "M2", kind: "motor", category: "mech", label: "M2 11kW", position: { x: 500, y: 590 }, params: { power_kW: 11, voltage_V: 380 } },
+        {
+          id: "QG_MAIN",
+          kind: "breaker",
+          category: "power",
+          label: "QF-GERAL 125A",
+          position: { x: 400, y: 100 },
+          params: { in_A: 125, poles: 3 },
+        },
+        {
+          id: "BUS_01",
+          kind: "busbar",
+          category: "power",
+          label: "BARRA 160A",
+          position: { x: 400, y: 220 },
+          params: { current_A: 160, voltage_V: 380 },
+        },
+        {
+          id: "QF_1",
+          kind: "breaker",
+          category: "power",
+          label: "QF-M1 32A",
+          position: { x: 300, y: 350 },
+          params: { in_A: 32, poles: 3 },
+        },
+        {
+          id: "KM_1",
+          kind: "contactor",
+          category: "power",
+          label: "KM1 25A",
+          position: { x: 300, y: 470 },
+          params: { in_A: 25, coil_V: 24 },
+        },
+        {
+          id: "M1",
+          kind: "motor",
+          category: "mech",
+          label: "M1 7.5kW",
+          position: { x: 300, y: 590 },
+          params: { power_kW: 7.5, voltage_V: 380 },
+        },
+        {
+          id: "QF_2",
+          kind: "breaker",
+          category: "power",
+          label: "QF-M2 50A",
+          position: { x: 500, y: 350 },
+          params: { in_A: 50, poles: 3 },
+        },
+        {
+          id: "KM_2",
+          kind: "contactor",
+          category: "power",
+          label: "KM2 32A",
+          position: { x: 500, y: 470 },
+          params: { in_A: 32, coil_V: 24 },
+        },
+        {
+          id: "M2",
+          kind: "motor",
+          category: "mech",
+          label: "M2 11kW",
+          position: { x: 500, y: 590 },
+          params: { power_kW: 11, voltage_V: 380 },
+        },
       ],
       edges: [
         { source: "QG_MAIN", target: "BUS_01", kind: "power" },
@@ -100,11 +156,41 @@ describe("ELÉTRICAI — Unifilar Canvas Connectivity & Pipeline Validation (P0)
       schemaVersion: "1.0.0",
       project: { name: "Circuito Ventilador Industrial", diagramType: "unifilar" },
       nodes: [
-        { id: "node_feeder", type: "breaker", label: "DJ-GERAL", position: { x: 200, y: 100 }, properties: { tag: "DJ-GERAL", In: 63, poles: 3 } },
-        { id: "node_bar", type: "busbar", label: "BARRA-VENT", position: { x: 200, y: 220 }, properties: { tag: "BARRA-VENT", voltage_V: 380 } },
-        { id: "node_brk1", type: "breaker", label: "DJ-VENT-01", position: { x: 200, y: 340 }, properties: { tag: "DJ-VENT-01", In: 20, poles: 3 } },
-        { id: "node_k1", type: "contactor", label: "K-VENT-01", position: { x: 200, y: 460 }, properties: { tag: "K-VENT-01", In: 18 } },
-        { id: "node_m1", type: "motor", label: "M-EXAUSTOR", position: { x: 200, y: 580 }, properties: { tag: "M-EXAUSTOR", power_kW: 5.5, voltage_V: 380 } },
+        {
+          id: "node_feeder",
+          type: "breaker",
+          label: "DJ-GERAL",
+          position: { x: 200, y: 100 },
+          properties: { tag: "DJ-GERAL", In: 63, poles: 3 },
+        },
+        {
+          id: "node_bar",
+          type: "busbar",
+          label: "BARRA-VENT",
+          position: { x: 200, y: 220 },
+          properties: { tag: "BARRA-VENT", voltage_V: 380 },
+        },
+        {
+          id: "node_brk1",
+          type: "breaker",
+          label: "DJ-VENT-01",
+          position: { x: 200, y: 340 },
+          properties: { tag: "DJ-VENT-01", In: 20, poles: 3 },
+        },
+        {
+          id: "node_k1",
+          type: "contactor",
+          label: "K-VENT-01",
+          position: { x: 200, y: 460 },
+          properties: { tag: "K-VENT-01", In: 18 },
+        },
+        {
+          id: "node_m1",
+          type: "motor",
+          label: "M-EXAUSTOR",
+          position: { x: 200, y: 580 },
+          properties: { tag: "M-EXAUSTOR", power_kW: 5.5, voltage_V: 380 },
+        },
       ],
       // Os edges usam as tags "DJ-GERAL", "BARRA-VENT", "DJ-VENT-01", "K-VENT-01", "M-EXAUSTOR"
       edges: [
@@ -146,17 +232,94 @@ describe("ELÉTRICAI — Unifilar Canvas Connectivity & Pipeline Validation (P0)
         { id: "M_PUX2", power_kW: 7.5, voltage_V: 380, startMethod: "DOL" },
       ],
       nodes: [
-        { id: "QG", kind: "breaker", category: "power", label: "QF-GERAL", position: { x: 300, y: 100 }, params: { in_A: 200 } },
-        { id: "BB", kind: "busbar", category: "power", label: "BARRA-380", position: { x: 300, y: 200 }, params: { current_A: 250 } },
-        { id: "Q1", kind: "breaker", category: "power", label: "QF1", position: { x: 200, y: 300 }, params: { in_A: 80 } },
-        { id: "K1", kind: "contactor", category: "power", label: "KM1", position: { x: 200, y: 400 }, params: { in_A: 80 } },
-        { id: "M_EXTR", kind: "motor", category: "mech", label: "M_EXTR", position: { x: 200, y: 500 }, params: { power_kW: 37 } },
-        { id: "Q2", kind: "breaker", category: "power", label: "QF2", position: { x: 300, y: 300 }, params: { in_A: 25 } },
-        { id: "K2", kind: "contactor", category: "power", label: "KM2", position: { x: 300, y: 400 }, params: { in_A: 25 } },
-        { id: "M_PUX1", kind: "motor", category: "mech", label: "M_PUX1", position: { x: 300, y: 500 }, params: { power_kW: 7.5 } },
-        { id: "Q3", kind: "breaker", category: "power", label: "QF3", position: { x: 400, y: 300 }, params: { in_A: 25 } },
-        { id: "K3", kind: "contactor", category: "power", label: "KM3", position: { x: 400, y: 400 }, params: { in_A: 25 } },
-        { id: "M_PUX2", kind: "motor", category: "mech", label: "M_PUX2", position: { x: 400, y: 500 }, params: { power_kW: 7.5 } },
+        {
+          id: "QG",
+          kind: "breaker",
+          category: "power",
+          label: "QF-GERAL",
+          position: { x: 300, y: 100 },
+          params: { in_A: 200 },
+        },
+        {
+          id: "BB",
+          kind: "busbar",
+          category: "power",
+          label: "BARRA-380",
+          position: { x: 300, y: 200 },
+          params: { current_A: 250 },
+        },
+        {
+          id: "Q1",
+          kind: "breaker",
+          category: "power",
+          label: "QF1",
+          position: { x: 200, y: 300 },
+          params: { in_A: 80 },
+        },
+        {
+          id: "K1",
+          kind: "contactor",
+          category: "power",
+          label: "KM1",
+          position: { x: 200, y: 400 },
+          params: { in_A: 80 },
+        },
+        {
+          id: "M_EXTR",
+          kind: "motor",
+          category: "mech",
+          label: "M_EXTR",
+          position: { x: 200, y: 500 },
+          params: { power_kW: 37 },
+        },
+        {
+          id: "Q2",
+          kind: "breaker",
+          category: "power",
+          label: "QF2",
+          position: { x: 300, y: 300 },
+          params: { in_A: 25 },
+        },
+        {
+          id: "K2",
+          kind: "contactor",
+          category: "power",
+          label: "KM2",
+          position: { x: 300, y: 400 },
+          params: { in_A: 25 },
+        },
+        {
+          id: "M_PUX1",
+          kind: "motor",
+          category: "mech",
+          label: "M_PUX1",
+          position: { x: 300, y: 500 },
+          params: { power_kW: 7.5 },
+        },
+        {
+          id: "Q3",
+          kind: "breaker",
+          category: "power",
+          label: "QF3",
+          position: { x: 400, y: 300 },
+          params: { in_A: 25 },
+        },
+        {
+          id: "K3",
+          kind: "contactor",
+          category: "power",
+          label: "KM3",
+          position: { x: 400, y: 400 },
+          params: { in_A: 25 },
+        },
+        {
+          id: "M_PUX2",
+          kind: "motor",
+          category: "mech",
+          label: "M_PUX2",
+          position: { x: 400, y: 500 },
+          params: { power_kW: 7.5 },
+        },
       ],
       edges: [
         { source: "QG", target: "BB", kind: "power" },
@@ -202,9 +365,30 @@ describe("ELÉTRICAI — Unifilar Canvas Connectivity & Pipeline Validation (P0)
       ccm: { columns: 1, cells: 1 },
       motors: [{ id: "M_LOAD", power_kW: 3 }],
       nodes: [
-        { id: "DJ_IN", kind: "breaker", category: "power", label: "QF1", position: { x: 100, y: 100 }, params: { in_A: 40 } },
-        { id: "BAR_IN", kind: "busbar", category: "power", label: "BARRA", position: { x: 100, y: 200 }, params: { current_A: 100 } },
-        { id: "M_LOAD", kind: "motor", category: "mech", label: "M1", position: { x: 100, y: 350 }, params: { power_kW: 3 } },
+        {
+          id: "DJ_IN",
+          kind: "breaker",
+          category: "power",
+          label: "QF1",
+          position: { x: 100, y: 100 },
+          params: { in_A: 40 },
+        },
+        {
+          id: "BAR_IN",
+          kind: "busbar",
+          category: "power",
+          label: "BARRA",
+          position: { x: 100, y: 200 },
+          params: { current_A: 100 },
+        },
+        {
+          id: "M_LOAD",
+          kind: "motor",
+          category: "mech",
+          label: "M1",
+          position: { x: 100, y: 350 },
+          params: { power_kW: 3 },
+        },
       ],
       edges: [
         { source: "DJ_IN", target: "BAR_IN", kind: "power" },
@@ -242,11 +426,34 @@ describe("ELÉTRICAI — Unifilar Canvas Connectivity & Pipeline Validation (P0)
       metadata: { title: "Teste Mover Componente", norms: ["NBR 5410"] },
       sheets: ["unifilar"],
       nodes: {
-        N1: { id: "N1", sheet: "unifilar", position: { x: 200, y: 100 }, rotation: 0, label: "Q1", params: { kind: "breaker", in_A: 32 } as any },
-        N2: { id: "N2", sheet: "unifilar", position: { x: 200, y: 300 }, rotation: 0, label: "M1", params: { kind: "motor", power_kW: 4 } as any },
+        N1: {
+          id: "N1",
+          sheet: "unifilar",
+          position: { x: 200, y: 100 },
+          rotation: 0,
+          label: "Q1",
+          params: { kind: "breaker", in_A: 32 } as any,
+        },
+        N2: {
+          id: "N2",
+          sheet: "unifilar",
+          position: { x: 200, y: 300 },
+          rotation: 0,
+          label: "M1",
+          params: { kind: "motor", power_kW: 4 } as any,
+        },
       },
       edges: {
-        E1: { id: "E1", sheet: "unifilar", source: "N1", target: "N2", sourcePort: "B", targetPort: "T", kind: "power", circuitConfig: "3F+N+PE" },
+        E1: {
+          id: "E1",
+          sheet: "unifilar",
+          source: "N1",
+          target: "N2",
+          sourcePort: "B",
+          targetPort: "T",
+          kind: "power",
+          circuitConfig: "3F+N+PE",
+        },
       },
     };
 
@@ -255,9 +462,7 @@ describe("ELÉTRICAI — Unifilar Canvas Connectivity & Pipeline Validation (P0)
     expect(useDiagramStore.getState().doc.nodes.N2.position.y).toBe(300);
 
     // Move o motor N2 de (200, 300) para (450, 600)
-    useDiagramStore.getState().dispatch(
-      cmd.move("N2", { x: 200, y: 300 }, { x: 450, y: 600 }),
-    );
+    useDiagramStore.getState().dispatch(cmd.move("N2", { x: 200, y: 300 }, { x: 450, y: 600 }));
 
     const updated = useDiagramStore.getState().doc;
     expect(updated.nodes.N2.position.x).toBe(450);
@@ -278,10 +483,38 @@ describe("ELÉTRICAI — Unifilar Canvas Connectivity & Pipeline Validation (P0)
       metadata: { title: "Grafo Desconectado", norms: ["NBR 5410"] },
       sheets: ["unifilar"],
       nodes: {
-        Q_MAIN: { id: "Q_MAIN", sheet: "unifilar", position: { x: 200, y: 100 }, rotation: 0, label: "GERAL", params: { kind: "breaker", in_A: 100 } as any },
-        BAR_1: { id: "BAR_1", sheet: "unifilar", position: { x: 200, y: 200 }, rotation: 0, label: "BARRAMENTO", params: { kind: "busbar" } as any },
-        KM_1: { id: "KM_1", sheet: "unifilar", position: { x: 200, y: 350 }, rotation: 0, label: "KM1", params: { kind: "contactor", in_A: 32 } as any },
-        MOT_1: { id: "MOT_1", sheet: "unifilar", position: { x: 200, y: 500 }, rotation: 0, label: "M1", params: { kind: "motor", power_kW: 7.5 } as any },
+        Q_MAIN: {
+          id: "Q_MAIN",
+          sheet: "unifilar",
+          position: { x: 200, y: 100 },
+          rotation: 0,
+          label: "GERAL",
+          params: { kind: "breaker", in_A: 100 } as any,
+        },
+        BAR_1: {
+          id: "BAR_1",
+          sheet: "unifilar",
+          position: { x: 200, y: 200 },
+          rotation: 0,
+          label: "BARRAMENTO",
+          params: { kind: "busbar" } as any,
+        },
+        KM_1: {
+          id: "KM_1",
+          sheet: "unifilar",
+          position: { x: 200, y: 350 },
+          rotation: 0,
+          label: "KM1",
+          params: { kind: "contactor", in_A: 32 } as any,
+        },
+        MOT_1: {
+          id: "MOT_1",
+          sheet: "unifilar",
+          position: { x: 200, y: 500 },
+          rotation: 0,
+          label: "M1",
+          params: { kind: "motor", power_kW: 7.5 } as any,
+        },
       },
       edges: {}, // Sem arestas!
     };
@@ -315,10 +548,7 @@ describe("ELÉTRICAI — Unifilar Canvas Connectivity & Pipeline Validation (P0)
       { id: "e2", source: "DISJ", target: "MTR" },
     ];
 
-    const synthesizedDoc = synthesizeDiagramDocFromProject(
-      legacyProjectNodes,
-      legacyProjectEdges,
-    );
+    const synthesizedDoc = synthesizeDiagramDocFromProject(legacyProjectNodes, legacyProjectEdges);
 
     expect(Object.keys(synthesizedDoc.nodes)).toHaveLength(3);
     expect(Object.keys(synthesizedDoc.edges)).toHaveLength(2);

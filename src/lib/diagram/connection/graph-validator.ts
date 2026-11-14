@@ -344,19 +344,10 @@ export function validateElectricalTopology(doc: DiagramDoc): TopologyValidationR
 }
 
 export type EngineeringComplianceStatus =
-  | "VALID"
-  | "INVALID"
-  | "WARNING"
-  | "INCOMPLETE"
-  | "REQUIRES_ENGINEERING_REVIEW"
-  | "NOT_VERIFIABLE";
+  "VALID" | "INVALID" | "WARNING" | "INCOMPLETE" | "REQUIRES_ENGINEERING_REVIEW" | "NOT_VERIFIABLE";
 
 export type EngineeringStandardCode =
-  | "NBR 5410"
-  | "IEC 60617"
-  | "IEC 60909"
-  | "IEC 61439"
-  | "IEC 60204-1";
+  "NBR 5410" | "IEC 60617" | "IEC 60909" | "IEC 61439" | "IEC 60204-1";
 
 export interface NormativeComplianceFinding {
   id: string;
@@ -523,7 +514,8 @@ export function evaluateNormativeEngineeringCompliance(doc: DiagramDoc): Normati
       standard: "IEC 60204-1",
       clause: "§9.2.2 / §10.7 Parada de Emergência",
       status: "REQUIRES_ENGINEERING_REVIEW",
-      title: "Conjunto com acionamento de motor sem botoeira/relé de parada de emergência explícito",
+      title:
+        "Conjunto com acionamento de motor sem botoeira/relé de parada de emergência explícito",
       detail:
         "Verifique necessidade de dispositivo E-STOP / categoria de parada de segurança no circuito de comando.",
       entityIds: nodes.filter((n) => n.params.kind === "motor").map((n) => n.id),

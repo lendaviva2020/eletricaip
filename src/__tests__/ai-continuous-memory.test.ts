@@ -37,7 +37,10 @@ describe("ELÉTRICAI — Continuous Engineering Memory & Session Persistence (P0
     messagesTable = [];
   });
 
-  function mockGetOrCreateProjectConversation(projectId: string, title = "Engenharia Industrial ElétricAi") {
+  function mockGetOrCreateProjectConversation(
+    projectId: string,
+    title = "Engenharia Industrial ElétricAi",
+  ) {
     let conv = conversationsTable.find(
       (c) => c.project_id === projectId && c.user_id === fakeUserId,
     );

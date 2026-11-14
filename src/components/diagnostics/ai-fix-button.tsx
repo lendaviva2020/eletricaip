@@ -29,12 +29,8 @@ export const AiFixButton: React.FC<AiFixButtonProps> = ({
   disabled = false,
   showIcon = true,
 }) => {
-  const openRepairWithContext = useAiDiagnosticRepairStore(
-    (s) => s.openRepairWithContext,
-  );
-  const openRepairWithBatch = useAiDiagnosticRepairStore(
-    (s) => s.openRepairWithBatch,
-  );
+  const openRepairWithContext = useAiDiagnosticRepairStore((s) => s.openRepairWithContext);
+  const openRepairWithBatch = useAiDiagnosticRepairStore((s) => s.openRepairWithBatch);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -51,10 +47,7 @@ export const AiFixButton: React.FC<AiFixButtonProps> = ({
     }
   };
 
-  const defaultText =
-    batch && batch.length > 1
-      ? "CORRIGIR TODOS COM IA"
-      : "CORRIGIR COM IA";
+  const defaultText = batch && batch.length > 1 ? "CORRIGIR TODOS COM IA" : "CORRIGIR COM IA";
 
   const displayText = label || defaultText;
 
@@ -67,14 +60,12 @@ export const AiFixButton: React.FC<AiFixButtonProps> = ({
   const variantClasses = {
     primary:
       "bg-amber-500 hover:bg-amber-400 text-black font-bold shadow-sm shadow-amber-500/20 active:scale-[0.98]",
-    secondary:
-      "bg-primary text-primary-foreground hover:bg-primary/90 font-semibold",
+    secondary: "bg-primary text-primary-foreground hover:bg-primary/90 font-semibold",
     outline:
       "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold",
     compact:
       "bg-transparent hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-medium",
-    ghost:
-      "bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground font-medium",
+    ghost: "bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground font-medium",
   }[variant];
 
   return (
