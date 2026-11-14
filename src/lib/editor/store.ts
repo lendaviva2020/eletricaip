@@ -78,6 +78,13 @@ interface EditorState {
   appSidebarCollapsed: boolean;
   consoleTab: ConsoleTab;
   consoleOpen: boolean;
+  focusMode: boolean;
+  _focusRestore: {
+    leftCollapsed: boolean;
+    rightCollapsed: boolean;
+    appSidebarCollapsed: boolean;
+    consoleOpen: boolean;
+  } | null;
 
   // === Simulação de Circuito Unificado ===
   simulationStatus: "stopped" | "running" | "paused";
@@ -120,6 +127,8 @@ interface EditorState {
   setAppSidebarCollapsed: (collapsed: boolean) => void;
   setConsoleTab: (tab: ConsoleTab) => void;
   setConsoleOpen: (open: boolean) => void;
+  toggleFocusMode: () => void;
+  setFocusMode: (focus: boolean) => void;
 
   // === Simulação Actions ===
   setSimulationStatus: (status: "stopped" | "running" | "paused") => void;
@@ -151,6 +160,8 @@ export const useEditorStore = create<EditorState>()(
     appSidebarCollapsed: false,
     consoleTab: "Logs",
     consoleOpen: true,
+    focusMode: false,
+    _focusRestore: null,
     simulationStatus: "stopped",
     simulationCycle: 0,
     deviceStates: {},
@@ -237,6 +248,38 @@ export const useEditorStore = create<EditorState>()(
       ),
     setConsoleTab: (tab) => set({ consoleTab: tab }),
     setConsoleOpen: (open) => set({ consoleOpen: open }),
+    setFocusMode: (focus) =>
+      set((s) => {
+        if (focus === s.focusMode) return s;
+        if (focus) {
+          return {
+            focusMode: true,
+            _focusRestore: {
+              leftCollapsed: s.leftCollapsed,
+              rightCollapsed: s.rightCollapsed,
+              appSidebarCollapsed: s.appSidebarCollapsed,
+              consoleOpen: s.consoleOpen,
+            },
+            leftCollapsed: true,
+            rightCollapsed: true,
+            appSidebarCollapsed: true,
+            consoleOpen: false,
+          };
+        }
+        const prev = s._focusRestore;
+        return {
+          focusMode: false,
+          _focusRestore: null,
+          leftCollapsed: prev ? prev.leftCollapsed : false,
+          rightCollapsed: prev ? prev.rightCollapsed : false,
+          appSidebarCollapsed: prev ? prev.appSidebarCollapsed : false,
+          consoleOpen: prev ? prev.consoleOpen : true,
+        };
+      }),
+    toggleFocusMode: () => {
+      const curr = useEditorStore.getState().focusMode;
+      useEditorStore.getState().setFocusMode(!curr);
+    },
 
     setSimulationStatus: (status) =>
       set((s) => {
@@ -314,6 +357,7 @@ export const editorUiSelector = (s: EditorState) => ({
   rightCollapsed: s.rightCollapsed,
   consoleTab: s.consoleTab,
   consoleOpen: s.consoleOpen,
+  focusMode: s.focusMode,
 });
 
 export function useEditorUi() {
