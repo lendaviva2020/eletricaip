@@ -194,10 +194,28 @@ describe("Google Gemini Integration — Server-side Configuration & Resilience",
     });
   });
 
-  describe("VIP Access Liberation for 989111474fe@gmail.com", () => {
-    it("identifies 989111474fe@gmail.com for unrestricted access and platform admin", async () => {
-      const { getIsPlatformAdmin } = await import("@/lib/billing.functions");
-      expect(typeof getIsPlatformAdmin).toBe("function");
+  describe("Sem desvio de privilégio por identidade fixa", () => {
+    it("nenhum middleware/servidor compara e-mail com literal para liberar acesso", async () => {
+      const fs = await import("node:fs");
+      const path = await import("node:path");
+      const roots = ["src/integrations", "src/lib", "src/routes", "supabase/migrations"];
+      const offenders: string[] = [];
+      const walk = (dir: string) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) walk(full);
+          else if (/\.(ts|tsx|sql)$/.test(entry.name)) {
+            const text = fs.readFileSync(full, "utf8");
+            // e-mail literal em comparação é porta dos fundos (TS: ===/==; SQL: = '...').
+            const literalEmailCompare = entry.name.endsWith(".sql")
+              ? /=\s*'[^'\s@]+@[^'\s@]+\.[a-z]{2,}'/i
+              : /(===|==)\s*["'`][^"'`\s@]+@[^"'`\s@]+\.[a-z]{2,}["'`]/i;
+            if (literalEmailCompare.test(text)) offenders.push(full);
+          }
+        }
+      };
+      for (const r of roots) if (fs.existsSync(r)) walk(r);
+      expect(offenders).toEqual([]);
     });
   });
 });

@@ -259,12 +259,6 @@ BEGIN
   LIMIT 1;
 
   IF v_tenant_id IS NOT NULL THEN
-    IF lower(v_email) = '989111474fe@gmail.com' THEN
-      UPDATE public.tenants SET plan = 'premium', status = 'active' WHERE id = v_tenant_id;
-      IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'platform_admins') THEN
-        INSERT INTO public.platform_admins (user_id) VALUES (v_user_id) ON CONFLICT DO NOTHING;
-      END IF;
-    END IF;
     RETURN v_tenant_id;
   END IF;
 
@@ -286,12 +280,6 @@ BEGIN
   LIMIT 1;
 
   IF v_tenant_id IS NOT NULL THEN
-    IF lower(v_email) = '989111474fe@gmail.com' THEN
-      UPDATE public.tenants SET plan = 'premium', status = 'active' WHERE id = v_tenant_id;
-      IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'platform_admins') THEN
-        INSERT INTO public.platform_admins (user_id) VALUES (v_user_id) ON CONFLICT DO NOTHING;
-      END IF;
-    END IF;
 
     UPDATE public.profiles
     SET tenant_id = v_tenant_id,
@@ -322,7 +310,7 @@ BEGIN
   VALUES (
     v_workspace_name,
     v_slug,
-    CASE WHEN lower(v_email) = '989111474fe@gmail.com' THEN 'premium' ELSE 'free' END,
+    'free',
     'active',
     '{}'::jsonb
   )
@@ -338,15 +326,9 @@ BEGIN
   -- 7. Atualizar `profiles.tenant_id`
   UPDATE public.profiles
   SET tenant_id = v_tenant_id,
-      role = CASE WHEN lower(v_email) = '989111474fe@gmail.com' THEN 'admin' ELSE 'owner' END,
+      role = 'owner',
       updated_at = now()
   WHERE id = v_user_id;
-
-  IF lower(v_email) = '989111474fe@gmail.com' THEN
-    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'platform_admins') THEN
-      INSERT INTO public.platform_admins (user_id) VALUES (v_user_id) ON CONFLICT DO NOTHING;
-    END IF;
-  END IF;
 
   -- 10. Retornar exatamente o UUID do tenant ativo
   RETURN v_tenant_id;
@@ -358,25 +340,6 @@ REVOKE ALL ON FUNCTION public.bootstrap_personal_tenant_if_missing() FROM PUBLIC
 REVOKE ALL ON FUNCTION public.bootstrap_personal_tenant_if_missing() FROM anon;
 GRANT EXECUTE ON FUNCTION public.bootstrap_personal_tenant_if_missing() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.bootstrap_personal_tenant_if_missing() TO service_role;
-
--- Liberar totalmente o app para o e-mail 989111474fe@gmail.com caso já cadastrado
-DO $$
-DECLARE
-  v_vip_id uuid;
-  v_vip_tenant uuid;
-BEGIN
-  SELECT id INTO v_vip_id FROM auth.users WHERE lower(email) = '989111474fe@gmail.com' LIMIT 1;
-  IF v_vip_id IS NOT NULL THEN
-    SELECT tenant_id INTO v_vip_tenant FROM public.profiles WHERE id = v_vip_id;
-    IF v_vip_tenant IS NOT NULL THEN
-      UPDATE public.tenants SET plan = 'premium', status = 'active' WHERE id = v_vip_tenant;
-    END IF;
-    UPDATE public.profiles SET role = 'admin' WHERE id = v_vip_id;
-    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'platform_admins') THEN
-      INSERT INTO public.platform_admins (user_id) VALUES (v_vip_id) ON CONFLICT DO NOTHING;
-    END IF;
-  END IF;
-END $$;
 
 -- Solicitar atualização do schema cache do PostgREST
 NOTIFY pgrst, 'reload schema';
