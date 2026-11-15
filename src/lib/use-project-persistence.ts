@@ -49,6 +49,10 @@ export function useProjectPersistence(projectId: string | null) {
   const pendingRef = useRef(false);
   const isHydratingRef = useRef(false);
   const currentVersionRef = useRef<number>(1);
+  // Auditoria F1.7: enquanto o projeto não for carregado com sucesso, nenhum
+  // salvamento pode ocorrer (os stores podem conter vazio ou outro projeto).
+  const loadedOkRef = useRef(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Track mount lifecycle to prevent setState after unmount.
   useEffect(() => {
@@ -70,6 +74,11 @@ export function useProjectPersistence(projectId: string | null) {
 
     setLoading(true);
     isHydratingRef.current = true;
+    loadedOkRef.current = false;
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
     useAutosaveLog.getState().log({
       kind: "load:start",
       projectId,
@@ -82,6 +91,7 @@ export function useProjectPersistence(projectId: string | null) {
       const snap = res.snapshot;
       currentVersionRef.current = res.version ?? 1;
       setConflict(null);
+      setLoadError(null);
 
       useProjectStore
         .getState()
@@ -153,6 +163,7 @@ export function useProjectPersistence(projectId: string | null) {
       useUnifiedProjectStore.getState().markSaved();
 
       const diagramDoc = snap.diagram as DiagramDoc | undefined;
+      loadedOkRef.current = true;
       useAutosaveLog.getState().log({
         kind: "load:success",
         projectId,
@@ -173,7 +184,13 @@ export function useProjectPersistence(projectId: string | null) {
         projectId,
         message: `Falha ao carregar: ${message}`,
       });
-      toast.error(`Falha ao carregar projeto: ${message}`);
+      setLoadError(message);
+      setSaveState("error");
+      toast.error(
+        message.includes("SNAPSHOT_INVALID")
+          ? "Projeto salvo em formato inválido. Salvamento bloqueado para não sobrescrever os dados; contate o suporte."
+          : `Falha ao carregar projeto: ${message}`,
+      );
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -197,6 +214,14 @@ export function useProjectPersistence(projectId: string | null) {
 
     const schedule = (reason: string) => {
       if (isHydratingRef.current) return;
+      if (!loadedOkRef.current) {
+        useAutosaveLog.getState().log({
+          kind: "skip:not-loaded",
+          projectId,
+          message: `Autosave bloqueado: projeto não carregado com sucesso (${reason})`,
+        });
+        return;
+      }
       if (timer.current) clearTimeout(timer.current);
       useAutosaveLog.getState().log({
         kind: "schedule",
@@ -207,6 +232,7 @@ export function useProjectPersistence(projectId: string | null) {
     };
 
     const flush = async () => {
+      if (!loadedOkRef.current) return;
       // Coalesce: if a save is in flight, mark pending and let it re-trigger after.
       if (savingRef.current) {
         pendingRef.current = true;
@@ -335,6 +361,10 @@ export function useProjectPersistence(projectId: string | null) {
         await performLoad();
         toast.info("Projeto recarregado a partir do servidor.");
       } else if (resolution === "overwrite") {
+        if (!loadedOkRef.current) {
+          toast.error("Não é possível sobrescrever: o projeto não foi carregado com sucesso.");
+          return;
+        }
         try {
           setSaveState("saving");
           const snapshot = buildProjectSnapshot();
@@ -367,16 +397,23 @@ export function useProjectPersistence(projectId: string | null) {
     conflict,
     resolveConflict,
     reloadProject: performLoad,
+    loadError,
     currentVersion: currentVersionRef.current,
   };
 }
 
+/**
+ * Cria um ponto de versão a partir do estado atual. Exige a versão esperada
+ * (auditoria F1.8): sem `force`, um save concorrente gera VERSION_CONFLICT em
+ * vez de ser sobrescrito.
+ */
 export async function snapshotVersion(
   projectId: string,
   save: ReturnType<typeof useServerFn<typeof saveProject>>,
+  expectedVersion: number,
 ) {
   const snapshot = buildProjectSnapshot();
-  return save({ data: { projectId, snapshot, createVersion: true, force: true } });
+  return save({ data: { projectId, snapshot, createVersion: true, expectedVersion } });
 }
 
 export function buildProjectSnapshot(): ProjectSnapshot {

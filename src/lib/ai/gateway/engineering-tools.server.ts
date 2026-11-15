@@ -126,7 +126,16 @@ export const TOOL_SCHEMAS: Record<EngineeringToolName, z.ZodType<any>> = {
   getHardwareCatalog: z
     .object({
       category: z
-        .enum(["all", "protection", "switching", "drives", "loads", "plc", "compact_plc", "sensors"])
+        .enum([
+          "all",
+          "protection",
+          "switching",
+          "drives",
+          "loads",
+          "plc",
+          "compact_plc",
+          "sensors",
+        ])
         .default("all"),
       manufacturer: z.string().max(60).optional(),
     })
@@ -142,9 +151,7 @@ export const TOOL_SCHEMAS: Record<EngineeringToolName, z.ZodType<any>> = {
             id: z.string().min(1).max(64),
             kind: NodeKindSchema,
             label: z.string().min(1).max(120),
-            position: z
-              .object({ x: z.number(), y: z.number() })
-              .default({ x: 200, y: 120 }),
+            position: z.object({ x: z.number(), y: z.number() }).default({ x: 200, y: 120 }),
             params: z.record(z.string(), z.unknown()).optional(),
           }),
         )
@@ -230,7 +237,9 @@ export const TOOL_SCHEMAS: Record<EngineeringToolName, z.ZodType<any>> = {
       cpuModel: z.string().min(1).max(80).default("LOGO! 8.4 12/24RCE (6ED1052-1MD08-0BA2)"),
       scanCycleMs: z.number().int().min(1).max(1000).default(20),
       expansionModules: z.array(z.string().max(80)).default([]),
-      protocol: z.enum(["Modbus-TCP", "OPC-UA", "S7-Protocol", "EtherNet/IP"]).default("Modbus-TCP"),
+      protocol: z
+        .enum(["Modbus-TCP", "OPC-UA", "S7-Protocol", "EtherNet/IP"])
+        .default("Modbus-TCP"),
       safetyGuard: PhysicalSafetyGuardSchema.optional(),
     })
     .strict(),
@@ -272,7 +281,19 @@ export const TOOL_SCHEMAS: Record<EngineeringToolName, z.ZodType<any>> = {
         .array(
           z.object({
             id: z.string().min(1).max(64),
-            type: z.enum(["AND", "OR", "NOT", "XOR", "RS", "SR", "TON", "TOF", "CTU", "PID", "CMP_GT"]),
+            type: z.enum([
+              "AND",
+              "OR",
+              "NOT",
+              "XOR",
+              "RS",
+              "SR",
+              "TON",
+              "TOF",
+              "CTU",
+              "PID",
+              "CMP_GT",
+            ]),
             label: z.string().max(80).optional(),
             inputs: z.array(z.string().max(64)).default([]),
             output: z.string().max(64).optional(),
@@ -517,8 +538,7 @@ export const ENGINEERING_TOOL_DECLARATIONS: AiToolDeclaration[] = [
   },
   {
     name: "configureSCADA",
-    description:
-      "Configura tags supervisórias SCADA com faixa de engenharia, unidades e deadband.",
+    description: "Configura tags supervisórias SCADA com faixa de engenharia, unidades e deadband.",
     parametersJsonSchema: {
       type: "object",
       properties: {

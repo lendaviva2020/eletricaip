@@ -11,12 +11,10 @@ const MODULE_DISCIPLINE_GUIDES: Record<AiModuleDiscipline, string> = {
     "Foco em expansão condutor a condutor (L1, L2, L3, N, PE, A1, A2, 13/14, 95/96) conforme IEC 60617 e correspondência biunívoca com o diagrama Unifilar.",
   ladder:
     "Foco em programação Ladder IEC 61131-3 (redes/rungs, contatos NA/NF XIC/XIO, bobinas OTE/OTL/OTU, temporizadores TON/TOF/TP, intertravamentos E-STOP NR-12).",
-  fbd:
-    "Foco em Diagrama de Blocos de Função (FBD IEC 61131-3), malhas lógicas, PID, blocos aritméticos e comparadores sincronizados com a base de variáveis do projeto.",
+  fbd: "Foco em Diagrama de Blocos de Função (FBD IEC 61131-3), malhas lógicas, PID, blocos aritméticos e comparadores sincronizados com a base de variáveis do projeto.",
   scada:
     "Foco em supervisório industrial, tags em tempo real, telas sinóticas, historiador e receitas, mantendo coerência com os endereços do CLP e equipamentos do Unifilar.",
-  plc:
-    "Foco em arquitetura de hardware de CLP, rack, CPU, cartões DI/DO/AI/AO, tabela de variáveis (%I, %Q, %M, %MW, %IW, %QW) e diagnóstico de varredura.",
+  plc: "Foco em arquitetura de hardware de CLP, rack, CPU, cartões DI/DO/AI/AO, tabela de variáveis (%I, %Q, %M, %MW, %IW, %QW) e diagnóstico de varredura.",
   simulation:
     "Foco em simulação dinâmica virtual (motores, partidas DOL/Estrela-Triângulo/VFD, correntes de partida, queda de tensão e resposta de malhas). Controle físico bloqueado (IS_PHYSICAL_CONTROL_ALLOWED = false).",
   alarms:
@@ -27,8 +25,7 @@ const MODULE_DISCIPLINE_GUIDES: Record<AiModuleDiscipline, string> = {
     "Foco no Eletric Studio CLP (classe LOGO! 8 / V8.4), módulos base e expansões digitais/analógicas, blocos especiais (PI, Rampa, Texto de Mensagem, Astrônomo) e simulação offline.",
   hardware:
     "Foco em seleção, dimensionamento e compatibilidade de módulos de hardware industrial, fontes 24 Vcc e barramentos.",
-  io:
-    "Foco em mapeamento de entradas e saídas (I/O), endereçamento físico/simbólico e detecção de conflitos ou canais órfãos.",
+  io: "Foco em mapeamento de entradas e saídas (I/O), endereçamento físico/simbólico e detecção de conflitos ou canais órfãos.",
   comms:
     "Foco em redes industriais (Modbus TCP/RTU, OPC-UA, Sparkplug B / MQTT, Profinet, EtherNet/IP) em modo seguro de telemetria.",
   importer:
@@ -95,7 +92,9 @@ export function extractEngineeringSnapshotFromState(
     (rawState.tags as any[] | undefined) ??
     [];
   const variablesSummary = Array.isArray(rawVars)
-    ? rawVars.slice(0, 25).map((v: any) => `${v?.name || v?.tag || v?.id}:${v?.address || v?.type || "VAR"}`)
+    ? rawVars
+        .slice(0, 25)
+        .map((v: any) => `${v?.name || v?.tag || v?.id}:${v?.address || v?.type || "VAR"}`)
     : [];
 
   const ladderRungs =

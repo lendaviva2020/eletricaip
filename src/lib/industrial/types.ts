@@ -12,7 +12,8 @@
 
 import { z } from "zod";
 
-export const IS_PHYSICAL_CONTROL_ALLOWED = false as const;
+import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/safety/physical-control";
+export { IS_PHYSICAL_CONTROL_ALLOWED };
 
 const Id = z.string().min(1).max(128);
 

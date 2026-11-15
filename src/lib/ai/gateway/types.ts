@@ -1,7 +1,8 @@
 // Centralized types and contracts for the ElétricAi Industrial OS AI Gateway,
 // Provider Registry, Model Router, and Engineering Agent Tooling.
 
-export const IS_PHYSICAL_CONTROL_ALLOWED = false as const;
+import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/safety/physical-control";
+export { IS_PHYSICAL_CONTROL_ALLOWED };
 
 export const AI_PROVIDER_IDS = [
   "gemini",

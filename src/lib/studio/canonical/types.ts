@@ -10,10 +10,11 @@ import { z } from "zod";
  * O ElétricAi Industrial OS opera em modo consultivo e analítico para engenharia,
  * proibindo incondicionalmente comandos de escrita ou controle sobre equipamentos físicos reais.
  */
-export const IS_PHYSICAL_CONTROL_ALLOWED = false as const;
+import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/safety/physical-control";
+export { IS_PHYSICAL_CONTROL_ALLOWED };
 export const isPhysicalControlAllowed = false as const;
 export const SAFETY_CONFIG = Object.freeze({
-  IS_PHYSICAL_CONTROL_ALLOWED: false as const,
+  IS_PHYSICAL_CONTROL_ALLOWED,
   isPhysicalControlAllowed: false as const,
   OPERATIONAL_MODE: "OBSERVATIONAL_ONLY" as const,
 });

@@ -1,6 +1,7 @@
 // TanStack Start Server Functions for the ElétricAi AI Gateway,
 // Provider Configuration, Health Checks, Capability Validation, and Engineering Agent Tools.
 import { createServerFn } from "@tanstack/react-start";
+import type { Json } from "@/integrations/supabase/types";
 import { z } from "zod";
 import {
   requireAiQuota,
@@ -155,9 +156,7 @@ export const probeLocalOllamaServerFn = createServerFn({ method: "POST" })
 
 export const rotateProviderCredentialServerFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ provider: z.enum(AI_PROVIDER_IDS) }).parse(input),
-  )
+  .inputValidator((input) => z.object({ provider: z.enum(AI_PROVIDER_IDS) }).parse(input))
   .handler(async ({ data }) => {
     return recordCredentialRotationEvent(data.provider);
   });
@@ -177,10 +176,12 @@ export const executeEngineeringToolServerFn = createServerFn({ method: "POST" })
     if (data.projectId) {
       await assertProjectTenantAccess(context.supabase, context.userId, data.projectId);
     }
-    return await executeAuthorizedEngineeringTool(data.toolName, {
+    const toolRes = await executeAuthorizedEngineeringTool(data.toolName, {
       ...data.args,
       ...(data.projectId ? { projectId: data.projectId } : {}),
     });
+    // Retorno serializável: o resultado da ferramenta é JSON puro.
+    return { ...toolRes, result: toolRes.result as Json | undefined };
   });
 
 export const listEngineeringToolRevisionsServerFn = createServerFn({ method: "GET" })

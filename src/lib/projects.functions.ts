@@ -126,6 +126,17 @@ export const SnapshotSchema = z
 
 export type ProjectSnapshot = z.infer<typeof SnapshotSchema>;
 
+/** Prefixo de erro tipado quando o snapshot persistido não passa no schema (F1.7). */
+export const SNAPSHOT_INVALID_ERROR = "SNAPSHOT_INVALID";
+
+/** Resume as falhas do schema (caminho + mensagem) sem expor o conteúdo do projeto. */
+export function summarizeSnapshotIssues(error: z.ZodError): string {
+  return error.issues
+    .slice(0, 5)
+    .map((i) => `${i.path.join(".") || "(raiz)"}: ${i.message}`)
+    .join("; ");
+}
+
 const EMPTY_SNAPSHOT: ProjectSnapshot = {
   schemaVersion: CURRENT_SNAPSHOT_VERSION,
   project: { nodes: [], edges: [], tags: {}, scadaLayout: { nodes: [], edges: [] } },
@@ -364,6 +375,12 @@ export const loadProject = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const parsed = SnapshotSchema.safeParse(diagram?.canvas_data ?? EMPTY_SNAPSHOT);
+    if (!parsed.success) {
+      // Auditoria F1.7 (P1-DATA-044): nunca devolver EMPTY_SNAPSHOT com a versão
+      // real — o autosave seguinte sobrescreveria o projeto inteiro com vazio.
+      // O cliente recebe um erro tipado e bloqueia salvamentos até um load válido.
+      throw new Error(`${SNAPSHOT_INVALID_ERROR}: ${summarizeSnapshotIssues(parsed.error)}`);
+    }
     const metadata = project.metadata as Record<string, unknown> | null;
     return {
       project: {
@@ -374,7 +391,7 @@ export const loadProject = createServerFn({ method: "POST" })
       },
       diagramId: diagram?.id ?? null,
       version: diagram?.version ?? 1,
-      snapshot: parsed.success ? parsed.data : EMPTY_SNAPSHOT,
+      snapshot: parsed.data,
     };
   });
 
@@ -392,19 +409,19 @@ export async function saveProjectRecord(
 ): Promise<{ diagramId: string; version: number; savedAt: string }> {
   const { supabase, userId } = authCtx;
 
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("diagrams")
     .select("id, version")
     .eq("project_id", data.projectId)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (existingError) throw new Error(existingError.message);
 
   if (
     !data.force &&
     data.expectedVersion !== undefined &&
     existing &&
-    existing.version !== undefined &&
     existing.version !== data.expectedVersion
   ) {
     throw new Error(
@@ -416,18 +433,29 @@ export async function saveProjectRecord(
   let nextVersion: number;
   if (existing) {
     diagramId = existing.id;
-    nextVersion = (existing.version ?? 1) + 1;
-    const { error } = await supabase
+    // Auditoria F1.8 (P1-DATA-043): UPDATE condicional atômico. A cláusula
+    // version = <lida> é reavaliada pelo Postgres sob o lock da linha; se outro
+    // save confirmou antes, 0 linhas são afetadas e devolvemos VERSION_CONFLICT
+    // em vez de sobrescrever silenciosamente (lost update).
+    const baseVersion = existing.version ?? 1;
+    let update = supabase
       .from("diagrams")
       .update({
         canvas_data: data.snapshot as unknown as Json,
-        version: nextVersion,
+        version: baseVersion + 1,
         updated_at: new Date().toISOString(),
       })
       .eq("id", diagramId);
+    if (!data.force) update = update.eq("version", baseVersion);
+    const { data: updated, error } = await update.select("id, version");
     if (error) throw new Error(error.message);
+    if (!updated || updated.length === 0) {
+      throw new Error(
+        `VERSION_CONFLICT: O projeto foi alterado no servidor durante o salvamento (versão base: ${baseVersion}).`,
+      );
+    }
+    nextVersion = updated[0].version;
   } else {
-    nextVersion = 1;
     const { data: row, error } = await supabase
       .from("diagrams")
       .insert({
@@ -449,23 +477,48 @@ export async function saveProjectRecord(
     .eq("id", data.projectId);
 
   if (data.createVersion) {
-    const { data: last } = await supabase
-      .from("project_versions")
-      .select("version_number")
-      .eq("project_id", data.projectId)
-      .order("version_number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const next = (last?.version_number ?? 0) + 1;
-    await supabase.from("project_versions").insert({
-      project_id: data.projectId,
-      version_number: next,
-      snapshot: data.snapshot as unknown as Json,
-      created_by: userId,
-    });
+    await insertProjectVersion(supabase, data.projectId, data.snapshot as unknown as Json, userId);
   }
 
   return { diagramId, version: nextVersion, savedAt: new Date().toISOString() };
+}
+
+/**
+ * Grava um registro de versão com numeração MAX+1. Com o índice único
+ * (project_id, version_number) da migration 20261115130000, uma corrida devolve
+ * 23505 e a numeração é recalculada (até 12 tentativas com espera aleatória).
+ */
+async function insertProjectVersion(
+  supabase: AuthContext["supabase"],
+  projectId: string,
+  snapshot: Json,
+  userId: string,
+): Promise<number> {
+  const MAX_ATTEMPTS = 12;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      // Espera aleatória crescente para dessincronizar gravações concorrentes.
+      await new Promise((r) => setTimeout(r, 10 * attempt + Math.floor(Math.random() * 40)));
+    }
+    const { data: last, error: lastError } = await supabase
+      .from("project_versions")
+      .select("version_number")
+      .eq("project_id", projectId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastError) throw new Error(lastError.message);
+    const next = (last?.version_number ?? 0) + 1;
+    const { error } = await supabase.from("project_versions").insert({
+      project_id: projectId,
+      version_number: next,
+      snapshot,
+      created_by: userId,
+    });
+    if (!error) return next;
+    if ((error as { code?: string }).code !== "23505") throw new Error(error.message);
+  }
+  throw new Error("VERSION_NUMBER_CONFLICT: não foi possível reservar o número da versão.");
 }
 
 export const saveProject = createServerFn({ method: "POST" })
@@ -681,24 +734,19 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
     if (verErr) throw new Error(verErr.message);
     if (!ver) throw new Error("Versão não encontrada.");
 
-    const { data: diagram } = await supabase
-      .from("diagrams")
-      .select("id")
-      .eq("project_id", data.projectId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (diagram) {
-      await supabase
-        .from("diagrams")
-        .update({
-          canvas_data: (ver.snapshot ?? EMPTY_SNAPSHOT) as unknown as Json,
-          updated_at: new Date().toISOString(),
-        })
-
-        .eq("id", diagram.id);
+    // Auditoria F1.7/F1.8: valida o snapshot da versão e grava pelo mesmo caminho
+    // do save (incrementa diagrams.version), para que clientes abertos detectem
+    // a mudança como VERSION_CONFLICT em vez de sobrescrevê-la.
+    const parsed = SnapshotSchema.safeParse(ver.snapshot ?? EMPTY_SNAPSHOT);
+    if (!parsed.success) {
+      throw new Error(`${SNAPSHOT_INVALID_ERROR}: ${summarizeSnapshotIssues(parsed.error)}`);
     }
-    return { ok: true, restoredVersion: ver.version_number };
+    const saved = await saveProjectRecord(authCtx, {
+      projectId: data.projectId,
+      snapshot: parsed.data,
+      force: true,
+    });
+    return { ok: true, restoredVersion: ver.version_number, version: saved.version };
   });
 
 export const ProjectPackageSchema = z.object({
@@ -736,6 +784,10 @@ export async function exportProjectPackageData(
     .maybeSingle();
 
   const parsed = SnapshotSchema.safeParse(diagram?.canvas_data ?? EMPTY_SNAPSHOT);
+  if (!parsed.success) {
+    // F1.7: exportar um pacote vazio esconderia a corrupção; falha explícita.
+    throw new Error(`${SNAPSHOT_INVALID_ERROR}: ${summarizeSnapshotIssues(parsed.error)}`);
+  }
   const metadata = project.metadata as Record<string, unknown> | null;
 
   return {
@@ -747,7 +799,7 @@ export async function exportProjectPackageData(
       description: project.description,
       client: (metadata?.client as string | null) ?? null,
     },
-    snapshot: parsed.success ? parsed.data : EMPTY_SNAPSHOT,
+    snapshot: parsed.data,
   };
 }
 

@@ -90,3 +90,18 @@ Verificação: vitest 166 arquivos, 1.376/1.376; typecheck sem erros novos (os 2
 **Observação:** o owner perde a isenção de cota por e-mail; ele precisa estar em `public.platform_admins` (a linha foi inserida pela migration `20260518170000`; o estado no remoto não foi verificado).
 
 **Decisão do proprietário (F0.9): liberar `'unsafe-eval'` só no worker.** A CSP do asset `/assets/scada-worker-*` permite `'unsafe-eval'` para o `new Function` dos scripts SCADA, sempre com `default-src 'none'`, `connect-src 'none'` e `worker-src 'none'`. O teste red team `gate-4-3-redteam-security-regression.test.ts` foi ajustado para proibir `'unsafe-eval'` em todas as outras regras e para exigir essa contenção na regra do worker. Validado no build de produção local: scripts legítimos executam e nenhum global de rede fica alcançável. A substituição por um interpretador AST (#SCADA-02) continua recomendada no longo prazo.
+
+## Status de execução — Fase 1 (branch `fix/fase-1-integridade`, a partir de `fix/fase-0-seguranca`)
+
+| Tarefa | Status | Evidência |
+|---|---|---|
+| F1.7 Snapshot inválido não sobrescreve | FEITO | `loadProject`/export lançam `SNAPSHOT_INVALID: <campos>` em vez de devolver `EMPTY_SNAPSHOT`; o restore valida o snapshot; `use-project-persistence.ts` bloqueia autosave, flush e "sobrescrever" até um load bem-sucedido (`skip:not-loaded`) |
+| F1.8 Save atômico | FEITO | `UPDATE diagrams … WHERE id = $1 AND version = $lida`; 0 linhas viram `VERSION_CONFLICT`. Supabase local: **0 de 50** saves perdidos (antes 41), exatamente 1 aceito por rodada. O restore incrementa a versão. `snapshotVersion` sem `force`. Migration `20261115130000` cria o índice único `(project_id, version_number)` só se não houver duplicatas; numeração com retentativa e espera aleatória: 8/8 saves concorrentes sem duplicata (3 execuções) |
+| F1.3 CI verde | FEITO | typecheck 0 erros (antes 25: tipos não serializáveis `Record<string, unknown>` → `Json` nos retornos de IA; guarda de tipo em `settings.ai-status.tsx`); prettier ok; eslint 0 erros (1 aviso antigo) |
+| F1.4 Fonte única da trava física e do webhook Stripe | FEITO | `src/lib/safety/physical-control.ts` (os 6 módulos reexportam; teste garante uma única declaração). Webhook Stripe: o dono confirmou que o endpoint cadastrado é a rota `/api/public/stripe/webhook`; a Edge Function `supabase/functions/stripe-webhook` e o deploy no CI foram removidos, e um teste garante um único receptor. **Ação do dono:** `supabase functions delete stripe-webhook`, se ela ainda estiver publicada |
+| F1.1 Schema base no repo | PENDENTE (dono) | Exige `supabase db dump` do remoto |
+| F1.2 Consolidar policies legadas | PENDENTE | Alta (112 tabelas); exige matriz de testes RLS |
+| F1.5 / F1.9 SSOT do projeto e Studio no servidor | PENDENTE | Alta; depende de decisão de modelo |
+| F1.6 `SUPABASE_SERVICE_ROLE_KEY` local | PENDENTE (dono) | A chave local é a anon |
+
+Testes: vitest 168 arquivos, 1.391/1.391. O mock de `persistence-concurrency-conflict.test.ts` foi atualizado para o UPDATE condicional (aplica os filtros `id` e `version` como o Postgres).

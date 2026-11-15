@@ -566,16 +566,14 @@ export async function executeProviderCall(
       const durationMs = Date.now() - t0;
       const text = response.text ?? "";
       const promptTokens =
-        response.usageMetadata?.promptTokenCount ??
-        Math.ceil(JSON.stringify(contents).length / 4);
+        response.usageMetadata?.promptTokenCount ?? Math.ceil(JSON.stringify(contents).length / 4);
       const completionTokens =
         response.usageMetadata?.candidatesTokenCount ?? Math.ceil(text.length / 4);
       const totalTokens =
         response.usageMetadata?.totalTokenCount ?? promptTokens + completionTokens;
 
       const rawFnCalls = (response as any).functionCalls as
-        | Array<{ id?: string; name?: string; args?: Record<string, unknown> }>
-        | undefined;
+        Array<{ id?: string; name?: string; args?: Record<string, unknown> }> | undefined;
       const toolCalls: AiToolCallInvocation[] | undefined =
         rawFnCalls && rawFnCalls.length > 0
           ? rawFnCalls.map((fc, idx) => ({
@@ -671,9 +669,7 @@ export async function executeProviderCall(
       const durationMs = Date.now() - t0;
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
-        const safeErr = redactAiSecrets(
-          `Ollama HTTP ${res.status}: ${errText.slice(0, 200)}`,
-        );
+        const safeErr = redactAiSecrets(`Ollama HTTP ${res.status}: ${errText.slice(0, 200)}`);
         updateProviderVerificationCache("ollama", {
           state: "ERROR",
           verifiedAt: new Date().toISOString(),
@@ -822,7 +818,8 @@ export async function executeProviderCall(
         .filter((c) => c.type === "text")
         .map((c) => c.text || "")
         .join("");
-      const promptTokens = json.usage?.input_tokens ?? Math.ceil(JSON.stringify(messages).length / 4);
+      const promptTokens =
+        json.usage?.input_tokens ?? Math.ceil(JSON.stringify(messages).length / 4);
       const completionTokens = json.usage?.output_tokens ?? Math.ceil(text.length / 4);
       const totalTokens = promptTokens + completionTokens;
 
@@ -942,7 +939,12 @@ export async function executeProviderCall(
         estimatedCostUsd: 0,
         fallbackUsed: false,
         error: {
-          code: res.status === 401 ? "AUTH_401" : res.status === 429 ? "RATE_LIMIT_429" : `HTTP_${res.status}`,
+          code:
+            res.status === 401
+              ? "AUTH_401"
+              : res.status === 429
+                ? "RATE_LIMIT_429"
+                : `HTTP_${res.status}`,
           message: safeErr,
           status: res.status,
         },
@@ -963,7 +965,8 @@ export async function executeProviderCall(
     };
     const msg = json.choices?.[0]?.message;
     const text = msg?.content ?? "";
-    const promptTokens = json.usage?.prompt_tokens ?? Math.ceil(JSON.stringify(messages).length / 4);
+    const promptTokens =
+      json.usage?.prompt_tokens ?? Math.ceil(JSON.stringify(messages).length / 4);
     const completionTokens = json.usage?.completion_tokens ?? Math.ceil(text.length / 4);
     const totalTokens = json.usage?.total_tokens ?? promptTokens + completionTokens;
 

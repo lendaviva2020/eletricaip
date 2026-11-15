@@ -2,7 +2,8 @@
 // Honest Protocol Layer Classification, Data Provenance & Cloud–Edge Network Policy
 // Zero Node.js built-ins: 100% isomorphic for Cloud, Edge, and UI consumption.
 
-export const IS_PHYSICAL_CONTROL_ALLOWED = false as const;
+import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/safety/physical-control";
+export { IS_PHYSICAL_CONTROL_ALLOWED };
 
 export type EdgeExecutionMode = "SIMULATOR" | "EDGE_READ_ONLY";
 

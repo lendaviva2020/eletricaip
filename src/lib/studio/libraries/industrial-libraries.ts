@@ -8,7 +8,8 @@
 
 import { LibraryPackage, LibraryRegistry } from "./library-manager";
 
-export const IS_PHYSICAL_CONTROL_ALLOWED = false as const;
+import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/safety/physical-control";
+export { IS_PHYSICAL_CONTROL_ALLOWED };
 
 // ============================================================================
 // 1. Biblioteca: ElectricalProtection (ANSI 50, 51, 50N, 51N, 27, 59, 81U, 81O)

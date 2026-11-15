@@ -85,8 +85,14 @@ function AiSettingsPage() {
     } catch {
       const legacy = await pingArchitectHealth();
       setLegacyEvents(await fetchAiStatusEvents());
+      const legacyModel =
+        legacy && typeof legacy === "object" && "model" in legacy
+          ? (legacy as { model?: unknown }).model
+          : undefined;
       if (legacy) {
-        setSelectedModel(legacy.model || "gemini-3-flash-preview");
+        setSelectedModel(
+          typeof legacyModel === "string" && legacyModel ? legacyModel : "gemini-3-flash-preview",
+        );
       }
     } finally {
       setBusyAction(null);
@@ -99,10 +105,7 @@ function AiSettingsPage() {
 
   const activeProviderMeta = gateway?.providers.find((p) => p.provider === selectedProvider);
   const effectiveState: AiConnectionState =
-    uiStateOverride ??
-    activeProviderMeta?.connectionState ??
-    gateway?.state ??
-    "NOT_CONFIGURED";
+    uiStateOverride ?? activeProviderMeta?.connectionState ?? gateway?.state ?? "NOT_CONFIGURED";
 
   const handleApplyProviderAndModel = async () => {
     setBusyAction("configure");
@@ -358,7 +361,8 @@ function AiSettingsPage() {
                 Configuração do Provedor e Modelo
               </h2>
               <p className="text-xs text-muted-foreground">
-                Selecione o provedor, escolha o modelo verificado e valide capacidades reais antes da execução.
+                Selecione o provedor, escolha o modelo verificado e valide capacidades reais antes
+                da execução.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -527,7 +531,8 @@ function AiSettingsPage() {
                 Streaming: {activeProviderMeta?.capabilities.streaming ? "SIM" : "NÃO"}
               </span>
               <span className="px-2 py-1 rounded border border-border bg-muted/40">
-                JSON Estruturado: {activeProviderMeta?.capabilities.structuredOutput ? "SIM" : "NÃO"}
+                JSON Estruturado:{" "}
+                {activeProviderMeta?.capabilities.structuredOutput ? "SIM" : "NÃO"}
               </span>
               <span className="px-2 py-1 rounded border border-border bg-muted/40">
                 Tool Calling (18 tools):{" "}

@@ -9,8 +9,10 @@ Stack: TanStack Start + Supabase + Vercel.
 
 O workflow `.github/workflows/ci.yml` executa **lint, testes, typecheck** e — em pushes na branch `main` — faz **deploy automático** de:
 
-- **Supabase Edge Functions** (`ai-industrial-architect`, `stripe-webhook`)
+- **Supabase Edge Functions** (`ai-industrial-architect`)
 - **Vercel** (frontend de produção)
+
+> O webhook do Stripe é atendido **somente** pela rota `/api/public/stripe/webhook` (Vercel). A antiga Edge Function `stripe-webhook` foi removida (auditoria F1.4); se ainda estiver publicada no projeto Supabase, remova-a com `supabase functions delete stripe-webhook`.
 
 Para que o deploy funcione, configure os **5 secrets** abaixo em:
 

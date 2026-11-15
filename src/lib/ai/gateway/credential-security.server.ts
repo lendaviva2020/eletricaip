@@ -172,7 +172,11 @@ export function inspectProviderCredential(provider: AiProviderId): ProviderCrede
     };
   }
 
-  if (PLACEHOLDER_PATTERN.test(raw) || raw.includes("PLACEHOLDER") || raw.includes("REPLACE_WITH")) {
+  if (
+    PLACEHOLDER_PATTERN.test(raw) ||
+    raw.includes("PLACEHOLDER") ||
+    raw.includes("REPLACE_WITH")
+  ) {
     return {
       provider,
       envVar,

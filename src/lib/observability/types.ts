@@ -12,7 +12,8 @@ export type { FleetRole };
  * Invariante de Segurança Permanente: Bloqueio estrito de controle físico.
  * A observabilidade apenas monitora, mede, correlaciona e relata.
  */
-export const IS_PHYSICAL_CONTROL_ALLOWED = false as const;
+import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/safety/physical-control";
+export { IS_PHYSICAL_CONTROL_ALLOWED };
 
 // -----------------------------------------------------------------------------
 // 1. Estados Canônicos de Saúde (Deterministic Health States)

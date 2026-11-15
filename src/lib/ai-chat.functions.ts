@@ -3,16 +3,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 import {
   requireAiQuota,
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { sanitizePromptText } from "@/lib/ai/context-sanitizer";
 import { assertProjectTenantAccess, loadProjectAiMemoryContext } from "@/lib/ai/memory.server";
-import {
-  getGeminiApiKey,
-  validateGeminiKey,
-} from "@/lib/ai/gemini-client.server";
+import { getGeminiApiKey, validateGeminiKey } from "@/lib/ai/gemini-client.server";
 import { gatewayExecute, gatewayStreamChat } from "@/lib/ai/gateway/ai-gateway.server";
 import {
   buildUnifiedEngineeringSystemPrompt,
@@ -39,7 +37,8 @@ export type ChatMessage = {
   content: string;
   created_at: string;
   tokens_used: number | null;
-  tool_calls?: Record<string, unknown> | null;
+  // Json (serializável): o retorno de server functions não aceita Record<string, unknown>.
+  tool_calls?: Json | null;
 };
 
 export const listConversations = createServerFn({ method: "GET" })
@@ -348,12 +347,11 @@ export const streamChat = createServerFn({ method: "POST" })
       recentLimit: 24,
     });
 
-    const gatewayMessages: Array<{ role: "user" | "assistant"; content: string }> = mem.recentTurns.map(
-      (t) => ({
+    const gatewayMessages: Array<{ role: "user" | "assistant"; content: string }> =
+      mem.recentTurns.map((t) => ({
         role: t.role === "model" ? ("assistant" as const) : ("user" as const),
         content: t.parts.map((p) => p.text).join("\n"),
-      }),
-    );
+      }));
     const sanitizedLatestPrompt = sanitizePromptText(data.prompt, 2000);
     if (
       gatewayMessages.length === 0 ||
@@ -504,24 +502,23 @@ export const sendEngineeringAgentMessage = createServerFn({ method: "POST" })
     const executedTools: Array<{
       name: string;
       ok: boolean;
-      result?: Record<string, unknown>;
+      result?: Json;
       error?: string;
     }> = [];
 
     if (res.ok && res.toolCalls && res.toolCalls.length > 0) {
       for (const tc of res.toolCalls) {
-        const toolRes = await executeAuthorizedEngineeringTool(
-          tc.name as EngineeringToolName,
-          {
-            ...tc.arguments,
-            ...(data.projectId ? { projectId: data.projectId } : {}),
-            ...(data.projectContext?.doc ? { doc: data.projectContext.doc } : {}),
-          },
-        );
+        const toolRes = await executeAuthorizedEngineeringTool(tc.name as EngineeringToolName, {
+          ...tc.arguments,
+          ...(data.projectId ? { projectId: data.projectId } : {}),
+          ...(data.projectContext?.doc ? { doc: data.projectContext.doc } : {}),
+        });
         executedTools.push({
           name: tc.name,
           ok: toolRes.ok,
-          result: toolRes.result,
+          // Resultado das ferramentas é JSON puro (doc/listas/números); tipado como Json
+          // para o retorno serializável da server function e para a coluna jsonb.
+          result: toolRes.result as Json | undefined,
           error: toolRes.error?.message,
         });
       }
@@ -537,7 +534,8 @@ export const sendEngineeringAgentMessage = createServerFn({ method: "POST" })
         {
           conversation_id: data.conversationId,
           role: "assistant",
-          content: res.text || `Ferramentas executadas: ${executedTools.map((t) => t.name).join(", ")}`,
+          content:
+            res.text || `Ferramentas executadas: ${executedTools.map((t) => t.name).join(", ")}`,
           tokens_used: res.totalTokens,
           tool_calls: {
             provider: res.provider,

@@ -422,15 +422,17 @@ describe("Gate 4.3.1 — Multi-Tenant Gateway AuthZ (Zero Client Fallback) & Tra
     store.close();
   });
 
-  it("Supabase Edge stripe-webhook throws on DB write errors and never swallows failures", () => {
-    const edgeWebhookPath = path.resolve(
-      __dirname,
-      "../../supabase/functions/stripe-webhook/index.ts",
+  it("existe um único receptor de webhook Stripe (rota /api/public; Edge Function removida — F1.4)", () => {
+    const edgeWebhookDir = path.resolve(__dirname, "../../supabase/functions/stripe-webhook");
+    expect(fs.existsSync(edgeWebhookDir)).toBe(false);
+    const ci = fs.readFileSync(path.resolve(__dirname, "../../.github/workflows/ci.yml"), "utf8");
+    expect(ci).not.toContain("functions deploy stripe-webhook");
+    const route = fs.readFileSync(
+      path.resolve(__dirname, "../../src/routes/api/public/stripe.webhook.ts"),
+      "utf8",
     );
-    const src = fs.readFileSync(edgeWebhookPath, "utf8");
-    expect(src).toContain("throw new Error(`stripe_checkout_update_failed:");
-    expect(src).toContain("throw new Error(`stripe_subscription_update_failed:");
-    expect(src).toContain("throw new Error(`stripe_invoice_upsert_failed:");
-    expect(src).toContain("stripe_webhook_events");
+    expect(route).toContain("verifyStripeSig");
+    expect(route).toContain("stripe_webhook_events");
+    expect(route).toContain("assertSupabaseWriteOk");
   });
 });

@@ -33,15 +33,26 @@ function createMockSupabase(initialDiagram: DiagramRecord) {
               }),
             }),
           }),
-          update: (patch: Partial<DiagramRecord>) => ({
-            eq: (_field: string, idVal: string) => {
-              const row = diagrams.find((d) => d.id === idVal);
-              if (row) {
-                Object.assign(row, patch);
-              }
-              return Promise.resolve({ error: null });
-            },
-          }),
+          // UPDATE condicional (F1.8): acumula filtros .eq(col, val) e só aplica o
+          // patch às linhas que satisfazem TODOS, como o PostgREST/Postgres.
+          update: (patch: Partial<DiagramRecord>) => {
+            const filters: Array<[keyof DiagramRecord, unknown]> = [];
+            const builder = {
+              eq: (field: keyof DiagramRecord, val: unknown) => {
+                filters.push([field, val]);
+                return builder;
+              },
+              select: async (_cols?: string) => {
+                const matched = diagrams.filter((d) => filters.every(([f, v]) => d[f] === v));
+                for (const row of matched) Object.assign(row, patch);
+                return {
+                  data: matched.map((r) => ({ id: r.id, version: r.version })),
+                  error: null,
+                };
+              },
+            };
+            return builder;
+          },
         };
       }
       if (table === "projects") {

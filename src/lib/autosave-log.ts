@@ -10,7 +10,8 @@ export type AutosaveEventKind =
   | "save:start"
   | "save:success"
   | "save:error"
-  | "skip:no-project";
+  | "skip:no-project"
+  | "skip:not-loaded";
 
 export interface AutosaveEvent {
   ts: number;

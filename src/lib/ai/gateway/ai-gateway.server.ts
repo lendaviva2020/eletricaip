@@ -1,6 +1,7 @@
 // Centralized ElétricAi AI Gateway, Model Router, Structured Output Validator,
 // Token/Cost Tracker, and Audit Logger.
 import type { z } from "zod";
+import type { Json } from "@/integrations/supabase/types";
 import { inspectProviderCredential, redactAiSecrets } from "./credential-security.server";
 import {
   executeProviderCall,
@@ -504,7 +505,7 @@ export async function gatewayValidateCapabilities(options?: {
     toolCalling: boolean;
     streaming: boolean;
   };
-  sampleStructuredOutput?: Record<string, unknown>;
+  sampleStructuredOutput?: Json;
   latencyMs: number;
   error?: string;
 }> {
@@ -580,7 +581,7 @@ export async function gatewayValidateCapabilities(options?: {
       toolCalling: declared.toolCalling,
       streaming: declared.streaming,
     },
-    sampleStructuredOutput: parsedJson,
+    sampleStructuredOutput: parsedJson as Json | undefined,
     latencyMs,
   };
 }
