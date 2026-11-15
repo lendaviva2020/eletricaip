@@ -52,17 +52,13 @@ export function isPowerSourceNode(node: DiagramNode): boolean {
   if (kind === "generator" || kind === "transformer") return true;
 
   // Barramentos com tag de alimentação principal ou nós de entrada
+  // Só barramentos/disjuntores podem ser "entrada" por nomenclatura. Antes qualquer
+  // nó com "ALIM" no rótulo (ex.: "Alimentador M-01") ou tag "TR-…" (ex.: rosca
+  // transportadora TR-201) virava fonte e energizava ramos com disjuntor aberto.
+  if (kind !== "busbar" && kind !== "breaker" && kind !== "disconnector") return false;
   const label = (node.label || "").toUpperCase();
-  const tag = String((node.params as any)?.tag || "").toUpperCase();
-  if (
-    label.includes("GRID") ||
-    label.includes("REDE") ||
-    label.includes("ALIM") ||
-    label.includes("FONTE") ||
-    label.includes("TRAFO") ||
-    tag.startsWith("Q0") ||
-    tag.startsWith("TR")
-  ) {
+  const tag = String(node.params?.tag ?? "").toUpperCase();
+  if (/\b(GRID|REDE|CONCESSIONARIA|ENTRADA|QGBT)\b/.test(label) || /^-?(Q0|QGBT)/.test(tag)) {
     return true;
   }
 
@@ -168,7 +164,11 @@ export function computeCircuitEnergization(
 
   // 4. Mapear adjacência de bordas (grafo bi-direcional para fluxo elétrico)
   const nodeOutgoingEdges = new Map<string, DiagramEdge[]>();
+  // Somente condutores de POTÊNCIA conduzem energia. Ligações de sinal (CLP→bobina),
+  // tubulação (P&ID) e PE não alimentam cargas — percorrê-las energizava ramos
+  // inteiros por um fio de comando, mascarando disjuntores abertos.
   for (const e of edges) {
+    if (e.kind !== "power") continue;
     const listSrc = nodeOutgoingEdges.get(e.source) ?? [];
     listSrc.push(e);
     nodeOutgoingEdges.set(e.source, listSrc);
@@ -190,8 +190,10 @@ export function computeCircuitEnergization(
     visitedNodes.add(srcId);
   }
 
-  while (queue.length > 0) {
-    const currentId = queue.shift()!;
+  // Ponteiro de leitura em vez de shift(): BFS O(V+E) em vez de O(V²).
+  let head = 0;
+  while (head < queue.length) {
+    const currentId = queue[head++];
     const currentNode = doc.nodes[currentId];
     if (!currentNode) continue;
 

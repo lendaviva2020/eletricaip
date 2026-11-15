@@ -207,7 +207,7 @@ export function validateAndParseExternalPayload(
       id: "node-limit-exceeded",
       severity: "critical",
       category: "schema",
-      message: `Quantidade de componentes (${bundle.nodes.length.toLocaleString()}) excede o limite configurado de ${limits.maxNodes.toLocaleString()} nós.`,
+      message: `Quantidade de componentes (${bundle.nodes.length.toLocaleString("pt-BR")}) excede o limite configurado de ${limits.maxNodes.toLocaleString("pt-BR")} nós.`,
       rejected: true,
     });
   }
@@ -217,7 +217,7 @@ export function validateAndParseExternalPayload(
       id: "edge-limit-exceeded",
       severity: "critical",
       category: "connection",
-      message: `Quantidade de conexões (${bundle.edges.length.toLocaleString()}) excede o limite configurado de ${limits.maxEdges.toLocaleString()} ligações.`,
+      message: `Quantidade de conexões (${bundle.edges.length.toLocaleString("pt-BR")}) excede o limite configurado de ${limits.maxEdges.toLocaleString("pt-BR")} ligações.`,
       rejected: true,
     });
   }

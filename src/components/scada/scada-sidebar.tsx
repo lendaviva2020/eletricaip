@@ -2,6 +2,7 @@
 // Contains all 11 mandatory industrial supervisory views
 
 import {
+  Engine,
   Gauge,
   TreeStructure,
   Bell,
@@ -38,6 +39,7 @@ export function ScadaSidebar() {
 
   const navItems: NavItemDef[] = [
     { id: "overview", label: "Visão Geral", icon: Gauge },
+    { id: "motors", label: "CCM — Motores", icon: Engine },
     { id: "synoptics", label: "Sinóticos Industriais", icon: TreeStructure },
     {
       id: "alarms",

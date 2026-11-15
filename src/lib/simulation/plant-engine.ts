@@ -70,6 +70,8 @@ export interface PlantState {
   generalAlarm: boolean;
   motors: Record<string, MotorSim>;
   motorIn_A: Record<string, number>;
+  /** Especificações usadas na criação — o passo itera estas, não DEFAULT_MOTORS. */
+  motorSpecs?: Record<string, PlantMotorSpec>;
   exhaustors: Record<string, ExhaustorSim>;
   events: PlantEvent[];
 }
@@ -106,7 +108,9 @@ export function defaultPlantInputs(): PlantInputs {
 export function createPlant(specs: PlantMotorSpec[] = DEFAULT_MOTORS): PlantState {
   const motors: Record<string, MotorSim> = {};
   const motorIn_A: Record<string, number> = {};
+  const motorSpecs: Record<string, PlantMotorSpec> = {};
   for (const s of specs) {
+    motorSpecs[s.id] = s;
     motors[s.id] = {
       running: false,
       energized: false,
@@ -116,7 +120,11 @@ export function createPlant(specs: PlantMotorSpec[] = DEFAULT_MOTORS): PlantStat
       starts: 0,
       fault: null,
     };
-    motorIn_A[s.id] = motorNominalCurrent({ id: s.id, power_kW: s.power_kW });
+    motorIn_A[s.id] = motorNominalCurrent({
+      id: s.id,
+      power_kW: s.power_kW,
+      voltage_V: s.voltage_V,
+    });
   }
   return {
     t_s: 0,
@@ -127,6 +135,7 @@ export function createPlant(specs: PlantMotorSpec[] = DEFAULT_MOTORS): PlantStat
     generalAlarm: false,
     motors,
     motorIn_A,
+    motorSpecs,
     exhaustors: {
       EX01: { running: false, airflow_pct: 0 },
       EX02: { running: false, airflow_pct: 0 },
@@ -277,11 +286,32 @@ export function stepPlant(prev: PlantState, inputs: PlantInputs, dtRaw: number):
 
   const busEnergized = systemOn && !estopLatched && !inputs.undervoltage;
 
+  // Specs do próprio estado: plantas criadas com specs customizadas eram
+  // silenciosamente simuladas como as 8 padrão (motores extras congelados).
+  const specs: PlantMotorSpec[] = prev.motorSpecs ? Object.values(prev.motorSpecs) : DEFAULT_MOTORS;
   const motors: Record<string, MotorSim> = {};
-  for (const spec of DEFAULT_MOTORS) {
-    const mPrev = prev.motors[spec.id] ?? createPlant([spec]).motors[spec.id];
+  for (const spec of specs) {
+    let mPrev = prev.motors[spec.id] ?? createPlant([spec]).motors[spec.id];
+    // Rearme de proteção (RESET): antes, a falha de motor era permanente — só
+    // recriando a planta. Rearme exige causa removida (sem falta injetada) e
+    // relé térmico resfriado abaixo de 85 % do limite (histerese de rearme).
+    if (
+      inputs.reset &&
+      mPrev.fault &&
+      (inputs.faultInject[spec.id] ?? "none") === "none" &&
+      mPrev.temp_C < (spec.tripTemp_C ?? 90) * 0.85
+    ) {
+      events = pushEvent(events, {
+        t,
+        kind: "estop_reset",
+        ref: spec.id,
+        message: `${spec.id} — proteção rearmada`,
+      });
+      mPrev = { ...mPrev, fault: null };
+    }
     const In =
-      prev.motorIn_A[spec.id] ?? motorNominalCurrent({ id: spec.id, power_kW: spec.power_kW });
+      prev.motorIn_A[spec.id] ??
+      motorNominalCurrent({ id: spec.id, power_kW: spec.power_kW, voltage_V: spec.voltage_V });
     const Istart = motorStartingCurrent({ id: spec.id, power_kW: spec.power_kW }, In);
     const cmd = inputs.motorCmd[spec.id] ?? true;
     const energized = busEnergized && cmd;
@@ -338,6 +368,7 @@ export function stepPlant(prev: PlantState, inputs: PlantInputs, dtRaw: number):
     generalAlarm,
     motors,
     motorIn_A: prev.motorIn_A,
+    motorSpecs: prev.motorSpecs,
     exhaustors,
     events,
   };
@@ -356,6 +387,8 @@ export function plantTags(plant: PlantState): Record<string, number | boolean> {
     tags[`${id}_CURRENT`] = Math.round(m.current_A * 10) / 10;
     tags[`${id}_SPEED`] = Math.round(m.speed_rpm);
     tags[`TEMP_${id}`] = Math.round(m.temp_C * 10) / 10;
+    // Nome canônico declarado em getPlantTagNames() (`${id}_TEMP`).
+    tags[`${id}_TEMP`] = tags[`TEMP_${id}`];
     tags[`${id}_FAULT`] = m.fault !== null;
   }
   // Compat: regras legadas do sim-canvas usam M-01/M-03 e TEMP_M01.

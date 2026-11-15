@@ -3,6 +3,7 @@
 
 export type ScadaViewId =
   | "overview" // 1. Visão Geral (ETE Sinótico Principal)
+  | "motors" // 1b. CCM — Comando de Motores (derivado do Unifilar)
   | "synoptics" // 2. Sinóticos Industriais (Setores de Processo)
   | "alarms" // 3. Alarmes (ISA-18.2)
   | "trends" // 4. Tendências (Historian Multi-pen)

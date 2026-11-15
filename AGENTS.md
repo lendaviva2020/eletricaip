@@ -51,6 +51,7 @@ O ElétricAi permite a um engenheiro criar e gerir **projetos de automação ind
 | ElétricAi Edge Gateway (Store-and-Forward)                          | ✅ (Gate 3 Edge)       | Daemon autônomo `lib/edge/gateway-manager.ts`, outbox transacional `lib/edge/buffer/sqlite-outbox.ts`, provisionamento por token descartável `lib/edge/provisioning.ts`, isolamento multi-tenant IEC 62443                                                                                                   |
 | SCADA/HMI (telas, tags, alarmes ISA-18.2, trends)                   | ✅                     | `scada-canvas.tsx`, `scada-engine.ts`, sandbox de scripts em Web Worker                                                                                                                                                                                                                                   |
 | Simulação                                                           | 🟡                     | Ladder/FBD simulam lógica real; planta 8M+2EX com motor determinístico; **circuitos de potência e PLC real não são simulados**; painel "Simulação" reúne planta, cenários, ponte e estudos                                                                                                                |
+| CCM supervisório (comando de motores)                              | ✅ (simulação)         | Aba **SCADA → CCM — Motores**: frota derivada do unifilar (`lib/simulation/motor-fleet.ts`), motor de proteção puro (`motor-protection-engine.ts`: I²t IEC 60947-4-1 por classe, magnético B/C/D, falta de fase, falha de rotação, falha de sensor PT100/encoder, subtensão sem religamento), store efêmero com espelho de contatores/disjuntores no unifilar (`motor-control-store.ts`), I/O de CLP simulado; **escrita em campo bloqueada** |
 | Digital twin 3D + telemetria + what-if                              | ✅                     | `/digital-twin`, upload GLB (bucket privado, signed URLs), flush de telemetria, Realtime                                                                                                                                                                                                                  |
 | Cálculos elétricos                                                  | ✅                     | `electrical-calc.ts`: motor, demanda, queda de tensão, dimensionamento de cabo/corrente. `electrical-sim.ts` (novo): curto-circuito IEC 60909, seletividade IEC 60947, ruptura, arco elétrico IEEE 1584, esforço térmico de partida, com painel em Simulação. **Ainda ausentes:** harmônicas, aterramento |
 | IA (architect, chat, patches, RAG normativo, créditos, rate limits) | ✅                     | `ai-architect.functions.ts`, `ai-chat.functions.ts`, `diagram/ai.functions.ts`; **upload/OCR de PDF na IA é mock**                                                                                                                                                                                        |
@@ -1314,3 +1315,22 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 6. **Equivalência e Sincronização Unifilar $\leftrightarrow$ Multifilar**:
    - A conversão de um circuito unifilar para multifilar desdobra as fases em condutores individuais de acordo com o código de cores da NBR 5410 (Preto/Cinza/Vermelho para fases, Azul Claro para Neutro, Verde/Amarelo para PE) e gera automaticamente réguas de bornes padronizadas (`-X1`) na fronteira entre painel e campo.
 
+
+---
+
+## 13. CCM SUPERVISÓRIO (Comando de Motores) — Diretrizes
+
+1. **Fonte única**: o CCM não cria motores. Cada `motor` da folha unifilar vira um acionamento; a cadeia disjuntor → contator → relé térmico/inversor é descoberta por **topologia de arestas `power`** (`discoverFeederChain`), parando em barramentos/fontes.
+2. **Integração bidirecional com o unifilar**: comandos do CCM escrevem `deviceStates` do editor (contator fecha ao ligar, disjuntor abre em curto); manobras feitas no unifilar (ex.: abrir `Q0`) desenergizam os ramais e bloqueiam partidas (`startPermissive`).
+3. **Estados visuais (ISA-101/18.2)**: cinza = parado; verde = partindo/ligado; **vermelho piscando** = falha não reconhecida; vermelho fixo = reconhecida até o rearme. Com `prefers-reduced-motion` o piscar vira hachura.
+4. **Rearme** exige causa removida, relé térmico resfriado (θ ≤ 0,7) e enrolamento < 130 °C, e **nunca religa** o motor. E-STOP derruba todos os comandos; após o rearme não há religamento automático.
+5. **Segurança**: `MCC_FIELD_WRITE_ENABLED = false`. Tudo é `SIMULATION_HALT`; o banner de simulação é obrigatório. Qualquer escrita em CLP real exige o projeto de autorização da regra 21.
+6. **Planta de demonstração** (`mcc-demo-plant.ts`) só é carregada por ação explícita, com confirmação se houver diagrama, e usa ID isolado.
+
+### Correções de engenharia (2026-11-15)
+
+- `electrical-sim.ts`: corrente de pico IEC 60909 usava `√3` (superestimava `ip` em 22,5 %); agora `ip = κ·√2·I″k`.
+- `electrical-calc.ts`: `calcDemand` ignorava rendimento (subdimensionava trafo/alimentador ~8 %); `motorNominalCurrent` não gera mais `Infinity/NaN` com entradas inválidas.
+- `diagram/electrical-simulation.ts`: energização percorria arestas de **sinal/tubulação** (contornando disjuntor aberto) e tratava rótulos como "Alimentador"/tags "TR-…" de cargas como fonte; BFS agora O(V+E).
+- `plant-engine.ts`: falhas de motor nunca rearmavam; specs customizadas eram ignoradas no passo; tag `${id}_TEMP` declarada mas não emitida. `plant-definition.ts`: aliases só copiavam valores verdadeiros (RUN=true obsoleto) e `VIBRACAO_M03` recebia rpm.
+- `importer/*`: mensagens de limite dependiam da localidade do servidor; fixadas em pt-BR.

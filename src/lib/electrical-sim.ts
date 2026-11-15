@@ -72,6 +72,8 @@ export {
 };
 
 const SQRT3 = Math.sqrt(3);
+/** √2 — converte valor eficaz (rms) em valor de crista (IEC 60909-0 eq. 54: ip = κ·√2·I″k). */
+const SQRT2 = Math.SQRT2;
 
 export interface TransformerSpec {
   power_kVA: number;
@@ -171,7 +173,8 @@ export function shortCircuitIEC60909(
   const Ik1ph = (Ik3ph * 3) / ((2 + k0) * earthPenalty);
 
   const xr = trafo.x_r_ratio ?? typicalXR(Sn);
-  const ip = peakFactorK(xr) * SQRT3 * Ik3ph;
+  // IEC 60909-0 §8.1: ip = κ · √2 · I''k (√2 = rms→crista; usar √3 superestimava ip em 22,5 %).
+  const ip = peakFactorK(xr) * SQRT2 * Ik3ph;
 
   return {
     Ik3ph_kA: round2(Ik3ph / 1000),
@@ -298,7 +301,7 @@ export function calculateCircuitFeederShortCircuit(
   const Ik2_A = (SQRT3 / 2) * Ik3_max_A;
 
   const xr_fault = X_tot_max / Math.max(1e-6, R_tot_max);
-  const ip_A = peakFactorK(xr_fault) * SQRT3 * Ik3_max_A;
+  const ip_A = peakFactorK(xr_fault) * SQRT2 * Ik3_max_A;
 
   // 4. Curto-Circuito Mínimo Fase-Neutro/Fase-Terra (Cabo quente, c_min = 0,95)
   // Impedância de loop: condutor de fase + condutor de retorno neutro/PE

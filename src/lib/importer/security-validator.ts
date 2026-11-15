@@ -54,7 +54,7 @@ export function validatePayloadSize(
   if (typeof raw === "string") {
     const lineCount = raw.split(/\r?\n/).length;
     if (lineCount > limits.maxLines) {
-      const msg = `Quantidade de linhas (${lineCount.toLocaleString()}) excede o limite configurado de ${limits.maxLines.toLocaleString()} linhas.`;
+      const msg = `Quantidade de linhas (${lineCount.toLocaleString("pt-BR")}) excede o limite configurado de ${limits.maxLines.toLocaleString("pt-BR")} linhas.`;
       return {
         isSafe: false,
         safe: false,
@@ -93,7 +93,7 @@ export function scanObjectForSecurityViolations(
 
   if (typeof obj === "string") {
     if (obj.length > limits.maxPropertyLength) {
-      const msg = `Propriedade de texto com tamanho excessivo (${obj.length.toLocaleString()} caracteres). Limite: ${limits.maxPropertyLength.toLocaleString()}.`;
+      const msg = `Propriedade de texto com tamanho excessivo (${obj.length.toLocaleString("pt-BR")} caracteres). Limite: ${limits.maxPropertyLength.toLocaleString("pt-BR")}.`;
       violations.push(msg);
       issues.push({ id: "property-length-exceeded", message: msg });
     }
@@ -130,7 +130,7 @@ export function scanObjectForSecurityViolations(
     for (let i = 0; i < obj.length; i++) {
       keyCountRef.count++;
       if (keyCountRef.count > limits.maxTotalKeys) {
-        const msg = `Quantidade excessiva de elementos na estrutura (${keyCountRef.count.toLocaleString()}). Limite: ${limits.maxTotalKeys.toLocaleString()}.`;
+        const msg = `Quantidade excessiva de elementos na estrutura (${keyCountRef.count.toLocaleString("pt-BR")}). Limite: ${limits.maxTotalKeys.toLocaleString("pt-BR")}.`;
         return {
           isSafe: false,
           safe: false,
@@ -158,7 +158,7 @@ export function scanObjectForSecurityViolations(
     for (const k of keys) {
       keyCountRef.count++;
       if (keyCountRef.count > limits.maxTotalKeys) {
-        const msg = `Quantidade excessiva de propriedades no objeto (${keyCountRef.count.toLocaleString()}). Limite: ${limits.maxTotalKeys.toLocaleString()}.`;
+        const msg = `Quantidade excessiva de propriedades no objeto (${keyCountRef.count.toLocaleString("pt-BR")}). Limite: ${limits.maxTotalKeys.toLocaleString("pt-BR")}.`;
         return {
           isSafe: false,
           safe: false,

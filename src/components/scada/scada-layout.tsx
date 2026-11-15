@@ -31,6 +31,7 @@ import { ScadaSidebar } from "./scada-sidebar";
 import { ScadaOsStatusBar } from "./scada-os-status-bar";
 import { EquipmentInspectorDrawer } from "./equipment-inspector-drawer";
 import { ScadaOverviewView } from "./views/scada-overview-view";
+import { ScadaMotorsView } from "./views/scada-motors-view";
 import { ScadaSynopticsView } from "./views/scada-synoptics-view";
 import { ScadaAlarmsView } from "./views/scada-alarms-view";
 import { ScadaTrendsView } from "./views/scada-trends-view";
@@ -345,6 +346,7 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
 
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
           {activeView === "overview" && <ScadaOverviewView />}
+          {activeView === "motors" && <ScadaMotorsView />}
           {activeView === "synoptics" && <ScadaSynopticsView />}
           {activeView === "alarms" && <ScadaAlarmsView />}
           {activeView === "trends" && <ScadaTrendsView />}

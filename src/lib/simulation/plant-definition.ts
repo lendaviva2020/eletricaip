@@ -63,18 +63,25 @@ export function mapPlantTagsToProjectTags(
     mapped[`PLANT_${key}`] = value;
   }
 
-  // Aliases para compatibilidade com regras SCADA existentes
-  if (plantTags["M01_RUN"]) mapped["M01_RUN"] = plantTags["M01_RUN"];
-  if (plantTags["M01_CURRENT"] !== undefined) mapped["M01_CURRENT"] = plantTags["M01_CURRENT"];
-  if (plantTags["M01_SPEED"] !== undefined) mapped["M01_SPEED"] = plantTags["M01_SPEED"];
-  if (plantTags["TEMP_M01"] !== undefined) mapped["TEMP_M01"] = plantTags["TEMP_M01"];
-  if (plantTags["M01_FAULT"]) mapped["M01_FAULT"] = plantTags["M01_FAULT"];
-
-  if (plantTags["M03_RUN"]) mapped["M03_RUN"] = plantTags["M03_RUN"];
-  if (plantTags["M03_SPEED"] !== undefined) mapped["VIBRACAO_M03"] = plantTags["M03_SPEED"];
-
-  if (plantTags["EX01_RUN"]) mapped["EX01_RUN"] = plantTags["EX01_RUN"];
-  if (plantTags["EX02_RUN"]) mapped["EX02_RUN"] = plantTags["EX02_RUN"];
+  // Aliases para compatibilidade com regras SCADA existentes.
+  // Copia SEMPRE que a chave existe: o guard anterior `if (plantTags[k])` só
+  // copiava valores verdadeiros — um motor que parava deixava `M01_RUN=true`
+  // obsoleto no destino. VIBRACAO_M03 recebia rpm (unidade errada); agora vem
+  // da tag de vibração derivada pelo engine (mm/s).
+  const aliases = [
+    "M01_RUN",
+    "M01_CURRENT",
+    "M01_SPEED",
+    "TEMP_M01",
+    "M01_FAULT",
+    "M03_RUN",
+    "VIBRACAO_M03",
+    "EX01_RUN",
+    "EX02_RUN",
+  ] as const;
+  for (const key of aliases) {
+    if (key in plantTags) mapped[key] = plantTags[key];
+  }
 
   return mapped;
 }

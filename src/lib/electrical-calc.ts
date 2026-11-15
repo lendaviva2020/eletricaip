@@ -53,9 +53,13 @@ export interface MotorResult extends MotorSpec {
 const ROOT3 = Math.sqrt(3);
 
 export function motorNominalCurrent(p: MotorSpec): number {
-  const U = p.voltage_V ?? 380;
-  const cos = p.cosphi ?? 0.86;
-  const eta = p.efficiency ?? 0.92;
+  // Entradas inválidas (0, negativas, NaN) caem para os padrões de placa em vez
+  // de propagar Infinity/NaN para dimensionamento de cabo e proteção.
+  const U = p.voltage_V !== undefined && p.voltage_V > 0 ? p.voltage_V : 380;
+  const cos = p.cosphi !== undefined && p.cosphi > 0 && p.cosphi <= 1 ? p.cosphi : 0.86;
+  const eta =
+    p.efficiency !== undefined && p.efficiency > 0 && p.efficiency <= 1 ? p.efficiency : 0.92;
+  if (!Number.isFinite(p.power_kW) || p.power_kW <= 0) return 0;
   return (p.power_kW * 1000) / (ROOT3 * U * cos * eta);
 }
 
@@ -1044,7 +1048,9 @@ export function calcMotor(p: MotorSpec): MotorResult {
 }
 
 export interface DemandResult {
+  /** Soma das potências de placa (eixo) — kW mecânicos. */
   totalLoad_kW: number;
+  /** Potência elétrica absorvida (Σ P/η) já aplicada a diversidade — kW elétricos. */
   diversifiedLoad_kW: number;
   apparent_kVA: number;
   current_A: number;
@@ -1061,8 +1067,16 @@ export function calcDemand(
   const U = opts.voltage_V ?? 380;
   const div = opts.diversity ?? 0.85;
   const cos = opts.cosphi ?? 0.88;
-  const total = motors.reduce((s, m) => s + m.power_kW, 0);
-  const diversified = total * div;
+  // `power_kW` de motor é potência MECÂNICA no eixo (placa). A demanda elétrica
+  // é a potência ABSORVIDA da rede: P_el = P_eixo / η. Ignorar η subdimensionava
+  // corrente de alimentador e trafo em ~8 % (η típico 0,92).
+  const total = motors.reduce((s, m) => s + Math.max(0, m.power_kW), 0);
+  const electricalInput = motors.reduce((s, m) => {
+    const eta =
+      m.efficiency !== undefined && m.efficiency > 0 && m.efficiency <= 1 ? m.efficiency : 0.92;
+    return s + Math.max(0, m.power_kW) / eta;
+  }, 0);
+  const diversified = electricalInput * div;
   const apparent = diversified / cos;
   const current = (apparent * 1000) / (ROOT3 * U);
   const trafo = TRAFOS.find((t) => t >= apparent * 1.25) ?? TRAFOS[TRAFOS.length - 1];
