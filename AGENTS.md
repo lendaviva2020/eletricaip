@@ -257,7 +257,7 @@ CRUD, duplicar, arquivar, excluir (server functions com limite por plano via `pl
 
 `lib/electrical-sim.ts` (novo, puro/determinístico, 26 testes): `shortCircuitIEC60909` (I''k3, I''k1, pico ip, fator c, X/R típico, k0 por grupo vetorial), `checkBreakingCapacity` (ruptura IEC 60947), `selectivityIEC60947` (total/parcial/nenhuma), `defaultInstantaneous` (curvas MCB B/C/D/K), `arcFlashIEEE1584` + `ppeFromEnergy` (NFPA 70E), `motorStartThermal` (I²t e ΔT normalizados por τ=120 s), `voltageDropCircuit` (limite NBR 5410). Consumido pelo painel **Estudos elétricos** (`electrical-study-panel.tsx`) que persiste em `electrical_simulation_results`.
 
-**Ausentes:** harmônicas, aterramento. Ainda não há tela de cálculos dedicada fora do modo Simulação.
+**Ausentes:** harmônicas, aterramento. Tela dedicada `/calculations` (motor/ramal, queda de tensão, curto IEC 60909, demanda/trafo) — 100 % no navegador.
 
 ### 5.8 Catálogo, documentos e relatórios
 
@@ -1343,3 +1343,11 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - **"CORRIGIR COM IA"** usa `sendRef` (função do render atual) com `forcePatch` — não use closures do primeiro render em listeners globais.
 - **eletric Studio ← unifilar** (`compact-studio/integration/unifilar-motor-program.ts`, botão "Gerar do unifilar"): página `uf-motors` idempotente com selo RS (reset dominante), contatos NF fail-safe (parada, térmico 95-96, emergência). Não reaproveita endereços/símbolos do usuário; acusa falta de I/O no hardware.
 - **Blocos do Studio corrigidos**: `HOUR_COUNTER` (alarme no 1º scan; R não apagava após o 1º intervalo), `RANDOM_GEN` (sem atraso na ligação), `PI_CONTROLLER` (bumpless Manual→Auto; reset fora de `minOut`). Motor de execução: `dt` inválido não corrompe temporizadores e o log de dados não é mais copiado a cada scan.
+
+### Demonstração, segurança e idioma (2026-11-15, 3ª rodada)
+
+- **Login de demonstração**: botão "Entrar em modo demonstração" na tela de login existe **só no servidor de desenvolvimento** (`import.meta.env.DEV`; ausente do build de produção — verificado). Abre `/workspace?projectId=00000000-0000-4000-8000-0000000000cc`, projeto local com a planta CCM que **não lê nem grava** no servidor (`isDemoProject` em `use-project-persistence.ts`). Use-o para testes E2E com Playwright (`npx vite dev --host 127.0.0.1` — o container não tem IPv6).
+- **Deploy**: todo push na `main` dispara `deploy-vercel --prod` no CI. Migrations NÃO são aplicadas pelo CI.
+- **Sem identidade fixa no código**: desvios de privilégio por e-mail foram removidos (middlewares de IA, billing, bootstrap SQL). Migration `20261115120000_remove_email_vip_bypass.sql` recria a função no banco — **pendente de `supabase db push`**. Teste de guarda em `gemini-integration.test.ts` impede reintrodução.
+- **i18n**: textos visíveis devem usar `t("ns.chave")` com a chave nos DOIS catálogos (o tipo `TranslationCatalog` obriga paridade). Constantes de módulo guardam a CHAVE, traduzida na renderização. Biblioteca elétrica: `lib/palette/component-i18n.ts`. Mensagens de evento geradas pelos motores de simulação (texto livre) seguem em pt-BR.
+- **UI**: menu "Ambientes de engenharia" é renderizado em portal (ficava atrás das barras do canvas); SCADA tem limite de 15 s ao validar contexto no servidor.

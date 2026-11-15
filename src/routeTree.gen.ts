@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiRouteImport } from './routes/ai'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as CalculationsRouteImport } from './routes/calculations'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ClientsRouteImport } from './routes/clients'
@@ -70,6 +71,11 @@ const AiRoute = AiRouteImport.update({
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalculationsRoute = CalculationsRouteImport.update({
+  id: '/calculations',
+  path: '/calculations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogRoute = CatalogRouteImport.update({
@@ -298,6 +304,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/analytics': typeof AnalyticsRoute
+  '/calculations': typeof CalculationsRoute
   '/catalog': typeof CatalogRoute
   '/chat': typeof ChatRoute
   '/clients': typeof ClientsRouteWithChildren
@@ -347,6 +354,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/analytics': typeof AnalyticsRoute
+  '/calculations': typeof CalculationsRoute
   '/catalog': typeof CatalogRoute
   '/chat': typeof ChatRoute
   '/clients': typeof ClientsRouteWithChildren
@@ -397,6 +405,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ai': typeof AiRoute
   '/analytics': typeof AnalyticsRoute
+  '/calculations': typeof CalculationsRoute
   '/catalog': typeof CatalogRoute
   '/chat': typeof ChatRoute
   '/clients': typeof ClientsRouteWithChildren
@@ -448,6 +457,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/analytics'
+    | '/calculations'
     | '/catalog'
     | '/chat'
     | '/clients'
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/analytics'
+    | '/calculations'
     | '/catalog'
     | '/chat'
     | '/clients'
@@ -546,6 +557,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/analytics'
+    | '/calculations'
     | '/catalog'
     | '/chat'
     | '/clients'
@@ -596,6 +608,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiRoute: typeof AiRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  CalculationsRoute: typeof CalculationsRoute
   CatalogRoute: typeof CatalogRoute
   ChatRoute: typeof ChatRoute
   ClientsRoute: typeof ClientsRouteWithChildren
@@ -644,6 +657,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calculations': {
+      id: '/calculations'
+      path: '/calculations'
+      fullPath: '/calculations'
+      preLoaderRoute: typeof CalculationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalog': {
@@ -1028,6 +1048,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiRoute: AiRoute,
   AnalyticsRoute: AnalyticsRoute,
+  CalculationsRoute: CalculationsRoute,
   CatalogRoute: CatalogRoute,
   ChatRoute: ChatRoute,
   ClientsRoute: ClientsRouteWithChildren,

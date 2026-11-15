@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  Calculator,
   List,
   X,
   SquaresFour,
@@ -24,6 +25,7 @@ const items = [
   { title: "Workspace", url: "/workspace", icon: Cpu, accent: true },
   { title: "IA Industrial", url: "/ai", icon: Sparkle, core: true },
   { title: "Analytics", url: "/analytics", icon: ChartBar },
+  { title: "Cálculos", url: "/calculations", icon: Calculator },
   { title: "Clientes", url: "/clients", icon: Users },
   { title: "Configurações", url: "/settings", icon: Gear },
 ];

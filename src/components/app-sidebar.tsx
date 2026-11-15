@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  Calculator,
   SquaresFour,
   FolderOpen as FolderOpenIcon,
   Cpu,
@@ -42,6 +43,7 @@ const items: NavItem[] = [
   },
   { key: "ai", defaultTitle: "IA Industrial", url: "/ai", icon: Sparkle, core: true },
   { key: "analytics", defaultTitle: "Analytics", url: "/analytics", icon: ChartBar },
+  { key: "calculations", defaultTitle: "Cálculos", url: "/calculations", icon: Calculator },
   { key: "clients", defaultTitle: "Clientes", url: "/clients", icon: Users },
   { key: "settings", defaultTitle: "Configurações", url: "/settings", icon: Gear },
 ];
