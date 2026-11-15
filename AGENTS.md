@@ -1334,3 +1334,12 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - `diagram/electrical-simulation.ts`: energização percorria arestas de **sinal/tubulação** (contornando disjuntor aberto) e tratava rótulos como "Alimentador"/tags "TR-…" de cargas como fonte; BFS agora O(V+E).
 - `plant-engine.ts`: falhas de motor nunca rearmavam; specs customizadas eram ignoradas no passo; tag `${id}_TEMP` declarada mas não emitida. `plant-definition.ts`: aliases só copiavam valores verdadeiros (RUN=true obsoleto) e `VIBRACAO_M03` recebia rpm.
 - `importer/*`: mensagens de limite dependiam da localidade do servidor; fixadas em pt-BR.
+
+### Unifilar, IA e eletric Studio (2026-11-15, 2ª rodada)
+
+- **Motor de reparo** (`connection-repair-engine.ts`): só folha unifilar e arestas `power` contam como alimentação; pareamento pelo vizinho mais próximo dentro de `MAX_PAIRING_DISTANCE` respeitando o sentido do fluxo — sem candidato plausível vira pendência em `remainingIssues` (nunca liga ramal distante). Contator prefere relé térmico > inversor/soft > motor. Disjuntor geral reconhecido pela tag `Q0`; trafo direto no barramento quando não há geral. `synthesizeDiagramDocFromProject` gera params válidos no schema.
+- **Patches da IA** (`ai-patch-sanitizer.ts`): obrigatório antes de aplicar — renomeia IDs colidentes, remove ligações em cascata, descarta arestas pendentes/laços/duplicadas e troca de tipo via update. Aplicado no servidor (`generateDiagramPatch`, que também valida o `doc` do cliente com Zod) e no `applyAiPatch` do store.
+- **Prompt da IA**: ramal DOL/estrela-triângulo exige `thermal_relay`; VFD/soft dispensam; tag `Q0` no disjuntor geral.
+- **"CORRIGIR COM IA"** usa `sendRef` (função do render atual) com `forcePatch` — não use closures do primeiro render em listeners globais.
+- **eletric Studio ← unifilar** (`compact-studio/integration/unifilar-motor-program.ts`, botão "Gerar do unifilar"): página `uf-motors` idempotente com selo RS (reset dominante), contatos NF fail-safe (parada, térmico 95-96, emergência). Não reaproveita endereços/símbolos do usuário; acusa falta de I/O no hardware.
+- **Blocos do Studio corrigidos**: `HOUR_COUNTER` (alarme no 1º scan; R não apagava após o 1º intervalo), `RANDOM_GEN` (sem atraso na ligação), `PI_CONTROLLER` (bumpless Manual→Auto; reset fora de `minOut`). Motor de execução: `dt` inválido não corrompe temporizadores e o log de dados não é mais copiado a cada scan.

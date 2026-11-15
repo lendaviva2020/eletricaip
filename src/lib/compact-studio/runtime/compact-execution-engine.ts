@@ -51,6 +51,8 @@ export class CompactExecutionEngine {
   private clock: SimulatedClock;
   private readonly dataLogs: CompactDataLogEntry[] = [];
   private lastDataLogSeqByNode = new Map<string, number>();
+  /** Visão imutável do log, recriada só quando entra registro novo (evita copiar 2000 itens por scan). */
+  private dataLogsView: readonly CompactDataLogEntry[] = [];
 
   constructor(
     private readonly model: CompactProgramModel,
@@ -100,6 +102,7 @@ export class CompactExecutionEngine {
   public reset(baseEpochMs?: number): void {
     this.clock = createSimulatedClock(baseEpochMs);
     this.dataLogs.length = 0;
+    this.dataLogsView = [];
     this.lastDataLogSeqByNode.clear();
     if (this.runtime) {
       this.runtime.reset();
@@ -107,7 +110,9 @@ export class CompactExecutionEngine {
     }
   }
 
-  public step(dtMs = this.model.cycleTimeMs): CompactRuntimeFrame {
+  public step(dtMsRaw = this.model.cycleTimeMs): CompactRuntimeFrame {
+    // dt inválido (NaN/negativo/Infinity) congelaria ou corromperia temporizadores.
+    const dtMs = Number.isFinite(dtMsRaw) && dtMsRaw > 0 ? dtMsRaw : 0;
     if (!this.runtime) {
       return {
         scans: 0,
@@ -134,6 +139,7 @@ export class CompactExecutionEngine {
     const snap = this.runtime.exportSnapshot();
 
     const activeMessages: CompactActiveMessage[] = [];
+    let logsChanged = false;
     for (const node of this.model.nodes) {
       const outs = snap.outputs[node.id];
       if (!outs) continue;
@@ -156,7 +162,13 @@ export class CompactExecutionEngine {
         outs.LAST_RECORD !== ""
       ) {
         const count = typeof outs.COUNT === "number" ? outs.COUNT : 0;
-        const prevSeq = this.lastDataLogSeqByNode.get(node.id) ?? 0;
+        let prevSeq = this.lastDataLogSeqByNode.get(node.id) ?? 0;
+        // Defensivo: se o COUNT do bloco regredir (estado do runtime recarregado),
+        // reinicia a sequência em vez de descartar todos os registros seguintes.
+        if (count < prevSeq) {
+          prevSeq = 0;
+          this.lastDataLogSeqByNode.set(node.id, 0);
+        }
         if (count > prevSeq) {
           this.lastDataLogSeqByNode.set(node.id, count);
           try {
@@ -176,6 +188,7 @@ export class CompactExecutionEngine {
               v2: parsed.v2 ?? 0,
             });
             if (this.dataLogs.length > 2000) this.dataLogs.shift();
+            logsChanged = true;
           } catch {
             // Ignore malformed log string
           }
@@ -191,12 +204,18 @@ export class CompactExecutionEngine {
       variables: snap.variables,
       outputs: snap.outputs,
       activeMessages,
-      dataLogs: [...this.dataLogs],
+      dataLogs: this.currentDataLogs(logsChanged),
     };
+  }
+
+  private currentDataLogs(changed: boolean): readonly CompactDataLogEntry[] {
+    if (changed) this.dataLogsView = Object.freeze([...this.dataLogs]);
+    return this.dataLogsView;
   }
 
   public advanceMs(totalMs: number): CompactRuntimeFrame {
     const stepMs = Math.max(1, this.model.cycleTimeMs);
+    if (!Number.isFinite(totalMs) || totalMs <= 0) return this.step(0);
     const steps = Math.max(1, Math.round(totalMs / stepMs));
     let last = this.step(stepMs);
     for (let i = 1; i < steps; i++) {

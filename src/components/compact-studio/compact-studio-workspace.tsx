@@ -12,7 +12,14 @@ import {
   ShareNetwork,
   WarningCircle,
   ShieldCheck,
+  Lightning,
 } from "@phosphor-icons/react";
+import { toast } from "sonner";
+import { useDiagramStore } from "@/lib/diagram/store";
+import {
+  UF_PAGE_ID,
+  syncMotorLogicFromUnifilar,
+} from "@/lib/compact-studio/integration/unifilar-motor-program";
 import { Button } from "@/components/ui/button";
 import { PRODUCT_NAME } from "@/lib/compact-studio/branding";
 import { useCompactStudioFeatureFlags } from "@/lib/compact-studio/feature-flags";
@@ -274,6 +281,33 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
     setSelectedNodeIds([]);
   };
 
+  const handleSyncFromUnifilar = () => {
+    const doc = useDiagramStore.getState().doc;
+    const result = syncMotorLogicFromUnifilar(model, doc);
+    if (result.motorsGenerated === 0) {
+      toast.info("Nenhum motor no unifilar", {
+        description: "Desenhe motores no Unifilar (Q → K → F → M) e gere novamente.",
+      });
+      return;
+    }
+    commitModel(result.model, `Gerar comando de ${result.motorsGenerated} motor(es) do unifilar`);
+    setActivePageId(UF_PAGE_ID);
+    setActiveTab("logic");
+    if (result.warnings.length > 0) {
+      toast.warning(
+        `${result.motorsGenerated} motor(es) gerado(s) com ${result.warnings.length} aviso(s)`,
+        {
+          description: result.warnings.slice(0, 4).join(" · "),
+        },
+      );
+    } else {
+      toast.success(`Comando de ${result.motorsGenerated} motor(es) gerado a partir do unifilar`, {
+        description:
+          "Página “Motores (unifilar)”: partida/parada com selo, térmico e emergência NF.",
+      });
+    }
+  };
+
   const handleRunVirtualNetworkTest = () => {
     const bus = new VirtualNetworkCoordinator([
       { stationId: "st1", name: "Painel Local", ipAddress: "10.0.0.10", model },
@@ -300,6 +334,17 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
           <span className="text-[11px] font-mono text-muted-foreground">
             {model.hardware.basePartCode}
           </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSyncFromUnifilar}
+            className="h-7 text-xs gap-1.5"
+            title="Gera/atualiza a página “Motores (unifilar)” com o comando de cada motor do diagrama unifilar"
+            data-testid="compact-sync-unifilar"
+          >
+            <Lightning className="h-3.5 w-3.5" />
+            Gerar do unifilar
+          </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label={PRODUCT_NAME}>

@@ -548,7 +548,8 @@ export function compactBlockDefinitions(): readonly BlockDefinition[] {
           c.state.delayMs = Math.round(minMs + r.unit * (maxMs - minMs));
           c.state.accum = 0;
           c.state.prevTrg = trg;
-          if (trg) c.state.q = true;
+          // A saída só muda após o atraso aleatório sorteado (ligação E desligamento).
+          // Antes ligava imediatamente na borda de subida.
           return { Q: asBool(c.state.q) };
         }
 
@@ -664,12 +665,15 @@ export function compactBlockDefinitions(): readonly BlockDefinition[] {
         { name: "OT_MIN", type: "INT" },
         { name: "MN_MIN", type: "INT" },
       ],
-      () => ({ otMs: 0, mnMs: 0 }),
+      // mnMs = -1: intervalo ainda não carregado (o 1º scan carrega MI). Antes o
+      // estado nascia com mnMs = 0 e o alarme de manutenção disparava no 1º scan.
+      () => ({ otMs: 0, mnMs: -1 }),
       (c) => {
         const miMin = Math.max(1, asNum(c.params.maintenanceMinutes, 60));
         const miMs = miMin * 60_000;
         let otMs = asNum(c.state.otMs, 0);
-        let mnMs = asNum(c.state.mnMs, 0);
+        let mnMs = asNum(c.state.mnMs, -1);
+        if (mnMs < 0) mnMs = miMs;
 
         if (asBool(c.inputs.RAL)) {
           otMs = 0;
@@ -681,15 +685,14 @@ export function compactBlockDefinitions(): readonly BlockDefinition[] {
           mnMs = Math.max(0, mnMs - c.dtMs);
         }
 
-        if (mnMs === 0 && otMs === 0 && !asBool(c.inputs.RAL)) {
-          mnMs = miMs;
-        }
-
         c.state.otMs = otMs;
         c.state.mnMs = mnMs;
         const otMin = Math.floor(otMs / 60_000);
         const mnRemMin = Math.ceil(mnMs / 60_000);
-        return { Q: otMs >= miMs || mnMs === 0, OT_MIN: otMin, MN_MIN: mnRemMin };
+        // Q = manutenção vencida (tempo restante esgotado). R recarrega MI e apaga
+        // o alarme preservando o horímetro total OT; RAL zera tudo. Antes
+        // `otMs >= MI` mantinha Q preso para sempre após o 1º intervalo.
+        return { Q: mnMs === 0, OT_MIN: otMin, MN_MIN: mnRemMin };
       },
     ),
     compactFb(
@@ -927,20 +930,24 @@ export function compactBlockDefinitions(): readonly BlockDefinition[] {
       (c) => {
         const minOut = asNum(c.params.minOut, 0);
         const maxOut = asNum(c.params.maxOut, 1000);
-        if (asBool(c.inputs.R)) {
-          c.state.integral = 0;
-          c.state.aq = 0;
-          return { AQ: 0 };
-        }
-        if (!asBool(c.inputs.A_M)) {
-          const manual = Math.max(minOut, Math.min(maxOut, asNum(c.inputs.MQ, 0)));
-          c.state.integral = manual;
-          c.state.aq = manual;
-          return { AQ: manual };
-        }
         const dirSign = asBool(c.params.reverseActing) ? -1 : 1;
         const error = (asNum(c.inputs.SP) - asNum(c.inputs.PV)) * dirSign;
         const kc = asNum(c.params.kc, 1);
+        if (asBool(c.inputs.R)) {
+          // Reset respeita a faixa de saída (minOut pode ser > 0).
+          const resetOut = Math.max(minOut, Math.min(maxOut, 0));
+          c.state.integral = resetOut;
+          c.state.aq = resetOut;
+          return { AQ: resetOut };
+        }
+        if (!asBool(c.inputs.A_M)) {
+          const manual = Math.max(minOut, Math.min(maxOut, asNum(c.inputs.MQ, 0)));
+          // Transferência suave (bumpless) Manual→Auto: o integral é pré-carregado
+          // para que P + I = valor manual no 1º scan em automático. Antes saltava Kc·erro.
+          c.state.integral = manual - kc * error;
+          c.state.aq = manual;
+          return { AQ: manual };
+        }
         const tiMs = Math.max(100, asTimeMs(c.params.tiMs, 10_000));
         const pTerm = kc * error;
         let integral = asNum(c.state.integral, 0) + (kc * error * c.dtMs) / tiMs;
