@@ -42870,11 +42870,11 @@
               },
               {
                 "Number": 20,
-                "Content": "SUPABASE_JWT_SECRET=SEU_JWT_SECRET_SE_HOUVER",
+                "Content": "SUPABASE_JWT_SECRET=<REDACTED_BY_AUDIT_P0-SEC-020>",
                 "IsCause": false,
                 "Annotation": "",
                 "Truncated": false,
-                "Highlighted": "SUPABASE_JWT_SECRET=SEU_JWT_SECRET_SE_HOUVER",
+                "Highlighted": "SUPABASE_JWT_SECRET=<REDACTED_BY_AUDIT_P0-SEC-020>",
                 "FirstCause": false,
                 "LastCause": false
               }

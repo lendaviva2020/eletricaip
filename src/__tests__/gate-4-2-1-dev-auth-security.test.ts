@@ -3,9 +3,16 @@ import { isDevAuthAllowed } from "@/integrations/supabase/auth-middleware";
 
 describe("ELÉTRICAI INDUSTRIAL OS — GATE 4.2.1: Dev Auth Bypass Security Hardening", () => {
   const originalEnv = process.env.NODE_ENV;
+  const originalOptIn = process.env.ELETRICAI_ALLOW_DEV_AUTH_BYPASS;
+
+  beforeEach(() => {
+    process.env.ELETRICAI_ALLOW_DEV_AUTH_BYPASS = "true";
+  });
 
   afterEach(() => {
     process.env.NODE_ENV = originalEnv;
+    if (originalOptIn === undefined) delete process.env.ELETRICAI_ALLOW_DEV_AUTH_BYPASS;
+    else process.env.ELETRICAI_ALLOW_DEV_AUTH_BYPASS = originalOptIn;
     vi.restoreAllMocks();
   });
 
@@ -28,6 +35,14 @@ describe("ELÉTRICAI INDUSTRIAL OS — GATE 4.2.1: Dev Auth Bypass Security Hard
       expect(isDevAuthAllowed()).toBe(false);
 
       process.env.NODE_ENV = "preview";
+      expect(isDevAuthAllowed()).toBe(false);
+    });
+
+    it("returns FALSE in development/test without explicit ELETRICAI_ALLOW_DEV_AUTH_BYPASS opt-in", () => {
+      delete process.env.ELETRICAI_ALLOW_DEV_AUTH_BYPASS;
+      process.env.NODE_ENV = "development";
+      expect(isDevAuthAllowed()).toBe(false);
+      process.env.NODE_ENV = "test";
       expect(isDevAuthAllowed()).toBe(false);
     });
 

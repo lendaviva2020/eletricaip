@@ -12,6 +12,15 @@ const DEV_AUDITOR_PLANTS = [
   "plant_subestacao_sp",
 ];
 
+async function isPlatformAdminInDatabase(supabase: AuthContext["supabase"]): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc("is_platform_admin");
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
+
 function mapTenantRoleToFleetRole(role: string | null | undefined): FleetRole {
   switch ((role ?? "").toLowerCase()) {
     case "owner":
@@ -60,8 +69,13 @@ export async function resolveAuthenticatedFleetContext(
   const email =
     typeof claims?.["email"] === "string" ? claims["email"] : `${userId}@authenticated.local`;
 
-  // Platform Admin elevation ONLY from server-signed JWT app_metadata claim
-  if (claims?.["platform_role"] === "PLATFORM_ADMIN") {
+  // Platform Admin elevation: the JWT claim alone is NOT trusted (a forged/compromised
+  // token could carry it — audit P0-SEC-020). The role must be confirmed in the
+  // database via the SECURITY DEFINER RPC is_platform_admin (platform_admins table).
+  if (
+    claims?.["platform_role"] === "PLATFORM_ADMIN" &&
+    (await isPlatformAdminInDatabase(supabase))
+  ) {
     return {
       userId,
       email,

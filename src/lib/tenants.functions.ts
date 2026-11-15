@@ -261,13 +261,25 @@ async function requireTenantAdmin(supabase: any, userId: string): Promise<string
   return tenantId;
 }
 
+const ROLE_RANK: Record<string, number> = {
+  viewer: 1,
+  operator: 2,
+  member: 2,
+  engineer: 3,
+  admin: 4,
+  owner: 5,
+};
+
 export const acceptInviteByToken = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveSession])
   .inputValidator((input) => z.object({ token: z.string().min(8).max(128) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId, claims } = context;
-    const email = String(claims.email ?? "").toLowerCase();
+    const { supabase, userId, activeUser } = context;
+    // Auditoria F0.7: identidade e confirmação de e-mail vêm do GoTrue (getUser),
+    // não de claims do JWT. Sem e-mail confirmado, o convite não pode ser aceito.
+    const email = String(activeUser.email ?? "").toLowerCase();
     if (!email) throw new Error("user_not_found");
+    if (!activeUser.email_confirmed_at) throw new Error("email_not_confirmed");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -282,11 +294,23 @@ export const acceptInviteByToken = createServerFn({ method: "POST" })
     if (!invite) throw new Error("invalid_or_expired_invite");
     if (invite.email.toLowerCase() !== email) throw new Error("email_mismatch");
 
+    // Auditoria F0.7: nunca rebaixar um papel existente (ex.: owner aceitando convite de viewer).
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from("tenant_memberships")
+      .select("role")
+      .eq("tenant_id", invite.tenant_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (existingError) throw new Error(existingError.message);
+    const currentRank = existing?.role ? (ROLE_RANK[existing.role] ?? 0) : 0;
+    const inviteRank = ROLE_RANK[invite.role] ?? 0;
+    const effectiveRole = existing?.role && currentRank >= inviteRank ? existing.role : invite.role;
+
     const { error: membershipError } = await supabaseAdmin.from("tenant_memberships").upsert(
       {
         tenant_id: invite.tenant_id,
         user_id: userId,
-        role: invite.role,
+        role: effectiveRole,
         accepted_at: new Date().toISOString(),
       },
       { onConflict: "tenant_id,user_id" },
@@ -300,7 +324,7 @@ export const acceptInviteByToken = createServerFn({ method: "POST" })
       .eq("id", invite.id);
     if (updateInviteError) throw new Error(updateInviteError.message);
 
-    const r = { tenant_id: invite.tenant_id, role: invite.role };
+    const r = { tenant_id: invite.tenant_id, role: effectiveRole };
     if (r.tenant_id) {
       await supabase.from("profiles").update({ tenant_id: r.tenant_id }).eq("id", userId);
     }

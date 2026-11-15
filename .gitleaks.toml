@@ -1,0 +1,38 @@
+# Configuração do gitleaks (auditoria Fase 0 / F0.6).
+# Estende as regras padrão e adiciona detecção de atribuições de segredos
+# simétricos (ex.: SUPABASE_JWT_SECRET=...), classe de vazamento que as regras
+# padrão não detectaram em docs/security/GATE_3_8_2_1_TRIVY_EVIDENCE.json.
+title = "eletricai gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "env-style-secret-assignment"
+description = "Atribuição de segredo em estilo .env (JWT/SERVICE_ROLE/WEBHOOK/ACCESS_TOKEN/SECRET_KEY)"
+regex = '''(?i)\b[A-Z0-9_]*(JWT_SECRET|SERVICE_ROLE_KEY|WEBHOOK_SECRET|ACCESS_TOKEN|SECRET_KEY|REST_TOKEN|API_KEY)\b\s*[=:]\s*["']?([A-Za-z0-9_\-./+=]{16,})'''
+secretGroup = 2
+entropy = 3.0
+keywords = ["jwt_secret", "service_role_key", "webhook_secret", "access_token", "secret_key", "rest_token", "api_key"]
+  [rules.allowlist]
+  description = "Placeholders documentados e referências a variáveis (não valores)"
+  regexes = ['''(?i)(placeholder|your[-_]|example|changeme|replace[-_]?with|<redacted|xxxx)''']
+  stopwords = ["process.env", "resolveservicerolekey", "dev-access-token", "import.meta.env"]
+
+[[rules]]
+id = "supabase-personal-access-token"
+description = "Supabase personal access token (Management API)"
+regex = '''\bsbp_[a-f0-9]{40}\b'''
+keywords = ["sbp_"]
+
+[allowlist]
+description = "Fixtures de teste, anon key pública e inventário de UI"
+paths = [
+  '''(^|/)src/__tests__/''',
+  '''(^|/)src/lib/.+/__tests__/''',
+  '''(^|/)tests/e2e/''',
+  # Anon key pública do Supabase (pública por design; fallback documentado em env.ts)
+  '''(^|/)src/integrations/supabase/env\.ts$''',
+  # Inventário de botões (nomes acessíveis de UI, não segredos)
+  '''(^|/)docs/engineering/button_inventory_gate42\.json$''',
+]

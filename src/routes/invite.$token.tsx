@@ -36,7 +36,12 @@ function AcceptInvitePage() {
         setTimeout(() => navigate({ to: "/dashboard" }), 1200);
       } catch (e) {
         if (!mounted) return;
-        setError((e as Error).message);
+        const message = (e as Error).message;
+        setError(
+          message.includes("email_not_confirmed")
+            ? "Confirme seu e-mail (link enviado no cadastro) antes de aceitar o convite."
+            : message,
+        );
         setStatus("error");
       }
     }

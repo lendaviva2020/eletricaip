@@ -10,6 +10,20 @@ import type { AuthContext } from "./auth-middleware";
 import { checkRateLimit } from "@/lib/security/rate-limiter.server";
 import { recordAiDecision } from "@/lib/security/ai-metrics.server";
 
+/**
+ * Isenção de cota/burst apenas para platform admins confirmados no banco
+ * (RPC SECURITY DEFINER is_platform_admin). Nunca por e-mail ou claim do JWT
+ * (auditoria P1-SEC-053).
+ */
+async function isPlatformAdminFromDatabase(authCtx: AuthContext): Promise<boolean> {
+  try {
+    const { data, error } = await authCtx.supabase.rpc("is_platform_admin");
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
+
 export const requireAiQuota = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
@@ -17,8 +31,7 @@ export const requireAiQuota = createMiddleware({ type: "function" })
     if (request?.method === "GET") return next();
 
     const authCtx = context as unknown as AuthContext;
-    const userEmail = String(authCtx.claims?.email ?? "").toLowerCase();
-    if (userEmail === "989111474fe@gmail.com") {
+    if (await isPlatformAdminFromDatabase(authCtx)) {
       return next();
     }
 
@@ -90,8 +103,7 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
     const authCtx = context as unknown as AuthContext;
-    const userEmail = String(authCtx.claims?.email ?? "").toLowerCase();
-    if (userEmail === "989111474fe@gmail.com") {
+    if (await isPlatformAdminFromDatabase(authCtx)) {
       return next();
     }
     const userId = authCtx.userId;

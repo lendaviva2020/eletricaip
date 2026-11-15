@@ -17,6 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Auditoria Fase 0 / F0.6: varredura de segredos no repositório inteiro
+      # (não só src/). Config em .gitleaks.toml (regras padrão + atribuições
+      # *_JWT_SECRET/SERVICE_ROLE/... e PAT sbp_ do Supabase).
+      - name: Secret scan (gitleaks, working tree, antes de instalar node_modules)
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            dir /repo --config /repo/.gitleaks.toml --redact --no-banner
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -70,6 +78,8 @@ jobs:
         run: bunx playwright install chromium --with-deps
 
       - name: Run Playwright Security & Core E2E Suite
+        env:
+          ELETRICAI_ALLOW_DEV_AUTH_BYPASS: "true"
         run: |
           bun run dev -- --host 127.0.0.1 --port 3000 &
           SERVER_PID=$!

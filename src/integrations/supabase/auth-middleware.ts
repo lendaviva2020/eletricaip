@@ -51,9 +51,14 @@ export interface ActiveSessionContext extends AuthContext {
  * 1. O bypass somente pode existir em ambiente local de desenvolvimento ou teste.
  * 2. Em produção (process.env.NODE_ENV === "production"), é permanentemente desabilitado.
  * 3. Falha fechado: se NODE_ENV for indefinido, ausente ou diferente de 'development'/'test', rejeita.
+ * 4. Opt-in explícito (auditoria P1-SEC-002): exige ELETRICAI_ALLOW_DEV_AUTH_BYPASS=true.
+ *    Um deploy de preview/self-host com NODE_ENV=development não habilita o bypass sozinho.
  */
 export function isDevAuthAllowed(): boolean {
-  if (process.env.VERCEL_ENV === "production") {
+  if (process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview") {
+    return false;
+  }
+  if (process.env.ELETRICAI_ALLOW_DEV_AUTH_BYPASS !== "true") {
     return false;
   }
   const env = process.env.NODE_ENV;
@@ -157,22 +162,11 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
         }
         applyPayload(payload as Record<string, unknown>);
       } catch {
-        const legacySecret = process.env["SUPABASE_JWT_SECRET"];
-        if (legacySecret) {
-          try {
-            const { payload } = await jwtVerify(token, new TextEncoder().encode(legacySecret), {
-              issuer,
-              audience: "authenticated",
-              algorithms: ["HS256"],
-            });
-            if (payload["role"] === "authenticated") {
-              applyPayload(payload as Record<string, unknown>);
-            }
-          } catch {
-            /* cai no fallback remoto abaixo */
-          }
-        }
-
+        // Segurança (auditoria P0-SEC-020): não há mais verificação local HS256 com
+        // SUPABASE_JWT_SECRET. Um segredo simétrico vazado permitiria forjar tokens
+        // aceitos aqui. Tokens que não validam via JWKS assimétrico são confirmados
+        // de forma autoritativa no GoTrue (getUser), que rejeita tokens forjados
+        // após a rotação do segredo do projeto.
         if (!userId) {
           const { data, error } = await supabase.auth.getUser(token);
           if (error || !data.user) {

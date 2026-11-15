@@ -194,8 +194,8 @@ describe("Google Gemini Integration — Server-side Configuration & Resilience",
     });
   });
 
-  describe("VIP Access Liberation for 989111474fe@gmail.com", () => {
-    it("identifies 989111474fe@gmail.com for unrestricted access and platform admin", async () => {
+  describe("Platform admin resolution", () => {
+    it("exposes getIsPlatformAdmin (database-backed, no hardcoded identities)", async () => {
       const { getIsPlatformAdmin } = await import("@/lib/billing.functions");
       expect(typeof getIsPlatformAdmin).toBe("function");
     });
