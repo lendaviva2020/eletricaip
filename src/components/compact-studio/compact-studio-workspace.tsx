@@ -66,6 +66,11 @@ export interface CompactStudioWorkspaceProps {
   readonly projectId?: string;
 }
 
+/** Falhas do worker de execução (encerrado, ocupado, timeout) não podem vazar como erro não tratado. */
+function reportRuntimeError(err: unknown): void {
+  console.warn("[eletric Studio] operação do runtime falhou:", err);
+}
+
 export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioWorkspaceProps) {
   const flags = useCompactStudioFeatureFlags();
   const storedCompact = useUnifiedProjectStore((s) => s.doc.compactStudio);
@@ -150,6 +155,12 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
         if (!cancelled && frame) {
           setLiveFrame(frame);
         }
+      })
+      .catch((err: unknown) => {
+        // Worker encerrado (desmontagem) ou recarga sobreposta por edição rápida:
+        // a próxima mudança do modelo recarrega. Antes a rejeição vazava como
+        // erro não tratado na página.
+        if (!cancelled) console.warn("[eletric Studio] recarga do runtime falhou:", err);
       });
     return () => {
       cancelled = true;
@@ -171,12 +182,18 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
       () => {
         const client = runtimeClientRef.current;
         if (!client) return;
-        void client.step(model.cycleTimeMs).then((frame) => {
-          if (!frame) return;
-          setLiveFrame(frame);
-          setHistoryFrames((prev) => [...prev.slice(-119), frame]);
-          publishCompactFrameToRuntimeStore(model, frame);
-        });
+        void client
+          .step(model.cycleTimeMs)
+          .then((frame) => {
+            if (!frame) return;
+            setLiveFrame(frame);
+            setHistoryFrames((prev) => [...prev.slice(-119), frame]);
+            publishCompactFrameToRuntimeStore(model, frame);
+          })
+          .catch((err: unknown) => {
+            // Um scan perdido não derruba a simulação; o próximo ciclo tenta de novo.
+            console.warn("[eletric Studio] scan do runtime falhou:", err);
+          });
       },
       Math.max(20, model.cycleTimeMs),
     );
@@ -530,15 +547,19 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
                 .then((f) => {
                   setLiveFrame(f ?? null);
                   setHistoryFrames([]);
-                });
+                })
+                .catch(reportRuntimeError);
             }}
             onStep={(dtMs) => {
-              void runtimeClientRef.current?.step(dtMs ?? model.cycleTimeMs).then((f) => {
-                if (!f) return;
-                setLiveFrame(f);
-                setHistoryFrames((prev) => [...prev.slice(-119), f]);
-                publishCompactFrameToRuntimeStore(model, f);
-              });
+              void runtimeClientRef.current
+                ?.step(dtMs ?? model.cycleTimeMs)
+                .then((f) => {
+                  if (!f) return;
+                  setLiveFrame(f);
+                  setHistoryFrames((prev) => [...prev.slice(-119), f]);
+                  publishCompactFrameToRuntimeStore(model, f);
+                })
+                .catch(reportRuntimeError);
             }}
             onJumpClockMs={(targetEpoch) => {
               void runtimeClientRef.current
@@ -546,7 +567,8 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
                 .then(() => runtimeClientRef.current?.step(0))
                 .then((f) => {
                   if (f) setLiveFrame(f);
-                });
+                })
+                .catch(reportRuntimeError);
             }}
             onSetInput={(addr, val) => {
               if (recording) {
@@ -556,12 +578,15 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
                   value: val,
                 });
               }
-              void runtimeClientRef.current?.step(model.cycleTimeMs, { [addr]: val }).then((f) => {
-                if (f) {
-                  setLiveFrame(f);
-                  publishCompactFrameToRuntimeStore(model, f);
-                }
-              });
+              void runtimeClientRef.current
+                ?.step(model.cycleTimeMs, { [addr]: val })
+                .then((f) => {
+                  if (f) {
+                    setLiveFrame(f);
+                    publishCompactFrameToRuntimeStore(model, f);
+                  }
+                })
+                .catch(reportRuntimeError);
             }}
             onToggleForce={(nodeId, val) => {
               if (val === null) {
@@ -570,10 +595,10 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
                   delete next[nodeId];
                   return next;
                 });
-                void runtimeClientRef.current?.unforce(nodeId, "OUT");
+                void runtimeClientRef.current?.unforce(nodeId, "OUT").catch(reportRuntimeError);
               } else {
                 setForcedNodes((prev) => ({ ...prev, [nodeId]: val }));
-                void runtimeClientRef.current?.force(nodeId, "OUT", val);
+                void runtimeClientRef.current?.force(nodeId, "OUT", val).catch(reportRuntimeError);
               }
             }}
             onToggleRecord={() => {
