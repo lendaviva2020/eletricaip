@@ -1,8 +1,21 @@
 // Deterministic Electrical Connection Repair Engine
 // Standards: IEC 60947, IEC 60204-1, NBR 5410
-// Automatically detects missing mandatory links in engineering topologies and synthesizes valid connections
-
-import type { DiagramDoc, DiagramNode, DiagramEdge } from "../schema";
+//
+// Detecta ligações de POTÊNCIA obrigatórias ausentes em ramais industriais
+// típicos e as sintetiza. Usado pela geração/correção com IA, importador e
+// pela recuperação de projetos sem ligações.
+//
+// Regras (AGENTS.md §12.1):
+//  • Só a folha UNIFILAR e só arestas `power` contam: um fio de comando
+//    (CLP → bobina) não "alimenta" o contator.
+//  • Pareamento pelo candidato MAIS PRÓXIMO dentro de um raio máximo, com
+//    preferência pelo sentido do fluxo (montante acima, jusante abaixo). Sem
+//    candidato plausível → NÃO liga (reporta pendência). Ligar "qualquer
+//    disjuntor livre" criava cruzamentos fantasmas entre ramais distantes.
+//  • Cadeias: Q → K → F → M ; Q → K → (VFD|SS) → M ; Q → (VFD|SS) → M ; Q → PSU.
+//  • Infeed: TR → Q0 → Barramento (ou TR → Barramento sem disjuntor geral).
+import type { DiagramDoc, DiagramNode, DiagramEdge, NodeKind, NodeParams } from "../schema";
+import { NodeParamsSchema } from "../schema";
 import { validateElectricalTopology } from "./graph-validator";
 import { createDeterministicConnection, connectBusbarToBranches } from "./connection-engine";
 
@@ -13,337 +26,234 @@ export interface RepairResult {
   remainingIssues: string[];
 }
 
+/** Raio máximo (px de canvas) para considerar dois equipamentos do mesmo ramal. */
+export const MAX_PAIRING_DISTANCE = 900;
+/** Penalidade por candidato no sentido contrário ao fluxo (ex.: motor ACIMA do contator). */
+const WRONG_DIRECTION_PENALTY = 600;
+
+const MAIN_BREAKER_PATTERN = /\b(geral|main|qgbt|qf0|dj0)\b|^-?q0\b/i;
+
+function numericParam(node: DiagramNode, key: string): number {
+  const v = (node.params as Record<string, unknown>)[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+function isMainBreakerByName(b: DiagramNode): boolean {
+  return [b.label, b.params.tag, b.id].some(
+    (s) => typeof s === "string" && MAIN_BREAKER_PATTERN.test(s),
+  );
+}
+
 /**
- * Deterministically analyzes the diagram, finds broken or missing links in standard
- * industrial branch topologies, and generates the necessary connections.
+ * Custo de pareamento: distância Manhattan com peso menor na vertical
+ * (ramais são colunas) e penalidade quando o candidato está no lado errado.
  */
+function pairingCost(from: DiagramNode, to: DiagramNode, direction: "down" | "up"): number {
+  const dx = Math.abs(to.position.x - from.position.x);
+  const dyRaw = to.position.y - from.position.y;
+  const wrong = direction === "down" ? dyRaw < 0 : dyRaw > 0;
+  return dx + Math.abs(dyRaw) * 0.5 + (wrong ? WRONG_DIRECTION_PENALTY : 0);
+}
+
 export function repairDiagramConnections(doc: DiagramDoc): RepairResult {
   const nextDoc: DiagramDoc = {
     ...doc,
     nodes: { ...doc.nodes },
     edges: { ...doc.edges },
   };
-
   const addedEdges: DiagramEdge[] = [];
-  const nodes = Object.values(nextDoc.nodes).filter(
-    (n) => n.sheet === "unifilar" || !n.id.startsWith("mf_"),
-  );
+  const pending: string[] = [];
 
-  function hasEdgeBetween(srcId: string, tgtId: string): boolean {
-    return Object.values(nextDoc.edges).some(
-      (e) =>
-        (e.source === srcId && e.target === tgtId) || (e.source === tgtId && e.target === srcId),
-    );
-  }
+  const nodes = Object.values(nextDoc.nodes).filter((n) => n.sheet === "unifilar");
+  const byKind = (k: NodeKind) => nodes.filter((n) => n.params.kind === k);
 
-  function getIncomingEdges(nodeId: string): DiagramEdge[] {
-    return Object.values(nextDoc.edges).filter((e) => e.target === nodeId);
-  }
+  // Índices de grau de potência mantidos incrementalmente (O(1) por consulta).
+  const powerIn = new Map<string, number>();
+  const powerOut = new Map<string, number>();
+  const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const linked = new Set<string>();
+  const indexEdge = (e: DiagramEdge) => {
+    if (e.kind !== "power" || e.sheet !== "unifilar") return;
+    powerOut.set(e.source, (powerOut.get(e.source) ?? 0) + 1);
+    powerIn.set(e.target, (powerIn.get(e.target) ?? 0) + 1);
+    linked.add(pairKey(e.source, e.target));
+  };
+  for (const e of Object.values(nextDoc.edges)) indexEdge(e);
 
-  function getOutgoingEdges(nodeId: string): DiagramEdge[] {
-    return Object.values(nextDoc.edges).filter((e) => e.source === nodeId);
-  }
+  const hasFeeder = (id: string) => (powerIn.get(id) ?? 0) > 0;
+  const hasLoad = (id: string) => (powerOut.get(id) ?? 0) > 0;
 
-  // 1. Identify Main Breaker and Busbar
-  const busbar = nodes.find((n) => n.params.kind === "busbar");
-  const breakers = nodes.filter((n) => n.params.kind === "breaker");
-  const contactors = nodes.filter((n) => n.params.kind === "contactor");
-  const thermalRelays = nodes.filter((n) => n.params.kind === "thermal_relay");
-  const motors = nodes.filter((n) => n.params.kind === "motor");
-  const vfds = nodes.filter((n) => n.params.kind === "vfd");
-  const softstarters = nodes.filter((n) => n.params.kind === "softstarter");
-  const psus = nodes.filter((n) => n.params.kind === "psu");
-  const transformers = nodes.filter((n) => n.params.kind === "transformer");
-
-  // 1.1 Infeed to Busbar: Transformer -> Main Breaker -> Busbar
-  if (busbar) {
-    const busInEdges = getIncomingEdges(busbar.id);
-    if (busInEdges.length === 0) {
-      // Find a main breaker (one with highest nominal current or labeled 'GERAL' / 'MAIN')
-      const mainBreaker =
-        breakers.find((b) => /geral|main|qgbt|qf0|dj0/i.test(b.label || b.id)) ??
-        breakers.sort((a, b) => ((b.params as any).in_A ?? 0) - ((a.params as any).in_A ?? 0))[0];
-
-      if (mainBreaker && !hasEdgeBetween(mainBreaker.id, busbar.id)) {
-        const edge = createDeterministicConnection(mainBreaker, busbar, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edge.id] = edge;
-        addedEdges.push(edge);
-
-        // If transformer exists and main breaker has no incoming, link Transformer -> Main Breaker
-        if (transformers.length > 0) {
-          const trafo = transformers[0];
-          if (
-            getIncomingEdges(mainBreaker.id).length === 0 &&
-            !hasEdgeBetween(trafo.id, mainBreaker.id)
-          ) {
-            const trEdge = createDeterministicConnection(trafo, mainBreaker, {
-              sourcePort: "B",
-              targetPort: "T",
-            });
-            nextDoc.edges[trEdge.id] = trEdge;
-            addedEdges.push(trEdge);
-          }
-        }
-      }
-    }
-
-    // 1.2 Busbar to Branch Breakers
-    // Branch breakers are breakers other than the main breaker that have NO incoming connection
-    const busInBreakerId = getIncomingEdges(busbar.id)[0]?.source;
-    const branchBreakers = breakers.filter(
-      (b) => b.id !== busInBreakerId && getIncomingEdges(b.id).length === 0,
+  const addEdge = (edge: DiagramEdge): boolean => {
+    if (linked.has(pairKey(edge.source, edge.target)) || nextDoc.edges[edge.id]) return false;
+    const e: DiagramEdge = { ...edge, sheet: "unifilar", kind: "power" };
+    nextDoc.edges[e.id] = e;
+    addedEdges.push(e);
+    indexEdge(e);
+    return true;
+  };
+  const connect = (src: DiagramNode, tgt: DiagramNode) =>
+    addEdge(
+      createDeterministicConnection(src, tgt, {
+        sourcePort: "B",
+        targetPort: "T",
+        sheet: "unifilar",
+      }),
     );
 
-    if (branchBreakers.length > 0) {
-      const busEdges = connectBusbarToBranches(busbar, branchBreakers);
-      for (const e of busEdges) {
-        if (!hasEdgeBetween(e.source, e.target)) {
-          nextDoc.edges[e.id] = e;
-          addedEdges.push(e);
-        }
-      }
-    } else {
-      // If no branch breakers exist, connect busbar directly to unpowered branch devices
-      const directBranchDevices = [...contactors, ...vfds, ...softstarters, ...motors].filter(
-        (d) => getIncomingEdges(d.id).length === 0,
-      );
-      if (directBranchDevices.length > 0) {
-        const busEdges = connectBusbarToBranches(busbar, directBranchDevices);
-        for (const e of busEdges) {
-          if (!hasEdgeBetween(e.source, e.target)) {
-            nextDoc.edges[e.id] = e;
-            addedEdges.push(e);
-          }
-        }
+  /** Candidato mais próximo que satisfaz `accept`, dentro do raio máximo. */
+  const nearest = (
+    from: DiagramNode,
+    pool: DiagramNode[],
+    direction: "down" | "up",
+    accept: (n: DiagramNode) => boolean,
+  ): DiagramNode | undefined => {
+    let best: DiagramNode | undefined;
+    let bestCost = Number.POSITIVE_INFINITY;
+    for (const c of pool) {
+      if (c.id === from.id || !accept(c)) continue;
+      const cost = pairingCost(from, c, direction);
+      // Desempate determinístico por id: mesma entrada → mesmo resultado.
+      if (cost < bestCost || (cost === bestCost && best && c.id < best.id)) {
+        best = c;
+        bestCost = cost;
       }
     }
-  }
+    return best && bestCost <= MAX_PAIRING_DISTANCE + WRONG_DIRECTION_PENALTY ? best : undefined;
+  };
 
-  // 2. Pair Branches (Breaker -> Contactor / VFD / Softstarter / PSU -> Motor / Load)
-  // Match by spatial proximity (similar X coordinate) or index ordering
-  const sortedBranchBreakers = breakers
-    .filter((b) => (busbar ? b.id !== getIncomingEdges(busbar.id)[0]?.source : true))
-    .sort((a, b) => a.position.x - b.position.x);
-
-  // 2.1 Direct Online Starter Branches (Breaker -> Contactor -> Thermal Relay -> Motor)
-  for (const km of contactors) {
-    // If contactor has no feeder, find the nearest upstream branch breaker
-    if (getIncomingEdges(km.id).length === 0) {
-      const candidateBreaker =
-        sortedBranchBreakers.find(
-          (b) =>
-            getOutgoingEdges(b.id).length === 0 && Math.abs(b.position.x - km.position.x) < 200,
-        ) ?? sortedBranchBreakers.find((b) => getOutgoingEdges(b.id).length === 0);
-
-      if (candidateBreaker) {
-        const edge = createDeterministicConnection(candidateBreaker, km, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edge.id] = edge;
-        addedEdges.push(edge);
-      }
-    }
-
-    // Connect downstream: Contactor -> Thermal Relay -> Motor OR Contactor -> Motor
-    if (getOutgoingEdges(km.id).length === 0) {
-      // Check if there is an unattached thermal relay below the contactor
-      const nearbyRT = thermalRelays.find(
-        (rt) =>
-          getIncomingEdges(rt.id).length === 0 &&
-          Math.abs(rt.position.x - km.position.x) < 150 &&
-          rt.position.y >= km.position.y,
-      );
-
-      if (nearbyRT) {
-        const edgeKmRt = createDeterministicConnection(km, nearbyRT, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edgeKmRt.id] = edgeKmRt;
-        addedEdges.push(edgeKmRt);
-
-        // Then link Thermal Relay -> Motor
-        const nearbyMotor =
-          motors.find(
-            (m) =>
-              getIncomingEdges(m.id).length === 0 &&
-              Math.abs(m.position.x - nearbyRT.position.x) < 200 &&
-              m.position.y >= nearbyRT.position.y,
-          ) ?? motors.find((m) => getIncomingEdges(m.id).length === 0);
-
-        if (nearbyMotor) {
-          const edgeRtMot = createDeterministicConnection(nearbyRT, nearbyMotor, {
-            sourcePort: "B",
-            targetPort: "T",
-          });
-          nextDoc.edges[edgeRtMot.id] = edgeRtMot;
-          addedEdges.push(edgeRtMot);
-        }
-      } else {
-        // Direct Contactor -> Motor
-        const nearbyMotor =
-          motors.find(
-            (m) =>
-              getIncomingEdges(m.id).length === 0 &&
-              Math.abs(m.position.x - km.position.x) < 200 &&
-              m.position.y >= km.position.y,
-          ) ?? motors.find((m) => getIncomingEdges(m.id).length === 0);
-
-        if (nearbyMotor) {
-          const edgeKmMot = createDeterministicConnection(km, nearbyMotor, {
-            sourcePort: "B",
-            targetPort: "T",
-          });
-          nextDoc.edges[edgeKmMot.id] = edgeKmMot;
-          addedEdges.push(edgeKmMot);
-        }
-      }
-    }
-  }
-
-  // 2.2 VFD / Inverter Branches (Breaker -> VFD -> Motor)
-  for (const vfd of vfds) {
-    if (getIncomingEdges(vfd.id).length === 0) {
-      const candidateBreaker =
-        sortedBranchBreakers.find(
-          (b) =>
-            getOutgoingEdges(b.id).length === 0 && Math.abs(b.position.x - vfd.position.x) < 200,
-        ) ?? sortedBranchBreakers.find((b) => getOutgoingEdges(b.id).length === 0);
-
-      if (candidateBreaker) {
-        const edge = createDeterministicConnection(candidateBreaker, vfd, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edge.id] = edge;
-        addedEdges.push(edge);
-      }
-    }
-
-    if (getOutgoingEdges(vfd.id).length === 0) {
-      const candidateMotor =
-        motors.find(
-          (m) =>
-            getIncomingEdges(m.id).length === 0 &&
-            Math.abs(m.position.x - vfd.position.x) < 200 &&
-            m.position.y >= vfd.position.y,
-        ) ?? motors.find((m) => getIncomingEdges(m.id).length === 0);
-
-      if (candidateMotor) {
-        const edge = createDeterministicConnection(vfd, candidateMotor, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edge.id] = edge;
-        addedEdges.push(edge);
-      }
-    }
-  }
-
-  // 2.3 Soft-Starter Branches (Breaker -> Softstarter -> Motor)
-  for (const ss of softstarters) {
-    if (getIncomingEdges(ss.id).length === 0) {
-      const candidateBreaker =
-        sortedBranchBreakers.find(
-          (b) =>
-            getOutgoingEdges(b.id).length === 0 && Math.abs(b.position.x - ss.position.x) < 200,
-        ) ?? sortedBranchBreakers.find((b) => getOutgoingEdges(b.id).length === 0);
-
-      if (candidateBreaker) {
-        const edge = createDeterministicConnection(candidateBreaker, ss, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edge.id] = edge;
-        addedEdges.push(edge);
-      }
-    }
-
-    if (getOutgoingEdges(ss.id).length === 0) {
-      const candidateMotor =
-        motors.find(
-          (m) =>
-            getIncomingEdges(m.id).length === 0 &&
-            Math.abs(m.position.x - ss.position.x) < 200 &&
-            m.position.y >= ss.position.y,
-        ) ?? motors.find((m) => getIncomingEdges(m.id).length === 0);
-
-      if (candidateMotor) {
-        const edge = createDeterministicConnection(ss, candidateMotor, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edge.id] = edge;
-        addedEdges.push(edge);
-      }
-    }
-  }
-
-  // 2.4 Control Power Supply Branches (Command Breaker -> PSU)
-  for (const psu of psus) {
-    if (getIncomingEdges(psu.id).length === 0) {
-      const candidateBreaker = sortedBranchBreakers.find(
-        (b) => getOutgoingEdges(b.id).length === 0,
-      );
-      if (candidateBreaker) {
-        const edge = createDeterministicConnection(candidateBreaker, psu, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edge.id] = edge;
-        addedEdges.push(edge);
-      }
-    }
-  }
-
-  // 2.5 Direct Motor Starter & General Loads (Breaker -> Motor / Load / Lamp / Socket)
+  const busbars = byKind("busbar");
+  const busbar = busbars[0];
+  const breakers = byKind("breaker");
+  const contactors = byKind("contactor");
+  const thermalRelays = byKind("thermal_relay");
+  const motors = byKind("motor");
+  const drives = [...byKind("vfd"), ...byKind("softstarter")];
+  const psus = byKind("psu");
+  const transformers = byKind("transformer");
   const generalLoads = nodes.filter(
     (n) => n.params.kind === "load" || n.params.kind === "lamp" || n.params.kind === "socket",
   );
 
-  // Remaining unpowered motors
-  for (const m of motors) {
-    if (getIncomingEdges(m.id).length === 0) {
-      const candidateBreaker = sortedBranchBreakers.find(
-        (b) => getOutgoingEdges(b.id).length === 0,
-      );
-      if (candidateBreaker) {
-        const edge = createDeterministicConnection(candidateBreaker, m, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edge.id] = edge;
-        addedEdges.push(edge);
+  // ── 1. Infeed: TR → Q0 → Barramento ─────────────────────────────────────────
+  let mainBreakerId: string | undefined;
+  if (busbar) {
+    const fedBreakerIntoBus = Object.values(nextDoc.edges).find(
+      (e) =>
+        e.kind === "power" &&
+        e.target === busbar.id &&
+        nextDoc.nodes[e.source]?.params.kind === "breaker",
+    );
+    mainBreakerId = fedBreakerIntoBus?.source;
+
+    if (!hasFeeder(busbar.id)) {
+      // Disjuntor geral: por nome/tag; senão o de MAIOR corrente que ainda não alimenta ramal.
+      const freeBreakers = breakers.filter((b) => !hasLoad(b.id));
+      const main =
+        freeBreakers.find(isMainBreakerByName) ??
+        [...freeBreakers].sort(
+          (a, b) => numericParam(b, "in_A") - numericParam(a, "in_A") || a.id.localeCompare(b.id),
+        )[0];
+      // Só promove a geral se for estritamente maior que os demais (evita eleger um ramal).
+      const others = breakers.filter((b) => b.id !== main?.id).map((b) => numericParam(b, "in_A"));
+      const isPlausibleMain =
+        !!main &&
+        (isMainBreakerByName(main) || others.every((v) => numericParam(main, "in_A") > v));
+      if (main && isPlausibleMain) {
+        connect(main, busbar);
+        mainBreakerId = main.id;
+        const trafo = transformers.find((t) => !hasLoad(t.id));
+        if (trafo && !hasFeeder(main.id)) connect(trafo, main);
+      } else {
+        const trafo = transformers.find((t) => !hasLoad(t.id));
+        if (trafo) connect(trafo, busbar);
+        else pending.push(`Barramento ${busbar.params.tag ?? busbar.id} sem alimentação`);
       }
     }
   }
 
-  // General loads
-  for (const ld of generalLoads) {
-    if (getIncomingEdges(ld.id).length === 0) {
-      const candidateBreaker = sortedBranchBreakers.find(
-        (b) => getOutgoingEdges(b.id).length === 0,
-      );
-      if (candidateBreaker) {
-        const edge = createDeterministicConnection(candidateBreaker, ld, {
-          sourcePort: "B",
-          targetPort: "T",
-        });
-        nextDoc.edges[edge.id] = edge;
-        addedEdges.push(edge);
-      }
+  const branchBreakers = breakers.filter((b) => b.id !== mainBreakerId);
+
+  // ── 2. Barramento → disjuntores de ramal sem alimentação ───────────────────
+  if (busbar) {
+    const unfedBranches = branchBreakers
+      .filter((b) => !hasFeeder(b.id))
+      .sort((a, b) => a.position.x - b.position.x || a.id.localeCompare(b.id));
+    if (unfedBranches.length > 0) {
+      for (const e of connectBusbarToBranches(busbar, unfedBranches)) addEdge(e);
+    } else if (branchBreakers.length === 0) {
+      // Sem disjuntores de ramal: barramento alimenta diretamente os acionamentos.
+      const direct = [...contactors, ...drives, ...motors]
+        .filter((d) => !hasFeeder(d.id))
+        .sort((a, b) => a.position.x - b.position.x || a.id.localeCompare(b.id));
+      for (const e of connectBusbarToBranches(busbar, direct)) addEdge(e);
     }
   }
 
-  // 3. Post-Repair Validation
+  const freeBreaker = (b: DiagramNode) => !hasLoad(b.id);
+
+  // ── 3. Acionamentos: montante (disjuntor) ──────────────────────────────────
+  // Contatores primeiro: no ramal Q → K → VFD → M o contator fica entre Q e VFD.
+  for (const km of contactors) {
+    if (hasFeeder(km.id)) continue;
+    const q = nearest(km, branchBreakers, "up", freeBreaker);
+    if (q) connect(q, km);
+    else pending.push(`Contator ${km.params.tag ?? km.id} sem disjuntor de ramal próximo`);
+  }
+
+  // ── 4. Contator → jusante: relé térmico > inversor/soft > motor ────────────
+  for (const km of contactors) {
+    if (hasLoad(km.id)) continue;
+    const target =
+      nearest(km, thermalRelays, "down", (n) => !hasFeeder(n.id)) ??
+      nearest(km, drives, "down", (n) => !hasFeeder(n.id)) ??
+      nearest(km, motors, "down", (n) => !hasFeeder(n.id));
+    if (target) connect(km, target);
+  }
+
+  // ── 5. Relé térmico → motor ────────────────────────────────────────────────
+  for (const rt of thermalRelays) {
+    if (hasLoad(rt.id) || !hasFeeder(rt.id)) continue;
+    const m = nearest(rt, motors, "down", (n) => !hasFeeder(n.id));
+    if (m) connect(rt, m);
+  }
+
+  // ── 6. Inversor / soft-starter: montante e jusante ─────────────────────────
+  for (const d of drives) {
+    if (!hasFeeder(d.id)) {
+      const q = nearest(d, branchBreakers, "up", freeBreaker);
+      if (q) connect(q, d);
+      else pending.push(`Acionamento ${d.params.tag ?? d.id} sem disjuntor de ramal próximo`);
+    }
+    if (!hasLoad(d.id)) {
+      const m = nearest(d, motors, "down", (n) => !hasFeeder(n.id));
+      if (m) connect(d, m);
+    }
+  }
+
+  // ── 7. Fontes de comando ───────────────────────────────────────────────────
+  for (const psu of psus) {
+    if (hasFeeder(psu.id)) continue;
+    const q = nearest(psu, branchBreakers, "up", freeBreaker);
+    if (q) connect(q, psu);
+  }
+
+  // ── 8. Motores e cargas restantes: partida direta pelo disjuntor ───────────
+  for (const load of [...motors, ...generalLoads]) {
+    if (hasFeeder(load.id)) continue;
+    const q = nearest(load, branchBreakers, "up", freeBreaker);
+    if (q) connect(q, load);
+    else
+      pending.push(
+        `Carga ${load.params.tag ?? load.label ?? load.id} sem proteção de ramal próxima`,
+      );
+  }
+
+  // ── 9. Validação pós-reparo ────────────────────────────────────────────────
   const validation = validateElectricalTopology(nextDoc);
-  const remainingIssues = validation.diagnostics
-    .filter((d) => d.severity === "error")
-    .map((d) => d.message);
+  const remainingIssues = [
+    ...validation.diagnostics.filter((d) => d.severity === "error").map((d) => d.message),
+    ...pending,
+  ];
 
   return {
     repairedDoc: nextDoc,
@@ -353,8 +263,66 @@ export function repairDiagramConnections(doc: DiagramDoc): RepairResult {
   };
 }
 
+// ── Recuperação de projetos legados ──────────────────────────────────────────
+
+type SynthKind =
+  | "breaker"
+  | "busbar"
+  | "contactor"
+  | "motor"
+  | "transformer"
+  | "vfd"
+  | "softstarter"
+  | "psu"
+  | "load";
+
+function inferKind(raw: string): SynthKind {
+  const k = raw.toLowerCase();
+  if (/breaker|disjuntor|^dj|^q\d/.test(k)) return "breaker";
+  if (/busbar|barra/.test(k)) return "busbar";
+  if (/contactor|contator|^k\d/.test(k)) return "contactor";
+  if (/vfd|inversor/.test(k)) return "vfd";
+  if (/soft/.test(k)) return "softstarter";
+  if (/motor/.test(k)) return "motor";
+  if (/trafo|transformer|transformador/.test(k)) return "transformer";
+  if (/psu|fonte/.test(k)) return "psu";
+  return "load";
+}
+
+/** Parâmetros mínimos VÁLIDOS por tipo (antes um saco `as any` misturava campos de todos). */
+const SYNTH_DEFAULTS: Record<SynthKind, Record<string, unknown>> = {
+  breaker: { in_A: 32, curve: "C", poles: 3 },
+  busbar: { current_A: 250, voltage_V: 380 },
+  contactor: { in_A: 32, coil_V: 24 },
+  motor: { power_kW: 7.5, voltage_V: 380, startMethod: "DOL" },
+  transformer: { kVA: 150, primary_V: 13800, secondary_V: 380, vector: "Dyn11" },
+  vfd: { power_kW: 7.5, voltage_V: 380 },
+  softstarter: { power_kW: 7.5 },
+  psu: { output_V: 24, output_A: 10 },
+  load: { power_W: 1000, voltage_V: 220, fp: 0.92 },
+};
+
+function synthParams(
+  kind: SynthKind,
+  tag: string,
+  extra: Record<string, unknown> | undefined,
+): NodeParams {
+  const merged = { ...SYNTH_DEFAULTS[kind], ...(extra ?? {}), kind, tag: tag.slice(0, 64) };
+  const parsed = NodeParamsSchema.safeParse(merged);
+  if (parsed.success) return parsed.data;
+  // Parâmetros legados inválidos (ex.: in_A negativo) → descarta os extras, mantém o tipo.
+  const fallback = NodeParamsSchema.safeParse({
+    ...SYNTH_DEFAULTS[kind],
+    kind,
+    tag: tag.slice(0, 64),
+  });
+  if (fallback.success) return fallback.data;
+  return NodeParamsSchema.parse({ ...SYNTH_DEFAULTS.load, kind: "load", tag: tag.slice(0, 64) });
+}
+
 /**
- * Reconstructs a full DiagramDoc from project nodes and edges, guaranteeing complete connectivity.
+ * Reconstrói um DiagramDoc a partir do grafo legado do projeto e sela as
+ * ligações faltantes com o motor de reparo.
  */
 export function synthesizeDiagramDocFromProject(
   nodes: Array<{
@@ -380,53 +348,28 @@ export function synthesizeDiagramDocFromProject(
     edges: {},
   };
 
-  const idMap = new Map<string, string>();
   for (const n of nodes) {
-    const rawKind = (n.kind || "load").toLowerCase();
-    const kind = (
-      rawKind.includes("breaker") || rawKind.includes("disjuntor") || rawKind.includes("dj")
-        ? "breaker"
-        : rawKind.includes("busbar") || rawKind.includes("barra")
-          ? "busbar"
-          : rawKind.includes("contactor") || rawKind.includes("contator")
-            ? "contactor"
-            : rawKind.includes("motor")
-              ? "motor"
-              : rawKind.includes("trafo") || rawKind.includes("transformer")
-                ? "transformer"
-                : rawKind.includes("vfd") || rawKind.includes("inversor")
-                  ? "vfd"
-                  : rawKind.includes("soft")
-                    ? "softstarter"
-                    : rawKind.includes("psu") || rawKind.includes("fonte")
-                      ? "psu"
-                      : "load"
-    ) as any;
-
-    idMap.set(n.id, n.id);
+    if (!n?.id) continue;
+    const kind = inferKind(n.kind || "load");
+    const label = (n.label || n.id).slice(0, 160);
+    const pos =
+      n.position && Number.isFinite(n.position.x) && Number.isFinite(n.position.y)
+        ? n.position
+        : { x: 100, y: 100 };
     newDoc.nodes[n.id] = {
       id: n.id,
       sheet: "unifilar",
-      position: n.position || { x: 100, y: 100 },
-      label: n.label || n.id,
+      position: pos,
+      label,
       rotation: 0,
-      params: {
-        kind,
-        tag: n.label || n.id,
-        in_A: 32,
-        voltage_V: 380,
-        power_kW: 7.5,
-        poles: 3,
-        curve: "C",
-        ...(n.params ?? {}),
-      } as any,
+      params: synthParams(kind, label, n.params),
     };
   }
 
   const busbarCount = new Map<string, number>();
   for (let i = 0; i < edges.length; i++) {
     const e = edges[i];
-    if (!newDoc.nodes[e.source] || !newDoc.nodes[e.target]) continue;
+    if (!newDoc.nodes[e.source] || !newDoc.nodes[e.target] || e.source === e.target) continue;
     const edgeId = e.id || `edge_synth_${i + 1}`;
 
     let sourcePort = "B";
@@ -443,13 +386,11 @@ export function synthesizeDiagramDocFromProject(
       target: e.target,
       sourcePort,
       targetPort: "T",
-      kind: e.kind === "signal" ? "signal" : "power",
+      kind: e.kind === "signal" ? "signal" : e.kind === "ground" ? "ground" : "power",
       sheet: "unifilar",
       circuitConfig: "3F+N+PE",
     };
   }
 
-  // Run repair to seal any missing links
-  const repair = repairDiagramConnections(newDoc);
-  return repair.repairedDoc;
+  return repairDiagramConnections(newDoc).repairedDoc;
 }
