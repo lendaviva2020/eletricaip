@@ -356,7 +356,25 @@ describe("Gate 4.3 — Red Team Exploit Prevention & Blue Team Regression Suite"
     expect(aiArch).not.toContain("?key=");
 
     const vercelCfg = fs.readFileSync(path.join(REPO_ROOT, "vercel.json"), "utf8");
-    expect(vercelCfg).not.toContain("unsafe-eval");
+    // 'unsafe-eval' é permitido EXCLUSIVAMENTE na CSP do asset do worker SCADA
+    // (decisão do proprietário na auditoria F0.9): esse worker executa scripts de
+    // usuário com `new Function` e é contido por connect-src 'none' + default-src
+    // 'none'. Qualquer outra ocorrência continua proibida.
+    const vercelRules = (
+      JSON.parse(vercelCfg) as {
+        headers: Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
+      }
+    ).headers;
+    for (const rule of vercelRules) {
+      const csp = rule.headers.find((h) => h.key === "Content-Security-Policy")?.value ?? "";
+      if (rule.source === "/assets/scada-worker-(.*)") {
+        expect(csp).toContain("connect-src 'none'");
+        expect(csp).toContain("default-src 'none'");
+        expect(csp).toContain("worker-src 'none'");
+      } else {
+        expect(JSON.stringify(rule)).not.toContain("unsafe-eval");
+      }
+    }
     expect(vercelCfg).not.toContain("*.supabase.co");
     expect(vercelCfg).not.toContain("*.lovable.app");
     expect(vercelCfg).toContain("Strict-Transport-Security");

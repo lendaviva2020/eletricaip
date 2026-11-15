@@ -7,7 +7,9 @@
 // defense-in-depth mitigations are:
 //   (A) Web Worker isolation — no `window`, `document`, `parent`, `top`.
 //   (B) Blocked network globals — `fetch`, `XMLHttpRequest`, `WebSocket`,
-//       `importScripts`, `EventSource`, `navigator`.
+//       `importScripts`, `EventSource`, `navigator` — neutralized on the
+//       whole prototype chain (F0.9) and, in production, denied by the
+//       worker asset CSP `connect-src none` (vercel.json).
 //   (C) No persistent storage — `indexedDB`, `caches`, `localStorage`,
 //       `sessionStorage` all blocked.
 //   (D) `tags` is a defensive Proxy — prevents prototype pollution and
@@ -23,7 +25,11 @@
 // A safer long-term replacement (AST-based expression evaluator or Wasm
 // sandbox) is tracked in backlog item #SCADA-02.
 
-import { neutralizeMessageChannelGlobals } from "./worker-guards";
+import {
+  MESSAGE_CHANNEL_GLOBALS,
+  neutralizeGlobalsOnPrototypeChain,
+  neutralizeMessageChannelGlobals,
+} from "./worker-guards";
 import { freezeIntrinsics } from "./sandbox-hardening";
 
 type Req = {
@@ -49,15 +55,18 @@ const BLOCKED = [
   "EventSource",
   "navigator",
   "location",
+  "BroadcastChannel",
+  "WebTransport",
+  "Worker",
+  "SharedWorker",
 ];
 
-for (const k of BLOCKED) {
-  try {
-    (self as unknown as Record<string, unknown>)[k] = undefined;
-  } catch {
-    /* Worker globals may be non-configurable — we just try. */
-  }
-}
+// Auditoria F0.9: neutraliza no host E em toda a cadeia de protótipos
+// (WorkerGlobalScope.prototype etc.); antes, só uma propriedade própria
+// sombreava o método herdado, contornável via Object.getPrototypeOf(self).
+// Barreira final em produção: CSP do asset do worker com connect-src none
+// (vercel.json).
+neutralizeGlobalsOnPrototypeChain(self, BLOCKED);
 
 // Captura a referência confiável ANTES de neutralizá-la e antes de qualquer
 // script rodar. O pré-scan (DANGEROUS_PATTERNS) continua como camada de falha
@@ -153,6 +162,10 @@ self.addEventListener("message", (ev: MessageEvent<Req>) => {
 // que um script malicioso usaria para sequestrar o canal de mensagens ou
 // persistir entre requisições (inclui notação de colchetes e aliases).
 neutralizeMessageChannelGlobals(self as unknown as Record<string, unknown>);
+// F0.9: o mesmo para o canal de mensagens na cadeia de protótipos
+// (DedicatedWorkerGlobalScope.prototype.postMessage, EventTarget.prototype.*).
+// O listener e o postMessage confiáveis já foram capturados acima.
+neutralizeGlobalsOnPrototypeChain(self, MESSAGE_CHANNEL_GLOBALS);
 
 // Fase 7.2: congela intrínsecos (Object/Array/Function... e protótipos) antes de
 // qualquer script de usuário rodar, impedindo poluição de protótipo.

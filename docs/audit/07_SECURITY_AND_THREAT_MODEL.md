@@ -38,7 +38,7 @@ Ponto central: o browser fala **diretamente** com o PostgREST usando a anon key.
 | P1-SEC-010 | P1 | `vite.config.ts` carrega todo o `.env` (prefixo vazio) em `process.env` | `vite.config.ts:13-14` | Comprovado; vazamento de bundle não observado (ver §4) |
 | P1-CFG-021 | P1 | `SUPABASE_SERVICE_ROLE_KEY` local é a chave anon (`role=anon`) | Decodificação das claims | Comprovado localmente |
 | P2-SEC-004 | P2 | CSP com `script-src 'unsafe-inline'`; `connect-src` inclui `*.upstash.io` | `vercel.json:11` | Comprovado |
-| P2-SEC-034 | P2 | Scripts SCADA executados com `new Function` em Web Worker com acesso a rede (`fetch`) | `src/lib/simulation/scada-worker.ts:121` | Comprovado; o impacto depende de quem pode editar scripts compartilhados |
+| P2-SEC-034 | P2 | Scripts SCADA executados com `new Function` em Web Worker. O worker sobrescrevia `fetch`/`postMessage` só como propriedade própria; os originais continuavam acessíveis pela cadeia de protótipos (comprovado no Chromium). **Corrigido na F0.9** | `src/lib/simulation/scada-worker.ts` | Corrigido (não commitado) |
 | P2-AI-013 | P2 | `streamChat` não valida acesso ao `projectId` | `ai-chat.functions.ts:287-300` | Comprovado |
 | P2-AI-017 | P2 | Rate limit em memória por isolate na Edge Function | `supabase/functions/ai-fix-diagnostics/index.ts:115-135` | Comprovado |
 | P2-BILL-012 | P2 | O webhook MP não valida o valor contra o preço do plano; default silencioso `"pro"` | `mp.webhook.ts` (execute), `stripe.webhook.ts:117,142` | Comprovado |

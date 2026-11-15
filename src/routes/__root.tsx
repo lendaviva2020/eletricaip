@@ -144,10 +144,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  // Nonce da CSP da requisição (F0.8): sem ele, este script inline seria bloqueado.
+  const cspNonce = useRouter().options.ssr?.nonce;
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <script
+          nonce={cspNonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=JSON.parse(localStorage.getItem('eletricai-theme')||'{}').state?.theme||'dark';var d=(t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t);document.documentElement.classList.remove('dark','light');document.documentElement.classList.add(d);document.documentElement.style.colorScheme=d;}catch(e){document.documentElement.classList.add('dark');}})();`,
           }}

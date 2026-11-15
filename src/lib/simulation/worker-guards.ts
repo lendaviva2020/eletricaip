@@ -37,3 +37,48 @@ export function neutralizeMessageChannelGlobals(host: Record<string, unknown>): 
     }
   }
 }
+
+/**
+ * Auditoria F0.9: atribuir `self.fetch = undefined` só cria uma propriedade
+ * própria que SOMBREIA o método herdado; o original continua acessível pela
+ * cadeia de protótipos (ex.: `Object.getPrototypeOf(self).fetch`,
+ * `WorkerGlobalScope.prototype.fetch`). Esta função redefine o nome como
+ * `undefined`, não gravável e não configurável, no host E em cada protótipo
+ * da cadeia que o possua como propriedade própria, e remove os construtores
+ * globais de rede. Retorna os locais neutralizados, para auditoria e teste.
+ */
+export function neutralizeGlobalsOnPrototypeChain(
+  host: object,
+  names: readonly string[],
+): string[] {
+  const neutralized: string[] = [];
+  const chain: object[] = [];
+  for (let obj: object | null = host; obj; obj = Object.getPrototypeOf(obj) as object | null) {
+    if (obj === Object.prototype) break;
+    chain.push(obj);
+  }
+  chain.forEach((obj, depth) => {
+    for (const name of names) {
+      const isHost = depth === 0;
+      if (!isHost && !Object.prototype.hasOwnProperty.call(obj, name)) continue;
+      try {
+        Object.defineProperty(obj, name, {
+          value: undefined,
+          writable: false,
+          configurable: false,
+          enumerable: false,
+        });
+        neutralized.push(`${depth}:${name}`);
+      } catch {
+        try {
+          // Propriedade não configurável: ao menos tenta removê-la/sobrescrevê-la.
+          delete (obj as Record<string, unknown>)[name];
+          (obj as Record<string, unknown>)[name] = undefined;
+        } catch {
+          /* noop — CSP do worker (connect-src 'none') segue como barreira final */
+        }
+      }
+    }
+  });
+  return neutralized;
+}
