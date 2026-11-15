@@ -454,7 +454,10 @@ describe("ElétricAi — Canvas Elétrico Unifilar + Multifilar Profissional", (
     for (const r of results) {
       expect(typeof r.drop_V).toBe("number");
       expect(typeof r.drop_pct).toBe("number");
-      expect(r.max_allowed_pct).toBe(4.0);
+      // Auditoria F2.4: 4% só para trechos terminais; demais trechos usam o limite
+      // desde a origem (5% BT ou 7% transformador/gerador próprio) — NBR 5410 §6.2.7.
+      expect(r.max_allowed_pct).toBe(r.is_terminal_circuit ? 4.0 : r.origin_limit_pct);
+      expect(r.cumulative_drop_pct).toBeLessThanOrEqual(r.origin_limit_pct);
       expect(r.length_m).toBeGreaterThan(0);
       expect(r.section_mm2).toBeGreaterThan(0);
       expect(r.current_A).toBeGreaterThan(0);

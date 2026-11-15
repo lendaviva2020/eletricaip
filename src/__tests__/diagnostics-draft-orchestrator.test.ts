@@ -183,8 +183,10 @@ describe("Orquestrador de Diagnósticos em Rascunho (Fase 5)", () => {
     expect(orch.iterationsCount).toBe(1);
     expect(orch.appliedProposals).toHaveLength(1);
     expect(orch.resolvedDiagnosticIds).toContain("NBR5410_TERMINAL_CIRCUIT_VOLTAGE_DROP:w1");
-    // O solver escolheu com precisão a menor seção válida (6 mm², reduzindo queda para 3.45% < 4.0%)
-    expect(orch.finalDoc.edges.w1.cable?.section_mm2).toBe(6);
+    // Auditoria F2.3: com ρ do cobre a 70 °C (0,02063 Ω·mm²/m), 6 mm² dá 3,996%
+    // (no limite de 4,0%, sem margem) e 10 mm² dá 2,40%; o solver escolhe 10 mm².
+    // Antes, com ρ ≈ 20 °C (0,0178), 6 mm² dava 3,45% — subestimado.
+    expect(orch.finalDoc.edges.w1.cable?.section_mm2).toBe(10);
 
     // O doc original permaneceu intacto
     expect(doc.edges.w1.cable?.section_mm2).toBe(4);

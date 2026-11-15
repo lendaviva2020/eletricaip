@@ -26,7 +26,8 @@ describe("NBR 5410 — Tabelas 36, 37 e 38 (capacidade de condução I_z)", () =
     expect(ampacityIz(2.5, { method: "D", insulation: "PVC", loadedConductors: 3 })).toBe(24);
 
     expect(ampacityIz(35, { method: "B1", insulation: "PVC", loadedConductors: 3 })).toBe(110);
-    expect(ampacityIz(35, { method: "C", insulation: "PVC", loadedConductors: 3 })).toBe(125);
+    // Auditoria F2.2: valor correto é 119 A (125 A era o da coluna B1/2 condutores).
+    expect(ampacityIz(35, { method: "C", insulation: "PVC", loadedConductors: 3 })).toBe(119);
     expect(ampacityIz(35, { method: "D", insulation: "PVC", loadedConductors: 3 })).toBe(98);
   });
 

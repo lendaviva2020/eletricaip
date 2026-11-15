@@ -57,8 +57,11 @@ describe("pickCable_mm2", () => {
     expect(pickCable_mm2(14.5)).toBe(2.5);
   });
 
-  it("100A -> 35mm²", () => {
-    expect(pickCable_mm2(100)).toBe(35);
+  // Auditoria F2.2: alvo 1,25 × 100 A = 125 A no método C/PVC/3 carregados.
+  // Iz correto de 35 mm² é 119 A (< 125 A); 50 mm² (144 A) é a menor seção que
+  // atende. O valor anterior (35 mm²) usava o Iz errado de 125 A.
+  it("100A -> 50mm² (Iz 35 mm² = 119 A < 125 A)", () => {
+    expect(pickCable_mm2(100)).toBe(50);
   });
 
   it("300A -> 240mm² (com fator 1.25)", () => {

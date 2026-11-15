@@ -14,8 +14,55 @@ export const NBR5410_SECTIONS = [
 
 export type CableSection_mm2 = (typeof NBR5410_SECTIONS)[number];
 
-/** Resistividade do cobre a 70 °C de operação (Ω·mm²/m). */
-export const RHO_COPPER_OHM_MM2_PER_M = 0.0178;
+// ── Resistividade dos condutores (auditoria F2.3) ─────────────────────────
+// Antes: 0,0178 Ω·mm²/m rotulado "a 70 °C" — na verdade ~20 °C, subestimando a
+// queda de tensão em ~15%. Agora ρ(θ) = ρ20 · [1 + α · (θ − 20)], com θ igual à
+// temperatura máxima de serviço contínuo da isolação (premissa conservadora).
+export const RHO20_COPPER_OHM_MM2_PER_M = 0.017241; // IACS
+export const ALPHA20_COPPER_PER_C = 0.00393;
+export const RHO20_ALUMINUM_OHM_MM2_PER_M = 0.028264;
+export const ALPHA20_ALUMINUM_PER_C = 0.00403;
+
+/** Resistividade do cobre (Ω·mm²/m) à temperatura do condutor θ (°C). */
+export function copperResistivityAt(theta_C: number): number {
+  assertFiniteNumber("theta_C", theta_C);
+  return RHO20_COPPER_OHM_MM2_PER_M * (1 + ALPHA20_COPPER_PER_C * (theta_C - 20));
+}
+
+/** Resistividade do alumínio (Ω·mm²/m) à temperatura do condutor θ (°C). */
+export function aluminumResistivityAt(theta_C: number): number {
+  assertFiniteNumber("theta_C", theta_C);
+  return RHO20_ALUMINUM_OHM_MM2_PER_M * (1 + ALPHA20_ALUMINUM_PER_C * (theta_C - 20));
+}
+
+/** Temperatura máxima de serviço contínuo do condutor por isolação (°C). */
+export function conductorMaxOperatingTemp_C(insulation: InsulationType = "PVC"): number {
+  return insulation === "PVC" ? 70 : 90;
+}
+
+/** Resistividade do cobre a 70 °C (PVC em serviço contínuo), Ω·mm²/m. */
+export const RHO_COPPER_OHM_MM2_PER_M =
+  RHO20_COPPER_OHM_MM2_PER_M * (1 + ALPHA20_COPPER_PER_C * 50);
+
+// ── Validação de entradas (auditoria F2.5/P2-CALC-032) ─────────────────────
+function assertFiniteNumber(name: string, v: number): void {
+  if (typeof v !== "number" || !Number.isFinite(v)) {
+    throw new RangeError(`${name} inválido: ${String(v)} (esperado número finito)`);
+  }
+}
+function assertRange(
+  name: string,
+  v: number,
+  min: number,
+  max: number,
+  minExclusive = false,
+): void {
+  assertFiniteNumber(name, v);
+  if (minExclusive ? v <= min : v < min) {
+    throw new RangeError(`${name} inválido: ${v} (mínimo ${minExclusive ? ">" : "≥"} ${min})`);
+  }
+  if (v > max) throw new RangeError(`${name} inválido: ${v} (máximo ${max})`);
+}
 
 /**
  * Reatância indutiva típica de cabos de baixa tensão (mΩ/m = Ω/km).
@@ -56,6 +103,10 @@ export function motorNominalCurrent(p: MotorSpec): number {
   const U = p.voltage_V ?? 380;
   const cos = p.cosphi ?? 0.86;
   const eta = p.efficiency ?? 0.92;
+  assertRange("power_kW", p.power_kW, 0, 1e6);
+  assertRange("voltage_V", U, 0, 1e6, true);
+  assertRange("cosphi", cos, 0, 1, true);
+  assertRange("efficiency", eta, 0, 1, true);
   return (p.power_kW * 1000) / (ROOT3 * U * cos * eta);
 }
 
@@ -151,16 +202,18 @@ const TABLE_PVC_3COND: Record<InstallationMethod, SectionAmpacityMap> = {
     6: 41,
     10: 57,
     16: 76,
-    25: 101,
-    35: 125,
-    50: 151,
-    70: 192,
-    95: 232,
-    120: 269,
-    150: 309,
-    185: 353,
-    240: 415,
-    300: 473,
+    // F2.2: valores corrigidos (antes copiados da coluna B1/2 condutores,
+    // superestimando Iz ~5% no método padrão do sistema).
+    25: 96,
+    35: 119,
+    50: 144,
+    70: 184,
+    95: 223,
+    120: 259,
+    150: 299,
+    185: 341,
+    240: 403,
+    300: 464,
   },
   D: {
     1.5: 18,
@@ -446,9 +499,10 @@ const TABLE_EPR_XLPE_3COND: Record<InstallationMethod, SectionAmpacityMap> = {
     1.5: 22,
     2.5: 30,
     4: 40,
-    6: 52,
-    10: 71,
-    16: 96,
+    // F2.2: 6/10/16 mm² reduzidos à referência (estavam acima).
+    6: 51,
+    10: 70,
+    16: 94,
     25: 119,
     35: 147,
     50: 179,
@@ -742,11 +796,14 @@ export function temperatureFactorKt(
       ? KT_AIR_PVC
       : KT_AIR_EPR_XLPE;
 
+  assertFiniteNumber("ambientTemp_C", ambientTemp_C);
   if (ambientTemp_C <= table[0][0]) return table[0][1];
   for (const [t, k] of table) {
     if (ambientTemp_C <= t) return k;
   }
-  return table[table.length - 1][1];
+  // F2.5: acima da última linha tabelada o fator NÃO é aplicável (0). Antes
+  // devolvia o último degrau (ex.: 0,5 para PVC a 65–70 °C), superestimando Iz.
+  return 0;
 }
 
 /**
@@ -770,6 +827,8 @@ export function groupingFactorKg(groupedCircuits: number): number {
 }
 
 export interface AmpacityOptions {
+  /** Material do condutor. Somente cobre é tabelado neste motor. */
+  material?: ConductorMaterial;
   method?: InstallationMethod;
   insulation?: InsulationType;
   loadedConductors?: LoadedConductors;
@@ -777,11 +836,18 @@ export interface AmpacityOptions {
   groupedCircuits?: number;
 }
 
-function resolveSection(section_mm2: number): CableSection_mm2 {
+/**
+ * Seção tabelada usada para uma seção informada: a MAIOR seção comercial menor
+ * ou igual ao valor informado (conservador). Abaixo de 1,5 mm² não há valor
+ * tabelado (null). Antes arredondava para cima (1 mm² recebia o Iz de 1,5 mm²).
+ */
+function resolveSection(section_mm2: number): CableSection_mm2 | null {
+  assertFiniteNumber("section_mm2", section_mm2);
+  let chosen: CableSection_mm2 | null = null;
   for (const s of NBR5410_SECTIONS) {
-    if (s >= section_mm2) return s;
+    if (s <= section_mm2 + 1e-9) chosen = s;
   }
-  return 300;
+  return chosen;
 }
 
 /**
@@ -792,7 +858,13 @@ export function ampacityIz(section_mm2: number, opts: AmpacityOptions = {}): num
   const method = opts.method ?? "C";
   const insulation = opts.insulation ?? "PVC";
   const cond = opts.loadedConductors ?? 3;
+  if (opts.material === "aluminum") {
+    throw new RangeError(
+      "Capacidade de condução para alumínio não tabelada neste motor (somente cobre). Use a tabela oficial NBR 5410 para alumínio.",
+    );
+  }
   const s = resolveSection(section_mm2);
+  if (s === null) return 0;
 
   if (insulation === "PVC") {
     return cond === 2 ? TABLE_PVC_2COND[method][s] : TABLE_PVC_3COND[method][s];
@@ -877,6 +949,12 @@ export interface CableSizingOptions extends AmpacityOptions {
 }
 
 export interface CableSizingResult {
+  /**
+   * OK: a seção atende a todos os critérios. NO_SECTION_SATISFIES: nenhuma seção
+   * comercial até 300 mm² atende (section_mm2 = 300 é só o limite da tabela, NÃO
+   * uma recomendação). Auditoria F2.5.
+   */
+  status: "OK" | "NO_SECTION_SATISFIES";
   section_mm2: CableSection_mm2;
   Iz_table_A: number;
   Iz_corrected_A: number;
@@ -934,8 +1012,10 @@ export function sizeConductorNBR5410(
   const targetCurrent =
     opts.breaker_A !== undefined ? Math.max(designTarget, opts.breaker_A) : designTarget;
   const requiredTableIz = correctionProduct > 0 ? targetCurrent / correctionProduct : Infinity;
+  assertRange("currentA", currentA, 0, 1e6);
 
   let chosenSection: CableSection_mm2 = 300;
+  let satisfied = false;
   for (const s of NBR5410_SECTIONS) {
     if (s < minSection) continue;
     const Iz = ampacityIz(s, { method, insulation, loadedConductors });
@@ -950,11 +1030,13 @@ export function sizeConductorNBR5410(
         s,
         opts.voltage_V ?? 380,
         opts.cosphi ?? 0.86,
+        { insulation },
       );
       if (drop > maxDrop) continue;
     }
 
     chosenSection = s;
+    satisfied = correctionProduct > 0;
     break;
   }
 
@@ -970,10 +1052,12 @@ export function sizeConductorNBR5410(
           chosenSection,
           opts.voltage_V ?? 380,
           opts.cosphi ?? 0.86,
+          { insulation },
         )
       : undefined;
 
   return {
+    status: satisfied ? "OK" : "NO_SECTION_SATISFIES",
     section_mm2: chosenSection,
     Iz_table_A: IzTable,
     Iz_corrected_A: IzCorrected,
@@ -1044,7 +1128,11 @@ export function calcMotor(p: MotorSpec): MotorResult {
 }
 
 export interface DemandResult {
+  /** Soma das potências MECÂNICAS (eixo) informadas. */
   totalLoad_kW: number;
+  /** Soma das potências ELÉTRICAS absorvidas, P/η por motor (auditoria F2.6). */
+  totalElectrical_kW: number;
+  /** Potência elétrica com fator de demanda/diversidade aplicado. */
   diversifiedLoad_kW: number;
   apparent_kVA: number;
   current_A: number;
@@ -1061,13 +1149,24 @@ export function calcDemand(
   const U = opts.voltage_V ?? 380;
   const div = opts.diversity ?? 0.85;
   const cos = opts.cosphi ?? 0.88;
+  assertRange("voltage_V", U, 0, 1e6, true);
+  assertRange("diversity", div, 0, 1, true);
+  assertRange("cosphi", cos, 0, 1, true);
   const total = motors.reduce((s, m) => s + m.power_kW, 0);
-  const diversified = total * div;
+  // F2.6: a potência de placa do motor é mecânica (eixo); a demanda elétrica é P/η.
+  const totalElectrical = motors.reduce((s, m) => {
+    const eta = m.efficiency ?? 0.92;
+    assertRange("power_kW", m.power_kW, 0, 1e6);
+    assertRange("efficiency", eta, 0, 1, true);
+    return s + m.power_kW / eta;
+  }, 0);
+  const diversified = totalElectrical * div;
   const apparent = diversified / cos;
   const current = (apparent * 1000) / (ROOT3 * U);
   const trafo = TRAFOS.find((t) => t >= apparent * 1.25) ?? TRAFOS[TRAFOS.length - 1];
   return {
     totalLoad_kW: round1(total),
+    totalElectrical_kW: round1(totalElectrical),
     diversifiedLoad_kW: round1(diversified),
     apparent_kVA: round1(apparent),
     current_A: round1(current),
@@ -1088,8 +1187,37 @@ export interface VoltageDropOptions {
    * Quando omitido, inclui automaticamente para condutores com seção >= 35 mm².
    */
   includeReactance?: boolean;
-  /** Resistividade do condutor (Ω·mm²/m). Padrão: 0,0178 (cobre). */
+  /**
+   * Resistividade do condutor (Ω·mm²/m). Padrão (F2.3): ρ(θ) do material à
+   * temperatura máxima de serviço da isolação — Cu/PVC 70 °C ≈ 0,02063.
+   */
   rho_ohm_mm2_per_m?: number;
+  /** Isolação (define a temperatura do condutor em serviço). Padrão: PVC (70 °C). */
+  insulation?: InsulationType;
+  /** Material do condutor. Padrão: cobre. */
+  material?: ConductorMaterial;
+  /** Temperatura do condutor (°C), sobrescreve a temperatura derivada da isolação. */
+  conductorTemp_C?: number;
+}
+
+/**
+ * Limites de queda de tensão da ABNT NBR 5410:2004 §6.2.7 (referência por seção):
+ * calculados a partir da origem da instalação, dependem do tipo de alimentação;
+ * em qualquer caso, os circuitos terminais têm limite próprio. Auditoria F2.4.
+ */
+export type SupplyOrigin = "OWN_TRANSFORMER" | "LV_UTILITY";
+export function nbr5410VoltageDropLimits(origin: SupplyOrigin): {
+  fromOriginMaxPct: number;
+  terminalCircuitMaxPct: number;
+} {
+  return origin === "OWN_TRANSFORMER"
+    ? { fromOriginMaxPct: 7, terminalCircuitMaxPct: 4 }
+    : { fromOriginMaxPct: 5, terminalCircuitMaxPct: 4 };
+}
+
+/** Tensão nominal padrão coerente com o número de fases (F2.3). */
+function defaultVoltageForPhases(phases: 1 | 2 | 3): number {
+  return phases === 3 ? 380 : 220;
 }
 
 export interface VoltageDropCalcResult {
@@ -1114,20 +1242,30 @@ export interface VoltageDropCalcResult {
  * Calcula a queda de tensão completa segundo a NBR 5410:
  *   ΔV = k · I · (R · cosφ + X_L · sinφ)
  * onde k = √3 (trifásico) ou 2 (monofásico/bifásico),
- * R = ρ · L / S (ρ_Cu = 0,0178 Ω·mm²/m) e
+ * R = ρ(θ) · L / S (ρ na temperatura de serviço da isolação) e
  * X_L = x_L · L (x_L = 0,08 mΩ/m para condutores >= 35 mm²).
+ * Sem `voltage_V`, usa 380 V (trifásico) ou 220 V (mono/bifásico).
  */
 export function calcVoltageDrop(
   currentA: number,
   length_m: number,
   cable_mm2: number,
-  voltage_V = 380,
+  voltage_V?: number,
   cosphi = 0.86,
   opts: VoltageDropOptions = {},
 ): VoltageDropCalcResult {
   const phases = opts.phases ?? 3;
   const phaseFactor = phases === 3 ? ROOT3 : 2;
-  const rho = opts.rho_ohm_mm2_per_m ?? RHO_COPPER_OHM_MM2_PER_M;
+  const U = voltage_V ?? defaultVoltageForPhases(phases);
+  assertRange("currentA", currentA, 0, 1e6);
+  assertRange("length_m", length_m, 0, 1e6);
+  assertRange("cable_mm2", cable_mm2, 0, 10000, true);
+  assertRange("voltage_V", U, 0, 1e6, true);
+  assertRange("cosphi", cosphi, 0, 1);
+  const theta = opts.conductorTemp_C ?? conductorMaxOperatingTemp_C(opts.insulation ?? "PVC");
+  const rho =
+    opts.rho_ohm_mm2_per_m ??
+    (opts.material === "aluminum" ? aluminumResistivityAt(theta) : copperResistivityAt(theta));
   const clampedCos = Math.min(1, Math.max(0, cosphi));
   const sinphi = Math.sqrt(Math.max(0, 1 - clampedCos * clampedCos));
 
@@ -1146,7 +1284,7 @@ export function calcVoltageDrop(
   const resistiveDrop_V = phaseFactor * currentA * R * clampedCos;
   const reactiveDrop_V = phaseFactor * currentA * XL * sinphi;
   const deltaV_V = resistiveDrop_V + reactiveDrop_V;
-  const deltaV_pct = (deltaV_V / voltage_V) * 100;
+  const deltaV_pct = (deltaV_V / U) * 100;
 
   return {
     deltaV_V: round2(deltaV_V),
@@ -1169,7 +1307,7 @@ export function voltageDrop_pct(
   currentA: number,
   length_m: number,
   cable_mm2: number,
-  voltage_V = 380,
+  voltage_V?: number,
   cosphi = 0.86,
   opts: VoltageDropOptions = {},
 ): number {
@@ -1197,6 +1335,11 @@ export interface ThermalWithstandResult {
   clearingTime_s: number;
   i2t_actual_A2s: number;
   k2s2_allowed_A2s: number;
+  /**
+   * A expressão adiabática I²t ≤ k²S² só vale para 0 < t ≤ 5 s. Fora disso o
+   * resultado é marcado inválido e `adequate` = false (auditoria F2.5).
+   */
+  adiabaticValid: boolean;
   adequate: boolean;
   minRequiredSection_mm2: number;
   maxClearingTime_s: number;
@@ -1245,12 +1388,17 @@ export function verifyThermalWithstandI2t(p: ThermalWithstandParams): ThermalWit
   const insulation = p.insulation ?? "PVC";
   const S = p.section_mm2;
   const I = p.faultCurrent_A;
-  const t = Math.max(0.001, Math.min(5.0, p.clearingTime_s));
+  assertRange("section_mm2", S, 0, 10000, true);
+  assertRange("faultCurrent_A", I, 0, 1e7);
+  assertRange("clearingTime_s", p.clearingTime_s, 0, 1e4, true);
+  // F2.5: sem truncar t. Antes t = 10 s era avaliado como 5 s ("adequado").
+  const t = p.clearingTime_s;
+  const adiabaticValid = t <= 5.0;
 
   const k = conductorThermalConstantK(material, insulation, S);
   const i2t_actual = I * I * t;
   const k2s2_allowed = k * k * S * S;
-  const adequate = i2t_actual <= k2s2_allowed + 1e-6;
+  const adequate = adiabaticValid && i2t_actual <= k2s2_allowed + 1e-6;
   const minRequiredSection = round2((I * Math.sqrt(t)) / k);
   const maxClearingTime = round4(Math.pow((k * S) / Math.max(1, I), 2));
   const marginRatio = round4(i2t_actual / Math.max(1, k2s2_allowed));
@@ -1264,6 +1412,7 @@ export function verifyThermalWithstandI2t(p: ThermalWithstandParams): ThermalWit
     clearingTime_s: round4(t),
     i2t_actual_A2s: round1(i2t_actual),
     k2s2_allowed_A2s: round1(k2s2_allowed),
+    adiabaticValid,
     adequate,
     minRequiredSection_mm2: minRequiredSection,
     maxClearingTime_s: maxClearingTime,
@@ -1291,7 +1440,12 @@ export function minCommercialSectionShortCircuit(
     });
     if (res.adequate) return s;
   }
-  return NBR5410_SECTIONS[NBR5410_SECTIONS.length - 1];
+  // F2.5: antes devolvia 300 mm² silenciosamente mesmo sem atender (ou com t > 5 s).
+  throw new RangeError(
+    clearingTime_s > 5
+      ? `Tempo de corte ${clearingTime_s} s fora do regime adiabático (t ≤ 5 s): verificação I²t ≤ k²S² não aplicável.`
+      : `Nenhuma seção comercial até 300 mm² suporta ${faultCurrent_A} A por ${clearingTime_s} s (I²t ≤ k²S²).`,
+  );
 }
 
 function round1(n: number) {

@@ -105,3 +105,17 @@ Verificação: vitest 166 arquivos, 1.376/1.376; typecheck sem erros novos (os 2
 | F1.6 `SUPABASE_SERVICE_ROLE_KEY` local | PENDENTE (dono) | A chave local é a anon |
 
 Testes: vitest 168 arquivos, 1.391/1.391. O mock de `persistence-concurrency-conflict.test.ts` foi atualizado para o UPDATE condicional (aplica os filtros `id` e `version` como o Postgres).
+
+## Status de execução — Fase 2 (branch `fix/fase-2-calculos`, a partir de `fix/fase-1-integridade`)
+
+| Tarefa | Status | Evidência |
+|---|---|---|
+| F2.1 Suíte de referência | FEITO | `src/lib/__tests__/electrical-calc.reference.test.ts` (37 testes): valores calculados à mão e referência IEC 60364-5-52 (B.52.2–B.52.5), equivalente à NBR 5410 Tab. 36/37 para A1–C. Escrita antes das correções: falhou em 17 pontos e agora passa inteira |
+| F2.2 Tabelas Iz | FEITO (A1–C) | Só reduções: PVC/C/3c ≥ 25 mm² corrigido (35 mm² = 119 A, antes 125 A); XLPE/C/3c 6/10/16 mm² reduzidos. Teste garante que nenhum valor A1–C fica acima da referência. **Pendente:** conferir D, E e F contra a NBR 5410 oficial (os valores atuais são menores, portanto conservadores) |
+| F2.3 Resistividade e tensão | FEITO | ρ(θ) = ρ20·[1 + α(θ − 20)] na temperatura de serviço da isolação (Cu/PVC 70 °C ≈ 0,02063); monofásico sem tensão usa 220 V; `RHO_COPPER_OHM_MM2_PER_M` passa a valer o valor a 70 °C |
+| F2.4 Queda acumulada | FEITO (canvas) | `calculateVoltageDropNbr5410`: acumulado desde a origem (7% com transformador/gerador próprio, 5% BT como premissa), trecho terminal ≤ 4%; corrente do alimentador = soma das cargas a jusante; ligações sem comprimento declarado não somam metros fictícios ao acumulado. `nbr5410VoltageDropLimits()` no motor |
+| F2.5 Estados de erro | FEITO | `status: "NO_SECTION_SATISFIES"`; k_t = 0 acima da tabela; I²t sem truncar t (`adiabaticValid`); `minCommercialSectionShortCircuit` lança em vez de devolver 300 mm²; `RangeError` para NaN, zero e negativos; seção não comercial usa a tabelada inferior; alumínio não tabelado lança |
+| F2.6 Demanda | FEITO | P/η por motor (`totalElectrical_kW`) |
+| F2.7 Motor único | FEITO | `src/lib/diagram/circuit-current.ts` é a fonte única de corrente por nó (motor via `motorNominalCurrent`; carga trifásica P/(√3·U·fp)); `multifilar.ts` e `rules-catalog.ts` usam `calcVoltageDrop`; margem sobre valores não arredondados; resultado com dado de entrada ausente vira AVISO, nunca OK |
+
+Testes antigos ajustados aos valores corretos (com justificativa no código): `pickCable_mm2(100)` → 50 mm²; Iz C 35 mm² → 119 A; orquestrador escolhe 10 mm² (6 mm² dá 3,996%, no limite); canvas exige 4% só em trechos terminais. Vitest 170 arquivos, 1.435/1.435; typecheck 0; prettier e eslint ok.

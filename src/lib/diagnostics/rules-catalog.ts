@@ -11,6 +11,7 @@
 
 import { calcVoltageDrop, type CableSection_mm2 } from "@/lib/electrical-calc";
 import { inferCircuitConfig } from "@/lib/diagram/multifilar";
+import { estimateCircuitCurrent } from "@/lib/diagram/circuit-current";
 import type { DiagramDoc, DiagramEdge, DiagramNode } from "@/lib/diagram/schema";
 import { classifyMargin, type Diagnostic, type NormReference, type Severity } from "./contract";
 
@@ -122,46 +123,31 @@ export const ruleVoltageDropTerminalCircuit: Rule = {
     const length_m = cable?.length_m ?? 25;
     const section_mm2 = (cable?.section_mm2 ?? 4) as CableSection_mm2;
 
-    // Determinação determinística da corrente do circuito a partir da carga conectada
-    let current_A = 20;
-    const loadNode = [targetNode, sourceNode].find(
-      (n) =>
-        n?.params.kind === "motor" || n?.params.kind === "load" || n?.params.kind === "breaker",
-    );
-
-    if (loadNode) {
-      const p = loadNode.params;
-      if (p.kind === "motor") {
-        current_A =
-          (p as any).current_A ??
-          (p as any).fla_A ??
-          Math.round(
-            ((p as any).power_kW * 1000) /
-              (Math.sqrt(3) * ((p as any).voltage_V ?? 380) * 0.85 * 0.88),
-          );
-      } else if (p.kind === "breaker") {
-        current_A = (p as any).in_A ?? 20;
-      } else if (p.kind === "load") {
-        current_A = Math.round(
-          (p as any).power_W / (((p as any).voltage_V ?? 220) * ((p as any).fp ?? 0.92)),
-        );
-      }
-    } else {
-      assumptions.push("Corrente de projeto não informada; adotado valor nominal padrão de 20 A");
-    }
-
     const config = edge.circuitConfig ?? inferCircuitConfig(edge, sourceNode, targetNode);
     const isThreePhase = config.startsWith("3F");
-    const voltage_V = isThreePhase ? 380 : 220;
-    const cosphi = 0.85;
+
+    // Auditoria F2.7: corrente pela fonte única (cosφ/η do motor de cálculos,
+    // fórmula trifásica para carga trifásica), com premissas explícitas.
+    const est = estimateCircuitCurrent([targetNode, sourceNode], isThreePhase);
+    assumptions.push(...est.assumptions);
+    let current_A = est.current_A;
+    if (current_A === undefined) {
+      current_A = 20;
+      assumptions.push("Corrente de projeto não informada; adotado valor nominal padrão de 20 A");
+    }
+    const voltage_V = est.voltage_V ?? (isThreePhase ? 380 : 220);
+    const cosphi = est.cosphi;
 
     // Cálculo pela função de engenharia pura existente em electrical-calc
     const calc = calcVoltageDrop(current_A, length_m, section_mm2, voltage_V, cosphi, {
       phases: isThreePhase ? 3 : 1,
+      insulation: cable?.insulation ?? "PVC",
     });
 
     const drop_pct = Number(calc.deltaV_pct.toFixed(2));
-    const marginRatio = Number((drop_pct / limit_pct).toFixed(4));
+    // F2.7: margem sobre o valor não arredondado (4,004% não vira 4,00% "conforme").
+    const rawDropPct = (calc.deltaV_V / voltage_V) * 100;
+    const marginRatio = Number((rawDropPct / limit_pct).toFixed(6));
     const severity: Severity = classifyMargin(
       marginRatio,
       NORM_PARAMS.NBR5410.defaultWarningMarginRatio,

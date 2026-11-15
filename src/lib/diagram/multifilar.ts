@@ -5,6 +5,8 @@ import { makeEdge, makeNode } from "./model";
 import type { CircuitConfig, DiagramDoc, DiagramEdge, DiagramNode, NodeKind } from "./schema";
 import { classifyMargin, type Severity } from "../diagnostics/types";
 import { validateElectricalTopology } from "./connection/graph-validator";
+import { calcVoltageDrop, nbr5410VoltageDropLimits } from "../electrical-calc";
+import { estimateCircuitCurrent } from "./circuit-current";
 
 export const CONDUCTOR_LABELS: Record<CircuitConfig, string[]> = {
   F: ["L1"],
@@ -444,23 +446,89 @@ export interface VoltageDropResult {
   compliant: boolean;
   message: string;
   assumptions?: readonly string[];
+  /** Queda acumulada desde a origem da instalação até o fim deste trecho (%). F2.4. */
+  cumulative_drop_pct: number;
+  /** Limite a partir da origem (7% transformador/gerador próprio; 5% fornecimento BT). */
+  origin_limit_pct: number;
+  /** Trecho que alimenta diretamente um equipamento de utilização (limite próprio de 4%). */
+  is_terminal_circuit: boolean;
+  /** Maior razão medido/limite entre os critérios aplicáveis (sem arredondamento prévio). */
+  margin_ratio: number;
+  /**
+   * true quando o resultado depende de dado ausente deste trecho ou a montante
+   * (comprimento/seção do cabo, corrente real). Nesse caso não pode ser "OK".
+   */
+  requires_confirmation: boolean;
 }
 
+/** Equipamentos de utilização: o trecho que os alimenta é tratado como circuito terminal. */
+const UTILIZATION_KINDS = new Set(["motor", "load", "lamp", "socket"]);
+/** Nós que caracterizam origem com transformador/gerador próprio. */
+const OWN_SOURCE_KINDS = new Set(["transformer", "generator"]);
+
 /**
- * Calcula a queda de tensão real para circuitos com cabos configurados segundo NBR 5410:
- * ΔV = √3 · I · (R · cosφ + X · sinφ) para circuitos trifásicos a 380V
- * ΔV = 2 · I · (R · cosφ + X · sinφ) para circuitos monofásicos a 220V
+ * Queda de tensão por trecho e ACUMULADA desde a origem (auditoria F2.4/F2.7),
+ * usando o motor único `calcVoltageDrop` (ρ na temperatura de serviço, X para
+ * S ≥ 35 mm², tensão e fases coerentes) e a corrente de `estimateCircuitCurrent`.
+ *
+ * Critérios (ABNT NBR 5410:2004 §6.2.7, por referência de seção):
+ * - queda acumulada da origem ≤ 7% (transformador/gerador próprio a montante)
+ *   ou ≤ 5% (fornecimento em BT — premissa quando não há fonte própria no diagrama);
+ * - trecho terminal (alimenta equipamento de utilização) ≤ 4%.
+ * A conformidade é decidida sobre os valores sem arredondamento.
+ * Premissa de topologia: a aresta vai da origem (montante) para o destino (jusante).
  */
 export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[] {
-  const results: VoltageDropResult[] = [];
-  const RHO_COPPER_70C = 0.0215; // Ω·mm²/m para cobre a 70°C (isolamento PVC)
-  const REACTANCE_X_PER_M = 0.00008; // 0.08 Ω/km = 0.00008 Ω/m
-
-  // Avalia conexões canônicas (evita duplicar cálculos entre unifilar e multifilar)
+  // Conexões canônicas de potência (evita duplicar unifilar/multifilar e ignora sinal/controle).
   const canonicalEdges = Object.values(doc.edges).filter(
-    (e) => e.sheet === "unifilar" || !e.id.startsWith("mf_"),
+    (e) =>
+      (e.sheet === "unifilar" || !e.id.startsWith("mf_")) &&
+      (e.kind === "power" || e.cable !== undefined),
   );
 
+  type Segment = {
+    edge: DiagramEdge;
+    src: DiagramNode;
+    tgt: DiagramNode;
+    length_m: number;
+    section_mm2: number;
+    current_A: number;
+    drop_V: number;
+    rawPct: number;
+    assumptions: string[];
+    /** Premissa crítica: dado de entrada do próprio circuito ausente (ver F2.7). */
+    critical: boolean;
+  };
+
+  // Arestas que saem de cada nó (para somar a carga a jusante de alimentadores).
+  const outgoing = new Map<string, DiagramEdge[]>();
+  for (const e of canonicalEdges) {
+    const list = outgoing.get(e.source) ?? [];
+    list.push(e);
+    outgoing.set(e.source, list);
+  }
+  /** Soma das correntes das cargas a jusante de um nó (sem fator de demanda). */
+  const downstreamLoadCurrent = (
+    nodeId: string,
+    isThreePhase: boolean,
+    seen = new Set<string>(),
+  ): number => {
+    if (seen.has(nodeId)) return 0;
+    seen.add(nodeId);
+    let sum = 0;
+    for (const out of outgoing.get(nodeId) ?? []) {
+      const child = doc.nodes[out.target];
+      if (!child) continue;
+      if (UTILIZATION_KINDS.has(child.params.kind)) {
+        sum += estimateCircuitCurrent([child], isThreePhase).current_A ?? 0;
+      } else {
+        sum += downstreamLoadCurrent(child.id, isThreePhase, seen);
+      }
+    }
+    return sum;
+  };
+
+  const segments = new Map<string, Segment>();
   for (const e of canonicalEdges) {
     const src = doc.nodes[e.source];
     const tgt = doc.nodes[e.target];
@@ -470,66 +538,155 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
     const assumptions: string[] = [];
     if (!cable?.length_m) assumptions.push("Comprimento adotado como padrão (25 m)");
     if (!cable?.section_mm2) assumptions.push("Seção adotada como padrão (4 mm²)");
-
-    // Se o cabo não estiver explícito na aresta, infere valores nominais da carga ou padrão
     const length_m = cable?.length_m ?? 25;
     const section_mm2 = cable?.section_mm2 ?? 4;
 
-    // Determina a corrente do circuito a partir dos parâmetros do nó de carga ou proteção
-    let current_A = 20;
-    const loadNode = [tgt, src].find(
-      (n) => n.params.kind === "motor" || n.params.kind === "load" || n.params.kind === "breaker",
-    );
-    if (loadNode) {
-      const p = loadNode.params;
-      if (p.kind === "motor") {
-        current_A =
-          (p as any).current_A ??
-          (p as any).fla_A ??
-          Math.round(
-            ((p as any).power_kW * 1000) / (Math.sqrt(3) * (p as any).voltage_V * 0.85 * 0.88),
-          );
-      } else if (p.kind === "breaker") {
-        current_A = (p as any).in_A ?? 20;
-      } else if (p.kind === "load") {
-        current_A = Math.round((p as any).power_W / ((p as any).voltage_V * (p as any).fp));
-      }
-    } else {
-      assumptions.push("Corrente adotada como padrão (20 A)");
-    }
-
     const config = e.circuitConfig ?? inferCircuitConfig(e, src, tgt);
     const isThreePhase = config.startsWith("3F");
-    const voltage_V = isThreePhase ? 380 : 220;
-    const cosPhi = 0.85;
-    const sinPhi = Math.sqrt(1 - cosPhi * cosPhi);
-
-    const R = (RHO_COPPER_70C * length_m) / section_mm2;
-    const X = REACTANCE_X_PER_M * length_m;
-    const impedanceFactor = R * cosPhi + X * sinPhi;
-
-    const drop_V = isThreePhase
-      ? Math.sqrt(3) * current_A * impedanceFactor
-      : 2 * current_A * impedanceFactor;
-
-    const drop_pct = Number(((drop_V / voltage_V) * 100).toFixed(1));
-    const max_allowed_pct = 4.0; // NBR 5410 Tabela 33 para circuitos terminais
-    const compliant = drop_pct <= max_allowed_pct;
-
-    const cableName = (e as any).label || `W${results.length + 1}`;
-    results.push({
-      edgeId: e.id,
-      sourceLabel: src.label || src.id,
-      targetLabel: tgt.label || tgt.id,
+    const est = estimateCircuitCurrent([tgt, src], isThreePhase);
+    // No canvas, as premissas informativas também são listadas ao usuário.
+    assumptions.push(...est.assumptions, ...(est.informativeAssumptions ?? []));
+    let current_A = est.current_A;
+    let derivedFromDownstream = false;
+    if (current_A === undefined || est.currentFromProtectionRating) {
+      // Alimentador/distribuição: corrente = soma das cargas a jusante (F2.4).
+      const downstream = UTILIZATION_KINDS.has(tgt.params.kind)
+        ? 0
+        : downstreamLoadCurrent(tgt.id, isThreePhase);
+      if (downstream > 0) {
+        current_A = downstream;
+        derivedFromDownstream = true;
+        // A premissa do disjuntor (se houver) deixa de valer: corrente real das cargas.
+        assumptions.length = 0;
+        if (!cable?.length_m) assumptions.push("Comprimento adotado como padrão (25 m)");
+        if (!cable?.section_mm2) assumptions.push("Seção adotada como padrão (4 mm²)");
+        assumptions.push(
+          `Corrente do trecho = soma das cargas a jusante (${downstream.toFixed(1)} A), sem fator de demanda`,
+        );
+      }
+    }
+    if (current_A === undefined) {
+      current_A = 20;
+      assumptions.push("Corrente de projeto não definida por nenhuma carga; adotado 20 A");
+    }
+    // Críticas: faltam dados do próprio circuito (cabo ou corrente real). As demais
+    // premissas (cosφ/η/fp típicos, tipo de origem) são informativas e listadas.
+    const critical =
+      !cable?.length_m ||
+      !cable?.section_mm2 ||
+      (!derivedFromDownstream &&
+        (est.current_A === undefined || est.currentFromProtectionRating === true));
+    const voltage_V = est.voltage_V ?? (isThreePhase ? 380 : 220);
+    const calc = calcVoltageDrop(current_A, length_m, section_mm2, voltage_V, est.cosphi, {
+      phases: isThreePhase ? 3 : 1,
+      insulation: cable?.insulation ?? "PVC",
+    });
+    segments.set(e.id, {
+      edge: e,
+      src,
+      tgt,
       length_m,
       section_mm2,
       current_A,
-      drop_V: Number(drop_V.toFixed(2)),
+      drop_V: calc.deltaV_V,
+      rawPct: (calc.deltaV_V / voltage_V) * 100,
+      assumptions,
+      critical,
+    });
+  }
+
+  // Arestas que chegam em cada nó (para caminhar a montante).
+  const incoming = new Map<string, Segment[]>();
+  for (const seg of segments.values()) {
+    const list = incoming.get(seg.tgt.id) ?? [];
+    list.push(seg);
+    incoming.set(seg.tgt.id, list);
+  }
+
+  // Queda acumulada A MONTANTE de um nó, somando apenas trechos com comprimento
+  // DECLARADO. Ligações sem cabo declarado (ex.: barramento→disjuntor dentro do
+  // mesmo painel) não recebem os 25 m padrão no acumulado — isso inventaria
+  // metros de cabo inexistentes; elas ficam marcadas como premissa crítica.
+  const upstreamMemo = new Map<string, number>();
+  const declaredContributionUpTo = (seg: Segment, visiting: Set<string>): number => {
+    const cached = upstreamMemo.get(seg.edge.id);
+    if (cached !== undefined) return cached;
+    if (visiting.has(seg.edge.id)) return 0; // ciclo: não acumula de novo
+    visiting.add(seg.edge.id);
+    let upstream = 0;
+    for (const up of incoming.get(seg.src.id) ?? []) {
+      upstream = Math.max(upstream, declaredContributionUpTo(up, visiting));
+    }
+    visiting.delete(seg.edge.id);
+    const own = seg.edge.cable?.length_m ? seg.rawPct : 0;
+    const total = own + upstream;
+    upstreamMemo.set(seg.edge.id, total);
+    return total;
+  };
+  const cumulativePct = (seg: Segment): number => {
+    let upstream = 0;
+    for (const up of incoming.get(seg.src.id) ?? []) {
+      upstream = Math.max(upstream, declaredContributionUpTo(up, new Set()));
+    }
+    return seg.rawPct + upstream;
+  };
+
+  const hasOwnSourceUpstream = (nodeId: string, seen = new Set<string>()): boolean => {
+    if (seen.has(nodeId)) return false;
+    seen.add(nodeId);
+    const node = doc.nodes[nodeId];
+    if (node && OWN_SOURCE_KINDS.has(node.params.kind)) return true;
+    return (incoming.get(nodeId) ?? []).some((up) => hasOwnSourceUpstream(up.src.id, seen));
+  };
+
+  // Premissa crítica neste trecho ou em qualquer trecho a montante (afeta o acumulado).
+  const hasCriticalOnPath = (seg: Segment, seen = new Set<string>()): boolean => {
+    if (seg.critical) return true;
+    if (seen.has(seg.edge.id)) return false;
+    seen.add(seg.edge.id);
+    return (incoming.get(seg.src.id) ?? []).some((up) => hasCriticalOnPath(up, seen));
+  };
+
+  const results: VoltageDropResult[] = [];
+  for (const seg of segments.values()) {
+    const cumulative = cumulativePct(seg);
+    const ownSource = hasOwnSourceUpstream(seg.src.id);
+    const limits = nbr5410VoltageDropLimits(ownSource ? "OWN_TRANSFORMER" : "LV_UTILITY");
+    const assumptions = [...seg.assumptions];
+    if (!ownSource) {
+      assumptions.push(
+        `Origem sem transformador/gerador próprio no diagrama: adotado fornecimento em BT (limite ${limits.fromOriginMaxPct}% desde a origem)`,
+      );
+    }
+    const isTerminal = UTILIZATION_KINDS.has(seg.tgt.params.kind);
+    const ownRatio = isTerminal ? seg.rawPct / limits.terminalCircuitMaxPct : 0;
+    const originRatio = cumulative / limits.fromOriginMaxPct;
+    const margin_ratio = Math.max(ownRatio, originRatio);
+    const compliant = margin_ratio <= 1 + 1e-12;
+    const max_allowed_pct = isTerminal ? limits.terminalCircuitMaxPct : limits.fromOriginMaxPct;
+    const drop_pct = Number(seg.rawPct.toFixed(2));
+    const cumulative_drop_pct = Number(cumulative.toFixed(2));
+    const cableName = (seg.edge as { label?: string }).label || `W${results.length + 1}`;
+    results.push({
+      edgeId: seg.edge.id,
+      sourceLabel: seg.src.label || seg.src.id,
+      targetLabel: seg.tgt.label || seg.tgt.id,
+      length_m: seg.length_m,
+      section_mm2: seg.section_mm2,
+      current_A: Number(seg.current_A.toFixed(2)),
+      drop_V: Number(seg.drop_V.toFixed(2)),
       drop_pct,
       max_allowed_pct,
       compliant,
-      message: `Queda de tensão no cabo ${cableName}: ${drop_pct}% (Permitido < ${max_allowed_pct.toFixed(1)}% NBR 5410)`,
+      message: isTerminal
+        ? `Queda de tensão no cabo ${cableName}: ${drop_pct}% no circuito terminal (limite ${limits.terminalCircuitMaxPct}%) e ${cumulative_drop_pct}% desde a origem (limite ${limits.fromOriginMaxPct}%) — NBR 5410 §6.2.7`
+        : `Queda de tensão no cabo ${cableName}: ${drop_pct}% no trecho; ${cumulative_drop_pct}% acumulado desde a origem (limite ${limits.fromOriginMaxPct}%) — NBR 5410 §6.2.7`,
       assumptions: assumptions.length > 0 ? assumptions : undefined,
+      cumulative_drop_pct,
+      origin_limit_pct: limits.fromOriginMaxPct,
+      is_terminal_circuit: isTerminal,
+      margin_ratio,
+      requires_confirmation: hasCriticalOnPath(seg),
     });
   }
 
@@ -598,16 +755,18 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
   // 3. Verificação de queda de tensão NBR 5410 com classificação determinística de margem
   const voltageDrops = calculateVoltageDropNbr5410(doc);
   for (const vd of voltageDrops) {
-    const marginRatio = vd.max_allowed_pct > 0 ? vd.drop_pct / vd.max_allowed_pct : 1;
-    const severity = classifyMargin(marginRatio, 0.9);
+    // F2.7: margem calculada sobre valores não arredondados e sobre os dois
+    // critérios (trecho terminal e acumulado desde a origem).
+    const severity = classifyMargin(vd.margin_ratio, 0.9);
     const targetNodeId = doc.edges[vd.edgeId]?.target;
+    const hasAssumptions = vd.requires_confirmation;
 
     if (severity === "error") {
       alerts.push({
         id: `vd_err_${vd.edgeId}`,
         type: "ERRO",
         severity: "error",
-        message: `Excesso de queda de tensão: ${vd.drop_pct}% > ${vd.max_allowed_pct}% (NBR 5410). Aumente a seção do cabo.`,
+        message: `Excesso de queda de tensão: ${vd.message}. Aumente a seção do cabo.`,
         nodeId: targetNodeId,
         edgeId: vd.edgeId,
         assumptions: vd.assumptions,
@@ -617,7 +776,18 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
         id: `vd_warn_${vd.edgeId}`,
         type: "AVISO",
         severity: "warning",
-        message: `Atenção: queda de tensão ${vd.drop_pct}% próxima ao limite de ${vd.max_allowed_pct}% (NBR 5410, margem >= 90%).`,
+        message: `Atenção: queda de tensão próxima ao limite (margem ≥ 90%): ${vd.message}.`,
+        nodeId: targetNodeId,
+        edgeId: vd.edgeId,
+        assumptions: vd.assumptions,
+      });
+    } else if (hasAssumptions) {
+      // F2.7: conformidade que depende de premissas não é apresentada como "OK".
+      alerts.push({
+        id: `vd_warn_${vd.edgeId}`,
+        type: "AVISO",
+        severity: "warning",
+        message: `Queda de tensão dentro do limite somente sob premissas não confirmadas: ${vd.message}. Informe os dados reais para validar.`,
         nodeId: targetNodeId,
         edgeId: vd.edgeId,
         assumptions: vd.assumptions,
