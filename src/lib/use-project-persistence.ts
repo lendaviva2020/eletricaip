@@ -17,6 +17,17 @@ import {
 } from "@/lib/diagram/connection/connection-repair-engine";
 import { useAutosaveLog } from "@/lib/autosave-log";
 import { toast } from "sonner";
+import { buildMccDemoDiagram, MCC_DEMO_DOC_ID } from "@/lib/simulation/mcc-demo-plant";
+
+/**
+ * Projeto de DEMONSTRAÇÃO local: carrega a planta-modelo no navegador e NUNCA
+ * lê nem grava no servidor (sem autosave). Serve para apresentar o produto e
+ * testar os editores sem depender do banco.
+ */
+export const DEMO_PROJECT_ID = MCC_DEMO_DOC_ID;
+export function isDemoProject(projectId: string | null | undefined): boolean {
+  return projectId === DEMO_PROJECT_ID;
+}
 
 interface LoadProjectResponse {
   snapshot: ProjectSnapshot;
@@ -67,6 +78,19 @@ export function useProjectPersistence(projectId: string | null) {
         kind: "skip:no-project",
         projectId: null,
         message: "Sem projectId — autosave desativado",
+      });
+      return;
+    }
+
+    if (isDemoProject(projectId)) {
+      const ds = useDiagramStore.getState();
+      // Só recarrega se o diagrama atual não for a demo (preserva edições na sessão).
+      if (ds.doc.id !== MCC_DEMO_DOC_ID) ds.loadDoc(buildMccDemoDiagram());
+      useProjectStore.getState().setProjectId(projectId);
+      useAutosaveLog.getState().log({
+        kind: "skip:no-project",
+        projectId,
+        message: "Projeto de demonstração local — autosave desativado",
       });
       return;
     }
@@ -197,7 +221,7 @@ export function useProjectPersistence(projectId: string | null) {
 
   // Debounced auto-save when dirty
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || isDemoProject(projectId)) return;
 
     const schedule = (reason: string) => {
       if (isHydratingRef.current) return;

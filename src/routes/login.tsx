@@ -80,6 +80,27 @@ function LoginPage() {
       >
         <GoogleIcon /> Continuar com Google
       </button>
+      {import.meta.env.DEV && (
+        // Só existe no servidor de desenvolvimento: o build de produção fixa
+        // import.meta.env.DEV = false e elimina este botão e o bypass de sessão.
+        <button
+          type="button"
+          data-testid="demo-login"
+          onClick={() => {
+            try {
+              localStorage.setItem("eletricai.dev-auth-bypass", "true");
+            } catch {
+              // storage bloqueado: o bypass também aceita ?devAuth=1
+            }
+            window.location.assign(
+              "/workspace?projectId=00000000-0000-4000-8000-0000000000cc&devAuth=1",
+            );
+          }}
+          className="mt-2 h-9 w-full rounded-md border border-dashed border-amber-500/60 bg-amber-500/10 text-[13px] font-medium text-amber-600 hover:bg-amber-500/20 dark:text-amber-300"
+        >
+          Entrar em modo demonstração (somente desenvolvimento)
+        </button>
+      )}
       <Divider />
       <form onSubmit={handleEmail} className="space-y-3">
         <Input label="Email" type="email" value={email} onChange={setEmail} required />

@@ -2,6 +2,29 @@
 // Standards: IEC 62443 (Multi-tenant Authorization), ISA-101 (HMI Ergonomics)
 
 import { useEffect } from "react";
+import { isDemoProject } from "@/lib/use-project-persistence";
+
+/** Limite para validar o contexto no servidor: sem ele a tela girava para sempre sem rede. */
+const CONTEXT_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("Network timeout: servidor não respondeu a tempo")),
+      ms,
+    );
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e: unknown) => {
+        clearTimeout(timer);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      },
+    );
+  });
+}
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
@@ -55,6 +78,8 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
 
   const resolveContextFn = useServerFn(resolveScadaProjectContext);
   const listProjectsFn = useServerFn(listAccessibleScadaProjects);
+  // Demonstrações (ETE e planta local) não consultam o servidor.
+  const isLocalDemo = projectId === DEMO_ETE_PROJECT_ID || isDemoProject(projectId);
 
   // 1. If projectId is provided, authorize and resolve context server-side
   const {
@@ -66,9 +91,9 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
     queryKey: ["scada-project-context", projectId],
     queryFn: async () => {
       if (!projectId) return null;
-      return resolveContextFn({ data: { projectId } });
+      return withTimeout(resolveContextFn({ data: { projectId } }), CONTEXT_TIMEOUT_MS);
     },
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && !isLocalDemo,
     retry: false,
     staleTime: 60 * 1000,
   });
@@ -76,7 +101,7 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
   // 2. If projectId is absent, query user's accessible projects
   const { data: accessibleProjects, isLoading: isListLoading } = useQuery({
     queryKey: ["scada-accessible-projects"],
-    queryFn: async () => listProjectsFn(),
+    queryFn: async () => withTimeout(listProjectsFn(), CONTEXT_TIMEOUT_MS),
     enabled: !projectId,
     staleTime: 30 * 1000,
   });
@@ -85,6 +110,16 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
   useEffect(() => {
     if (!projectId) {
       clearProjectContext();
+      return;
+    }
+
+    if (isDemoProject(projectId)) {
+      setProjectContext({
+        projectId,
+        tenantId: DEMO_ETE_TENANT_ID,
+        projectName: "Demonstração — CCM Linha de Separação de Metais",
+        isDemo: true,
+      });
       return;
     }
 
@@ -129,7 +164,7 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
   }, [projectContext, projectId, setProjectContext, clearProjectContext]);
 
   // ── Render: Loading State ────────────────────────────────────────────────
-  if (projectId && projectId !== DEMO_ETE_PROJECT_ID && isContextLoading) {
+  if (projectId && !isLocalDemo && isContextLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full w-full bg-[#080b11] text-foreground p-6">
         <CircleNotch className="w-10 h-10 text-primary animate-spin mb-4" />
@@ -144,7 +179,7 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
   }
 
   // ── Render: Security Error / Cross-tenant Rejection / Not Found ───────────
-  if (projectId && projectId !== DEMO_ETE_PROJECT_ID && contextError) {
+  if (projectId && !isLocalDemo && contextError) {
     const errorMsg = contextError instanceof Error ? contextError.message : String(contextError);
     const isNotFound = errorMsg.includes("NOT_FOUND");
     const isForbidden = errorMsg.includes("FORBIDDEN");

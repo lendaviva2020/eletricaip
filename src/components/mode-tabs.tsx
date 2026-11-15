@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MODES, type WorkspaceMode } from "@/lib/workspace-data";
 import { cn } from "@/lib/utils";
 import {
@@ -189,12 +190,39 @@ export function ModeTabs() {
   const [search, setSearch] = useState("");
   const menuContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  // O menu é renderizado em portal (document.body) com posição fixa: dentro do
+  // cabeçalho ele ficava atrás das barras do canvas (contexto de empilhamento)
+  // e os itens apareciam cortados.
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      setMenuPos(null);
+      return;
+    }
+    const place = () => {
+      const r = menuContainerRef.current?.getBoundingClientRect();
+      if (r) setMenuPos({ top: r.bottom + 2, left: Math.max(8, r.left + 8) });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;
     const tId = setTimeout(() => searchInputRef.current?.focus(), 20);
     const handleOutside = (e: MouseEvent) => {
-      if (menuContainerRef.current && !menuContainerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        menuContainerRef.current &&
+        !menuContainerRef.current.contains(target) &&
+        !popoverRef.current?.contains(target)
+      ) {
         setMenuOpen(false);
       }
     };
@@ -260,88 +288,104 @@ export function ModeTabs() {
           <span className="xl:hidden">Ambientes</span>
         </button>
 
-        {menuOpen && (
-          <div
-            role="menu"
-            data-testid="environments-menu-popover"
-            className="absolute left-2 top-9 w-80 max-w-[calc(100vw-1rem)] rounded-md border border-border bg-popover text-popover-foreground shadow-xl z-50 overflow-hidden"
-          >
-            <div className="px-3 py-2 border-b border-border bg-muted/40">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-1.5">
-                AMBIENTES DE ENGENHARIA
+        {menuOpen &&
+          menuPos &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              ref={popoverRef}
+              role="menu"
+              data-testid="environments-menu-popover"
+              style={{ position: "fixed", top: menuPos.top, left: menuPos.left }}
+              className="w-80 max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-5rem)] rounded-md border border-border bg-popover text-popover-foreground shadow-xl z-[200] overflow-hidden"
+            >
+              <div className="px-3 py-2 border-b border-border bg-muted/40">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-1.5">
+                  AMBIENTES DE ENGENHARIA
+                </div>
+                <div className="relative flex items-center">
+                  <MagnifyingGlass className="h-3.5 w-3.5 absolute left-2 text-muted-foreground pointer-events-none" />
+                  <input
+                    ref={searchInputRef}
+                    data-testid="environments-search-input"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      // Enter abre o primeiro ambiente filtrado.
+                      if (e.key !== "Enter") return;
+                      const first = filteredCategories[0]?.items[0];
+                      if (!first) return;
+                      e.preventDefault();
+                      selectMode(first.id);
+                      setMenuOpen(false);
+                      setSearch("");
+                    }}
+                    placeholder="Filtrar módulo (ex.: Unifilar, Ladder, SCADA...)"
+                    aria-label="Filtrar ambiente de engenharia"
+                    className="w-full h-7 pl-7 pr-7 rounded bg-background border border-input text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      aria-label="Limpar busca"
+                      onClick={() => setSearch("")}
+                      className="absolute right-1.5 p-0.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="relative flex items-center">
-                <MagnifyingGlass className="h-3.5 w-3.5 absolute left-2 text-muted-foreground pointer-events-none" />
-                <input
-                  ref={searchInputRef}
-                  data-testid="environments-search-input"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Filtrar módulo (ex.: Unifilar, Ladder, SCADA...)"
-                  aria-label="Filtrar ambiente de engenharia"
-                  className="w-full h-7 pl-7 pr-7 rounded bg-background border border-input text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    aria-label="Limpar busca"
-                    onClick={() => setSearch("")}
-                    className="absolute right-1.5 p-0.5 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+
+              <div className="max-h-72 overflow-y-auto p-2 space-y-2.5">
+                {filteredCategories.length === 0 ? (
+                  <div className="py-4 text-center text-xs text-muted-foreground">
+                    Nenhum ambiente encontrado para "{search}".
+                  </div>
+                ) : (
+                  filteredCategories.map((cat) => (
+                    <div key={cat.id}>
+                      <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {cat.title}
+                      </div>
+                      <div className="space-y-0.5">
+                        {cat.items.map((m) => {
+                          const active = m.id === mode;
+                          const label = t(`workspace.modes.${m.id}`) || m.label;
+                          const hint = t(`workspace.modes.${m.id}Hint`) || m.hint;
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              role="menuitem"
+                              data-testid={`env-menu-item-${m.id}`}
+                              onClick={() => {
+                                selectMode(m.id);
+                                setMenuOpen(false);
+                                setSearch("");
+                              }}
+                              className={cn(
+                                "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors cursor-pointer",
+                                active
+                                  ? "bg-primary/15 text-primary font-semibold"
+                                  : "hover:bg-accent text-foreground",
+                              )}
+                            >
+                              <span>{label}</span>
+                              <span className="text-[10px] font-mono uppercase text-muted-foreground">
+                                {hint}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
-            </div>
-
-            <div className="max-h-72 overflow-y-auto p-2 space-y-2.5">
-              {filteredCategories.length === 0 ? (
-                <div className="py-4 text-center text-xs text-muted-foreground">
-                  Nenhum ambiente encontrado para "{search}".
-                </div>
-              ) : (
-                filteredCategories.map((cat) => (
-                  <div key={cat.id}>
-                    <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      {cat.title}
-                    </div>
-                    <div className="space-y-0.5">
-                      {cat.items.map((m) => {
-                        const active = m.id === mode;
-                        const label = t(`workspace.modes.${m.id}`) || m.label;
-                        const hint = t(`workspace.modes.${m.id}Hint`) || m.hint;
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            role="menuitem"
-                            data-testid={`env-menu-item-${m.id}`}
-                            onClick={() => {
-                              selectMode(m.id);
-                              setMenuOpen(false);
-                              setSearch("");
-                            }}
-                            className={cn(
-                              "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors cursor-pointer",
-                              active
-                                ? "bg-primary/15 text-primary font-semibold"
-                                : "hover:bg-accent text-foreground",
-                            )}
-                          >
-                            <span>{label}</span>
-                            <span className="text-[10px] font-mono uppercase text-muted-foreground">
-                              {hint}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body,
+          )}
       </div>
 
       {/* Seta esquerda de rolagem quando há overflow */}
