@@ -28,7 +28,8 @@ import { repairDiagramConnections } from "@/lib/diagram/connection/connection-re
 import { autoLayoutIndustrialDiagram } from "@/lib/diagram/connection/auto-layout-router";
 import { validateElectricalTopology } from "@/lib/diagram/connection/graph-validator";
 import type { ConnectivityReport } from "@/lib/diagram/connection/types";
-import type { DiagramDoc, DiagramEdge } from "@/lib/diagram/schema";
+import { DiagramDocSchema, type DiagramDoc, type DiagramEdge } from "@/lib/diagram/schema";
+import { sanitizeAiPatch } from "@/lib/diagram/ai-patch-sanitizer";
 
 const InputSchema = z.object({
   prompt: z.string().min(1).max(32000),
@@ -76,10 +77,17 @@ MANDATORY RULES:
   • breaker: in_A (number), curve ("B"|"C"|"D"), poles (1..4)
   • rcd: in_A, sensitivity_mA (default 30), poles (2..4)
   • contactor: in_A, coil_V
-  • motor: power_kW, voltage_V, startMethod ("DOL"|"SOFT"|"VFD")
+  • thermal_relay: in_A, trip_class ("10A"|"20"|"30")
+  • motor: power_kW, voltage_V, startMethod ("DOL"|"SOFT"|"VFD"|"STAR_DELTA")
+  • vfd: power_kW, voltage_V
+  • softstarter: power_kW
+  • psu: output_V, output_A
+  • busbar: current_A, voltage_V
   • transformer: kVA, primary_V, secondary_V
   • socket: current_A, voltage_V
   • load/lamp: power_W, voltage_V
+- MOTOR BRANCHES (IEC 60947-4-1 / NBR 5410 §6.5.1): DOL or STAR_DELTA → breaker → contactor → thermal_relay → motor (thermal relay is MANDATORY). VFD/SOFT → breaker → (optional isolation contactor) → vfd/softstarter → motor (drive provides electronic overload; NO thermal relay). Size breaker ≥ 1.25·In and thermal relay range covering In.
+- Main breaker tag MUST be "Q0" (QGBT) so tools can identify the infeed.
 - Apply IEC 60364 / IEEE standards: include RCD on socket circuits, PE grounding on loads, upstream circuit breaker.
 - rationale: short in English citing touched standards.
 
@@ -93,19 +101,21 @@ TECHNICAL SYMBOL INVARIANCE RULE:
 
 EXAMPLE of complete, fully-connected patch:
 {
-  "rationale": "Main QGBT breaker feeding busbar with DOL motor branch per IEC 60364.",
+  "rationale": "Main breaker Q0 feeding busbar with a 15 kW DOL motor branch (Q→K→F→M) per IEC 60364 and IEC 60947-4-1.",
   "addNodes": [
-    { "id": "n_qf_main", "sheet": "unifilar", "position": {"x": 400, "y": 100}, "label": "QF-GERAL 125A", "rotation": 0, "params": { "kind": "breaker", "in_A": 125, "curve": "C", "poles": 3 } },
+    { "id": "n_qf_main", "sheet": "unifilar", "position": {"x": 400, "y": 100}, "label": "Q0 GERAL 125A", "rotation": 0, "params": { "kind": "breaker", "tag": "Q0", "in_A": 125, "curve": "C", "poles": 3 } },
     { "id": "n_bus01", "sheet": "unifilar", "position": {"x": 400, "y": 240}, "label": "BARRAMENTO 160A", "rotation": 0, "params": { "kind": "busbar", "current_A": 160, "voltage_V": 380 } },
     { "id": "n_qf01", "sheet": "unifilar", "position": {"x": 400, "y": 380}, "label": "QF-01 32A", "rotation": 0, "params": { "kind": "breaker", "in_A": 32, "curve": "D", "poles": 3 } },
     { "id": "n_km01", "sheet": "unifilar", "position": {"x": 400, "y": 520}, "label": "KM-01 32A", "rotation": 0, "params": { "kind": "contactor", "in_A": 32, "coil_V": 24 } },
-    { "id": "n_m01", "sheet": "unifilar", "position": {"x": 400, "y": 660}, "label": "M-01 15kW", "rotation": 0, "params": { "kind": "motor", "power_kW": 15, "voltage_V": 380, "startMethod": "DOL" } }
+    { "id": "n_f01", "sheet": "unifilar", "position": {"x": 400, "y": 660}, "label": "F-01 25-32A", "rotation": 0, "params": { "kind": "thermal_relay", "in_A": 32, "trip_class": "10A" } },
+    { "id": "n_m01", "sheet": "unifilar", "position": {"x": 400, "y": 800}, "label": "M-01 15kW", "rotation": 0, "params": { "kind": "motor", "power_kW": 15, "voltage_V": 380, "startMethod": "DOL" } }
   ],
   "addEdges": [
     { "id": "e_main_bus", "sheet": "unifilar", "source": "n_qf_main", "target": "n_bus01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
     { "id": "e_bus_qf01", "sheet": "unifilar", "source": "n_bus01", "target": "n_qf01", "sourcePort": "B1", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
     { "id": "e_qf01_km01", "sheet": "unifilar", "source": "n_qf01", "target": "n_km01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
-    { "id": "e_km01_m01", "sheet": "unifilar", "source": "n_km01", "target": "n_m01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" }
+    { "id": "e_km01_f01", "sheet": "unifilar", "source": "n_km01", "target": "n_f01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
+    { "id": "e_f01_m01", "sheet": "unifilar", "source": "n_f01", "target": "n_m01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" }
   ],
   "removeNodeIds": [], "removeEdgeIds": [], "updateNodes": []
 }`;
@@ -138,10 +148,17 @@ REGRAS OBRIGATÓRIAS:
   • breaker: in_A (number), curve ("B"|"C"|"D"), poles (1..4)
   • rcd: in_A, sensitivity_mA (default 30), poles (2..4)
   • contactor: in_A, coil_V
-  • motor: power_kW, voltage_V, startMethod ("DOL"|"SOFT"|"VFD")
+  • thermal_relay: in_A, trip_class ("10A"|"20"|"30")
+  • motor: power_kW, voltage_V, startMethod ("DOL"|"SOFT"|"VFD"|"STAR_DELTA")
+  • vfd: power_kW, voltage_V
+  • softstarter: power_kW
+  • psu: output_V, output_A
+  • busbar: current_A, voltage_V
   • transformer: kVA, primary_V, secondary_V
   • socket: current_A, voltage_V
   • load/lamp: power_W, voltage_V
+- RAMAIS DE MOTOR (IEC 60947-4-1 / NBR 5410 §6.5.1): DOL ou STAR_DELTA → disjuntor → contator → thermal_relay → motor (relé térmico OBRIGATÓRIO). VFD/SOFT → disjuntor → (contator de isolação opcional) → vfd/softstarter → motor (o acionamento faz a proteção de sobrecarga eletrônica; SEM relé térmico). Disjuntor ≥ 1,25·In e faixa do relé térmico cobrindo In.
+- A tag do disjuntor geral DEVE ser "Q0" (QGBT) para identificação do alimentador.
 - Aplique NBR 5410: incluir RCD (DR) em circuitos de tomada, aterramento PE em cargas, disjuntor a montante.
 - rationale: curto em PT-BR citando as normas tocadas.
 
@@ -155,19 +172,21 @@ REGRA DE INVARIÂNCIA DE SÍMBOLOS TÉCNICOS:
 
 EXEMPLO de patch completo com conexões elétricas integradas:
 {
-  "rationale": "Quadro QGBT com disjuntor geral, barramento e ramal de motor com partida direta conforme NBR 5410.",
+  "rationale": "QGBT com disjuntor geral Q0, barramento e ramal de motor 15 kW em partida direta (Q→K→F→M) conforme NBR 5410 e IEC 60947-4-1.",
   "addNodes": [
-    { "id": "n_qf_geral", "sheet": "unifilar", "position": {"x": 400, "y": 100}, "label": "QF-GERAL 125A", "rotation": 0, "params": { "kind": "breaker", "in_A": 125, "curve": "C", "poles": 3 } },
+    { "id": "n_qf_geral", "sheet": "unifilar", "position": {"x": 400, "y": 100}, "label": "Q0 GERAL 125A", "rotation": 0, "params": { "kind": "breaker", "tag": "Q0", "in_A": 125, "curve": "C", "poles": 3 } },
     { "id": "n_bus01", "sheet": "unifilar", "position": {"x": 400, "y": 240}, "label": "BARRAMENTO 160A", "rotation": 0, "params": { "kind": "busbar", "current_A": 160, "voltage_V": 380 } },
     { "id": "n_qf01", "sheet": "unifilar", "position": {"x": 400, "y": 380}, "label": "QF-01 32A", "rotation": 0, "params": { "kind": "breaker", "in_A": 32, "curve": "D", "poles": 3 } },
     { "id": "n_km01", "sheet": "unifilar", "position": {"x": 400, "y": 520}, "label": "KM-01 32A", "rotation": 0, "params": { "kind": "contactor", "in_A": 32, "coil_V": 24 } },
-    { "id": "n_m01", "sheet": "unifilar", "position": {"x": 400, "y": 660}, "label": "M-01 15kW", "rotation": 0, "params": { "kind": "motor", "power_kW": 15, "voltage_V": 380, "startMethod": "DOL" } }
+    { "id": "n_f01", "sheet": "unifilar", "position": {"x": 400, "y": 660}, "label": "F-01 25-32A", "rotation": 0, "params": { "kind": "thermal_relay", "in_A": 32, "trip_class": "10A" } },
+    { "id": "n_m01", "sheet": "unifilar", "position": {"x": 400, "y": 800}, "label": "M-01 15kW", "rotation": 0, "params": { "kind": "motor", "power_kW": 15, "voltage_V": 380, "startMethod": "DOL" } }
   ],
   "addEdges": [
     { "id": "e_geral_bus", "sheet": "unifilar", "source": "n_qf_geral", "target": "n_bus01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
     { "id": "e_bus_qf01", "sheet": "unifilar", "source": "n_bus01", "target": "n_qf01", "sourcePort": "B1", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
     { "id": "e_qf01_km01", "sheet": "unifilar", "source": "n_qf01", "target": "n_km01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
-    { "id": "e_km01_m01", "sheet": "unifilar", "source": "n_km01", "target": "n_m01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" }
+    { "id": "e_km01_f01", "sheet": "unifilar", "source": "n_km01", "target": "n_f01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
+    { "id": "e_f01_m01", "sheet": "unifilar", "source": "n_f01", "target": "n_m01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" }
   ],
   "removeNodeIds": [], "removeEdgeIds": [], "updateNodes": []
 }`;
@@ -205,22 +224,44 @@ async function callGeminiDiagramPatch(
   return response;
 }
 
-// Projeta o doc para um resumo enxuto (evita estourar payload).
-function summarizeDoc(doc: unknown): string {
-  if (!doc || typeof doc !== "object") return "";
-  const d = doc as { nodes?: Record<string, any>; edges?: Record<string, any> };
-  const nodes = Object.values(d.nodes ?? {})
-    .slice(0, 80)
-    .map((n: any) => ({
+// Projeta o doc para um resumo enxuto (evita estourar payload). Corta por
+// QUANTIDADE de itens — truncar a string JSON entregava JSON inválido à IA.
+const SUMMARY_MAX_CHARS = 6000;
+function rec(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+}
+export function summarizeDoc(doc: unknown): string {
+  const d = rec(doc);
+  const nodes = Object.values(rec(d.nodes)).map((raw) => {
+    const n = rec(raw);
+    const params = rec(n.params);
+    const pos = rec(n.position);
+    return {
       id: n.id,
-      kind: n.params?.kind,
-      label: n.label,
+      kind: params.kind,
+      tag: params.tag,
       sheet: n.sheet,
-    }));
-  const edges = Object.values(d.edges ?? {})
-    .slice(0, 120)
-    .map((e: any) => ({ id: e.id, s: e.source, t: e.target, k: e.kind }));
-  return JSON.stringify({ nodes, edges }).slice(0, 6000);
+      x: typeof pos.x === "number" ? Math.round(pos.x) : undefined,
+      y: typeof pos.y === "number" ? Math.round(pos.y) : undefined,
+    };
+  });
+  const edges = Object.values(rec(d.edges)).map((raw) => {
+    const e = rec(raw);
+    return { id: e.id, s: e.source, t: e.target, k: e.kind };
+  });
+  let nCount = Math.min(nodes.length, 80);
+  let eCount = Math.min(edges.length, 120);
+  let out = JSON.stringify({ nodes: nodes.slice(0, nCount), edges: edges.slice(0, eCount) });
+  while (out.length > SUMMARY_MAX_CHARS && (nCount > 0 || eCount > 0)) {
+    eCount = Math.floor(eCount * 0.8);
+    nCount = Math.floor(nCount * 0.9);
+    out = JSON.stringify({
+      nodes: nodes.slice(0, nCount),
+      edges: edges.slice(0, eCount),
+      truncated: true,
+    });
+  }
+  return out;
 }
 
 export const generateDiagramPatch = createServerFn({ method: "POST" })
@@ -316,10 +357,17 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
 
           // Connection Engine Processing:
           // Simulate patch application on current or clean document to verify topology
-          const baseDoc: DiagramDoc =
-            data.doc && typeof data.doc === "object" && "nodes" in data.doc
-              ? JSON.parse(JSON.stringify(data.doc))
-              : createEmptyDoc();
+          // `data.doc` vem do navegador: valida antes de usar (doc malformado
+          // derrubava o reparo/validador no servidor).
+          const parsedDoc = data.doc === undefined ? null : DiagramDocSchema.safeParse(data.doc);
+          if (parsedDoc && !parsedDoc.success) {
+            console.warn("[generateDiagramPatch] doc do cliente inválido; usando documento vazio");
+          }
+          const baseDoc: DiagramDoc = parsedDoc?.success ? parsedDoc.data : createEmptyDoc();
+
+          // Integridade referencial: colisão de IDs, fios pendurados, troca de tipo.
+          const sanitized = sanitizeAiPatch(baseDoc, finalPatch);
+          finalPatch = sanitized.patch;
 
           let workingDoc: DiagramDoc = {
             ...baseDoc,
@@ -418,9 +466,15 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
             pathsCount: validation.paths.length,
             completePathsCount: validation.paths.filter((p) => p.isComplete).length,
             incompletePathsCount: validation.paths.filter((p) => !p.isComplete).length,
-            warnings: validation.diagnostics
-              .filter((d) => d.severity === "warning")
-              .map((d) => d.message),
+            warnings: [
+              ...sanitized.warnings,
+              ...validation.diagnostics
+                .filter((d) => d.severity === "warning")
+                .map((d) => d.message),
+              ...repairResult.remainingIssues.filter(
+                (m) => !validation.diagnostics.some((d) => d.message === m),
+              ),
+            ],
             errors: validation.diagnostics
               .filter((d) => d.severity === "error")
               .map((d) => d.message),

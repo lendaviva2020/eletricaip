@@ -6,6 +6,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { applyCommand, buildAiPatchCommand, cmd, invertCommand, type Command } from "./commands";
 import { emptyHistory, popRedo, popUndo, pushHistory, type History } from "./history";
 import { createEmptyDoc } from "./model";
+import { sanitizeAiPatch } from "./ai-patch-sanitizer";
 import type { AiDiagramPatch, DiagramDoc, Position, SheetKind } from "./schema";
 
 export const GRID_SIZE = 25;
@@ -85,7 +86,12 @@ export const useDiagramStore = create<DiagramState>()(
 
     applyAiPatch: (patch) => {
       const { doc } = get();
-      get().dispatch(buildAiPatchCommand(doc, patch));
+      // Saneia contra o doc ATUAL: o usuário pode ter editado o diagrama enquanto
+      // a IA respondia (IDs novos colidindo, nós já removidos). Sem isso, o
+      // Ctrl+Z de um nó sobrescrito apagava o equipamento original.
+      const { patch: safe, warnings } = sanitizeAiPatch(doc, patch);
+      if (warnings.length > 0) console.warn("[applyAiPatch] patch saneado:", warnings);
+      get().dispatch(buildAiPatchCommand(doc, safe));
     },
 
     applyRemoteCommand: (command) => {

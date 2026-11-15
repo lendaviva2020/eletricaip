@@ -124,7 +124,10 @@ export function CanvasAiChat() {
           locale === "en" ? "en" : "pt-BR",
         );
         setPatchMode(true);
-        void send(prompt);
+        // sendRef: a função do render ATUAL (diagrama, achados e conversa atualizados).
+        // Chamar `send` direto aqui usava a closure do 1º render — diagrama vazio,
+        // modo conversa e `busy` obsoleto.
+        void sendRef.current?.(prompt, undefined, { forcePatch: true });
       }
     };
     window.addEventListener("eletricai-ai-repair", handler as EventListener);
@@ -144,6 +147,7 @@ export function CanvasAiChat() {
 
   const loadDemo = useProjectStore((s) => s.loadDemoFaulty);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sendRef = useRef<typeof send | null>(null);
 
   // Read current workspace nodes and edges for dynamic compliance analysis
   const nodes = useProjectStore((s) => s.nodes);
@@ -180,9 +184,15 @@ export function CanvasAiChat() {
     return () => window.removeEventListener("ai-usage-event", handler);
   }, [refetchCredits]);
 
-  const send = async (textToSend?: string, briefingDocument?: BriefingDocumentInput) => {
+  const send = async (
+    textToSend?: string,
+    briefingDocument?: BriefingDocumentInput,
+    opts?: { forcePatch?: boolean },
+  ) => {
     const p = (textToSend ?? val).trim();
     if (!p || busy) return;
+    // "CORRIGIR COM IA" força o modo patch: setPatchMode(true) só vale no próximo render.
+    const usePatch = opts?.forcePatch ?? patchMode;
     if (!textToSend) setVal("");
 
     // Interceptação determinística de pacotes de projeto externos (0 créditos de IA)
@@ -244,7 +254,7 @@ export function CanvasAiChat() {
       { role: "user", text: p },
       {
         role: "ai",
-        text: patchMode ? t("aiChat.generatingPatch") : t("aiChat.processingPrompt"),
+        text: usePatch ? t("aiChat.generatingPatch") : t("aiChat.processingPrompt"),
       },
     ]);
     if (activeConvId) {
@@ -272,7 +282,7 @@ export function CanvasAiChat() {
           : `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:\n${activeViolationsText}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${p}\n\nPor favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`
         : p;
 
-      if (patchMode) {
+      if (usePatch) {
         const res: any = await genPatch({
           data: {
             prompt: contextualPrompt,
@@ -391,6 +401,7 @@ export function CanvasAiChat() {
       setBusy(false);
     }
   };
+  sendRef.current = send;
 
   // Pipeline real de extração de documentos de briefing (CSV / TXT / JSON / PDF) no servidor (Fase 6.1)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
