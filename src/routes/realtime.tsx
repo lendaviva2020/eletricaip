@@ -24,6 +24,7 @@ import {
   checkRealtimeFeature,
   createIotApiKey,
 } from "@/lib/iot.functions";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/realtime")({
   component: RealtimePage,
@@ -50,6 +51,7 @@ type Alert = {
 };
 
 function RealtimePage() {
+  const { t } = useI18n();
   const fetchFeature = useServerFn(checkRealtimeFeature);
   const fetchDevices = useServerFn(listIotDevices);
   const fetchReadings = useServerFn(getLatestReadings);
@@ -149,9 +151,7 @@ function RealtimePage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Pulse className="h-6 w-6 text-primary" /> Realtime / IoT
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Telemetria ao vivo, alarmes e comandos para PLCs/CLPs.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("pages.rtSubtitle")}</p>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <Radio
@@ -169,7 +169,7 @@ function RealtimePage() {
           </div>
           <ApiKeyCreator onCreate={(name) => newKey({ data: { name } })} />
           {!devices.data || !devices.data.ok ? (
-            <div className="p-2 text-xs text-muted-foreground">Carregando…</div>
+            <div className="p-2 text-xs text-muted-foreground">{t("pages2.loading")}</div>
           ) : devices.data.devices.length === 0 ? (
             <div className="p-3 text-xs text-muted-foreground">
               Nenhum dispositivo. Use uma API key acima e POST em{" "}
@@ -212,7 +212,7 @@ function RealtimePage() {
             </div>
             <div className="space-y-1.5 max-h-72 overflow-auto">
               {!alerts.data?.ok || alerts.data.alerts.length === 0 ? (
-                <div className="text-xs text-muted-foreground">Nenhum alarme.</div>
+                <div className="text-xs text-muted-foreground">{t("pages.rtNoAlarms")}</div>
               ) : (
                 (alerts.data.alerts as Alert[]).map((a) => (
                   <div
@@ -310,6 +310,7 @@ function CommandPanel({
     watchdogMs: number;
   }) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const { t } = useI18n();
   const [cmd, setCmd] = useState("start");
   const [watchdog, setWatchdog] = useState(5000);
   const [busy, setBusy] = useState(false);
@@ -365,10 +366,7 @@ function CommandPanel({
         </Button>
       </div>
       {msg && <div className="text-xs mt-2 text-muted-foreground">{msg}</div>}
-      <div className="text-[10px] text-amber-500/90 mt-2">
-        Bloqueio permanente de segurança física ativo: envio de comandos para PLCs/CLPs de campo é
-        rejeitado no cliente e no servidor (PHYSICAL_CONTROL_BLOCKED).
-      </div>
+      <div className="text-[10px] text-amber-500/90 mt-2">{t("pages2.physicalBlocked")}</div>
     </Card>
   );
 }
@@ -378,6 +376,7 @@ function ApiKeyCreator({
 }: {
   onCreate: (name: string) => Promise<{ ok: boolean; apiKey?: string; error?: string }>;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("PLC linha 03");
   const [issued, setIssued] = useState<string | null>(null);
@@ -397,7 +396,7 @@ function ApiKeyCreator({
           className="w-full h-7 text-xs gap-1"
           onClick={() => setOpen(true)}
         >
-          <Key className="h-3 w-3" /> Nova API key (ingest)
+          <Key className="h-3 w-3" /> {t("pages.rtNewKey")}
         </Button>
       )}
       {open && !issued && (

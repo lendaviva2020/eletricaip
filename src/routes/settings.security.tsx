@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoutButton } from "@/components/auth/logout-dialog";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/settings/security")({
   head: () => ({ meta: [{ title: "Segurança · EletricAI" }] }),
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/settings/security")({
 });
 
 function SecurityPage() {
+  const { t } = useI18n();
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [saving, setSaving] = useState(false);
@@ -41,9 +43,9 @@ function SecurityPage() {
         </h1>
         <Card>
           <CardContent className="p-5 space-y-4">
-            <h2 className="text-sm font-semibold">Trocar senha</h2>
+            <h2 className="text-sm font-semibold">{t("pages2.changePassword")}</h2>
             <div>
-              <Label>Nova senha</Label>
+              <Label>{t("pages2.newPassword")}</Label>
               <Input
                 type="password"
                 value={pw}
@@ -52,7 +54,7 @@ function SecurityPage() {
               />
             </div>
             <div>
-              <Label>Confirmar senha</Label>
+              <Label>{t("pages2.confirmPassword")}</Label>
               <Input
                 type="password"
                 value={pw2}
@@ -61,19 +63,17 @@ function SecurityPage() {
               />
             </div>
             <Button onClick={changePw} disabled={saving}>
-              {saving ? "Salvando…" : "Atualizar senha"}
+              {saving ? t("pages2.savingEllipsis") : t("pages2.updatePassword")}
             </Button>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-sm font-semibold">Sair deste dispositivo</h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Encerre sua sessão atual com segurança neste navegador.
-              </p>
+              <h2 className="text-sm font-semibold">{t("pages.secLogoutDevice")}</h2>
+              <p className="text-xs text-muted-foreground mt-1">{t("pages.secLogoutDeviceDesc")}</p>
             </div>
-            <LogoutButton variant="outline" label="Sair da conta" scope="local" />
+            <LogoutButton variant="outline" label={t("pages2.logout")} scope="local" />
           </CardContent>
         </Card>
 
@@ -81,9 +81,7 @@ function SecurityPage() {
           <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-sm font-semibold">Encerrar em todos os dispositivos</h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Encerra todas as sessões ativas em todos os computadores, tablets e celulares.
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">{t("pages.secLogoutAllDesc")}</p>
             </div>
             <LogoutButton variant="destructive" label="Encerrar todas" scope="global" />
           </CardContent>

@@ -99,25 +99,22 @@ const SEED_LOGS: Record<
   string,
   { t: string; tag: string; msg: string; lvl?: "info" | "warn" | "err" | "ok" }[]
 > = {
-  Logs: [
-    { t: "—", tag: "SISTEMA", msg: "Ambiente industrial inicializado com sucesso.", lvl: "ok" },
-  ],
-  Alarmes: [{ t: "—", tag: "ALM", msg: "Nenhum alarme crítico pendente.", lvl: "ok" }],
+  // msg = chave i18n; traduzida em consoleLines conforme o idioma ativo.
+  Logs: [{ t: "—", tag: "SISTEMA", msg: "library.envReady", lvl: "ok" }],
+  Alarmes: [{ t: "—", tag: "ALM", msg: "dockSeed.alarms", lvl: "ok" }],
   IA: [
     {
       t: "—",
       tag: "IA",
-      msg: "Pronto para auxiliar na especificação e validação normativa.",
+      msg: "dockSeed.ai",
       lvl: "info",
     },
   ],
   Terminal: [{ t: "—", tag: "$", msg: "eletricai engine --ready", lvl: "info" }],
-  Eventos: [{ t: "—", tag: "EVT", msg: "Registro de eventos operacionais ativo.", lvl: "info" }],
-  "OPC-UA": [{ t: "—", tag: "OPC", msg: "Servidor OPC-UA pronto para conexão.", lvl: "info" }],
-  Modbus: [{ t: "—", tag: "MB", msg: "Gateway Modbus pronto: 192.168.1.100:502", lvl: "info" }],
-  Runtime: [
-    { t: "—", tag: "RT", msg: "Runtime pronto para simulação determinística.", lvl: "info" },
-  ],
+  Eventos: [{ t: "—", tag: "EVT", msg: "dockSeed.events", lvl: "info" }],
+  "OPC-UA": [{ t: "—", tag: "OPC", msg: "dockSeed.opcua", lvl: "info" }],
+  Modbus: [{ t: "—", tag: "MB", msg: "dockSeed.modbus", lvl: "info" }],
+  Runtime: [{ t: "—", tag: "RT", msg: "dockSeed.runtime", lvl: "info" }],
 };
 
 const lvlColor = {
@@ -339,8 +336,13 @@ export function UnifiedBottomDock() {
   // Linhas do console para a aba selecionada
   const consoleLines = useMemo(() => {
     const live = liveLogs.filter((l) => (l.channel ?? "Logs") === tab);
-    return live.length ? live : (SEED_LOGS[tab] ?? []);
-  }, [liveLogs, tab]);
+    return live.length
+      ? live
+      : (SEED_LOGS[tab] ?? []).map((l) => ({
+          ...l,
+          msg: l.msg.includes(".") && !l.msg.includes(" ") ? t(l.msg) : l.msg,
+        }));
+  }, [liveLogs, tab, t]);
 
   // Terminal input interativo
   const [terminalInput, setTerminalInput] = useState("");

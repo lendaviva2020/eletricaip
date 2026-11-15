@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { getAiUsageSummary } from "@/lib/ai-usage.functions";
 import { getDashboardTelemetry } from "@/lib/iot.functions";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/analytics")({
 });
 
 function AnalyticsPage() {
+  const { t } = useI18n();
   const fetchUsage = useServerFn(getAiUsageSummary);
   const { data: usage } = useQuery({
     queryKey: ["ai-usage-summary"],
@@ -105,9 +107,7 @@ function AnalyticsPage() {
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-semibold">Analytics industrial</h1>
-            <p className="text-xs text-muted-foreground mt-1">
-              Energia, OEE, saúde dos PLCs e uso de IA do tenant atual.
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{t("pages.anSubtitle")}</p>
           </div>
           {usage && (
             <div className="text-right text-xs text-muted-foreground">
@@ -157,7 +157,7 @@ function AnalyticsPage() {
               </BarChart>
             </ResponsiveContainer>
           </Card>
-          <Card title="Custo de crédito por operação de IA">
+          <Card title={t("pages.anCreditCost")}>
             <ResponsiveContainer>
               <BarChart data={usage?.costsByOperation ?? []} layout="vertical">
                 <XAxis
@@ -195,7 +195,7 @@ function AnalyticsPage() {
 
         {/* #AI-03 — Custo real por operação e evolução mensal */}
         <div className="grid lg:grid-cols-2 gap-4">
-          <Card title="Custo real por operação (últimos 12 meses)">
+          <Card title={t("pages.anRealCost")}>
             {usage && usage.topOperations.length > 0 ? (
               <ResponsiveContainer>
                 <BarChart data={usage.topOperations} layout="vertical">
@@ -237,7 +237,7 @@ function AnalyticsPage() {
               <EmptyState label="Sem eventos de IA registrados ainda." />
             )}
           </Card>
-          <Card title="Créditos consumidos por operação · mensal">
+          <Card title={t("pages.anCreditsMonthly")}>
             {usage && usage.monthlyByOperation.length > 0 ? (
               <ResponsiveContainer>
                 <BarChart data={usage.monthlyByOperation}>
@@ -272,7 +272,7 @@ function AnalyticsPage() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <EmptyState label="Sem consumo agregado por operação neste período." />
+              <EmptyState label={t("pages.anNoUsage")} />
             )}
           </Card>
         </div>
@@ -281,7 +281,7 @@ function AnalyticsPage() {
         <div className="grid lg:grid-cols-2 gap-4">
           <Card title="Consumo de energia (24h)">
             {telemetryLoading ? (
-              <EmptyState label="Carregando telemetria de energia..." />
+              <EmptyState label={t("pages.anLoadingEnergy")} />
             ) : energyData.length > 0 ? (
               <ResponsiveContainer>
                 <AreaChart data={energyData}>
@@ -324,9 +324,9 @@ function AnalyticsPage() {
               <EmptyState label="Nenhum dado de energia registrado nas últimas 24h. Conecte dispositivos IoT ou envie telemetria via ingestão de tags." />
             )}
           </Card>
-          <Card title="OEE / Produção (14d)">
+          <Card title={t("pages.anOee")}>
             {telemetryLoading ? (
-              <EmptyState label="Carregando dados de produção..." />
+              <EmptyState label={t("pages.anLoadingProd")} />
             ) : oeeData.length > 0 ? (
               <ResponsiveContainer>
                 <BarChart data={oeeData}>
@@ -358,9 +358,9 @@ function AnalyticsPage() {
           </Card>
         </div>
 
-        <Card title="Saúde dos PLCs & Controladores">
+        <Card title={t("pages.anPlcHealth")}>
           {telemetryLoading ? (
-            <EmptyState label="Verificando telemetria dos controladores..." />
+            <EmptyState label={t("pages.anCheckingPlc")} />
           ) : plcData.length > 0 ? (
             <ResponsiveContainer>
               <LineChart data={plcData}>

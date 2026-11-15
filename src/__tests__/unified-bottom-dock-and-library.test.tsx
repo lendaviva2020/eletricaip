@@ -100,7 +100,7 @@ describe("ELÉTRICAI — Reorganização Profissional do Workspace Industrial", 
       // Disjuntor Termomagnético (QF)
       const qfCards = screen.getAllByTestId("library-item-QF");
       expect(qfCards.length).toBeGreaterThan(0);
-      expect(qfCards[0].textContent).toContain("Disjuntor Termomagnetico");
+      expect(qfCards[0].textContent).toContain("Disjuntor Termomagnético");
       expect(qfCards[0].textContent).toContain("QF");
       expect(qfCards[0].textContent).toContain("IEC 60947-2");
 

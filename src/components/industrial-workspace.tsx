@@ -36,6 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useI18n } from "@/lib/i18n";
 
 const UnifilarCanvas = lazy(() =>
   import("@/components/canvases/webgl-canvas").then((m) => ({ default: m.WebglCanvas })),
@@ -475,6 +476,7 @@ function SaveBadge({
   onOpenImporter?: () => void;
   onOpenPrompt?: () => void;
 }) {
+  const { t } = useI18n();
   const focusMode = useEditorStore((s) => s.focusMode);
   if (!projectId || focusMode) return null;
   return (
@@ -497,7 +499,7 @@ function SaveBadge({
             <WarningCircle className="h-3 w-3 text-destructive" /> Erro ao salvar
           </>
         ) : (
-          <>Auto-save ativo (2s)</>
+          <>{t("library.autosaveOn")}</>
         )}
       </div>
 
@@ -528,7 +530,7 @@ function SaveBadge({
           title="Gerar Dossiê Técnico de Engenharia a partir do Canvas"
         >
           <FileText className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Gerar Dossiê Técnico</span>
+          <span className="hidden sm:inline">{t("library.dossier")}</span>
           <span className="sm:hidden">Dossiê</span>
         </button>
       </div>

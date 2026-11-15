@@ -65,12 +65,14 @@ import { ScadaEventsView } from "./views/scada-events-view";
 import { ScadaReportsView } from "./views/scada-reports-view";
 import { ScadaHmiEditorView } from "./views/scada-hmi-editor-view";
 import { ScadaSettingsView } from "./views/scada-settings-view";
+import { useI18n } from "@/lib/i18n";
 
 interface ScadaLayoutProps {
   projectId?: string | null;
 }
 
 export function ScadaLayout({ projectId }: ScadaLayoutProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const activeView = useScadaStore((s) => s.activeView);
   const setProjectContext = useScadaStore((s) => s.setProjectContext);
@@ -265,25 +267,22 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
             </div>
             <div>
               <h1 className="text-lg font-bold text-white uppercase tracking-tight">
-                SCADA Supervisório Industrial · Seleção de Planta
+                {t("pages.scadaSelectTitle")}
               </h1>
-              <p className="text-xs text-zinc-400 font-mono">
-                Cada supervisório opera sob contexto persistente de projeto com isolamento
-                multi-tenant (IEC 62443).
-              </p>
+              <p className="text-xs text-zinc-400 font-mono">{t("pages2.scadaContextNote")}</p>
             </div>
           </div>
 
           {/* Project List */}
           <div className="space-y-4">
             <div className="text-xs font-mono font-semibold uppercase text-zinc-400 tracking-wider">
-              Projetos do seu Workspace:
+              {t("pages.scadaWorkspaceProjects")}
             </div>
 
             {isListLoading ? (
               <div className="p-8 flex items-center justify-center text-xs text-zinc-500 font-mono">
                 <CircleNotch className="w-5 h-5 text-primary animate-spin mr-2" />
-                Carregando projetos disponíveis...
+                {t("pages.scadaLoadingProjects")}
               </div>
             ) : (accessibleProjects?.length ?? 0) > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -346,16 +345,13 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
                 <div className="min-w-0 pr-4">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-white text-sm group-hover:text-amber-300 transition-colors">
-                      Estação de Tratamento de Efluentes (Demo ETE)
+                      {t("pages2.scadaEteName")}
                     </span>
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                      SIMULAÇÃO VIRTUAL
+                      {t("pages.scadaVirtualSim")}
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-300 mt-1">
-                    Planta completa com 11 visões, P&ID vetorial, alarmes ISA-18.2 e tendências
-                    senoidais em memória para validação de layout.
-                  </p>
+                  <p className="text-xs text-zinc-300 mt-1">{t("pages2.scadaEteDesc")}</p>
                 </div>
                 <ArrowRight className="w-5 h-5 text-amber-400 group-hover:translate-x-1 transition-transform shrink-0" />
               </button>

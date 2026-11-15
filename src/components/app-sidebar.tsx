@@ -197,10 +197,10 @@ export function AppSidebar() {
               className="flex items-center justify-center"
               title={
                 isSimActive
-                  ? `Simulação Ativa · ${runtime.cycleMs || 100}ms`
+                  ? `${t("shell.simActive")} · ${runtime.cycleMs || 100}ms`
                   : isSimPaused
-                    ? "Simulação Pausada"
-                    : "Simulação Parada"
+                    ? t("shell.simPaused")
+                    : t("shell.simStopped")
               }
             >
               <span
@@ -237,10 +237,10 @@ export function AppSidebar() {
                   }
                 >
                   {isSimActive
-                    ? "Simulação Ativa"
+                    ? t("shell.simActive")
                     : isSimPaused
-                      ? "Simulação Pausada"
-                      : "Simulação Parada"}
+                      ? t("shell.simPaused")
+                      : t("shell.simStopped")}
                 </span>
               </div>
               <div className="mt-1 text-[10px] font-mono text-muted-foreground flex items-center justify-between">

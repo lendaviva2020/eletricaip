@@ -66,6 +66,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PermissionMatrix } from "@/components/premium/permission-matrix";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/settings/team")({
   head: () => ({ meta: [{ title: "Centro Operacional · EletricAI" }] }),
@@ -83,6 +84,7 @@ const ROLE_CONFIG: Record<Role, { icon: typeof ShieldCheck; label: string; desc:
 };
 
 function TeamPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { tenants, active, switchTo, loading: tenantLoading } = useActiveTenant();
   const membersFn = useServerFn(listTenantMembers);
@@ -274,7 +276,7 @@ function TeamPage() {
             <div>
               <p className="text-sm font-semibold leading-tight">Centro Operacional</p>
               <p className="text-[10px] text-muted-foreground/60">
-                Gestão de equipe · {active?.name ?? "EletricAI Industrial"}
+                {t("pages2.teamMgmt")} · {active?.name ?? "EletricAI Industrial"}
               </p>
             </div>
           </div>
@@ -296,7 +298,7 @@ function TeamPage() {
             className="h-8 gap-1.5 text-xs"
             onClick={() => setPermOpen(true)}
           >
-            <ShieldCheck className="h-3.5 w-3.5" /> Permissões
+            <ShieldCheck className="h-3.5 w-3.5" /> {t("pages.teamPermissions")}
           </Button>
         </div>
       </header>
@@ -329,10 +331,7 @@ function TeamPage() {
           {!active && (
             <div className="mb-6 rounded-xl border border-border/40 bg-muted/10 p-4 text-xs text-muted-foreground flex items-center gap-2">
               <WarningCircle className="h-4 w-4 shrink-0" />
-              <span>
-                Nenhum workspace ativo selecionado. Selecione um workspace na lista ao lado para
-                gerenciar membros e convites.
-              </span>
+              <span>{t("pages2.noWorkspace")}</span>
             </div>
           )}
 
@@ -380,7 +379,7 @@ function TeamPage() {
             {/* ─── Coluna Esquerda: Organograma ─── */}
             <div>
               <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 font-medium block mb-3 flex items-center gap-1.5">
-                <Folders className="h-3 w-3" /> Organização
+                <Folders className="h-3 w-3" /> {t("pages.teamOrganization")}
               </span>
               <Card>
                 <CardContent className="p-3 space-y-1">
@@ -487,9 +486,9 @@ function TeamPage() {
               ) : filteredMembers.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border/40 p-8 text-center text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-xs font-medium">Nenhum membro encontrado</p>
+                  <p className="text-xs font-medium">{t("pages.teamNoMembers")}</p>
                   <p className="text-[11px] text-muted-foreground/60 mt-1">
-                    Envie convites para adicionar engenheiros e operadores a este workspace.
+                    {t("pages.teamInviteHint")}
                   </p>
                 </div>
               ) : (
@@ -682,7 +681,7 @@ function TeamPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <Robot className="h-3.5 w-3.5 text-primary" />
                   <span className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/50 font-medium">
-                    Membros da equipe
+                    {t("pages.teamMembers")}
                   </span>
                 </div>
                 {memberList.length > 0 ? (
@@ -711,7 +710,7 @@ function TeamPage() {
                   </div>
                 ) : (
                   <p className="text-[10px] text-muted-foreground/60 py-2">
-                    Nenhum colaborador registrado além do criador.
+                    {t("pages.teamOnlyCreator")}
                   </p>
                 )}
               </div>
@@ -763,7 +762,7 @@ function TeamPage() {
                       Engenharia
                     </SelectItem>
                     <SelectItem value="automacao" className="text-xs">
-                      Automação
+                      {t("pages2.automation")}
                     </SelectItem>
                     <SelectItem value="manutencao" className="text-xs">
                       Manutenção

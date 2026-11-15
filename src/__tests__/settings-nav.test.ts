@@ -17,6 +17,13 @@ const REGISTERED_ROUTES = new Set(
   Array.from(routeTreeSrc.matchAll(/'(\/[^']*)'/g)).map((m) => m[1]),
 );
 
+/** Índice do último fechamento de bloco JSX `)}` em linha própria (não `{t("…")}` inline). */
+function lastBlockClose(src: string): number {
+  let idx = -1;
+  for (const m of src.matchAll(/\n\s*\)\}\s*(?=\n)/g)) idx = m.index ?? idx;
+  return idx;
+}
+
 describe("Settings page navigation", () => {
   const targets = extractToTargets(settingsSrc);
 
@@ -35,7 +42,7 @@ describe("Settings page navigation", () => {
     expect(billingIdx).toBeGreaterThan(-1);
     const before = settingsSrc.slice(0, billingIdx);
     const lastGuard = before.lastIndexOf("isPlatformAdmin &&");
-    const lastClose = before.lastIndexOf(")}");
+    const lastClose = lastBlockClose(before);
     expect(lastGuard).toBeGreaterThan(lastClose);
   });
 
@@ -44,7 +51,7 @@ describe("Settings page navigation", () => {
     expect(rlIdx).toBeGreaterThan(-1);
     const before = settingsSrc.slice(0, rlIdx);
     const lastGuard = before.lastIndexOf("isPlatformAdmin &&");
-    const lastClose = before.lastIndexOf(")}");
+    const lastClose = lastBlockClose(before);
     expect(lastGuard).toBeGreaterThan(lastClose);
   });
 
@@ -55,7 +62,7 @@ describe("Settings page navigation", () => {
       const before = settingsSrc.slice(0, idx);
       const lastGuard = before.lastIndexOf("isPlatformAdmin &&");
       if (lastGuard === -1) continue; // no guard at all → not gated
-      const lastClose = before.lastIndexOf(")}");
+      const lastClose = lastBlockClose(before);
       expect(lastClose).toBeGreaterThan(lastGuard);
     }
   });

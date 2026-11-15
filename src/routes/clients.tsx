@@ -49,6 +49,7 @@ import {
   type ClientRow,
   type ClientStatus,
 } from "@/lib/clients.functions";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/clients")({
   loader: ({ context }) => {
@@ -70,6 +71,7 @@ export const Route = createFileRoute("/clients")({
 });
 
 function ClientsPage() {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ClientStatus | "all">("all");
   const [sector, setSector] = useState<string>("all");
@@ -117,9 +119,7 @@ function ClientsPage() {
             <h1 className="text-2xl font-semibold flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" /> Clientes
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Gerencie a carteira de clientes industriais da sua organização.
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">{t("pages.clientsSubtitle")}</p>
           </div>
           <Button
             onClick={() => {
@@ -127,7 +127,7 @@ function ClientsPage() {
               setOpenForm(true);
             }}
           >
-            <Plus className="h-4 w-4" /> Novo cliente
+            <Plus className="h-4 w-4" /> {t("pages2.newClient")}
           </Button>
         </div>
 

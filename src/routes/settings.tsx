@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useSettingsStore } from "@/lib/settings-store";
 import { getIsPlatformAdmin } from "@/lib/billing.functions";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -39,25 +40,27 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
+// desc = chave i18n (traduzida na renderização)
 const PROTOCOLS: { name: string; desc: string }[] = [
-  { name: "Modbus TCP/RTU", desc: "Comunicação serial e TCP para CLPs e IEDs" },
-  { name: "OPC-UA", desc: "Servidor OPC-UA unificado para integração MES/SCADA" },
-  { name: "Profinet", desc: "Padrão Siemens para automação em tempo real" },
-  { name: "EtherNet/IP", desc: "Protocolo CIP sobre Ethernet industrial" },
-  { name: "BACnet", desc: "Automação predial e HVAC" },
+  { name: "Modbus TCP/RTU", desc: "settings_ext.proto1" },
+  { name: "OPC-UA", desc: "settings_ext.proto2" },
+  { name: "Profinet", desc: "settings_ext.proto3" },
+  { name: "EtherNet/IP", desc: "settings_ext.proto4" },
+  { name: "BACnet", desc: "settings_ext.proto5" },
 ];
 
 const NORMAS: { name: string; desc: string }[] = [
-  { name: "NBR 5410", desc: "Instalações elétricas de baixa tensão" },
-  { name: "NBR 14039", desc: "Instalações de média tensão" },
-  { name: "NR-10", desc: "Segurança em instalações elétricas" },
-  { name: "NR-12", desc: "Segurança no trabalho em máquinas" },
-  { name: "IEC 61131", desc: "Linguagens e padrões para CLPs" },
-  { name: "IEC 60617", desc: "Símbolos gráficos para diagramas" },
-  { name: "ISA-18.2", desc: "Gerenciamento de alarmes industriais" },
+  { name: "NBR 5410", desc: "settings_ext.norm1" },
+  { name: "NBR 14039", desc: "settings_ext.norm2" },
+  { name: "NR-10", desc: "settings_ext.norm3" },
+  { name: "NR-12", desc: "settings_ext.norm4" },
+  { name: "IEC 61131", desc: "settings_ext.norm5" },
+  { name: "IEC 60617", desc: "settings_ext.norm6" },
+  { name: "ISA-18.2", desc: "settings_ext.norm7" },
 ];
 
 function SettingsPage() {
+  const { t } = useI18n();
   // settings.tsx é layout-pai (flat routes). Quando há sub-rota ativa
   // (/settings/profile, /settings/billing, etc.), renderizamos o Outlet.
   const matches = useMatches();
@@ -83,33 +86,33 @@ function SettingsPage() {
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
             <SlidersHorizontal className="h-5 w-5 text-primary" />
-            Configurações
+            {t("pages2.settings")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Preferências do Industrial OS</p>
         </div>
 
         <section>
-          <SectionLabel icon={Users} title="Conta & Workspace" />
+          <SectionLabel icon={Users} title={t("settings_ext.secAccount")} />
           <div className="grid gap-3">
             <SettingsLinkCard
               icon={User}
-              title="Perfil"
-              desc="Seu nome, cargo, telefone e dados de contato"
+              title={t("settings_ext.profile")}
+              desc={t("settings_ext.profileDesc")}
               to="/settings/profile"
               badge={null}
             />
             <SettingsLinkCard
               icon={Shield}
-              title="Segurança"
-              desc="Trocar senha e encerrar sessões em todos os dispositivos"
+              title={t("settings_ext.security")}
+              desc={t("settings_ext.securityDesc")}
               to="/settings/security"
               badge={null}
             />
             {isPlatformAdmin && (
               <SettingsLinkCard
                 icon={CreditCard}
-                title="Faturamento & Assinatura"
-                desc="Gerencie seu plano, forma de pagamento e faturas"
+                title={t("settings_ext.billing")}
+                desc={t("settings_ext.billingDesc")}
                 to="/settings/billing"
                 badge="Admin"
               />
@@ -117,8 +120,8 @@ function SettingsPage() {
             {isPlatformAdmin && (
               <SettingsLinkCard
                 icon={Shield}
-                title="Rate Limits da IA"
-                desc="Janelas de burst e limites de fallback por usuário"
+                title={t("settings_ext.rateLimits")}
+                desc={t("settings_ext.rateLimitsDesc")}
                 to="/settings/rate-limits"
                 badge="Admin"
               />
@@ -126,44 +129,44 @@ function SettingsPage() {
 
             <SettingsLinkCard
               icon={Users}
-              title="Equipe & Convites"
-              desc="Gerencie membros, papéis e convites do workspace"
+              title={t("settings_ext.team")}
+              desc={t("settings_ext.teamDesc")}
               to="/settings/team"
               badge={null}
             />
             <SettingsLinkCard
               icon={Sparkle}
-              title="Status da IA"
-              desc="Diagnóstico da chave Google Gemini, ping e histórico de chamadas"
+              title={t("settings_ext.aiStatus")}
+              desc={t("settings_ext.aiStatusDesc")}
               to="/settings/ai-status"
               badge="Gemini 3.1 Pro"
             />
             <SettingsLinkCard
               icon={Shield}
-              title="Monitoramento de Segurança"
-              desc="Findings de scans, issues residuais e alertas nos últimos 30 dias"
+              title={t("settings_ext.secMonitor")}
+              desc={t("settings_ext.secMonitorDesc")}
               to="/settings/security-monitor"
-              badge="Novo"
+              badge={t("pages2.badgeNew")}
             />
             <SettingsLinkCard
               icon={SlidersHorizontal}
-              title="Diagnósticos"
-              desc="Status do Supabase, permissões (RLS/GRANT) e contadores de 500/503 em tempo real"
+              title={t("settings_ext.diagnostics")}
+              desc={t("settings_ext.diagnosticsDesc")}
               to="/settings/diagnostics"
-              badge="Novo"
+              badge={t("pages2.badgeNew")}
             />
             <SettingsLinkCard
               icon={SlidersHorizontal}
-              title="Autosave & Canvas"
-              desc="Logs do autosave, status de persistência do diagrama e diagnóstico de falhas"
+              title={t("settings_ext.autosave")}
+              desc={t("settings_ext.autosaveDesc")}
               to="/settings/autosave"
-              badge="Novo"
+              badge={t("pages2.badgeNew")}
             />
 
             <SettingsLinkCard
               icon={Cube}
-              title="Importar catálogo"
-              desc="Importe componentes reais via CSV/XLSX com dedup por fabricante e part number"
+              title={t("settings_ext.catalogImport")}
+              desc={t("settings_ext.catalogImportDesc")}
               to="/settings/catalog-import"
               badge="Admin"
             />
@@ -171,26 +174,26 @@ function SettingsPage() {
         </section>
 
         <section>
-          <SectionLabel icon={Palette} title="Preferências" />
+          <SectionLabel icon={Palette} title={t("settings_ext.preferences")} />
           <div className="grid gap-3">
             <SettingsLinkCard
               icon={Bell}
-              title="Notificações"
-              desc="Canais (email, in-app, push) e tipos de eventos que você quer receber"
+              title={t("settings_ext.notifications")}
+              desc={t("settings_ext.notificationsDesc")}
               to="/settings/notifications"
               badge={null}
             />
             <SettingsLinkCard
               icon={Palette}
-              title="Aparência"
-              desc="Tema, densidade da interface e idioma"
+              title={t("settings_ext.appearance")}
+              desc={t("settings_ext.appearanceDesc")}
               to="/settings/appearance"
               badge={null}
             />
             <SettingsLinkCard
               icon={Plug}
-              title="Integrações"
-              desc="Credenciais padrão de Modbus, OPC-UA e MQTT do workspace"
+              title={t("settings_ext.integrations")}
+              desc={t("settings_ext.integrationsDesc")}
               to="/settings/integrations"
               badge={null}
             />
@@ -198,26 +201,26 @@ function SettingsPage() {
         </section>
 
         <section>
-          <SectionLabel icon={WifiHigh} title="Protocolos industriais" />
+          <SectionLabel icon={WifiHigh} title={t("settings_ext.industrialProtocols")} />
           <div className="grid gap-3">
             <SettingsLinkCard
               icon={Plug}
-              title="Configuração de Protocolos"
-              desc="Configure OPC-UA, Modbus TCP, teste conexões e gerencie endpoints"
+              title={t("settings_ext.protocolConfig")}
+              desc={t("settings_ext.protocolConfigDesc")}
               to="/settings/protocols"
-              badge="Novo"
+              badge={t("pages2.badgeNew")}
             />
             <SettingsLinkCard
               icon={HardDrives}
-              title="Gerenciamento de Frota Edge"
-              desc="Status, telemetria, certificados mTLS, saúde e atualizações remotas de múltiplos gateways"
+              title={t("settings_ext.edgeFleet")}
+              desc={t("settings_ext.edgeFleetDesc")}
               to="/settings/edge-fleet"
               badge="Gate 3.5"
             />
             <SettingsLinkCard
               icon={Pulse}
-              title="Centro de Operações Industriais (NOC/EOC)"
-              desc="Observabilidade transversal, confiabilidade de pipeline, matriz de saúde e gestão de incidentes"
+              title={t("settings_ext.noc")}
+              desc={t("settings_ext.nocDesc")}
               to="/settings/observability"
               badge="Gate 3.7"
             />
@@ -238,7 +241,7 @@ function SettingsPage() {
                       </div>
                       <div>
                         <p className="text-sm font-medium">{p.name}</p>
-                        <p className="text-xs text-muted-foreground">{p.desc}</p>
+                        <p className="text-xs text-muted-foreground">{t(p.desc)}</p>
                       </div>
                     </div>
                     <Switch checked={on} onCheckedChange={() => toggleProtocol(p.name)} />
@@ -250,7 +253,7 @@ function SettingsPage() {
         </section>
 
         <section>
-          <SectionLabel icon={BookOpenText} title="Normas aplicadas" />
+          <SectionLabel icon={BookOpenText} title={t("settings_ext.appliedNorms")} />
           <Card>
             <CardContent className="p-0 divide-y divide-border">
               {NORMAS.map((n) => {
@@ -263,7 +266,7 @@ function SettingsPage() {
                       </div>
                       <div>
                         <p className="text-sm font-medium">{n.name}</p>
-                        <p className="text-xs text-muted-foreground">{n.desc}</p>
+                        <p className="text-xs text-muted-foreground">{t(n.desc)}</p>
                       </div>
                     </div>
                     <Switch checked={on} onCheckedChange={() => toggleNorma(n.name)} />
@@ -275,13 +278,13 @@ function SettingsPage() {
         </section>
 
         <section className="pt-2 border-t border-border">
-          <SectionLabel icon={Shield} title="Conta & Segurança da Sessão" />
+          <SectionLabel icon={Shield} title={t("settings_ext.sessionSecurity")} />
           <Card className="border-border bg-card">
             <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold flex items-center gap-2">
                   <SignOut className="h-4 w-4 text-muted-foreground" />
-                  <span>Sair da conta</span>
+                  <span>{t("pages2.logout")}</span>
                 </h3>
                 <p className="text-xs text-muted-foreground">
                   Encerre sua sessão com segurança neste dispositivo. Seus projetos e configurações
@@ -291,7 +294,7 @@ function SettingsPage() {
               <LogoutButton
                 variant="outline"
                 className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive border-border hover:border-destructive/30 shrink-0 inline-flex items-center gap-2"
-                label="Sair da conta"
+                label={t("pages2.logout")}
               />
             </CardContent>
           </Card>

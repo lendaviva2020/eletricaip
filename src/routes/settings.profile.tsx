@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/settings/profile")({
   head: () => ({ meta: [{ title: "Perfil · EletricAI" }] }),
@@ -33,6 +34,7 @@ interface ProfileState {
 }
 
 function ProfilePage() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -149,11 +151,7 @@ function ProfilePage() {
   }
 
   if (!userId) {
-    return (
-      <div className="p-6 text-sm text-muted-foreground">
-        Você precisa estar autenticado para editar o perfil.
-      </div>
-    );
+    return <div className="p-6 text-sm text-muted-foreground">{t("pages.profNeedAuth")}</div>;
   }
 
   return (

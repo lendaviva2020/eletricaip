@@ -34,8 +34,10 @@ import {
   autoConnect,
 } from "@/lib/runtime-client";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export function RuntimeStatus() {
+  const { t } = useI18n();
   const runtime = useProjectStore((s) => s.runtime);
   const simulationStatus = useEditorStore((s) => s.simulationStatus);
   const setSimulationStatus = useEditorStore((s) => s.setSimulationStatus);
@@ -115,14 +117,14 @@ export function RuntimeStatus() {
         : "bg-muted-foreground/40";
 
   const label = emergencyLatched
-    ? "E-STOP ATUADO"
+    ? t("shell.estopLatched")
     : isSimActive
       ? runtime.source === "supabase"
-        ? "Realtime · LIVE"
-        : "Simulação Ativa"
+        ? t("shell.realtimeLive")
+        : t("shell.simActive")
       : isSimPaused
-        ? "Simulação Pausada"
-        : "Simulação Parada";
+        ? t("shell.simPaused")
+        : t("shell.simStopped");
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

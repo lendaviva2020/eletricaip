@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
+import { ptBR } from "@/lib/i18n/catalogs/pt-BR";
 import { resolve } from "node:path";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import React from "react";
@@ -174,13 +175,17 @@ describe("Settings Logout functionality", () => {
 
   it("verifies settings.tsx contains 'Sair da conta' at the bottom", () => {
     const settingsSrc = readFileSync(resolve(__dirname, "../routes/settings.tsx"), "utf8");
-    expect(settingsSrc).toContain("Conta & Segurança da Sessão");
-    expect(settingsSrc).toContain("Sair da conta");
+    // Textos vêm do catálogo i18n: verifica as chaves no código e o texto pt-BR no catálogo.
+    expect(settingsSrc).toContain('t("settings_ext.sessionSecurity")');
+    expect(settingsSrc).toContain('t("pages2.logout")');
     expect(settingsSrc).toContain("<LogoutButton");
+    expect(ptBR.settings_ext.sessionSecurity).toBe("Conta & Segurança da Sessão");
+    expect(ptBR.pages2.logout).toBe("Sair da conta");
 
     // Garante que a seção de logout está após normas aplicadas
-    const normasIdx = settingsSrc.indexOf("Normas aplicadas");
-    const logoutIdx = settingsSrc.indexOf("Conta & Segurança da Sessão");
+    const normasIdx = settingsSrc.indexOf('t("settings_ext.appliedNorms")');
+    const logoutIdx = settingsSrc.indexOf('t("settings_ext.sessionSecurity")');
+    expect(normasIdx).toBeGreaterThan(-1);
     expect(logoutIdx).toBeGreaterThan(normasIdx);
   });
 
@@ -188,7 +193,8 @@ describe("Settings Logout functionality", () => {
     const secSrc = readFileSync(resolve(__dirname, "../routes/settings.security.tsx"), "utf8");
     expect(secSrc).toContain('scope="local"');
     expect(secSrc).toContain('scope="global"');
-    expect(secSrc).toContain("Sair deste dispositivo");
+    expect(secSrc).toContain('t("pages.secLogoutDevice")');
+    expect(ptBR.pages.secLogoutDevice).toBe("Sair deste dispositivo");
     expect(secSrc).toContain("Encerrar em todos os dispositivos");
   });
 });

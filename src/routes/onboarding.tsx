@@ -10,6 +10,7 @@ import {
   useCurrentProject,
   type CurrentProject,
 } from "@/lib/current-project";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Bem-vindo - EletricAI" }] }),
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/onboarding")({
 });
 
 function OnboardingPage() {
+  const { t } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const setProject = useCurrentProject((s) => s.setProject);
@@ -108,14 +110,10 @@ function OnboardingPage() {
       <main className="max-w-3xl mx-auto px-6 py-12">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-primary mb-3">
-            <Sparkle className="h-3 w-3" /> Bem-vindo ao seu Industrial OS
+            <Sparkle className="h-3 w-3" /> {t("pages.onbWelcome")}
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Vamos configurar seu primeiro projeto
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Selecione um projeto existente ou crie um novo para abrir o Industrial Workspace.
-          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t("pages.onbSetup")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{t("pages.onbSelect")}</p>
         </div>
 
         {loading && (
@@ -171,7 +169,7 @@ function OnboardingPage() {
                 <div className="h-9 w-9 rounded-md grid place-items-center bg-primary/10 text-primary">
                   <Plus className="h-4 w-4" />
                 </div>
-                <div className="text-sm font-medium">Criar novo projeto</div>
+                <div className="text-sm font-medium">{t("pages.onbCreateNew")}</div>
               </button>
             </div>
           </div>
@@ -183,28 +181,26 @@ function OnboardingPage() {
             className="rounded-lg border border-border bg-card p-6 space-y-4"
           >
             <div>
-              <h2 className="text-base font-semibold">Novo projeto industrial</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Você poderá editar tudo depois.
-              </p>
+              <h2 className="text-base font-semibold">{t("pages.onbNewIndustrial")}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("pages.onbEditLater")}</p>
             </div>
             <label className="block">
-              <span className="text-xs text-muted-foreground">Nome do projeto *</span>
+              <span className="text-xs text-muted-foreground">{t("pages.onbProjectNameReq")}</span>
               <input
-                aria-label="Nome do projeto"
-                title="Nome do projeto"
+                aria-label={t("pages.onbProjectName")}
+                title={t("pages.onbProjectName")}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 required
-                placeholder="Ex.: Sala de máquinas - Frigorífico XYZ"
+                placeholder={t("pages.onbPlaceholder")}
                 className="mt-1 h-11 w-full rounded-md bg-input/60 border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
             </label>
             <label className="block">
               <span className="text-xs text-muted-foreground">Cliente</span>
               <input
-                aria-label="Cliente do projeto"
-                title="Cliente do projeto"
+                aria-label={t("pages.onbProjectClient")}
+                title={t("pages.onbProjectClient")}
                 value={client}
                 onChange={(event) => setClient(event.target.value)}
                 placeholder="Opcional"
@@ -229,7 +225,7 @@ function OnboardingPage() {
                 style={{ background: "var(--gradient-primary)" }}
               >
                 {creating && <CircleNotch className="h-4 w-4 animate-spin" />}
-                Criar e abrir Workspace
+                {t("pages.onbCreateOpen")}
               </button>
             </div>
           </form>

@@ -36,23 +36,25 @@ import {
 import type { FleetMotor } from "@/lib/simulation/motor-fleet";
 import { buildMccDemoDiagram } from "@/lib/simulation/mcc-demo-plant";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 const INJECTABLE: { value: InjectedMotorFault; label: string }[] = [
-  { value: "none", label: "Sem falha" },
-  { value: "overload", label: "Sobrecarga mecânica (3·In)" },
-  { value: "short_circuit", label: "Curto-circuito no ramal" },
-  { value: "phase_loss", label: "Falta de fase" },
-  { value: "locked_rotor", label: "Rotor bloqueado (falha de rotação)" },
-  { value: "sensor_speed", label: "Falha do encoder (sensor de rotação)" },
-  { value: "sensor_temp", label: "PT100 aberto (sensor de temperatura)" },
+  { value: "none", label: "mcc.inj_none" },
+  { value: "overload", label: "mcc.inj_overload" },
+  { value: "short_circuit", label: "mcc.inj_short_circuit" },
+  { value: "phase_loss", label: "mcc.inj_phase_loss" },
+  { value: "locked_rotor", label: "mcc.inj_locked_rotor" },
+  { value: "sensor_speed", label: "mcc.inj_sensor_speed" },
+  { value: "sensor_temp", label: "mcc.inj_sensor_temp" },
 ];
 
 const STATE_TEXT: Record<MotorDriveState["runState"], string> = {
-  STOPPED: "PARADO",
-  STARTING: "PARTINDO",
-  RUNNING: "LIGADO",
-  STOPPING: "PARANDO",
-  TRIPPED: "DESARMADO",
+  // chaves i18n (traduzidas na renderização)
+  STOPPED: "mcc.st_STOPPED",
+  STARTING: "mcc.st_STARTING",
+  RUNNING: "mcc.st_RUNNING",
+  STOPPING: "mcc.st_STOPPING",
+  TRIPPED: "mcc.st_TRIPPED",
 };
 
 type Visual = "off" | "starting" | "on" | "fault-blink" | "fault";
@@ -122,10 +124,11 @@ function MotorTile({
   onToggle: () => void;
   onSelect: () => void;
 }) {
+  const { t } = useI18n();
   const visual = visualOf(drive, unack);
   const c = VISUAL_COLORS[visual];
   const thetaPct = drive ? Math.min(100, (drive.thermalTheta / THERMAL_TRIP_THETA) * 100) : 0;
-  const stateText = drive ? STATE_TEXT[drive.runState] : "—";
+  const stateText = drive ? t(STATE_TEXT[drive.runState]) : "—";
   const spinning = !!drive && drive.speed_rpm > 20;
   return (
     <div
@@ -149,9 +152,11 @@ function MotorTile({
           onToggle();
         }}
         aria-pressed={drive?.runState === "RUNNING" || drive?.runState === "STARTING"}
-        aria-label={`${motor.config.tag} ${stateText}. Clique para ${
-          drive?.runState === "RUNNING" || drive?.runState === "STARTING" ? "desligar" : "ligar"
-        }`}
+        aria-label={`${motor.config.tag} ${stateText}. ${t(
+          drive?.runState === "RUNNING" || drive?.runState === "STARTING"
+            ? "mcc.clickToStop"
+            : "mcc.clickToStart",
+        )}`}
         className="flex w-full items-center gap-2 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
       >
         <MotorSymbol visual={visual} spinning={spinning} />
@@ -164,11 +169,9 @@ function MotorTile({
             {motor.config.label}
           </div>
           <div className="mt-1 grid grid-cols-3 gap-1 font-mono text-[11px] text-zinc-200">
-            <span title="Corrente">{fmt(drive?.current_A ?? 0)} A</span>
-            <span title="Rotação (sensor)">{fmt(drive?.sensorSpeed_rpm ?? 0, 0)} rpm</span>
-            <span title="Temperatura do enrolamento (PT100)">
-              {fmt(drive?.sensorTemp_C ?? Number.NaN, 0)} °C
-            </span>
+            <span title={t("mcc.current")}>{fmt(drive?.current_A ?? 0)} A</span>
+            <span title={t("mcc.speedSensor")}>{fmt(drive?.sensorSpeed_rpm ?? 0, 0)} rpm</span>
+            <span title={t("mcc.windingTemp")}>{fmt(drive?.sensorTemp_C ?? Number.NaN, 0)} °C</span>
           </div>
         </div>
       </button>
@@ -176,11 +179,11 @@ function MotorTile({
         type="button"
         onClick={onSelect}
         className="mt-1 block w-full text-left"
-        aria-label={`Detalhes de ${motor.config.tag}`}
+        aria-label={t("mcc.detailsOf", { tag: motor.config.tag })}
       >
         <div
           className="h-1.5 w-full overflow-hidden rounded bg-zinc-700"
-          title="Memória térmica do relé"
+          title={t("mcc.thermalMemory")}
         >
           <div
             className={cn(
@@ -194,10 +197,10 @@ function MotorTile({
           <span>
             {motor.config.power_kW} kW · {motor.config.startMethod} · {motor.io.commandOutput}
           </span>
-          {!feederOk && <span className="font-bold text-amber-400">SEM TENSÃO</span>}
+          {!feederOk && <span className="font-bold text-amber-400">{t("mcc.noVoltage")}</span>}
           {drive?.fault && (
             <span className="truncate font-bold text-red-300">
-              {faultLabel(drive.fault.code).split(" — ")[0]}
+              {t(`mcc.fs_${drive.fault.code}`)}
             </span>
           )}
         </div>
@@ -207,6 +210,7 @@ function MotorTile({
 }
 
 function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveState | undefined }) {
+  const { t } = useI18n();
   const injected = useMotorControlStore((s) => s.injected[motor.config.id] ?? "none");
   const injectFault = useMotorControlStore((s) => s.injectFault);
   const resetMotor = useMotorControlStore((s) => s.resetMotor);
@@ -227,7 +231,7 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
       {drive?.fault && (
         <div className="rounded border border-red-500 bg-red-950/60 p-2" role="alert">
           <div className="flex items-center gap-1 font-bold text-red-300">
-            <WarningOctagon size={14} weight="fill" /> {faultLabel(drive.fault.code)}
+            <WarningOctagon size={14} weight="fill" /> {t(`mcc.f_${drive.fault.code}`)}
           </div>
           <div className="mt-1 text-red-200">{drive.fault.message}</div>
           <div className="mt-2 flex gap-2">
@@ -236,14 +240,14 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
               onClick={() => ack(cfg.id)}
               className="rounded bg-zinc-700 px-2 py-1 font-bold text-white hover:bg-zinc-600"
             >
-              Reconhecer
+              {t("mcc.acknowledge")}
             </button>
             <button
               type="button"
               onClick={() => resetMotor(cfg.id)}
               className="flex items-center gap-1 rounded bg-sky-700 px-2 py-1 font-bold text-white hover:bg-sky-600"
             >
-              <ArrowCounterClockwise size={12} /> Rearmar
+              <ArrowCounterClockwise size={12} /> {t("mcc.reset")}
             </button>
           </div>
         </div>
@@ -253,11 +257,13 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
           {drive.warnings.map((w) => (
             <div key={w}>
               ⚠{" "}
-              {w === "HIGH_CURRENT"
-                ? "Corrente acima de In"
-                : w === "HIGH_TEMPERATURE"
-                  ? "Enrolamento ≥ 130 °C"
-                  : "Pré-alarme térmico (≥ 85 % do disparo)"}
+              {t(
+                w === "HIGH_CURRENT"
+                  ? "mcc.wHighCurrent"
+                  : w === "HIGH_TEMPERATURE"
+                    ? "mcc.wHighTemp"
+                    : "mcc.wThermal",
+              )}
             </div>
           ))}
         </div>
@@ -265,48 +271,44 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
 
       <section>
         <h4 className="mb-1 font-bold uppercase tracking-wide text-zinc-400">
-          Proteções (do unifilar)
+          {t("mcc.protections")}
         </h4>
         <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono">
-          <dt>In placa</dt>
+          <dt>{t("mcc.ratedIn")}</dt>
           <dd>{fmt(cfg.In_A)} A</dd>
-          <dt>Relé térmico Ir</dt>
+          <dt>{t("mcc.thermalIr")}</dt>
           <dd>
             {fmt(cfg.thermalSetting_A)} A · cl.{cfg.thermalClass}
           </dd>
-          <dt>Disparo a 7,2·Ir</dt>
+          <dt>{t("mcc.tripAt72")}</dt>
           <dd>{fmt(thermalTripTime_s(7.2, cfg.thermalClass))} s</dd>
-          <dt>Disjuntor</dt>
+          <dt>{t("mcc.breaker")}</dt>
           <dd>
-            {cfg.breakerIn_A} A curva {cfg.breakerCurve}
+            {cfg.breakerIn_A} A {t("mcc.curve")} {cfg.breakerCurve}
           </dd>
-          <dt>Magnético Im</dt>
+          <dt>{t("mcc.magneticIm")}</dt>
           <dd>{Math.round(magneticTrip_A(cfg))} A</dd>
-          <dt>Partida</dt>
+          <dt>{t("mcc.start")}</dt>
           <dd>{cfg.startMethod}</dd>
-          <dt>Partidas</dt>
+          <dt>{t("mcc.starts")}</dt>
           <dd>{drive?.starts ?? 0}</dd>
-          <dt>Horas de marcha</dt>
+          <dt>{t("mcc.runHours")}</dt>
           <dd>{fmt((drive?.runSeconds ?? 0) / 3600, 3)} h</dd>
         </dl>
       </section>
 
       <section>
         <h4 className="mb-1 font-bold uppercase tracking-wide text-zinc-400">
-          Imagem de processo CLP (simulada)
+          {t("mcc.plcImage")}
         </h4>
         <table className="w-full font-mono">
           <tbody>
             {[
-              [motor.io.commandOutput, "Bobina K (marcha)", running ? "1" : "0"],
-              [
-                motor.io.runFeedbackInput,
-                "Aux. 13-14 (confirmação)",
-                drive?.contactorClosed ? "1" : "0",
-              ],
-              [motor.io.faultInput, "Térmico 95-96 (falha)", drive?.fault ? "1" : "0"],
-              [motor.io.currentAnalogInput, "Corrente 4-20 mA", String(rawCurrent)],
-              [motor.io.speedAnalogInput, "Rotação", String(rawSpeed)],
+              [motor.io.commandOutput, t("mcc.ioCoil"), running ? "1" : "0"],
+              [motor.io.runFeedbackInput, t("mcc.ioAux"), drive?.contactorClosed ? "1" : "0"],
+              [motor.io.faultInput, t("mcc.ioOl"), drive?.fault ? "1" : "0"],
+              [motor.io.currentAnalogInput, t("mcc.ioCurrent"), String(rawCurrent)],
+              [motor.io.speedAnalogInput, t("mcc.ioSpeed"), String(rawSpeed)],
             ].map(([addr, desc, val]) => (
               <tr key={addr} className="border-b border-zinc-800">
                 <td className="py-0.5 text-sky-300">{addr}</td>
@@ -317,7 +319,8 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
           </tbody>
         </table>
         <p className="mt-1 text-[10px] text-zinc-500">
-          Escrita em campo: {MCC_FIELD_WRITE_ENABLED ? "habilitada" : "BLOQUEADA (simulação)"}
+          {t("mcc.fieldWrite")}:{" "}
+          {MCC_FIELD_WRITE_ENABLED ? t("mcc.fieldEnabled") : t("mcc.fieldBlocked")}
         </p>
       </section>
 
@@ -326,7 +329,7 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
           className="mb-1 block font-bold uppercase tracking-wide text-zinc-400"
           htmlFor="mcc-inject"
         >
-          Injetar falha (teste/treinamento)
+          {t("mcc.inject")}
         </label>
         <select
           id="mcc-inject"
@@ -336,7 +339,7 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
         >
           {INJECTABLE.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.label}
+              {t(o.label)}
             </option>
           ))}
         </select>
@@ -344,7 +347,7 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
 
       {motor.issues.length > 0 && (
         <section className="rounded border border-amber-600/50 p-2 text-amber-200">
-          <h4 className="mb-1 font-bold">Engenharia do ramal</h4>
+          <h4 className="mb-1 font-bold">{t("mcc.branchEng")}</h4>
           <ul className="list-disc pl-4">
             {motor.issues.map((i) => (
               <li key={i}>{i}</li>
@@ -357,6 +360,7 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
 }
 
 export function ScadaMotorsView() {
+  const { t } = useI18n();
   const doc = useDiagramStore((s) => s.doc);
   const loadDoc = useDiagramStore((s) => s.loadDoc);
   const fleet = useMotorControlStore((s) => s.fleet);
@@ -396,12 +400,7 @@ export function ScadaMotorsView() {
 
   const loadDemo = () => {
     const hasContent = Object.keys(doc.nodes).length > 0;
-    if (
-      hasContent &&
-      !window.confirm(
-        "Substituir o diagrama unifilar atual pela planta de demonstração? Use Desfazer (Ctrl+Z) no unifilar para reverter.",
-      )
-    ) {
+    if (hasContent && !window.confirm(t("mcc.confirmDemo"))) {
       return;
     }
     loadDoc(buildMccDemoDiagram());
@@ -428,14 +427,11 @@ export function ScadaMotorsView() {
         role="status"
       >
         <Warning size={14} weight="fill" />
-        MODO SIMULAÇÃO — DADOS ILUSTRATIVOS, NÃO ORIGINADOS DE EQUIPAMENTO FÍSICO. Botões de
-        software não substituem a parada de emergência física (NR-10 / NR-12).
+        {t("mcc.simBanner")}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-zinc-700 bg-[#2b3036] px-3 py-2">
-        <span className="mr-2 font-mono text-sm font-bold tracking-wide">
-          CCM — COMANDO DE MOTORES
-        </span>
+        <span className="mr-2 font-mono text-sm font-bold tracking-wide">{t("mcc.title")}</span>
         <button
           type="button"
           onClick={() => actions.setTicking(!ticking)}
@@ -446,22 +442,22 @@ export function ScadaMotorsView() {
           data-testid="mcc-run-toggle"
         >
           {ticking ? <Pause size={14} /> : <Play size={14} />}
-          {ticking ? "Pausar supervisório" : "Iniciar supervisório"}
+          {ticking ? t("mcc.pause") : t("mcc.run")}
         </button>
         <label className="flex items-center gap-1 text-xs">
-          Tempo
+          {t("mcc.time")}
           <select
             value={timeScale}
             onChange={(e) => actions.setTimeScale(Number(e.target.value) as MccTimeScale)}
             className="rounded border border-zinc-600 bg-zinc-900 px-1 py-0.5"
           >
-            <option value={1}>1× real</option>
+            <option value={1}>{t("mcc.realTime")}</option>
             <option value={10}>10×</option>
             <option value={60}>60×</option>
           </select>
         </label>
-        <label className="flex items-center gap-1 text-xs" title="Teste de subtensão (< 85 % Un)">
-          Barramento
+        <label className="flex items-center gap-1 text-xs" title={t("mcc.undervoltageTest")}>
+          {t("mcc.bus")}
           <input
             type="number"
             min={0}
@@ -480,16 +476,16 @@ export function ScadaMotorsView() {
             actions.syncFromDiagram(doc);
           }}
           className="rounded bg-zinc-700 px-2 py-1 text-xs hover:bg-zinc-600"
-          title="Para a simulação e devolve contatores/disjuntores do unifilar ao estado de projeto"
+          title={t("mcc.endTitle")}
         >
-          Encerrar
+          {t("mcc.end")}
         </button>
         <button
           type="button"
           onClick={actions.stopAll}
           className="flex items-center gap-1 rounded bg-zinc-600 px-2 py-1 text-xs font-bold hover:bg-zinc-500"
         >
-          <Stop size={14} /> Parar todos
+          <Stop size={14} /> {t("mcc.stopAll")}
         </button>
         <button
           type="button"
@@ -497,7 +493,7 @@ export function ScadaMotorsView() {
           disabled={counts.unack === 0}
           className="flex items-center gap-1 rounded bg-zinc-600 px-2 py-1 text-xs font-bold hover:bg-zinc-500 disabled:opacity-40"
         >
-          <CheckCircle size={14} /> Reconhecer ({counts.unack})
+          <CheckCircle size={14} /> {t("mcc.ackCount", { count: counts.unack })}
         </button>
         <button
           type="button"
@@ -505,7 +501,7 @@ export function ScadaMotorsView() {
           disabled={counts.faults === 0}
           className="flex items-center gap-1 rounded bg-sky-700 px-2 py-1 text-xs font-bold hover:bg-sky-600 disabled:opacity-40"
         >
-          <ArrowCounterClockwise size={14} /> Rearmar falhas
+          <ArrowCounterClockwise size={14} /> {t("mcc.resetFaults")}
         </button>
         <div className="ml-auto flex items-center gap-2">
           {emergencyLatched ? (
@@ -514,7 +510,7 @@ export function ScadaMotorsView() {
               onClick={() => useSafetyStore.getState().rearmEmergency("Operador CCM")}
               className="rounded border-2 border-red-500 bg-zinc-800 px-2 py-1 text-xs font-bold text-red-300"
             >
-              Rearmar E-STOP (simulação)
+              {t("mcc.rearmEstop")}
             </button>
           ) : (
             <button
@@ -526,7 +522,7 @@ export function ScadaMotorsView() {
                 })
               }
               className="rounded-full border-4 border-yellow-400 bg-red-600 px-3 py-1 text-xs font-black text-white hover:bg-red-500"
-              title="Parada da SIMULAÇÃO (SIMULATION_HALT) — não é dispositivo de emergência físico"
+              title={t("mcc.estopTitle")}
             >
               E-STOP SIM
             </button>
@@ -535,10 +531,10 @@ export function ScadaMotorsView() {
       </div>
 
       <div className="flex items-center gap-4 border-b border-zinc-700 bg-[#30363c] px-3 py-1 font-mono text-[11px]">
-        <span>Motores: {fleet.length}</span>
-        <span className="text-green-300">Ligados: {counts.on}</span>
+        <span>{t("mcc.motors", { count: fleet.length })}</span>
+        <span className="text-green-300">{t("mcc.on", { count: counts.on })}</span>
         <span className={counts.faults ? "font-bold text-red-300" : ""}>
-          Em falha: {counts.faults}
+          {t("mcc.faulted", { count: counts.faults })}
         </span>
         {lastRejection && (
           <span className="flex items-center gap-1 text-amber-300" role="alert">
@@ -553,17 +549,14 @@ export function ScadaMotorsView() {
 
       {fleet.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-          <p className="max-w-md text-sm text-zinc-300">
-            Nenhum motor no diagrama unifilar. Desenhe motores no Unifilar (disjuntor → contator →
-            relé térmico → motor) e eles aparecem aqui automaticamente, com proteções e I/O de CLP.
-          </p>
+          <p className="max-w-md text-sm text-zinc-300">{t("mcc.empty")}</p>
           <button
             type="button"
             onClick={loadDemo}
             className="rounded bg-sky-700 px-3 py-2 text-sm font-bold hover:bg-sky-600"
             data-testid="mcc-load-demo"
           >
-            Carregar planta de demonstração no unifilar
+            {t("mcc.loadDemo")}
           </button>
         </div>
       ) : (
@@ -579,7 +572,7 @@ export function ScadaMotorsView() {
                 )}
               />
               <span className="font-mono text-[11px] text-zinc-300">
-                BARRAMENTO {busVoltage} V {emergencyLatched ? "· E-STOP" : ""}
+                {t("mcc.busLabel")} {busVoltage} V {emergencyLatched ? "· E-STOP" : ""}
               </span>
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-3">
@@ -599,10 +592,10 @@ export function ScadaMotorsView() {
 
             <section className="mt-4">
               <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-zinc-400">
-                Eventos (sequência de eventos — SOE)
+                {t("mcc.soe")}
               </h3>
               <ol className="max-h-48 overflow-y-auto rounded bg-[#2b3036] p-2 font-mono text-[11px]">
-                {events.length === 0 && <li className="text-zinc-500">Sem eventos.</li>}
+                {events.length === 0 && <li className="text-zinc-500">{t("mcc.noEvents")}</li>}
                 {[...events]
                   .reverse()
                   .slice(0, 60)

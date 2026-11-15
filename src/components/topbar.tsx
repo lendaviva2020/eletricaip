@@ -18,11 +18,13 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { saveManualVersion } from "@/lib/ai-architect-client";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useI18n } from "@/lib/i18n";
+import { useCurrentProject } from "@/lib/current-project";
 import { useTheme } from "@/lib/design-system/theme";
 
 export function Topbar() {
   useNotifications();
   const { t } = useI18n();
+  const currentProject = useCurrentProject((st) => st.project);
   const { resolvedTheme, setTheme } = useTheme();
   const [saving, setSaving] = useState<"idle" | "busy" | "ok" | "err">("idle");
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
@@ -55,15 +57,33 @@ export function Topbar() {
   return (
     <header className="h-10 shrink-0 flex items-center gap-2 px-3 border-b border-border bg-panel">
       <MobileMenu />
-      <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 whitespace-nowrap">
-        <GitBranch className="h-3.5 w-3.5 shrink-0" />
-        <span className="font-mono text-[11px]">main</span>
-        <span className="text-border">/</span>
-        <span className="text-foreground font-medium text-xs">Planta - Linha 03</span>
-      </div>
+      {/* Projeto aberto (antes: "main / Planta - Linha 03" fixo no código, exibido
+          como se fosse o projeto real do cliente). */}
+      {currentProject && (
+        <div
+          className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 whitespace-nowrap max-w-[16rem]"
+          title={currentProject.name}
+        >
+          <GitBranch className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-foreground font-medium text-xs truncate">
+            {currentProject.name}
+          </span>
+        </div>
+      )}
 
-      <div className="flex-1 flex justify-center min-w-0">
-        <div className="relative w-full max-w-md">
+      <div className="flex-1 flex justify-start sm:justify-center min-w-0">
+        {/* Celular: botão de ícone. O campo tem largura mínima intrínseca (~90 px)
+            e, espremido, ficava por baixo dos botões vizinhos (toque no lugar errado). */}
+        <button
+          type="button"
+          aria-label={t("common.search")}
+          title={t("common.search")}
+          onClick={() => window.dispatchEvent(new CustomEvent("eletricai-open-command-palette"))}
+          className="sm:hidden h-8 w-8 shrink-0 grid place-items-center rounded-md hover:bg-accent/40 text-muted-foreground"
+        >
+          <MagnifyingGlass className="h-4 w-4" />
+        </button>
+        <div className="relative w-full max-w-md min-w-0 hidden sm:block">
           <MagnifyingGlass className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <input
             aria-label={t("common.search")}
@@ -72,7 +92,7 @@ export function Topbar() {
             onFocus={() => window.dispatchEvent(new CustomEvent("eletricai-open-command-palette"))}
             onClick={() => window.dispatchEvent(new CustomEvent("eletricai-open-command-palette"))}
             readOnly
-            className="w-full h-7 pl-8 pr-14 rounded-md bg-background border border-input text-xs cursor-pointer
+            className="w-full min-w-0 h-7 pl-8 pr-14 rounded-md bg-background border border-input text-xs cursor-pointer
                        outline-none focus-visible:ring-2 focus-visible:ring-ring
                        placeholder:text-muted-foreground"
           />

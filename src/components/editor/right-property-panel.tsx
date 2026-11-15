@@ -25,6 +25,7 @@ import { validateTagName } from "@/lib/editor/property-schemas";
 import { ValidatedParamField } from "./property-fields/validated-param-field";
 import { cn } from "@/lib/utils";
 import { LadderPropertyPanel } from "./ladder-property-panel";
+import { useI18n } from "@/lib/i18n";
 
 const TAG_TYPES: EditorTagType[] = ["BOOL", "INT", "REAL", "STRING"];
 
@@ -100,6 +101,7 @@ function findRelatedCircuitNode(
  * como ilustrado na referência visual do ElétricAi.
  */
 export function RightPropertyPanel() {
+  const { t } = useI18n();
   const activeMode = useEditorStore((s) => s.activeMode);
   const selectedId = useDiagramStore((s) => s.selectedNodeIds[0] ?? null);
   const selectedEdgeId = useDiagramStore((s) => s.selectedEdgeIds[0] ?? null);
@@ -168,7 +170,7 @@ export function RightPropertyPanel() {
     return (
       <div className="p-4 text-[12px] text-muted-foreground flex flex-col items-center justify-center text-center py-12 gap-2">
         <Lightning className="h-6 w-6 text-muted-foreground/50 mb-1" />
-        <p className="font-semibold text-foreground/80">Nenhum componente selecionado</p>
+        <p className="font-semibold text-foreground/80">{t("library.noSelection")}</p>
         <p className="text-[11px] text-muted-foreground">
           Clique em um motor, disjuntor, contator ou condutor no canvas para inspecionar seus
           parâmetros elétricos ou excluí-lo.

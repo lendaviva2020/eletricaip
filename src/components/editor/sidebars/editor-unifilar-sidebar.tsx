@@ -19,6 +19,12 @@ import {
 } from "@/lib/palette/component-catalog";
 import { useEditorStore } from "@/lib/editor/store";
 import { useI18n } from "@/lib/i18n";
+import {
+  componentDisplayDescription,
+  componentDisplayName,
+  COMPONENT_NAMES,
+  COMPONENT_DESCRIPTIONS,
+} from "@/lib/palette/component-i18n";
 
 /**
  * Metadados técnicos enriquecidos para exibição profissional na biblioteca.
@@ -161,8 +167,8 @@ export const COMPONENT_METADATA: Record<string, { desc: string; norm: string; ta
     tag: "IED",
   },
   SA: {
-    desc: "Chave comutadora seletora rotativa manual (Auto/Manual/Desl)",
-    norm: "IEC 60947-5-1",
+    desc: "Chave de transferência automática entre rede e gerador (ATS)",
+    norm: "IEC 60947-6-1",
     tag: "SA",
   },
   ES: {
@@ -191,19 +197,24 @@ export const COMPONENT_METADATA: Record<string, { desc: string; norm: string; ta
     tag: "L",
   },
   B: {
-    desc: "Barramento blindado de distribuição principal de cobre eletrolítico",
-    norm: "NBR 5410 / IEC 61439",
+    desc: "Banco de baterias estacionárias para alimentação de emergência em CC",
+    norm: "IEC 60896 / NBR 14204",
     tag: "BB",
   },
   SR: {
-    desc: "Relé de segurança com duplo canal redundante e monitoramento de rearme",
-    norm: "ISO 13849-1 / IEC 62061 (Cat 4 / PLe)",
+    desc: "Retificador-carregador de baterias para sistemas de corrente contínua",
+    norm: "IEC 60146 / IEC 62040",
     tag: "SR",
   },
   TCTERRA: {
-    desc: "Sensor toroidal de núcleo envolvente para detecção de corrente residual à terra",
-    norm: "NBR 5410 / IEC 60947-2",
+    desc: "Transformador de aterramento (zig-zag) para criação de neutro e limitação de falta à terra",
+    norm: "IEC 60076-6",
     tag: "TT",
+  },
+  ESTOP_RELAY: {
+    desc: "Relé de segurança com duplo canal redundante e monitoramento de rearme",
+    norm: "ISO 13849-1 / IEC 62061 (Cat 4 / PLe)",
+    tag: "KS",
   },
 };
 
@@ -238,6 +249,8 @@ export function EditorUnifilarSidebar() {
           c.type.toLowerCase().includes(term) ||
           (c.tagPrefix && c.tagPrefix.toLowerCase().includes(term)) ||
           (meta && meta.desc.toLowerCase().includes(term)) ||
+          (COMPONENT_NAMES[c.type] ?? []).some((v) => v.toLowerCase().includes(term)) ||
+          (COMPONENT_DESCRIPTIONS[c.type] ?? []).some((v) => v.toLowerCase().includes(term)) ||
           (meta && meta.norm.toLowerCase().includes(term)) ||
           (meta && meta.tag.toLowerCase().includes(term)) ||
           c.category.toLowerCase().includes(term)
@@ -383,7 +396,7 @@ export function EditorUnifilarSidebar() {
           <div className="flex items-center gap-1.5">
             <Cube className="h-4 w-4 text-primary" />
             <span className="text-xs font-bold tracking-wider text-foreground uppercase">
-              Biblioteca Elétrica
+              {t("library.title")}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -393,8 +406,8 @@ export function EditorUnifilarSidebar() {
             <button
               onClick={() => useEditorStore.getState().toggleLeftPanel()}
               className="h-6 w-6 rounded hover:bg-muted/40 text-muted-foreground hover:text-foreground grid place-items-center transition-colors"
-              title="Recolher biblioteca elétrica"
-              aria-label="Recolher biblioteca elétrica"
+              title={t("library.collapse")}
+              aria-label={t("library.collapse")}
             >
               <SidebarSimple className="h-3.5 w-3.5" />
             </button>
@@ -417,7 +430,7 @@ export function EditorUnifilarSidebar() {
             <button
               onClick={() => setSearch("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              title="Limpar busca"
+              title={t("library.clearSearch")}
             >
               <X className="h-3 w-3" />
             </button>
@@ -425,8 +438,12 @@ export function EditorUnifilarSidebar() {
         </div>
 
         <div className="mt-1 text-[10px] text-muted-foreground flex items-center justify-between">
-          <span>Arraste o componente para o diagrama</span>
-          {search && <span className="font-mono text-primary">{totalResults} encontrado(s)</span>}
+          <span>{t("library.dragHint")}</span>
+          {search && (
+            <span className="font-mono text-primary">
+              {t("library.found", { count: totalResults })}
+            </span>
+          )}
         </div>
       </div>
 
@@ -435,7 +452,7 @@ export function EditorUnifilarSidebar() {
         {/* Categoria 1: Alimentação & Fontes */}
         <LibraryAccordion
           icon={Power}
-          title="Alimentação & Fontes"
+          title={t("library.catPower")}
           count={alimentacao.length}
           open={openSections.alimentacao}
           onToggle={() => toggleSection("alimentacao")}
@@ -450,7 +467,7 @@ export function EditorUnifilarSidebar() {
         {/* Categoria 2: Dispositivos de Proteção */}
         <LibraryAccordion
           icon={Shield}
-          title="Dispositivos de Proteção"
+          title={t("library.catProtection")}
           count={protecao.length}
           open={openSections.protecao}
           onToggle={() => toggleSection("protecao")}
@@ -465,7 +482,7 @@ export function EditorUnifilarSidebar() {
         {/* Categoria 3: Manobra & Potência */}
         <LibraryAccordion
           icon={Lightning}
-          title="Manobra & Potência"
+          title={t("library.catSwitching")}
           count={manobra.length}
           open={openSections.manobra}
           onToggle={() => toggleSection("manobra")}
@@ -480,7 +497,7 @@ export function EditorUnifilarSidebar() {
         {/* Categoria 4: Motores & Cargas */}
         <LibraryAccordion
           icon={Pulse}
-          title="Motores & Cargas"
+          title={t("library.catLoads")}
           count={cargas.length}
           open={openSections.cargas}
           onToggle={() => toggleSection("cargas")}
@@ -495,7 +512,7 @@ export function EditorUnifilarSidebar() {
         {/* Categoria 5: Automação & Acionamentos */}
         <LibraryAccordion
           icon={Cpu}
-          title="Automação & Acionamentos"
+          title={t("library.catAutomation")}
           count={automacao.length}
           open={openSections.automacao}
           onToggle={() => toggleSection("automacao")}
@@ -510,7 +527,7 @@ export function EditorUnifilarSidebar() {
         {/* Categoria 6: Medição & Instrumentação */}
         <LibraryAccordion
           icon={ArrowCounterClockwise}
-          title="Medição & Instrumentação"
+          title={t("library.catMetering")}
           count={instrumentacao.length}
           open={openSections.instrumentacao}
           onToggle={() => toggleSection("instrumentacao")}
@@ -525,7 +542,7 @@ export function EditorUnifilarSidebar() {
         {/* Categoria 7: Todos os Símbolos IEC 60617 / NBR 5410 */}
         <LibraryAccordion
           icon={Cube}
-          title="Catálogo Geral IEC 60617"
+          title={t("library.catGeneral")}
           count={todos.length}
           open={openSections.todos}
           onToggle={() => toggleSection("todos")}
@@ -589,6 +606,7 @@ function LibraryAccordion({
  * descrição de aplicação e norma técnica de referência.
  */
 function SymbolCard({ component }: { component: VoltaiComponentDefinition }) {
+  const { locale } = useI18n();
   const validateComponent = useEditorStore((s) => s.validateComponent);
   const meta = COMPONENT_METADATA[component.type] || {
     desc: component.name,
@@ -597,6 +615,8 @@ function SymbolCard({ component }: { component: VoltaiComponentDefinition }) {
   };
 
   const tagLabel = meta.tag || component.tagPrefix || component.type;
+  const name = componentDisplayName(component.type, component.name, locale);
+  const desc = componentDisplayDescription(component.type, meta.desc, locale);
 
   return (
     <div
@@ -606,7 +626,7 @@ function SymbolCard({ component }: { component: VoltaiComponentDefinition }) {
         event.dataTransfer.setData("application/voltai-component", component.type);
         event.dataTransfer.effectAllowed = "move";
       }}
-      title={`${component.name} [${tagLabel}] — ${meta.desc} (${meta.norm})`}
+      title={`${name} [${tagLabel}] — ${desc} (${meta.norm})`}
       className="group relative flex items-center gap-2.5 p-2 rounded-md border border-border bg-card hover:bg-accent/40 hover:border-primary/40 transition-colors cursor-grab active:cursor-grabbing select-none"
       data-testid={`library-item-${component.type}`}
     >
@@ -619,14 +639,14 @@ function SymbolCard({ component }: { component: VoltaiComponentDefinition }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-1">
           <span className="text-xs font-semibold text-foreground group-hover:text-foreground truncate">
-            {component.name}
+            {name}
           </span>
           <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-primary/10 text-primary border border-primary/20 shrink-0">
             {tagLabel}
           </span>
         </div>
-        <p className="text-[10px] text-muted-foreground truncate mt-0.5" title={meta.desc}>
-          {meta.desc}
+        <p className="text-[10px] text-muted-foreground truncate mt-0.5" title={desc}>
+          {desc}
         </p>
         <span className="text-[9px] font-mono text-muted-foreground/50">{meta.norm}</span>
       </div>

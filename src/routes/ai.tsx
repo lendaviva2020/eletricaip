@@ -18,6 +18,7 @@ import {
 } from "@/lib/ai-architect-client";
 import { calcDemand, calcMotor } from "@/lib/electrical-calc";
 import type { VerificationFinding } from "@/lib/ai/verification-types";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
@@ -29,12 +30,8 @@ export const Route = createFileRoute("/ai")({
   component: AiPage,
 });
 
-const SUGGESTIONS = [
-  "Sala de máquinas: 15 motores parafuso 500 CV de amônia, 20 condensadores com 2 motores cada. Pesquise o restante.",
-  "Esteira com motor 7.5kW, E-STOP, sensor de presença e inversor VFD.",
-  "QGBT 2500A com 6 motores, proteção seletiva e medição.",
-  "Bombeamento redundante: 2 bombas 50CV em paralelo, alarmes ISA-18.2.",
-];
+// Chaves (não textos): traduzidas na renderização conforme o idioma ativo.
+const SUGGESTION_KEYS = ["pages.aiEx1", "pages.aiEx2", "pages.aiEx3", "pages.aiEx4"] as const;
 
 interface ChatMsg {
   role: "user" | "ai";
@@ -44,13 +41,14 @@ interface ChatMsg {
 }
 
 function AiPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [val, setVal] = useState("");
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<ChatMsg[]>([
     {
       role: "ai",
-      text: "Descreva uma planta, um equipamento ou só um briefing curto. Eu projeto o sistema elétrico completo: trafo, CCM, motores, proteções, cabos, instrumentação e topologia. Tudo aparece simultaneamente em Unifilar, Ladder, FBD e SCADA.",
+      text: t("pages2.aiGreeting"),
     },
   ]);
 
@@ -98,9 +96,7 @@ function AiPage() {
               CORE ENGINE
             </span>
           </h1>
-          <p className="text-[12px] text-muted-foreground">
-            Motor de IA que projeta sistemas elétricos do zero ao fim, com cálculos em memória.
-          </p>
+          <p className="text-[12px] text-muted-foreground">{t("pages.aiSubtitle")}</p>
         </div>
 
         <div className="flex-1 overflow-auto scrollbar-thin p-6 space-y-4 max-w-3xl mx-auto w-full">
@@ -124,7 +120,7 @@ function AiPage() {
 
           {history.length <= 2 && (
             <div className="grid sm:grid-cols-2 gap-2 pt-4">
-              {SUGGESTIONS.map((s) => (
+              {SUGGESTION_KEYS.map((k) => t(k)).map((s) => (
                 <button
                   key={s}
                   onClick={() => send(s)}
@@ -149,7 +145,7 @@ function AiPage() {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
               }}
               rows={2}
-              placeholder="Descreva uma planta, um intertravamento, um equipamento… (Ctrl/⌘+Enter para enviar)"
+              placeholder={t("pages2.aiPlaceholder")}
               className="w-full resize-none rounded-md bg-input border border-border p-3 pr-12 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             <button

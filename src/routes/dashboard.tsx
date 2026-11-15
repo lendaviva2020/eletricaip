@@ -102,7 +102,7 @@ function formatRelativePtBr(dateStr?: string | null): string {
 }
 
 function Dashboard() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   useAuth();
   const list = useServerFn(listProjects);
   const creditsFn = useServerFn(getAiCredits);
@@ -301,11 +301,9 @@ function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
           <div>
             <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">
-              Painel Operacional
+              {t("pages.dashTitle")}
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Gerenciamento de projetos elétricos, automação CLP e telemetria de planta.
-            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("pages.dashSubtitle")}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -321,7 +319,7 @@ function Dashboard() {
             </div>
             <Button asChild size="default">
               <Link to="/projects">
-                <Plus className="h-3.5 w-3.5" /> Novo projeto
+                <Plus className="h-3.5 w-3.5" /> {t("pages2.newProject")}
               </Link>
             </Button>
           </div>
@@ -332,7 +330,7 @@ function Dashboard() {
           <div className="px-4 py-3 flex items-center justify-between">
             <div>
               <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-                Projetos Ativos
+                {t("pages.dashActiveProjects")}
               </div>
               <div className="text-lg font-mono font-semibold text-foreground tabular-nums mt-0.5">
                 {activeProjects.length}
@@ -346,7 +344,7 @@ function Dashboard() {
           <div className="px-4 py-3 flex items-center justify-between">
             <div>
               <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-                Créditos de IA
+                {t("pages.dashAiCredits")}
               </div>
               <div className="text-lg font-mono font-semibold text-foreground tabular-nums mt-0.5">
                 {creditsLabel}
@@ -360,7 +358,7 @@ function Dashboard() {
           <div className="px-4 py-3 flex items-center justify-between">
             <div>
               <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-                Telemetria SCADA
+                {t("pages.dashScadaTelemetry")}
               </div>
               <div className="text-sm font-mono font-semibold text-foreground mt-1">
                 {hasTelemetry ? "Online (24h)" : "Standby"}
@@ -390,7 +388,7 @@ function Dashboard() {
         <section className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-              Projetos Recentes ({filteredProjects.length})
+              {t("pages2.recentProjects")} ({filteredProjects.length})
             </h2>
             <Link to="/projects" className="text-xs font-medium text-primary hover:underline">
               Gerenciar todos →
@@ -408,13 +406,13 @@ function Dashboard() {
           ) : projects.length === 0 ? (
             <EmptyState
               icon={<FolderOpen className="h-5 w-5" />}
-              title="Nenhum projeto industrial cadastrado"
-              description="Crie seu primeiro projeto para abrir o canvas Unifilar, Multifilar e Ladder IEC 61131-3."
+              title={t("pages.dashNoProjects")}
+              description={t("pages.dashNoProjectsDesc")}
               action={
                 <div className="flex items-center gap-2">
                   <Button asChild size="default">
                     <Link to="/projects">
-                      <Plus className="h-3.5 w-3.5" /> Novo projeto
+                      <Plus className="h-3.5 w-3.5" /> {t("pages2.newProject")}
                     </Link>
                   </Button>
                   <Button asChild variant="outline" size="default">
@@ -428,7 +426,7 @@ function Dashboard() {
           ) : filteredProjects.length === 0 ? (
             <EmptyState
               icon={<FolderOpen className="h-5 w-5" />}
-              title="Nenhum projeto corresponde ao filtro"
+              title={t("pages.dashNoMatch")}
               description={`Nenhum resultado encontrado para "${search}".`}
               action={
                 <Button variant="outline" size="sm" onClick={() => setSearch("")}>
@@ -487,12 +485,12 @@ function Dashboard() {
         {/* 4. Telemetria Compacta de Planta */}
         <section className="space-y-2.5">
           <h2 className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-            Séries Temporais de Telemetria (24h)
+            {t("pages.dashTelemetrySeries")}
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <ChartCard
               id="energy"
-              title="Energia"
+              title={t("pages.dashEnergy")}
               subtitle="consumo agregado · kWh"
               color="oklch(0.65 0.16 245)"
               data={energyData}
@@ -500,8 +498,8 @@ function Dashboard() {
             />
             <ChartCard
               id="production"
-              title="Produção"
-              subtitle="unidades/hora médias"
+              title={t("pages.dashProduction")}
+              subtitle={t("pages.dashUnitsPerHour")}
               color="oklch(0.68 0.16 150)"
               data={productionData}
               live={telemetryQuery.data?.ok === true && productionData.length > 0}
@@ -509,7 +507,7 @@ function Dashboard() {
             <ChartCard
               id="temperature"
               title="Temperatura"
-              subtitle="média ponderada · °C"
+              subtitle={t("pages.dashWeightedAvg")}
               color="oklch(0.75 0.16 75)"
               data={temperatureData}
               live={telemetryQuery.data?.ok === true && temperatureData.length > 0}

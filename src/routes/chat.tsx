@@ -29,7 +29,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 function ChatPage() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const list = useServerFn(listConversations);
   const create = useServerFn(createConversation);
   const fetchMessages = useServerFn(getConversationMessages);
@@ -132,12 +132,12 @@ function ChatPage() {
             ← Dashboard
           </Link>
           <Button size="sm" onClick={handleNew}>
-            <Plus className="w-4 h-4 mr-1" /> Nova
+            <Plus className="w-4 h-4 mr-1" /> {t("pages2.newFem")}
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {convos.length === 0 && (
-            <p className="text-xs text-muted-foreground p-2">Nenhuma conversa ainda.</p>
+            <p className="text-xs text-muted-foreground p-2">{t("pages.chatEmpty")}</p>
           )}
           {convos.map((c) => (
             <div
@@ -175,9 +175,7 @@ function ChatPage() {
         <div ref={scrollerRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {messages.length === 0 && !streamingText && (
             <div className="text-center text-muted-foreground mt-20">
-              <p className="text-lg font-medium">
-                Pergunte algo sobre engenharia elétrica industrial
-              </p>
+              <p className="text-lg font-medium">{t("pages.chatAsk")}</p>
               <p className="text-sm mt-2">NBR 5410, dimensionamento, NR-12, IoT…</p>
             </div>
           )}
