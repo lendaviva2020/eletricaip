@@ -9,6 +9,42 @@ export interface AiUsagePoint {
   storageMb: number;
 }
 
+export interface AiDailyUsage {
+  /** Dia UTC no formato YYYY-MM-DD. */
+  day: string;
+  /** Número de operações de IA cobradas no dia. */
+  calls: number;
+  /** Créditos consumidos no dia. */
+  credits: number;
+}
+
+/**
+ * Consumo real por dia (UTC) dos últimos `days` dias, inclusive hoje. Dias sem
+ * uso aparecem com zero (é um dado real: não houve consumo), em ordem crescente.
+ */
+export function buildDailyUsage(
+  events: ReadonlyArray<{ created_at: string; credits: number | null }>,
+  now: Date,
+  days = 7,
+): AiDailyUsage[] {
+  const out: AiDailyUsage[] = [];
+  const index = new Map<string, AiDailyUsage>();
+  const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  for (let i = days - 1; i >= 0; i--) {
+    const day = new Date(end - i * 86_400_000).toISOString().slice(0, 10);
+    const row = { day, calls: 0, credits: 0 };
+    out.push(row);
+    index.set(day, row);
+  }
+  for (const ev of events) {
+    const row = index.get(String(ev.created_at).slice(0, 10));
+    if (!row) continue;
+    row.calls += 1;
+    row.credits += Number(ev.credits) || 0;
+  }
+  return out;
+}
+
 export interface AiUsageSummary {
   plan: string;
   maxCredits: number;
@@ -20,6 +56,7 @@ export interface AiUsageSummary {
   monthlyByOperation: Array<{ period: string } & Record<string, string | number>>;
   operationKeys: string[];
   topOperations: Array<{ operation: string; credits: number; events: number }>;
+  daily: AiDailyUsage[];
 }
 
 export const getAiUsageSummary = createServerFn({ method: "GET" })
@@ -45,6 +82,7 @@ export const getAiUsageSummary = createServerFn({ method: "GET" })
         monthlyByOperation: [],
         operationKeys: [],
         topOperations: [],
+        daily: buildDailyUsage([], new Date()),
       };
     }
 
@@ -126,5 +164,12 @@ export const getAiUsageSummary = createServerFn({ method: "GET" })
       monthlyByOperation,
       operationKeys,
       topOperations,
+      daily: buildDailyUsage(
+        (events ?? []).map((e) => ({
+          created_at: e.created_at as string,
+          credits: (e.credits as number) ?? 0,
+        })),
+        new Date(),
+      ),
     };
   });

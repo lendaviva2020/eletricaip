@@ -66,6 +66,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { prefetchRouteQuery } from "@/lib/query-prefetch";
+import { getAiUsageSummary } from "@/lib/ai-usage.functions";
 
 export const Route = createFileRoute("/settings/billing")({
   // Admin gate runs client-side in the component (see useEffect below).
@@ -126,19 +127,21 @@ function BillingPage() {
   const currentPlan = data?.plan ?? "free";
   const plan = getPlan(currentPlan);
 
+  // Consumo REAL dos últimos 7 dias (ai_usage_events), agregado no servidor.
+  const usageFn = useServerFn(getAiUsageSummary);
+  const { data: usageSummary } = useQuery({
+    queryKey: ["billing-ai-usage-daily"],
+    queryFn: () => usageFn(),
+  });
   const usageChart = useMemo(() => {
-    const now = new Date();
     const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(now.getTime() - (6 - i) * 86400000);
-      return {
-        label: days[d.getDay()],
-        calls: 0,
-        tokens: 0,
-        automations: 0,
-      };
-    });
-  }, []);
+    return (usageSummary?.daily ?? []).map((d) => ({
+      label: days[new Date(`${d.day}T12:00:00Z`).getUTCDay()],
+      day: d.day,
+      calls: d.calls,
+      credits: d.credits,
+    }));
+  }, [usageSummary]);
 
   async function handleCheckout(provider: "stripe" | "mp", plan: PaidPlan) {
     setBusy(`${provider}:${plan}`);
@@ -400,7 +403,7 @@ function BillingPage() {
                         Consumo (7 dias)
                       </span>
                       <span className="text-[10px] text-muted-foreground/40 flex items-center gap-1">
-                        <ChartBar className="h-3 w-3" /> Chamadas
+                        <ChartBar className="h-3 w-3" /> Chamadas · créditos (tracejado)
                       </span>
                     </div>
                     <ResponsiveContainer width="100%" height={120}>
@@ -442,7 +445,7 @@ function BillingPage() {
                         />
                         <Area
                           type="monotone"
-                          dataKey="automations"
+                          dataKey="credits"
                           stroke="#22c55e"
                           fill="none"
                           dot={false}

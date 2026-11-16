@@ -153,9 +153,10 @@ export function SimCanvas() {
       engineRef.current?.evaluate(merged);
 
       // 1. Gather live values from canonical bindings first, then legacy stores
+      // Sem fonte de dado, o valor é 0 — nunca um número plausível inventado.
       let speed = 0;
       let current = 0;
-      let level = 50;
+      let level = 0;
       let valve = 0;
 
       // Canonical ControlBindings (Contract 4 & 5: resolve by tagId + role)
@@ -170,13 +171,9 @@ export function SimCanvas() {
           speed = Number(rawVal);
         } else if (binding.role === "sensor_process_value" && eq?.catalogType === "level") {
           level = Number(rawVal);
-        } else if (binding.role === "main_contactor_coil" && Boolean(rawVal)) {
-          const motorEq = Object.values(unifiedDoc.engineering.equipments).find(
-            (e) => e.catalogType === "motor",
-          );
-          if (speed === 0) speed = 1750;
-          if (current === 0) current = motorEq?.specs.nominalCurrentA ?? 11.6;
         }
+        // Bobina do contator energizada NÃO informa rotação nem corrente: esses
+        // valores só aparecem quando há tag medida (encoder/TC) ligada a eles.
       }
 
       // Extract from useProjectStore (SCADA/Physical twin)
@@ -193,8 +190,6 @@ export function SimCanvas() {
         const name = tag.name.toUpperCase();
         if (name === "SP_SPEED" || name === "VELOCIDADE") speed = Number(tag.value);
         else if (name === "TANQUE_NIVEL" || name === "NIVEL") level = Number(tag.value);
-        else if (name === "TEMP_M01")
-          current = Number(tag.value) / 5; // scaled down for current visualizer
         else if (name === "VALVE_OPEN" || name === "POS") valve = tag.value ? 100 : 0;
       });
 
@@ -208,17 +203,6 @@ export function SimCanvas() {
           speed = 0;
           current = 0;
         }
-      }
-
-      // Fallbacks if nothing is active
-      if (speed === 0 && useProjectStore.getState().runtime.connected) {
-        speed = 1200 + Math.sin(Date.now() / 1000) * 80;
-      }
-      if (current === 0 && speed > 0) {
-        current = 12 + Math.abs(Math.sin(Date.now() / 800)) * 5;
-      }
-      if (level === 50 && useProjectStore.getState().runtime.connected) {
-        level = 45 + Math.sin(Date.now() / 4000) * 15;
       }
 
       setDataPoints((prev) => {

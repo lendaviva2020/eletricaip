@@ -8,7 +8,7 @@ import {
   ShieldWarning,
   Sparkle,
 } from "@phosphor-icons/react";
-import { SidebarSearch, SidebarShell } from "./sidebar-primitives";
+import { SidebarShell } from "./sidebar-primitives";
 import { useEditorStore } from "@/lib/editor/store";
 import { useProjectStore } from "@/lib/project-store";
 import { startLocalSimulation, disconnect, isLocalRunning } from "@/lib/runtime-client";

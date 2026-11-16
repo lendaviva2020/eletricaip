@@ -914,6 +914,18 @@ export const ptBR = {
     disclaimer:
       "Ferramenta de apoio ao projeto. Não substitui a responsabilidade técnica (ART/TRT) nem a verificação do engenheiro habilitado.",
   },
+  sidebarSearch: {
+    noResults: "Nenhum resultado para a busca.",
+  },
+  plcTree: {
+    title: "Projeto CLP",
+    search: "Módulo, variável, bloco...",
+    hardware: "Hardware",
+    variables: "Variáveis",
+    blocks: "Blocos de programa",
+    slot: "Slot",
+    empty: "Nada cadastrado ainda.",
+  },
   docPanel: {
     title: "Documentação EletricAI",
     desc: "Identificação IEC 81346, fios por potencial, bornes, cabos e referência cruzada, verificados enquanto você desenha.",

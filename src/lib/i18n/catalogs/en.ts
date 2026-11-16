@@ -910,6 +910,18 @@ export const en: TranslationCatalog = {
     disclaimer:
       "Design support tool. It does not replace professional responsibility or verification by a licensed engineer.",
   },
+  sidebarSearch: {
+    noResults: "No results for this search.",
+  },
+  plcTree: {
+    title: "PLC project",
+    search: "Module, variable, block...",
+    hardware: "Hardware",
+    variables: "Variables",
+    blocks: "Program blocks",
+    slot: "Slot",
+    empty: "Nothing registered yet.",
+  },
   docPanel: {
     title: "EletricAI Documentation",
     desc: "IEC 81346 designation, potential-based wires, terminals, cables and cross-reference, checked while you draw.",

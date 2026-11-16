@@ -19,6 +19,10 @@ let client: SupabaseClient | null = null;
 let channel: RealtimeChannel | null = null;
 let localTimer: ReturnType<typeof setInterval> | null = null;
 let localTick = 0;
+/** Instante da varredura anterior — o ciclo exibido é MEDIDO, não sorteado. */
+let lastScanAt = 0;
+let scanAccumMs = 0;
+let scanSamples = 0;
 
 export function loadConfig(): RuntimeConfig | null {
   try {
@@ -127,7 +131,9 @@ export async function disconnect(): Promise<void> {
   useProjectStore.getState().setRuntime({ connected: false, source: "off" });
 }
 
-// Local fallback simulator — runs in the browser when Supabase isn't connected.
+// Simulador local (fonte "local", rotulado SIM) — sinais de EXEMPLO quando não
+// há runtime real conectado. Não emite alarmes de proteção: a proteção de
+// motores com modelo físico (IEC 60947-4-1) fica no CCM supervisório.
 export function startLocalSimulation(): void {
   if (localTimer) return;
   const store = useProjectStore.getState();
@@ -140,8 +146,16 @@ export function startLocalSimulation(): void {
     channel: "Runtime",
   });
 
+  lastScanAt = performance.now();
+  scanAccumMs = 0;
+  scanSamples = 0;
   localTimer = setInterval(() => {
     localTick++;
+    const nowScan = performance.now();
+    const scanDtMs = nowScan - lastScanAt;
+    scanAccumMs += scanDtMs;
+    scanSamples += 1;
+    lastScanAt = nowScan;
     const s = useProjectStore.getState();
     const tags: Record<string, number | boolean> = {};
     const params: Record<string, Record<string, string | number>> = {};
@@ -169,26 +183,20 @@ export function startLocalSimulation(): void {
       }
     }
 
-    if (localTick % 80 === 0) {
+    if (localTick % 80 === 0 && scanSamples > 0) {
+      const measuredCycleMs = scanAccumMs / scanSamples;
       logs.push({
         t: new Date().toLocaleTimeString(),
-        tag: "PLC",
-        msg: `OB1 cycle ${(7 + Math.random()).toFixed(1)} ms`,
-        lvl: "ok" as const,
+        tag: "SIM",
+        msg: `Ciclo medido ${measuredCycleMs.toFixed(1)} ms (média de ${scanSamples} varreduras)`,
+        lvl: measuredCycleMs > 75 ? ("warn" as const) : ("ok" as const),
         channel: "Logs" as const,
       });
-    }
-    if (localTick % 240 === 0) {
-      logs.push({
-        t: new Date().toLocaleTimeString(),
-        tag: "ALM",
-        msg: "Sobrecorrente M-02 (transiente)",
-        lvl: "warn" as const,
-        channel: "Alarmes" as const,
-      });
+      scanAccumMs = 0;
+      scanSamples = 0;
     }
 
-    s.applyTick({ ts: Date.now(), cycleMs: 50, tags, params, energized, logs });
+    s.applyTick({ ts: Date.now(), cycleMs: +scanDtMs.toFixed(1), tags, params, energized, logs });
   }, 50);
 }
 

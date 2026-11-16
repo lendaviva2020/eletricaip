@@ -412,7 +412,11 @@ async function fetchNormativeContext(
     .slice(0, 6);
   if (tokens.length === 0) return { chunks: [], hits: 0 };
 
-  const orFilter = tokens.map((t) => `chunk_text.ilike.%${t}%`).join(",");
+  // `search_text` é coluna gerada sem acento e minúscula (migration
+  // 20261116120000): os tokens também são normalizados sem acento, então
+  // "tensão" no pedido casa com "tensão" na base. Tokens só têm [a-z0-9]
+  // (filtrados acima), o que impede injeção na sintaxe do filtro PostgREST.
+  const orFilter = tokens.map((t) => `search_text.ilike.%${t}%`).join(",");
   const { data, error } = await supabase
     .from("normative_chunks")
     .select("category,chunk_text")

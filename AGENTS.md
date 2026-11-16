@@ -1379,3 +1379,10 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 
 - **Regra do produto**: nenhuma marca de software de terceiros (ferramentas de CAE elétrico ou de programação de CLP) aparece no app, nos textos, comentários ou documentação. As funcionalidades são da **Documentação EletricAI**. Normas (IEC/NBR/ISA) podem ser citadas.
 - Exceção técnica: o identificador interno `CODESYS_VIRTUAL` (enum de fornecedor gravado em projetos salvos) não é exibido e não foi renomeado para não quebrar projetos existentes.
+
+### Dados reais em todo o app (2026-11-16, 7ª rodada)
+
+- **Plano vivo**: `docs/PLANO_EXECUCAO.md` (estado de cada editor/tela com arquivo:linha e backlog priorizado). Atualize-o a cada rodada.
+- **Regra**: nada exibido como leitura real pode ser inventado. Sem fonte de dado → 0/"pendente"/"sem sinal", nunca um valor plausível. Simulação só com rótulo de simulação. Teste-guarda: `real-data-integrity.test.ts`.
+- Corrigidos: `sim-canvas.tsx` (senoides com runtime real, 1750 rpm/11,6 A presumidos por bobina ligada, temperatura exibida como corrente, nível 50% fixo); `runtime-client.ts` (alarme fixo "M-02" e ciclo aleatório → ciclo medido por `performance.now()`); faturamento (gráfico de 7 dias era vetor de zeros → `getAiUsageSummary().daily` de `ai_usage_events`); barra do PLC (árvore fictícia → `usePlcStore` com navegação); busca inoperante nas barras PLC/FBD/SCADA (`SidebarSearch` agora controlado + `normalizeSearch`).
+- **Base normativa da IA** (migration `20261116120000_normative_knowledge_base`, aplicada): 11 documentos / 28 resumos técnicos PRÓPRIOS (não copiar texto de norma — direito autoral) + coluna gerada `normative_chunks.search_text` sem acento; `fetchNormativeContext` consulta `search_text` (antes "tensão" nunca casava). Catálogo (`catalog_components`) segue vazio: depende da planilha de fornecedores do dono.
