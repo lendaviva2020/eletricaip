@@ -96,7 +96,7 @@ export function EditorLadderSidebar() {
   return (
     <SidebarShell width={240}>
       <div className="h-9 flex items-center justify-between px-3 border-b border-border text-[10px] uppercase tracking-[0.18em] font-semibold text-muted-foreground bg-muted/20">
-        <span>BIBLIOTECA DE INSTRUÇÕES</span>
+        <span>{t("editors.instructionLibrary")}</span>
         <span className="font-mono text-[9px] text-primary">{filteredElements.length} itens</span>
       </div>
 

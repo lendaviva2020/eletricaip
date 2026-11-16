@@ -12,11 +12,13 @@ import { SidebarSearch, SidebarShell } from "./sidebar-primitives";
 import { useEditorStore } from "@/lib/editor/store";
 import { useProjectStore } from "@/lib/project-store";
 import { startLocalSimulation, disconnect, isLocalRunning } from "@/lib/runtime-client";
+import { useI18n } from "@/lib/i18n";
 
 const SPEEDS = [1, 10, 100] as const;
 const MODES = ["Unifilar", "Ladder", "SCADA Conjunta"] as const;
 
 export function EditorSimSidebar() {
+  const { t } = useI18n();
   const [activeMode, setActiveMode] = useState<(typeof MODES)[number]>("SCADA Conjunta");
   const [activeSpeed, setActiveSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [running, setRunning] = useState(false);
@@ -121,7 +123,7 @@ export function EditorSimSidebar() {
     <SidebarShell width={240}>
       <div className="p-3 border-b border-border bg-card/10 shrink-0">
         <div className="flex items-center justify-between text-[11px] font-display font-semibold uppercase tracking-wider mb-2 text-foreground">
-          <span>Controles de Simulação</span>
+          <span>{t("editors.simControls")}</span>
           {running && <span className="h-1.5 w-1.5 rounded-full bg-success energized" />}
         </div>
 
@@ -143,7 +145,7 @@ export function EditorSimSidebar() {
           ) : (
             <>
               <Play className="h-3.5 w-3.5 fill-current" />
-              <span>Iniciar Simulação</span>
+              <span>{t("editors.startSim")}</span>
             </>
           )}
         </button>
@@ -197,7 +199,7 @@ export function EditorSimSidebar() {
         {/* SEARCH FILTER */}
         <div>
           <div className="text-[9px] uppercase font-display font-semibold tracking-[0.16em] text-muted-foreground mb-1">
-            Buscar Var / Tag
+            {t("editors.searchVarTag")}
           </div>
           <input
             type="text"

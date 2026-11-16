@@ -503,6 +503,8 @@ export const ptBR = {
     simStopped: "Simulação Parada",
   },
   dockTabs: {
+    simulation: "Simulação",
+    ai: "IA",
     diagnostics: "Diagnósticos",
     voltageDrop: "Cálculos NBR 5410",
     bom: "Lista de Materiais (BOM)",
@@ -838,7 +840,8 @@ export const ptBR = {
     kFactor: "Fator K",
     kTrafo: "Transformador K recomendado",
     neutral: "Corrente de neutro (triplens)",
-    harmonicsNote: "IEEE 519-2014 (Tab. 2) e IEEE C57.110. 3ª harmônica acima de 33 % exige neutro dimensionado pela corrente de neutro (NBR 5410 §6.2.6.2).",
+    harmonicsNote:
+      "IEEE 519-2014 (Tab. 2) e IEEE C57.110. 3ª harmônica acima de 33 % exige neutro dimensionado pela corrente de neutro (NBR 5410 §6.2.6.2).",
     resistivity: "Resistividade do solo",
     rodLength: "Comprimento da haste",
     rodDiameter: "Diâmetro da haste",
@@ -850,9 +853,11 @@ export const ptBR = {
     groundTotal: "Resistência de aterramento",
     maxRA: "RA máximo (UL / IΔn)",
     ttCheck: "Esquema TT (NBR 5410)",
-    groundNote: "Dwight / IEEE 142 (Tab. 4-5). Solo homogêneo; meça a resistividade (Wenner) e confirme com medição após a instalação.",
+    groundNote:
+      "Dwight / IEEE 142 (Tab. 4-5). Solo homogêneo; meça a resistividade (Wenner) e confirme com medição após a instalação.",
     title: "Cálculos elétricos",
-    subtitle: "Dimensionamento conforme NBR 5410, IEC 60909 e IEC 60947 — calculado no seu navegador.",
+    subtitle:
+      "Dimensionamento conforme NBR 5410, IEC 60909 e IEC 60947 — calculado no seu navegador.",
     tab_motor: "Motor e ramal",
     tab_drop: "Queda de tensão",
     tab_short: "Curto-circuito",
@@ -894,7 +899,8 @@ export const ptBR = {
     peak: "Pico ip = κ·√2·I″k",
     cFactor: "Fator de tensão c",
     zTrafo: "Impedância do trafo",
-    shortNote: "Curto nos terminais do secundário (rede a montante infinita) — valor máximo para ruptura de disjuntores.",
+    shortNote:
+      "Curto nos terminais do secundário (rede a montante infinita) — valor máximo para ruptura de disjuntores.",
     motorList: "Potências dos motores (kW, separadas por vírgula)",
     diversity: "Fator de diversidade",
     totalShaft: "Potência instalada (eixo)",
@@ -903,7 +909,8 @@ export const ptBR = {
     feederCurrent: "Corrente do alimentador",
     trafo: "Transformador padronizado",
     demandNote: "Rendimento típico η = 0,92 por motor; trafo com reserva de 25 %.",
-    disclaimer: "Ferramenta de apoio ao projeto. Não substitui a responsabilidade técnica (ART/TRT) nem a verificação do engenheiro habilitado.",
+    disclaimer:
+      "Ferramenta de apoio ao projeto. Não substitui a responsabilidade técnica (ART/TRT) nem a verificação do engenheiro habilitado.",
   },
   mfa: {
     title: "Verificação em duas etapas",
@@ -919,7 +926,8 @@ export const ptBR = {
     confirm: "Confirmar",
     enabled: "Verificação em duas etapas ativada.",
     removed: "Verificação em duas etapas desativada.",
-    confirmRemove: "Desativar a verificação em duas etapas? Sua conta ficará protegida apenas pela senha.",
+    confirmRemove:
+      "Desativar a verificação em duas etapas? Sua conta ficará protegida apenas pela senha.",
     enrollFailed: "Não foi possível iniciar o cadastro do autenticador.",
     invalidFormat: "Digite os 6 dígitos do aplicativo.",
     wrongCode: "Código incorreto ou expirado.",
@@ -931,6 +939,36 @@ export const ptBR = {
     signOut: "Sair e entrar com outra conta",
     checkFailed: "Não foi possível confirmar o nível de segurança da sessão.",
     retry: "Tentar novamente",
+  },
+  fbdPalette: {
+    title: "Blocos FBD",
+  },
+  editors: {
+    noProgramBlock: "⚠ Nenhum bloco de programa criado.",
+    globalVars: "✓ {count} variáveis globais",
+    hwModules: "✓ {count} módulos de hardware",
+    blockLine: "✓ Bloco {name} ({kind}) · {lang}",
+    simControls: "Controles de Simulação",
+    startSim: "Iniciar Simulação",
+    genericPlc: "CLP Genérico / IEC 61131-3",
+    predictableInsert: "+ inserção previsível",
+    noHardware: "⚠ Nenhum módulo de hardware configurado.",
+    rmsCurrent: "Corrente RMS (A)",
+    tabDocs: "Documentação & CSV/PDF",
+    syncUnifilar: "Gerar do unifilar",
+    tabLogic: "Lógica FBD/LAD",
+    instructionLibrary: "BIBLIOTECA DE INSTRUÇÕES",
+    searchVarTag: "Buscar Var / Tag",
+    varsTags: "Variáveis & Tags",
+    execOrder: "Blocos (ordem de execução)",
+    injFault: "Falha inj.",
+    energyFlow: "Fluxo de energia (derivado da simulação)",
+    powerStudies: "Estudos Elétricos de Potência",
+    busVoltage: "Tensão barra",
+    secVoltage: "Tensão sec.",
+    loadingScenarios: "Carregando cenários…",
+    bridgeHint:
+      "Analise o diagrama unifilar atual para gerar mapeamentos automáticos para o editor Ladder.",
   },
 } as const;
 

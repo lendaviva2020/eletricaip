@@ -52,6 +52,7 @@ import {
   CaretRight,
   ArrowCounterClockwise,
 } from "@phosphor-icons/react";
+import { useI18n } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Tipos (espelham o retorno das server functions)
@@ -446,6 +447,7 @@ function RunResultCard({ result, onClose }: { result: RunResult; onClose: () => 
 // ---------------------------------------------------------------------------
 
 export function TestScenariosPanel() {
+  const { t } = useI18n();
   const projectId = useProjectStore((s) => s.projectId);
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
@@ -536,7 +538,7 @@ export function TestScenariosPanel() {
       <CardContent className="space-y-4">
         {isLoading ? (
           <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <CircleNotch className="h-4 w-4 animate-spin" /> Carregando cenários…
+            <CircleNotch className="h-4 w-4 animate-spin" /> {t("editors.loadingScenarios")}
           </div>
         ) : scenarios.length === 0 ? (
           <div className="py-8 text-center">

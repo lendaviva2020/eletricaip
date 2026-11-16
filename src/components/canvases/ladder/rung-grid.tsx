@@ -63,6 +63,7 @@ import {
   Octagon,
 } from "@phosphor-icons/react";
 import { useSafetyStore } from "@/lib/simulation/safety-core";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Cria o projeto industrial de referência oficial (Imagem 1).
@@ -238,6 +239,7 @@ function createReferenceIndustrialProject(): LadderRung[] {
 }
 
 export function RungGrid() {
+  const { t } = useI18n();
   const removeRungRef = useRef<(id: string) => void>(() => {});
   const deleteElementRef = useRef<(rungId: string, elementId: string) => void>(() => {});
   const insertInstructionAtCursorRef = useRef<any>(null);
@@ -972,10 +974,10 @@ export function RungGrid() {
             />
             <span className="shrink-0">
               {simulationStatus === "running"
-                ? "Simulação Ativa"
+                ? t("shell.simActive")
                 : simulationStatus === "paused"
-                  ? "Simulação Pausada"
-                  : "Simulação Parada"}
+                  ? t("shell.simPaused")
+                  : t("shell.simStopped")}
             </span>
           </div>
 
@@ -1102,7 +1104,7 @@ export function RungGrid() {
               className="bg-transparent border-0 font-medium text-xs text-foreground cursor-pointer outline-none shrink-0"
             >
               <option value="generic" className="bg-popover text-popover-foreground">
-                CLP Genérico / IEC 61131-3
+                {t("editors.genericPlc")}
               </option>
               <option value="rockwell" className="bg-popover text-popover-foreground">
                 Rockwell Studio 5000 (ControlLogix)
@@ -1215,7 +1217,7 @@ export function RungGrid() {
                         className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-medium flex items-center gap-1 cursor-pointer"
                         title="Inserir contato na posição de foco"
                       >
-                        <Plus className="h-3 w-3" /> + inserção previsível
+                        <Plus className="h-3 w-3" /> {t("editors.predictableInsert")}
                       </button>
                       <button
                         onClick={() => addParallelBranchToRung(rung.id)}
@@ -1527,7 +1529,7 @@ export function RungGrid() {
                         className="px-2.5 py-1 rounded text-[11px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-medium flex items-center gap-1 cursor-pointer"
                         title="Inserir novo contato no ponto de foco"
                       >
-                        <Plus className="h-3.5 w-3.5" /> + inserção previsível
+                        <Plus className="h-3.5 w-3.5" /> {t("editors.predictableInsert")}
                       </button>
                       <button
                         onClick={() => addParallelBranchToRung(rung.id)}

@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { FbdEngineApi } from "@/hooks/use-fbd-engine";
 import type { FbdValue } from "@/lib/fbd/engine";
 import { useSafetyStore } from "@/lib/simulation/safety-core";
+import { useI18n } from "@/lib/i18n";
 
 function fmt(v: FbdValue | undefined): string {
   if (v === undefined) return "—";
@@ -50,6 +51,7 @@ function CtrlButton({
 }
 
 export function FbdEnginePanel({ engine, onClose }: { engine: FbdEngineApi; onClose: () => void }) {
+  const { t } = useI18n();
   const { result, live, status, inputBindings } = engine;
   const emergencyLatched = useSafetyStore((s) => s.emergencyLatched);
   const errors = result.diagnostics.filter((d) => d.severity === "error");
@@ -160,7 +162,7 @@ export function FbdEnginePanel({ engine, onClose }: { engine: FbdEngineApi; onCl
               )}
               <section className="space-y-1.5">
                 <h4 className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
-                  Blocos (ordem de execução)
+                  {t("editors.execOrder")}
                 </h4>
                 {instructions.map((ins) => {
                   const outs = live.outputs[ins.nodeId] ?? {};

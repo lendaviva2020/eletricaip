@@ -70,6 +70,23 @@ export function getContextualTabsForMode(mode: WorkspaceMode): ConsoleTab[] {
   }
 }
 
+/** Aba → chave `dockTabs.*` do catálogo i18n (o rótulo em TAB_METADATA é o fallback pt-BR). */
+const TAB_I18N_KEY: Partial<Record<string, string>> = {
+  diagnosticos: "dockTabs.diagnostics",
+  calculos_nbr: "dockTabs.voltageDrop",
+  bom: "dockTabs.bom",
+  variaveis: "dockTabs.variables",
+  simulacao: "dockTabs.simulation",
+  Logs: "dockTabs.logs",
+  Alarmes: "dockTabs.alarms",
+  IA: "dockTabs.ai",
+  Terminal: "dockTabs.terminal",
+  Eventos: "dockTabs.events",
+  "OPC-UA": "dockTabs.opcua",
+  Modbus: "dockTabs.modbus",
+  Runtime: "dockTabs.runtime",
+};
+
 const TAB_METADATA: Record<ConsoleTab, { label: string; icon: typeof List; defaultTitle: string }> =
   {
     diagnosticos: { label: "Diagnósticos", icon: Warning, defaultTitle: "Diagnósticos e Alertas" },
@@ -472,7 +489,7 @@ export function UnifiedBottomDock() {
                 data-testid={`dock-tab-${tName}`}
               >
                 <Icon className="h-3.5 w-3.5" />
-                <span>{meta.label}</span>
+                <span>{TAB_I18N_KEY[tName] ? t(TAB_I18N_KEY[tName]!) : meta.label}</span>
 
                 {/* Badges contextuais com dados REAIS (sem números fictícios) */}
                 {tName === "diagnosticos" &&

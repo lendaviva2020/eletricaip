@@ -42,10 +42,12 @@ import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { Icon } from "@phosphor-icons/react";
 import { FloatingLegend } from "./canvas-chrome";
+import { useI18n } from "@/lib/i18n";
 
 const LANG_LABELS: Record<ProgramLang, string> = { ladder: "LAD", fbd: "FBD", st: "ST" };
 
 export function PlcCanvas() {
+  const { t } = useI18n();
   const {
     project,
     activeTab,
@@ -299,16 +301,20 @@ export function PlcCanvas() {
   const [diagCount, setDiagCount] = useState(0);
   const diagMsgs = useMemo(() => {
     const lines: string[] = [];
-    if (project.rack.modules.length === 0) lines.push("⚠ Nenhum módulo de hardware configurado.");
-    if (project.programBlocks.length === 0) lines.push("⚠ Nenhum bloco de programa criado.");
-    lines.push(`✓ ${project.variables.length} variáveis globais`);
-    lines.push(`✓ ${project.rack.modules.length} módulos de hardware`);
+    if (project.rack.modules.length === 0) lines.push(t("editors.noHardware"));
+    if (project.programBlocks.length === 0) lines.push(t("editors.noProgramBlock"));
+    lines.push(t("editors.globalVars", { count: project.variables.length }));
+    lines.push(t("editors.hwModules", { count: project.rack.modules.length }));
     if (activeBlock)
       lines.push(
-        `✓ Bloco ${activeBlock.name} (${activeBlock.type}${activeBlock.number}) · ${LANG_LABELS[activeBlock.language]}`,
+        t("editors.blockLine", {
+          name: activeBlock.name,
+          kind: `${activeBlock.type}${activeBlock.number}`,
+          lang: LANG_LABELS[activeBlock.language],
+        }),
       );
     return lines;
-  }, [project, activeBlock]);
+  }, [project, activeBlock, t]);
 
   return (
     <div className="relative h-full w-full flex flex-col bg-[--canvas-bg]">

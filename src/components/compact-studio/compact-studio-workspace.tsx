@@ -59,6 +59,7 @@ import { HardwareConfigurator } from "./hardware-configurator";
 import { UdfLibraryPanel } from "./udf-library-panel";
 import { DocumentationPanel } from "./documentation-panel";
 import { CompactSimulatorPanel } from "./compact-simulator-panel";
+import { useI18n } from "@/lib/i18n";
 
 type StudioSubTab = "logic" | "hardware" | "udfs" | "docs" | "simulator" | "network";
 
@@ -72,6 +73,7 @@ function reportRuntimeError(err: unknown): void {
 }
 
 export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioWorkspaceProps) {
+  const { t } = useI18n();
   const flags = useCompactStudioFeatureFlags();
   const storedCompact = useUnifiedProjectStore((s) => s.doc.compactStudio);
   const setCompactStudioProgram = useUnifiedProjectStore((s) => s.setCompactStudioProgram);
@@ -360,16 +362,16 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
             data-testid="compact-sync-unifilar"
           >
             <Lightning className="h-3.5 w-3.5" />
-            Gerar do unifilar
+            {t("editors.syncUnifilar")}
           </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label={PRODUCT_NAME}>
           {[
-            { id: "logic" as const, label: "Lógica FBD/LAD", icon: Circuitry },
+            { id: "logic" as const, label: t("editors.tabLogic"), icon: Circuitry },
             { id: "hardware" as const, label: "Hardware & E/S", icon: Cpu },
             { id: "udfs" as const, label: "UDFs", icon: Cube },
-            { id: "docs" as const, label: "Documentação & CSV/PDF", icon: FileText },
+            { id: "docs" as const, label: t("editors.tabDocs"), icon: FileText },
             { id: "simulator" as const, label: "Simulador & Diff", icon: PlayCircle },
             { id: "network" as const, label: "Rede Multi-CLP", icon: ShareNetwork },
           ].map((tab) => {

@@ -35,6 +35,7 @@ import {
   WarningCircle,
   FloppyDisk,
 } from "@phosphor-icons/react";
+import { useI18n } from "@/lib/i18n";
 
 function SummaryCard({
   label,
@@ -54,11 +55,10 @@ function SummaryCard({
 }
 
 function AnalyzePrompt({ onAnalyze, busy }: { onAnalyze: () => void; busy: boolean }) {
+  const { t } = useI18n();
   return (
     <div className="text-center py-8">
-      <p className="text-muted-foreground mb-4">
-        Analise o diagrama unifilar atual para gerar mapeamentos automáticos para o editor Ladder.
-      </p>
+      <p className="text-muted-foreground mb-4">{t("editors.bridgeHint")}</p>
       <Button onClick={onAnalyze} disabled={busy} className="w-full">
         {busy ? (
           <>

@@ -15,6 +15,7 @@ import {
 import { usePlantStore, PLANT_TICK_MS } from "@/lib/simulation/plant-store";
 import { useSafetyStore } from "@/lib/simulation/safety-core";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 const MOTOR_IDS = ["M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08"];
 
@@ -48,6 +49,7 @@ function FlowWire({
 }
 
 export function PlantSimPanel() {
+  const { t } = useI18n();
   const plant = usePlantStore((s) => s.plant);
   const inputs = usePlantStore((s) => s.inputs);
   const ticking = usePlantStore((s) => s.ticking);
@@ -196,7 +198,7 @@ export function PlantSimPanel() {
       {/* Diagrama de fluxo REDE → QGBT → barramento → motores */}
       <div className="rounded border border-border/70 bg-background/40 p-3 mb-3">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-          Fluxo de energia (derivado da simulação)
+          {t("editors.energyFlow")}
         </p>
         <div className="grid grid-cols-[70px_1fr_90px] items-center gap-2 text-[11px]">
           <span className="font-mono">REDE 380V</span>
@@ -257,7 +259,7 @@ export function PlantSimPanel() {
               <th className="p-2 text-right">Corrente</th>
               <th className="p-2 text-right">Temp</th>
               <th className="p-2">Comando</th>
-              <th className="p-2">Falha inj.</th>
+              <th className="p-2">{t("editors.injFault")}</th>
             </tr>
           </thead>
           <tbody>

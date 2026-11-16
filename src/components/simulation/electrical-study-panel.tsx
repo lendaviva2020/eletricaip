@@ -44,6 +44,7 @@ import {
   Trash,
   Lightning,
 } from "@phosphor-icons/react";
+import { useI18n } from "@/lib/i18n";
 
 export type StudyKind = "short_circuit" | "selectivity" | "arc_flash" | "thermal" | "voltage_drop";
 
@@ -348,6 +349,7 @@ function renderResults(results: ElectricalStudyResults): Array<[string, string]>
 }
 
 export function ElectricalStudyPanel() {
+  const { t } = useI18n();
   const projectId = useProjectStore((s) => s.projectId);
   const unifiedDoc = useUnifiedProjectStore((s) => s.doc);
   const [kind, setKind] = useState<StudyKind>("short_circuit");
@@ -432,7 +434,7 @@ export function ElectricalStudyPanel() {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />
-            <CardTitle>Estudos Elétricos de Potência</CardTitle>
+            <CardTitle>{t("editors.powerStudies")}</CardTitle>
           </div>
           {canonicalStudy && (
             <Badge
@@ -508,7 +510,7 @@ export function ElectricalStudyPanel() {
                     onChange={(v) => setField("power_kVA", v)}
                   />
                   <Field
-                    label="Tensão sec."
+                    label={t("editors.secVoltage")}
                     unit="V"
                     value={values.secondary_V}
                     onChange={(v) => setField("secondary_V", v)}
@@ -520,7 +522,7 @@ export function ElectricalStudyPanel() {
                     onChange={(v) => setField("impedance_pct", v)}
                   />
                   <Field
-                    label="Tensão barra"
+                    label={t("editors.busVoltage")}
                     unit="V"
                     value={values.voltage_V}
                     onChange={(v) => setField("voltage_V", v)}

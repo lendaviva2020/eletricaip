@@ -24,6 +24,7 @@ import { plantTags } from "@/lib/simulation/plant-engine";
 import { useRuntimeStore, useUnifiedProjectStore } from "@/lib/model";
 import { cn } from "@/lib/utils";
 import { pushNotification } from "@/lib/notification-service";
+import { useI18n } from "@/lib/i18n";
 
 interface DataPoint {
   t: number;
@@ -34,6 +35,7 @@ interface DataPoint {
 }
 
 export function SimCanvas() {
+  const { t } = useI18n();
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [paused, setPaused] = useState(false);
   const [bufferSize, setBufferSize] = useState(60);
@@ -381,7 +383,7 @@ export function SimCanvas() {
             />
             {/* 2. Corrente Motor Plot */}
             <ChartCard
-              label="Corrente RMS (A)"
+              label={t("editors.rmsCurrent")}
               color="oklch(0.66 0.22 25)" // Vermelho
               data={dataPoints}
               dataKey="current"
