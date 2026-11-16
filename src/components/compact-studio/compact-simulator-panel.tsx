@@ -1,5 +1,5 @@
 /**
- * Interactive Deterministic Simulator Panel for eletric Studio:
+ * Interactive Deterministic Simulator Panel for FB Electric Studio:
  * - Physical DI switches & AI sliders
  * - Step / Play / Pause / Clock Jump (Weekly & Yearly Timer fast verification)
  * - Watch Table + Forcing + Virtual 6-line Text Display (XSS-safe text rendering)

@@ -96,16 +96,11 @@ function IntegrationsPage() {
 
         <Card>
           <CardContent className="p-5 space-y-3">
-            <h2 className="text-sm font-semibold">{PRODUCT_NAME} (CLP Compacto)</h2>
+            <h2 className="text-sm font-semibold">{PRODUCT_NAME} (FBD/LAD)</h2>
             <div className="space-y-2 text-xs">
-              <label className="flex items-center justify-between gap-2 cursor-pointer">
-                <span>Habilitar ambiente {PRODUCT_NAME} no Workspace (flag logoStudio)</span>
-                <input
-                  type="checkbox"
-                  checked={compactFlags.isStudioEnabled}
-                  onChange={(e) => compactFlags.setLogoStudioEnabled(e.target.checked)}
-                />
-              </label>
+              <p className="text-muted-foreground">
+                Editor de blocos funcionais da plataforma — sempre disponível no Workspace.
+              </p>
               <label className="flex items-center justify-between gap-2 cursor-pointer">
                 <span>
                   Habilitar ponte observacional de protocolos abertos em campo (flag

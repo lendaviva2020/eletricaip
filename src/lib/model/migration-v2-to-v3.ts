@@ -799,10 +799,8 @@ export function upgradeSnapshotV2ToV3(
   }
   base.views.scada.edges = scadaEdges;
 
-  // 4. Reconcile Editor Rungs & FBD into PLC Program Blocks
+  // 4. Reconcile Editor Rungs into PLC Program Blocks
   const editorRungs = (snap.editor?.rungs ?? []) as LadderRung[];
-  const editorFbdNodes = (snap.editor?.fbdNodes ?? []) as FbdNode[];
-  const editorFbdEdges = (snap.editor?.fbdEdges ?? []) as FbdEdge[];
 
   const ladderBlockIdx = base.plc.project.programBlocks.findIndex(
     (b) => b.id === base.plc.activeLadderBlockId || b.language === "ladder",
@@ -814,30 +812,9 @@ export function upgradeSnapshotV2ToV3(
     };
   }
 
-  if (editorFbdNodes.length > 0 || editorFbdEdges.length > 0) {
-    const fbdBlockIdx = base.plc.project.programBlocks.findIndex(
-      (b) => b.id === base.plc.activeFbdBlockId || b.language === "fbd",
-    );
-    if (fbdBlockIdx >= 0) {
-      base.plc.project.programBlocks[fbdBlockIdx] = {
-        ...base.plc.project.programBlocks[fbdBlockIdx],
-        fbd: { nodes: editorFbdNodes, edges: editorFbdEdges },
-      };
-    } else {
-      const fbdBlock: PlcProgramBlock = {
-        id: "pb-fbd-main",
-        name: "FBD_Main",
-        type: "FC",
-        number: 2,
-        language: "fbd",
-        code: "",
-        comment: "Bloco FBD principal",
-        fbd: { nodes: editorFbdNodes, edges: editorFbdEdges },
-      };
-      base.plc.project.programBlocks.push(fbdBlock);
-      base.plc.activeFbdBlockId = fbdBlock.id;
-    }
-  }
+  // FBD não é mais copiado para um bloco de CLP: a lógica em blocos vive no
+  // FB Electric Studio (`compactStudio`), e o formato antigo do editor é
+  // migrado para lá no carregamento do projeto (legacy-fbd-migration).
 
   base.diagnostics = diagnostics;
   return base;

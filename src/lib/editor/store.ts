@@ -168,8 +168,13 @@ export const useEditorStore = create<EditorState>()(
     dragValidation: "Arraste componentes IEC 60617 para o canvas.",
     validateComponent: null,
 
+    // "fbd" é alias legado: FBD e Studio viraram um só editor (FB Electric Studio).
     setActiveMode: (mode) =>
-      set({ activeMode: mode, selectedNodeId: null, selectedLadderTarget: null }),
+      set({
+        activeMode: mode === "fbd" ? "compactStudio" : mode,
+        selectedNodeId: null,
+        selectedLadderTarget: null,
+      }),
     setSelectedNode: (id) => set({ selectedNodeId: id }),
     setSelectedLadderTarget: (target) => set({ selectedLadderTarget: target }),
     setLadderProfile: (profile) => set({ ladderProfile: profile }),

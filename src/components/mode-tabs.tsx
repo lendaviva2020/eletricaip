@@ -15,7 +15,6 @@ import {
 import { useEditorStore } from "@/lib/editor/store";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { useI18n } from "@/lib/i18n";
-import { useCompactStudioFeatureFlags } from "@/lib/compact-studio/feature-flags";
 
 type ModeCategoryId = "electrical" | "control" | "supervision";
 
@@ -24,7 +23,7 @@ const MODE_CATEGORIES: { id: ModeCategoryId; title: string; modes: WorkspaceMode
   {
     id: "control",
     title: "Controle & CLP",
-    modes: ["ladder", "fbd", "plc", "studio", "compactStudio"],
+    modes: ["ladder", "compactStudio", "plc", "studio"],
   },
   { id: "supervision", title: "Supervisão & Operação", modes: ["scada", "sim", "alarms"] },
 ];
@@ -34,13 +33,10 @@ export function ModeTabs() {
   const setMode = useEditorStore((s) => s.setActiveMode);
   const focusMode = useEditorStore((s) => s.focusMode);
   const toggleFocusMode = useEditorStore((s) => s.toggleFocusMode);
-  const { isStudioEnabled } = useCompactStudioFeatureFlags();
   const { t } = useI18n();
 
-  const visibleModes = useMemo(
-    () => MODES.filter((m) => m.id !== "compactStudio" || isStudioEnabled),
-    [isStudioEnabled],
-  );
+  // "fbd" não aparece mais: é alias do FB Electric Studio (um só editor de blocos).
+  const visibleModes = useMemo(() => MODES.filter((m) => m.id !== "fbd"), []);
 
   const selectMode = useCallback(
     (nextMode: WorkspaceMode) => {

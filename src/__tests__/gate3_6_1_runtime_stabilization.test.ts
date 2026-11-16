@@ -9,11 +9,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { sha256 } from "@/lib/diagnostics/crypto-hash";
 import { FleetAuditManager } from "@/lib/edge/fleet-audit";
-import {
-  FBD_NODE_TYPES,
-  FBD_EDGE_TYPES,
-  EMPTY_LIVE_OUTPUTS,
-} from "@/components/canvases/fbd-canvas";
 
 describe("Gate 3.6.1 — Runtime Stabilization & Architectural Verification", () => {
   // ---------------------------------------------------------------------------
@@ -161,27 +156,21 @@ describe("Gate 3.6.1 — Runtime Stabilization & Architectural Verification", ()
   // ---------------------------------------------------------------------------
   // 3. Estabilidade do React Flow no FBD Canvas (Referential Stability)
   // ---------------------------------------------------------------------------
-  describe("3. React Flow Identity Stability & Memory Safety in FBD Canvas", () => {
-    it("garante que FBD_NODE_TYPES e FBD_EDGE_TYPES são estáticos e congelados", () => {
-      expect(Object.isFrozen(FBD_NODE_TYPES)).toBe(true);
-      expect(Object.isFrozen(FBD_EDGE_TYPES)).toBe(true);
-      expect(Object.isFrozen(EMPTY_LIVE_OUTPUTS)).toBe(true);
+  describe("3. React Flow Identity Stability in the FB Electric Studio canvas", () => {
+    // O antigo canvas FBD foi unificado ao FB Electric Studio; a mesma garantia
+    // (mapa de nós estático e congelado no escopo do módulo) vale para ele.
+    const studioCanvas = readFileSync(
+      resolve(__dirname, "../components/compact-studio/compact-fbd-canvas.tsx"),
+      "utf-8",
+    );
+
+    it("NODE_TYPES é declarado no escopo do módulo e congelado", () => {
+      expect(studioCanvas).toMatch(/^const NODE_TYPES: NodeTypes = Object\.freeze\(\{/m);
     });
 
-    it("mantém identidade referencial estrita (===) sem recriação por render", () => {
-      const refA = FBD_NODE_TYPES;
-      const refB = FBD_NODE_TYPES;
-      expect(refA).toBe(refB);
-
-      const edgeRefA = FBD_EDGE_TYPES;
-      const edgeRefB = FBD_EDGE_TYPES;
-      expect(edgeRefA).toBe(edgeRefB);
-    });
-
-    it("impede mutações indevidas de propriedades no mapa de nós", () => {
-      expect(() => {
-        (FBD_NODE_TYPES as any).maliciousNode = () => null;
-      }).toThrow();
+    it("o ReactFlow recebe a referência estática (sem recriar por render)", () => {
+      expect(studioCanvas).toContain("nodeTypes={NODE_TYPES}");
+      expect(studioCanvas).not.toMatch(/nodeTypes=\{\{/);
     });
   });
 
@@ -216,9 +205,9 @@ describe("Gate 3.6.1 — Runtime Stabilization & Architectural Verification", ()
       expect(fileContent).not.toContain('from "node:crypto"');
     });
 
-    it("garante que fbd-canvas.tsx não importa módulos nativos de backend", () => {
+    it("garante que o canvas do FB Electric Studio não importa módulos nativos de backend", () => {
       const fileContent = readFileSync(
-        resolve(__dirname, "../components/canvases/fbd-canvas.tsx"),
+        resolve(__dirname, "../components/compact-studio/compact-fbd-canvas.tsx"),
         "utf-8",
       );
 

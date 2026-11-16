@@ -114,7 +114,7 @@ export interface UnifiedProjectStoreState {
   ingestDiagramDocChange: (diagramDoc: DiagramDoc) => void;
   /** Vincula o editor Ladder/FBD ao bloco de programa indicado (por linguagem). */
   setActiveProgramBlock: (blockId: string) => void;
-  /** Atualiza o modelo canônico compacto (eletric Studio) no mesmo projeto sem cópias paralelas. */
+  /** Atualiza o modelo canônico compacto (FB Electric Studio) no mesmo projeto sem cópias paralelas. */
   setCompactStudioProgram: (program: UnifiedProjectDoc["compactStudio"]) => void;
 }
 

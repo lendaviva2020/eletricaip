@@ -15,11 +15,10 @@ Legenda: ✅ funcional com dados reais · 🟡 funcional com lacunas · 🔴 dad
 | Unifilar | ✅ | Canvas Pixi, terminais IEC 60947, reparo de conexões, IA com patch validado, numeração IEC 81346, verificação ao vivo (Documentação EletricAI) | Folhas/páginas múltiplas; cabeçalho/carimbo por folha |
 | Multifilar | ✅ | Gerado do unifilar com cores NBR 5410 e réguas `-X1` | Edição manual de bornes pontes/jumpers |
 | Ladder | ✅ | Runtime de varredura puro (contatos, bobinas, TON/TOF/TP/TONR, CTU/CTD/CTUD, comparadores, matemática, lógica, MOVE, conversões — `lib/ladder/scan-core.ts:439-650`), IL/ST, validador, verificação de E-STOP | Referência cruzada bobina ↔ contatos dentro do editor |
-| FBD | ✅ | Motor IEC (AST → IR, EN/ENO), 308 blocos, simulação | 🔴 **busca da paleta não filtrava** (corrigido nesta rodada) |
+| FB Electric Studio (FBD/LAD) | ✅ | **FBD e Studio unificados** (2026-11-16): um só editor de blocos com biblioteca IEC completa, aba ST, programa gerado do unifilar, migração automática dos projetos antigos e blocos FBD do CLP como páginas | — |
 | PLC | 🟡 | Rack com validação, variáveis, blocos, ST, PLCopen XML | 🔴 **barra lateral era uma árvore fictícia fixa** (`editor-plc-sidebar.tsx:4-8`, corrigido); sem download para CLP físico (bloqueado de propósito — regra 21) |
 | SCADA/HMI | ✅ | Telas, tags, alarmes ISA-18.2, sandbox de scripts, CCM de motores | Curvas senoidais só no projeto de demonstração rotulado (aceitável); 🔴 busca de widgets inoperante (corrigido) |
 | Simulação | 🟡 | Planta determinística, cenários, ponte Unifilar→Ladder, estudos elétricos | 🔴 **gráficos inventavam ~1200 rpm/12 A quando um runtime REAL conectado informava 0** (`sim-canvas.tsx:212-221`, corrigido); 🔴 simulador local emitia alarme fixo "Sobrecorrente M-02" em qualquer projeto e ciclo OB1 aleatório (`runtime-client.ts:172-187`, corrigido) |
-| Studio IEC (Elétric Studio) | ✅ | Programa gerado do unifilar, blocos compactos corrigidos, execução | — |
 | Cálculos (`/calculations`) | ✅ | Motor, queda de tensão, curto IEC 60909, demanda, harmônicas, aterramento | — |
 | Dossiê / Exportação | ✅ | Memorial, BOM, documentação de painel (dispositivos, fios, bornes, cabos, referência cruzada), Excel saneado, PLCopen | — |
 
@@ -44,7 +43,7 @@ Legenda: ✅ funcional com dados reais · 🟡 funcional com lacunas · 🔴 dad
 2. Simulador local: alarme de sobrecorrente só para motores que existem no projeto e quando a corrente simulada passa do limite; ciclo OB1 medido de verdade.
 3. Faturamento: gráfico de 7 dias com chamadas e créditos reais por dia.
 4. PLC: barra lateral com hardware, variáveis e blocos **do projeto aberto**, navegação por clique e busca.
-5. Busca funcionando nas barras de PLC, FBD e SCADA.
+5. Busca funcionando nas barras de PLC e SCADA e na biblioteca do FB Electric Studio.
 6. IA: base normativa EletricAI (resumos técnicos próprios, sem reproduzir texto de norma) e busca insensível a acento.
 
 ## 4. Próximas etapas (ordem recomendada)

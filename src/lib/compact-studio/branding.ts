@@ -6,9 +6,9 @@
  * third-party trademarks in code or translations.
  */
 
-export const PRODUCT_NAME = "eletric Studio" as const;
+export const PRODUCT_NAME = "FB Electric Studio" as const;
 
-export const PRODUCT_SHORT_NAME = "eletric" as const;
+export const PRODUCT_SHORT_NAME = "FB Studio" as const;
 
 /** Feature flag key persisted per tenant in `tenant_settings`. */
 export const COMPACT_STUDIO_FEATURE_FLAG = "logoStudio" as const;

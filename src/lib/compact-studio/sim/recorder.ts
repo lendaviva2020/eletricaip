@@ -1,5 +1,5 @@
 /**
- * Deterministic Input Recorder & Replay Engine for eletric Studio.
+ * Deterministic Input Recorder & Replay Engine for FB Electric Studio.
  * Guarantees bit-for-bit identical output digests across replays on the same model + SimulatedClock.
  */
 import { z } from "zod";

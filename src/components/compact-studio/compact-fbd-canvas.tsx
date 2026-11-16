@@ -1,7 +1,8 @@
 /**
- * Multipage FBD Editor for eletric Studio — virtualized for >1,000 blocks.
+ * Multipage FBD Editor for FB Electric Studio — virtualized for >1,000 blocks.
  * Shares canonical CompactProgramModel without compiling on visual drag moves.
  */
+import { groupStudioLibrary, searchStudioLibrary } from "@/lib/compact-studio/editor/library";
 import React, { memo, useCallback, useMemo, useState } from "react";
 import ReactFlow, {
   Background,
@@ -274,13 +275,15 @@ export const CompactFbdCanvas: React.FC<CompactFbdCanvasProps> = (props) => {
     [props],
   );
 
+  // Sem busca: atalhos mais usados. Com busca: TODA a biblioteca (IEC + compactos + E/S).
   const filteredPalette = useMemo(
     () =>
-      QUICK_PALETTE.filter((item) =>
-        item.label.toLowerCase().includes(searchFilter.trim().toLowerCase()),
-      ),
+      searchFilter.trim()
+        ? searchStudioLibrary(searchFilter).map((e) => ({ type: e.type, label: e.label }))
+        : QUICK_PALETTE,
     [searchFilter],
   );
+  const libraryGroups = useMemo(() => groupStudioLibrary(), []);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -428,6 +431,27 @@ export const CompactFbdCanvas: React.FC<CompactFbdCanvasProps> = (props) => {
           aria-label={t("compactStudio.searchBlock") || "Filtrar bloco"}
           className="h-6 w-32 px-2 text-[11px] rounded border border-border bg-input font-mono"
         />
+        <select
+          aria-label="Biblioteca completa de blocos"
+          title="Biblioteca completa de blocos"
+          value=""
+          onChange={(e) => {
+            if (e.target.value) props.onAddBlock(e.target.value);
+          }}
+          className="h-6 px-1 text-[11px] rounded border border-border bg-input shrink-0"
+          data-testid="studio-library-select"
+        >
+          <option value="">Biblioteca…</option>
+          {libraryGroups.map(([category, entries]) => (
+            <optgroup key={category} label={category}>
+              {entries.map((e) => (
+                <option key={e.type} value={e.type} title={e.description}>
+                  {e.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
         {filteredPalette.map((item) => (
           <Button
             key={item.type}

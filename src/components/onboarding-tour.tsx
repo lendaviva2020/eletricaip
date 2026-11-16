@@ -53,10 +53,10 @@ const STEPS: Step[] = [
   },
   {
     id: "fbd",
-    title: "FBD (Function Block Diagram)",
-    body: "Monte a lógica em blocos funcionais conectando entradas e saídas visualmente.",
-    targetSelector: '[data-tour="mode-fbd"]',
-    activateMode: "fbd",
+    title: "FB Electric Studio (FBD/LAD)",
+    body: "Monte a lógica em blocos funcionais (FBD) ou em ladder (LAD) sobre o mesmo programa, com simulação, hardware e documentação.",
+    targetSelector: '[data-tour="mode-compactStudio"]',
+    activateMode: "compactStudio",
   },
   {
     id: "scada",

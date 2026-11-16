@@ -5,6 +5,7 @@ import { useProjectStore } from "@/lib/project-store";
 import { useEditorStore } from "@/lib/editor/store";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { usePlcStore } from "@/lib/plc/store";
+import { migrateLegacyFbdIntoStudio } from "@/lib/compact-studio/integration/legacy-fbd-migration";
 import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { loadProject, saveProject } from "@/lib/projects.functions";
 import type { ProjectSnapshot } from "@/lib/projects.functions";
@@ -179,6 +180,19 @@ export function useProjectPersistence(projectId: string | null) {
       useProjectStore.getState().markSaved();
       useEditorStore.getState().markSaved();
       useUnifiedProjectStore.getState().markSaved();
+
+      // FBD e Studio são um só editor: lógica salva no formato antigo do FBD
+      // passa para uma página do FB Electric Studio. Fica "sujo" de propósito,
+      // para o autosave gravar a migração uma única vez.
+      const fbdMigration = migrateLegacyFbdIntoStudio();
+      if (fbdMigration) {
+        useAutosaveLog.getState().log({
+          kind: "load:success",
+          projectId,
+          message: `FBD antigo migrado para o FB Electric Studio (${fbdMigration.importedNodes} blocos, ${fbdMigration.importedConnections} ligações)`,
+          meta: { skipped: fbdMigration.skipped.length },
+        });
+      }
 
       const diagramDoc = snap.diagram as DiagramDoc | undefined;
       useAutosaveLog.getState().log({

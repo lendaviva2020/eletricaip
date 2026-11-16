@@ -112,8 +112,8 @@ export const en: TranslationCatalog = {
       alarmsHint: "ISA-18.2",
       studio: "Studio IEC",
       studioHint: "IEC 61131-3",
-      compactStudio: "eletric Studio",
-      compactStudioHint: "Compact PLC",
+      compactStudio: "FB Electric Studio",
+      compactStudioHint: "FBD · LAD",
     },
     console: {
       logs: "Logs",
@@ -467,6 +467,10 @@ export const en: TranslationCatalog = {
     colUnitPrice: "Unit price",
     colSubtotal: "Subtotal",
     confirmDelete: "Remove item from BOM?",
+  },
+  compactStudio: {
+    searchBlock: "Search block (whole library)…",
+    fbdEditorAria: "FB Electric Studio FBD editor",
   },
   tenantCatalog: {
     title: "Company catalog",

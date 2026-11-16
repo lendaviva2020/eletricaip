@@ -1395,3 +1395,14 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - **Mouser** (`lib/catalog/mouser.ts` puro + `mouser-client.server.ts`): host fixo, `redirect: "error"`, timeout 12 s, resposta ≤ 2 MB validada por Zod, rate limit `api` por usuário. O navegador só envia CÓDIGOS; preço/estoque são reconsultados no servidor na importação e em "Atualizar preços" (até 50 itens, mais antigos primeiro).
 - **Importação de planilha** passou a gravar no catálogo da empresa por padrão; o global (`catalog_components`) só para admin da plataforma.
 - **Pendente**: regenerar `types.ts` com `tenant_catalog_items` (hoje acessado sem genérico, saída validada por Zod) e ligar o BOM ao catálogo da empresa.
+
+### FB Electric Studio — FBD e Studio unificados (2026-11-16, 9ª rodada)
+
+- **Diagnóstico**: o antigo editor "FBD" (`canvases/fbd-canvas.tsx`, nós React Flow em `editor.fbdNodes`) e o "eletric Studio" (`compactStudio`, `CompactProgramModel`) executavam no MESMO motor (`lib/fbd/engine`) e na mesma biblioteca IEC; só o formato salvo e a tela eram diferentes. O Studio já era superconjunto (FBD+LAD, páginas, hardware, UDF, simulador, documentação, rede).
+- **Agora há um só editor de blocos: FB Electric Studio** (`PRODUCT_NAME`; modo `compactStudio`). O modo `fbd` saiu das abas e é alias (`setActiveMode("fbd")` → `compactStudio`). Sempre visível (a flag `logoStudio` não esconde mais o editor).
+- **Migração sem perda** (`compact-studio/conversion/legacy-fbd-import.ts` + `integration/legacy-fbd-migration.ts`): no carregamento do projeto, `editor.fbdNodes` vira a página "FBD importado" (blocos, parâmetros, ligações, posições); o formato antigo só é apagado depois que o Studio aceita o modelo. Página já migrada NUNCA é sobrescrita por cópia antiga. Blocos/pinos inexistentes vão para o relatório, não são inventados.
+- **CLP**: cada bloco de programa FBD = uma página `plc-<id>` do Studio (`integration/plc-block-pages.ts`); "Abrir no editor" leva à página; "Compilar" gera ST da página pelo Studio (`runtime/structured-text.ts`, registry do Studio). v2→v3 não copia mais FBD para bloco `pb-fbd-main`.
+- **IA**: a lógica FBD gerada vai para a página "Lógica FBD (IA)" do Studio.
+- **Ganhos no Studio**: biblioteca COMPLETA (IEC + compactos + E/S, 300+ blocos) com busca sem acento e seletor por categoria (`editor/library.ts`); aba **ST** (página ou programa, copiar/baixar .st). Corrigido: instâncias de tipos diferentes viravam "B1" (duplicadas) e caíam na mesma posição; chaves i18n `compactStudio.*` ausentes.
+- **Removido** (sem consumidores após a unificação): `fbd-canvas.tsx`, `fbd-engine-panel.tsx`, `use-fbd-engine.ts`, `editor-fbd-sidebar.tsx`, `lib/fbd/{editor-bridge,types,compiler,runtime,scada-bridge}.ts` (o Studio publica no SCADA por `publishCompactFrameToRuntimeStore`).
+- O "Studio IEC" (`mode: studio` — ST, SFC, HMI, segurança, movimento) é OUTRO editor (multilinguagem IEC) e foi mantido.

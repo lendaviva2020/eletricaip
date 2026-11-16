@@ -34,10 +34,15 @@ import {
   type PlcModule,
 } from "@/lib/plc/types";
 import { canAddModule, validateRack } from "@/lib/plc/rack-validation";
-import { useEditorStore, type EditorTag, type FbdNode, type FbdEdge } from "@/lib/editor/store";
+import { useEditorStore, type EditorTag } from "@/lib/editor/store";
 import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { compileProgram } from "@/lib/ladder/compiler";
-import { compileFbdNodesToSt } from "@/lib/fbd/editor-bridge";
+import {
+  ensurePlcBlockPage,
+  useStudioNavigation,
+} from "@/lib/compact-studio/integration/plc-block-pages";
+import { currentStudioModel } from "@/lib/compact-studio/integration/legacy-fbd-migration";
+import { studioToStructuredText } from "@/lib/compact-studio/runtime/structured-text";
 import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { Icon } from "@phosphor-icons/react";
@@ -150,6 +155,26 @@ export function PlcCanvas() {
     [project.variables],
   );
 
+  /**
+   * Garante a página do bloco no FB Electric Studio; traz o FBD antigo do bloco
+   * e só então descarta o snapshot antigo. Falha de validação não perde dados.
+   */
+  const ensureStudioPageFor = useCallback(
+    (block: PlcProgramBlock): string | null => {
+      try {
+        const res = ensurePlcBlockPage(currentStudioModel(), block);
+        if (res.changed) useUnifiedProjectStore.getState().setCompactStudioProgram(res.model);
+        if (res.importedLegacy) updateBlock(block.id, { fbd: undefined });
+        return res.pageId;
+      } catch (err) {
+        console.warn("[PLC] página do FB Electric Studio indisponível:", err);
+        toast.error("Não foi possível abrir o bloco no FB Electric Studio.");
+        return null;
+      }
+    },
+    [updateBlock],
+  );
+
   // #PLC-01 — Bridge PLC ↔ Editor: persist outgoing block snapshot, hydrate incoming
   const hydrateEditor = useEditorStore((s) => s.hydrateSnapshot);
   const setActiveMode = useEditorStore((s) => s.setActiveMode);
@@ -162,15 +187,9 @@ export function PlcCanvas() {
     // FloppyDisk outgoing block state
     if (prevId && prevId !== activeBlockId) {
       const prev = project.programBlocks.find((b) => b.id === prevId);
+      // Blocos FBD não precisam ser salvos aqui: vivem como página do FB Electric Studio.
       if (prev?.language === "ladder") {
         updateBlock(prevId, { ladder: { rungs: editorState.rungs } });
-      } else if (prev?.language === "fbd") {
-        updateBlock(prevId, {
-          fbd: {
-            nodes: editorState.fbdNodes,
-            edges: editorState.fbdEdges,
-          },
-        });
       }
     }
 
@@ -196,19 +215,7 @@ export function PlcCanvas() {
           editorTags: blockTags,
         });
       } else if (activeBlock.language === "fbd") {
-        const storedNodes = (activeBlock.fbd?.nodes as FbdNode[]) ?? [];
-        const storedEdges = (activeBlock.fbd?.edges as FbdEdge[]) ?? [];
-        const keepEditor =
-          storedNodes.length === 0 &&
-          editorState.fbdNodes.length > 0 &&
-          boundFbdId === activeBlock.id;
-        hydrateEditor({
-          rungs: editorState.rungs,
-          fbdNodes: keepEditor ? editorState.fbdNodes : storedNodes,
-          fbdEdges: keepEditor ? editorState.fbdEdges : storedEdges,
-          fbdSim: editorState.fbdSim,
-          editorTags: blockTags,
-        });
+        ensureStudioPageFor(activeBlock);
       }
     }
 
@@ -233,22 +240,19 @@ export function PlcCanvas() {
       setStCode(code);
       toast.success(`${activeBlock.name}: ${editorState.rungs.length} rungs compilados → ST`);
     } else if (activeBlock.language === "fbd") {
-      const code = compileFbdNodesToSt(
-        editorState.fbdNodes,
-        editorState.fbdEdges,
-        activeBlock.name,
-      );
-      updateBlock(activeBlock.id, {
-        code,
-        fbd: {
-          nodes: editorState.fbdNodes,
-          edges: editorState.fbdEdges,
-        },
+      const pageId = ensureStudioPageFor(activeBlock);
+      if (!pageId) return;
+      const st = studioToStructuredText(currentStudioModel(), {
+        pageId,
+        programName: activeBlock.name,
       });
-      setStCode(code);
-      toast.success(
-        `${activeBlock.name}: ${editorState.fbdNodes.length} blocos FBD compilados → ST`,
-      );
+      updateBlock(activeBlock.id, { code: st.code });
+      setStCode(st.code);
+      if (st.diagnostics.length > 0) {
+        toast.warning(`${activeBlock.name}: ${st.diagnostics.length} erro(s) — veja o ST gerado`);
+      } else {
+        toast.success(`${activeBlock.name}: ${st.blockCount} blocos FBD compilados → ST`);
+      }
     } else if (activeBlock.language === "st") {
       toast.info("Bloco já é Structured Text — nada a compilar");
     }
@@ -294,8 +298,12 @@ export function PlcCanvas() {
   const openInCanvas = () => {
     if (!activeBlock) return;
     if (activeBlock.language === "ladder") setActiveMode("ladder");
-    else if (activeBlock.language === "fbd") setActiveMode("fbd");
-    else toast.info("Bloco ST é editado aqui mesmo");
+    else if (activeBlock.language === "fbd") {
+      const pageId = ensureStudioPageFor(activeBlock);
+      if (!pageId) return;
+      useStudioNavigation.getState().requestPage(pageId);
+      setActiveMode("compactStudio");
+    } else toast.info("Bloco ST é editado aqui mesmo");
   };
 
   const [diagCount, setDiagCount] = useState(0);

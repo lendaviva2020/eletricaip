@@ -1,5 +1,5 @@
 /**
- * Gerador de lógica de comando de motores no eletric Studio a partir do UNIFILAR.
+ * Gerador de lógica de comando de motores no FB Electric Studio a partir do UNIFILAR.
  *
  * Fonte única (AGENTS.md §11.1/§12.1): cada motor do unifilar (via `buildMotorFleet`)
  * vira um circuito de comando partida/parada com selo, reset dominante:

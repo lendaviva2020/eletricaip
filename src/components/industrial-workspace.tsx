@@ -44,9 +44,6 @@ const UnifilarCanvas = lazy(() =>
 const LadderCanvas = lazy(() =>
   import("@/components/canvases/ladder-canvas").then((m) => ({ default: m.LadderCanvas })),
 );
-const FbdCanvas = lazy(() =>
-  import("@/components/canvases/fbd-canvas").then((m) => ({ default: m.FbdCanvas })),
-);
 const ScadaLayout = lazy(() =>
   import("@/components/scada/scada-layout").then((m) => ({ default: m.ScadaLayout })),
 );
@@ -265,7 +262,6 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
                       <UnifilarCanvas projectId={projectId} sheet="multifilar" />
                     )}
                     {mode === "ladder" && <LadderCanvas />}
-                    {mode === "fbd" && <FbdCanvas />}
                     {mode === "scada" && <ScadaLayout projectId={projectId} />}
                     {mode === "plc" && <PlcCanvas />}
                     {mode === "sim" && <SimCanvas />}

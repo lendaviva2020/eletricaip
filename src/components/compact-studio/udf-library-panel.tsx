@@ -1,5 +1,5 @@
 /**
- * UDF Library & Macro Management Panel for eletric Studio.
+ * UDF Library & Macro Management Panel for FB Electric Studio.
  */
 import React, { useMemo, useState } from "react";
 import { Cube, Plus, Warning, DownloadSimple } from "@phosphor-icons/react";

@@ -37,7 +37,7 @@ describe("#ONB-01 · OnboardingTour", () => {
     fireEvent.click(screen.getByRole("button", { name: /Próximo/i }));
     expect(setMode).toHaveBeenCalledWith("ladder");
     fireEvent.click(screen.getByRole("button", { name: /Próximo/i }));
-    expect(setMode).toHaveBeenCalledWith("fbd");
+    expect(setMode).toHaveBeenCalledWith("compactStudio");
     fireEvent.click(screen.getByRole("button", { name: /Próximo/i }));
     expect(setMode).toHaveBeenCalledWith("scada");
     fireEvent.click(screen.getByRole("button", { name: /Próximo/i }));

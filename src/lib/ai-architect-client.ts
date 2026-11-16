@@ -1,3 +1,8 @@
+import {
+  AI_FBD_PAGE_ID,
+  importLegacyFbdIntoStudio,
+} from "@/lib/compact-studio/conversion/legacy-fbd-import";
+import { currentStudioModel } from "@/lib/compact-studio/integration/legacy-fbd-migration";
 import { supabase } from "@/integrations/supabase/client";
 import {
   useProjectStore,
@@ -535,7 +540,17 @@ export function applyArchitectToStore(
     });
   });
 
-  useEditorStore.getState().setFbdAll(fbdNodes, fbdEdges);
+  // FBD e Studio são um só editor: a lógica gerada vai para uma página
+  // própria do FB Electric Studio (substituída a cada nova geração).
+  try {
+    const { model } = importLegacyFbdIntoStudio(currentStudioModel(), fbdNodes, fbdEdges, {
+      pageId: AI_FBD_PAGE_ID,
+      pageName: "Lógica FBD (IA)",
+    });
+    useUnifiedProjectStore.getState().setCompactStudioProgram(model);
+  } catch (err) {
+    console.warn("[FB Electric Studio] lógica FBD da IA não aplicada:", err);
+  }
 
   // 5. Synchronize canonical UnifiedProjectDoc
   try {

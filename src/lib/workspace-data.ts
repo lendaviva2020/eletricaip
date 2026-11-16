@@ -32,13 +32,12 @@ export const MODES: { id: WorkspaceMode; label: string; hint: string }[] = [
   { id: "unifilar", label: "Unifilar", hint: "IEC 60617" },
   { id: "multifilar", label: "Multifilar", hint: "IEC 60617" },
   { id: "ladder", label: "Ladder", hint: "IEC 61131-3" },
-  { id: "fbd", label: "FBD", hint: "IEC 61131-3" },
   { id: "scada", label: "SCADA Supervisório", hint: "ISA-101" },
   { id: "plc", label: "PLC", hint: "Config" },
   { id: "sim", label: "Simulação", hint: "Runtime" },
   { id: "alarms", label: "Alarmes", hint: "ISA-18.2" },
   { id: "studio", label: "Studio IEC", hint: "IEC 61131-3" },
-  { id: "compactStudio", label: PRODUCT_NAME, hint: "CLP Compacto" },
+  { id: "compactStudio", label: PRODUCT_NAME, hint: "FBD · LAD · IEC 61131-3" },
 ];
 
 export const CONSOLE_TABS: ConsoleTab[] = [

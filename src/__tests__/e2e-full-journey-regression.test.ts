@@ -240,7 +240,7 @@ describe("Fase 10 — Tarefa 10.1: Bateria de Testes de Regressão de Ponta a Po
 
     // ── 2. ONBOARDING & NAVEGAÇÃO ENTRE MODOS DO WORKSPACE ───────────────────
     const editorStore = useEditorStore.getState();
-    const modesToVisit = ["unifilar", "ladder", "fbd", "scada", "plc", "sim"] as const;
+    const modesToVisit = ["unifilar", "ladder", "compactStudio", "scada", "plc", "sim"] as const;
     for (const mode of modesToVisit) {
       editorStore.setActiveMode(mode);
       expect(useEditorStore.getState().activeMode).toBe(mode);

@@ -1,5 +1,5 @@
 /**
- * Unified eletric Studio IDE Shell — Clean-Room Compact PLC Engineering Environment.
+ * Unified FB Electric Studio IDE Shell — Clean-Room Compact PLC Engineering Environment.
  * Operates exclusively over the single canonical CompactProgramModel in UnifiedProjectStore.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -13,6 +13,7 @@ import {
   WarningCircle,
   ShieldCheck,
   Lightning,
+  FileCode,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { useDiagramStore } from "@/lib/diagram/store";
@@ -60,8 +61,11 @@ import { UdfLibraryPanel } from "./udf-library-panel";
 import { DocumentationPanel } from "./documentation-panel";
 import { CompactSimulatorPanel } from "./compact-simulator-panel";
 import { useI18n } from "@/lib/i18n";
+import { useStudioNavigation } from "@/lib/compact-studio/integration/plc-block-pages";
+import { StructuredTextPanel } from "./structured-text-panel";
+import { nextUniqueInstanceName } from "@/lib/compact-studio/editor/library";
 
-type StudioSubTab = "logic" | "hardware" | "udfs" | "docs" | "simulator" | "network";
+type StudioSubTab = "logic" | "st" | "hardware" | "udfs" | "docs" | "simulator" | "network";
 
 export interface CompactStudioWorkspaceProps {
   readonly projectId?: string;
@@ -69,7 +73,7 @@ export interface CompactStudioWorkspaceProps {
 
 /** Falhas do worker de execução (encerrado, ocupado, timeout) não podem vazar como erro não tratado. */
 function reportRuntimeError(err: unknown): void {
-  console.warn("[eletric Studio] operação do runtime falhou:", err);
+  console.warn("[FB Electric Studio] operação do runtime falhou:", err);
 }
 
 export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioWorkspaceProps) {
@@ -105,6 +109,15 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
   const [networkTickOutput, setNetworkTickOutput] = useState<string>(
     "Rede Virtual pronta (até 8 nós).",
   );
+
+  // Pedido de abertura vindo de fora (ex.: bloco FBD do editor de CLP).
+  const requestedPageId = useStudioNavigation((s) => s.requestedPageId);
+  useEffect(() => {
+    if (!requestedPageId || !model.pages.some((p) => p.id === requestedPageId)) return;
+    setActivePageId(requestedPageId);
+    setActiveTab("logic");
+    useStudioNavigation.getState().consumeRequest();
+  }, [requestedPageId, model.pages]);
 
   const validPageId = useMemo(
     () =>
@@ -162,7 +175,7 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
         // Worker encerrado (desmontagem) ou recarga sobreposta por edição rápida:
         // a próxima mudança do modelo recarrega. Antes a rejeição vazava como
         // erro não tratado na página.
-        if (!cancelled) console.warn("[eletric Studio] recarga do runtime falhou:", err);
+        if (!cancelled) console.warn("[FB Electric Studio] recarga do runtime falhou:", err);
       });
     return () => {
       cancelled = true;
@@ -194,7 +207,7 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
           })
           .catch((err: unknown) => {
             // Um scan perdido não derruba a simulação; o próximo ciclo tenta de novo.
-            console.warn("[eletric Studio] scan do runtime falhou:", err);
+            console.warn("[FB Electric Studio] scan do runtime falhou:", err);
           });
       },
       Math.max(20, model.cycleTimeMs),
@@ -218,13 +231,15 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
             ? "AI"
             : blockType === "OUTPUT_AO"
               ? "AQ"
-              : "B";
+              : blockType.replace(/[^A-Za-z0-9]/g, "").slice(0, 12) || "B";
+    const instanceName = nextUniqueInstanceName(model, prefix, count);
+    const pageBlockCount = model.nodes.filter((n) => n.pageId === validPageId).length;
     const id = `n_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const node = createCompactBlockNode({
       id,
       pageId: validPageId,
       blockType,
-      instanceName: `${prefix}${count}`,
+      instanceName,
     });
     commitModel(
       {
@@ -234,9 +249,11 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
           ...model.layout,
           fbd: {
             ...model.layout.fbd,
+            // Posição pela quantidade de blocos NA PÁGINA (antes era por tipo:
+            // blocos de tipos diferentes caíam um em cima do outro).
             [id]: {
-              x: 80 + (count % 5) * 190,
-              y: 80 + Math.floor(count / 5) * 130,
+              x: 80 + (pageBlockCount % 5) * 190,
+              y: 80 + Math.floor(pageBlockCount / 5) * 130,
               width: 176,
               height: 108,
             },
@@ -369,6 +386,7 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
         <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label={PRODUCT_NAME}>
           {[
             { id: "logic" as const, label: t("editors.tabLogic"), icon: Circuitry },
+            { id: "st" as const, label: "ST", icon: FileCode },
             { id: "hardware" as const, label: "Hardware & E/S", icon: Cpu },
             { id: "udfs" as const, label: "UDFs", icon: Cube },
             { id: "docs" as const, label: t("editors.tabDocs"), icon: FileText },
@@ -517,6 +535,8 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
             onChangeModel={(next, label) => commitModel(next, label)}
           />
         )}
+
+        {activeTab === "st" && <StructuredTextPanel model={model} activePageId={validPageId} />}
 
         {activeTab === "docs" && (
           <DocumentationPanel

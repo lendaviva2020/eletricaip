@@ -2,7 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { EditorPlcSidebar } from "@/components/editor/sidebars/editor-plc-sidebar";
-import { EditorFbdSidebar } from "@/components/editor/sidebars/editor-fbd-sidebar";
 import { EditorScadaSidebar } from "@/components/editor/sidebars/editor-scada-sidebar";
 import { usePlcStore } from "@/lib/plc/store";
 import type { PlcProject } from "@/lib/plc/types";
@@ -118,19 +117,9 @@ describe("barra lateral do PLC — dados do projeto aberto", () => {
   });
 });
 
-describe("busca nas paletas FBD e SCADA", () => {
+describe("busca na paleta SCADA", () => {
   beforeEach(() => useI18nStore.setState({ locale: "pt-BR" }));
   afterEach(() => cleanup());
-
-  it("FBD: 'ton' encontra o temporizador e esconde blocos sem relação", () => {
-    render(<EditorFbdSidebar />);
-    const before = screen.getAllByRole("button").length;
-    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "ton" } });
-    const after = screen.getAllByRole("button").length;
-    expect(after).toBeLessThan(before);
-    expect(screen.getByText("TON")).toBeTruthy();
-    expect(screen.queryByText("XOR")).toBeNull();
-  });
 
   it("SCADA: filtra widgets pelo nome", () => {
     render(<EditorScadaSidebar />);

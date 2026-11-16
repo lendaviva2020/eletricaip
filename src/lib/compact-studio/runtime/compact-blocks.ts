@@ -1180,7 +1180,7 @@ let sharedCompactRegistry: BlockRegistry | null = null;
 
 /**
  * Returns the shared application BlockRegistry enriched with the compact controller pack.
- * Guarantees a single runtime registry across FBD, LAD, and eletric Studio.
+ * Guarantees a single runtime registry across FBD, LAD, and FB Electric Studio.
  */
 export function getCompactStudioRegistry(): BlockRegistry {
   if (sharedCompactRegistry) return sharedCompactRegistry;

@@ -1,5 +1,5 @@
 /**
- * SSOT Bridge: Integrates eletric Studio symbols, live runtime frames, SCADA/Unifilar tags,
+ * SSOT Bridge: Integrates FB Electric Studio symbols, live runtime frames, SCADA/Unifilar tags,
  * and tenant RBAC permissions over UnifiedProjectStore + useRuntimeStore without duplication.
  */
 import type { CanonicalTag, UnifiedProjectDoc } from "@/lib/model/unified-schema";

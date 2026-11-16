@@ -1,5 +1,5 @@
 /**
- * Per-tenant feature flags controlling the availability of eletric Studio
+ * Per-tenant feature flags controlling the availability of FB Electric Studio
  * and optional field device communication bridges.
  */
 import { z } from "zod";

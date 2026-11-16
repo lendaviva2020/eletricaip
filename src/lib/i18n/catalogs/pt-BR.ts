@@ -111,8 +111,8 @@ export const ptBR = {
       alarmsHint: "ISA-18.2",
       studio: "Studio IEC",
       studioHint: "IEC 61131-3",
-      compactStudio: "eletric Studio",
-      compactStudioHint: "CLP Compacto",
+      compactStudio: "FB Electric Studio",
+      compactStudioHint: "FBD · LAD",
     },
     console: {
       logs: "Logs",
@@ -466,6 +466,10 @@ export const ptBR = {
     colUnitPrice: "Preço unit.",
     colSubtotal: "Subtotal",
     confirmDelete: "Remover item do BOM?",
+  },
+  compactStudio: {
+    searchBlock: "Buscar bloco (toda a biblioteca)…",
+    fbdEditorAria: "Editor FBD do FB Electric Studio",
   },
   tenantCatalog: {
     title: "Catálogo da empresa",
