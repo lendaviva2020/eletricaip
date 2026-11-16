@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac } from "node:crypto";
 import { logSecurityEvent } from "@/lib/security/security-audit-log.server";
+import { decideMpPlanPayment } from "@/lib/billing/mp-plan-payment";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { AsyncFleetStorageBackend, FleetStorageBackend } from "@/lib/edge/types";
 import {
@@ -169,6 +170,48 @@ function verifyMpHmacSignature(
   return timingSafeEq(expected, v1);
 }
 
+/**
+ * Grava/atualiza o período pago em `subscriptions` (id "mp_<pagamento>"),
+ * usado por expire_overdue_subscriptions(). Falha aqui não desfaz o plano já
+ * liberado (o cliente pagou) — só é registrada para correção manual.
+ */
+async function recordMpSubscriptionPeriod(
+  db: typeof supabaseAdmin,
+  paymentId: string,
+  d: { tenantId: string; plan: string; periodStart: Date; periodEnd: Date },
+): Promise<void> {
+  try {
+    const subId = `mp_${paymentId}`;
+    const table = db.from("subscriptions") as unknown as {
+      select?: (cols: string) => {
+        eq: (
+          c: string,
+          v: string,
+        ) => {
+          maybeSingle: () => Promise<{ data: { id: string } | null; error: unknown }>;
+        };
+      };
+    };
+    if (typeof table.select !== "function") return; // mocks de teste sem a tabela
+    const row = {
+      tenant_id: d.tenantId,
+      plan: d.plan,
+      status: "active",
+      stripe_subscription_id: subId,
+      current_period_start: d.periodStart.toISOString(),
+      current_period_end: d.periodEnd.toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const existing = await table.select("id").eq("stripe_subscription_id", subId).maybeSingle();
+    const res = existing.data
+      ? await db.from("subscriptions").update(row).eq("id", existing.data.id)
+      : await db.from("subscriptions").insert(row);
+    if (res.error) throw new Error(res.error.message);
+  } catch (err) {
+    console.error("[mp.webhook] período da assinatura não registrado:", err);
+  }
+}
+
 async function syncMpPayment(
   paymentId: string,
   token: string,
@@ -217,8 +260,33 @@ async function syncMpPayment(
         const meta = (p.metadata ?? {}) as { tenant_id?: string; plan?: string };
         const [refTenant, refPlan] = (p.external_reference ?? "").split(":");
         const tenantId = String(meta.tenant_id ?? refTenant ?? "");
-        const plan = String(meta.plan ?? refPlan ?? "pro");
+        let plan = String(meta.plan ?? refPlan ?? "pro");
         if (!tenantId) return;
+
+        // Pagamento aprovado: plano/período da NOSSA preferência e valor
+        // conferido com a tabela de preços. Abaixo do preço → não libera.
+        let approvedDecision: Extract<ReturnType<typeof decideMpPlanPayment>, { ok: true }> | null =
+          null;
+        if (p.status === "approved") {
+          const decision = decideMpPlanPayment({
+            metadata: p.metadata as { tenant_id?: unknown; plan?: unknown; interval?: unknown },
+            externalReference: p.external_reference,
+            amountBRL: p.transaction_amount ?? 0,
+            approvedAt: new Date(),
+          });
+          if (!decision.ok) {
+            logSecurityEvent({
+              category: "PAYMENT_REJECTED",
+              severity: "CRITICAL",
+              route: "/api/public/mp/webhook",
+              reason: `mp_plan_payment_rejected:${decision.reason}`,
+              metadata: { paymentId: String(p.id), amount: p.transaction_amount ?? 0 },
+            });
+            return;
+          }
+          approvedDecision = decision;
+          plan = decision.plan;
+        }
 
         const amountCents = Math.round((p.transaction_amount ?? 0) * 100);
         const currency = (p.currency_id ?? "BRL").toLowerCase();
@@ -242,6 +310,8 @@ async function syncMpPayment(
             p_currency: currency,
           });
           assertSupabaseWriteOk(rpcRes, "rpc.apply_mp_payment_transition_atomic");
+          if (approvedDecision)
+            await recordMpSubscriptionPeriod(db, String(p.id), approvedDecision);
           const rows = Array.isArray(rpcRes.data)
             ? (rpcRes.data as Array<Record<string, unknown>>)
             : rpcRes.data
@@ -306,6 +376,8 @@ async function syncMpPayment(
             })
             .eq("id", tenantId)) as DbWriteResult;
           assertSupabaseWriteOk(tenantRes, "tenants.update(mp.approved)");
+          if (approvedDecision)
+            await recordMpSubscriptionPeriod(db, String(p.id), approvedDecision);
         } else if (
           p.status === "cancelled" ||
           p.status === "rejected" ||

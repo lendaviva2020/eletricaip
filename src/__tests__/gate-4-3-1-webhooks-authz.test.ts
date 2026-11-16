@@ -381,7 +381,7 @@ describe("Gate 4.3.1 — Multi-Tenant Gateway AuthZ (Zero Client Fallback) & Tra
       json: async () => ({
         id: 987654321,
         status: "approved",
-        transaction_amount: 199.9,
+        transaction_amount: 349,
         currency_id: "BRL",
         external_reference: "tenant_mp_1:pro",
       }),

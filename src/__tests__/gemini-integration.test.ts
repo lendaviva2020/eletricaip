@@ -22,15 +22,20 @@ describe("Google Gemini Integration — Server-side Configuration & Resilience",
     vi.restoreAllMocks();
   });
 
-  it("defaults to gemini-3.1-pro-preview when GEMINI_MODEL is not configured", () => {
+  it("projeto completo usa o Pro; chat/canvas/ping usam o Flash (custo)", () => {
     delete process.env.GEMINI_MODEL;
-    expect(getGeminiModel()).toBe(DEFAULT_GEMINI_MODEL);
-    expect(getGeminiModel()).toBe("gemini-3.1-pro-preview");
+    delete process.env.GEMINI_MODEL_FAST;
+    expect(getGeminiModel("architect")).toBe(DEFAULT_GEMINI_MODEL);
+    expect(getGeminiModel("architect")).toBe("gemini-3.1-pro-preview");
+    expect(getGeminiModel()).toBe("gemini-3.8-flash");
+    expect(getGeminiModel("fast")).toBe("gemini-3.8-flash");
   });
 
-  it("respects custom GEMINI_MODEL from environment without code refactoring", () => {
+  it("respeita GEMINI_MODEL (projeto) e GEMINI_MODEL_FAST (rápido) sem mexer no código", () => {
     process.env.GEMINI_MODEL = "gemini-2.5-pro";
-    expect(getGeminiModel()).toBe("gemini-2.5-pro");
+    process.env.GEMINI_MODEL_FAST = "gemini-2.5-flash";
+    expect(getGeminiModel("architect")).toBe("gemini-2.5-pro");
+    expect(getGeminiModel()).toBe("gemini-2.5-flash");
   });
 
   it("validates missing GEMINI_API_KEY gracefully with operational error", () => {

@@ -121,12 +121,16 @@ export const Route = createFileRoute("/api/public/iot/ingest")({
           const msg = error.message || "";
           const isAuthErr = /unauthorized|invalid_api_key/.test(msg);
           const isPlanErr = /plan_required/.test(msg);
-          const status = isAuthErr ? 401 : isPlanErr ? 402 : 400;
+          // Plano no limite de dispositivos: dispositivo NOVO é recusado; os já cadastrados seguem.
+          const isDeviceLimit = /device_limit/.test(msg);
+          const status = isAuthErr ? 401 : isPlanErr || isDeviceLimit ? 402 : 400;
           const safeCode = isAuthErr
             ? "unauthorized"
             : isPlanErr
               ? "plan_required"
-              : "ingest_error";
+              : isDeviceLimit
+                ? "device_limit"
+                : "ingest_error";
           return new Response(JSON.stringify({ ok: false, error: safeCode }), {
             status,
             headers,

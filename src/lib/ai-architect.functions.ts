@@ -295,7 +295,7 @@ async function callArchitectModel(
   | { ok: true; parsed: JsonValue; tokensUsed: number }
   | { ok: false; error: ArchitectError["error"] }
 > {
-  const model = getGeminiModel();
+  const model = getGeminiModel("architect");
   let ai: ReturnType<typeof getGeminiClient>;
   try {
     ai = getGeminiClient();
@@ -608,7 +608,7 @@ ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed), plcLogic: (pa
       ok: true,
       system: parsed,
       provider: "gemini",
-      model: getGeminiModel(),
+      model: getGeminiModel("architect"),
       tokensUsed,
       ragHits: rag.hits,
       credits: gateInfo,

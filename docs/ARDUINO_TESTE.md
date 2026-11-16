@@ -6,7 +6,7 @@ gravada em `iot_readings` e aparece em **Tempo real** (`/realtime`).
 
 ## 1. Pré-requisitos no app
 
-1. **Plano Pro ou Premium** na organização — o banco recusa leituras de outros
+1. **Plano Pro Empresa ou Premium** na organização — o banco recusa leituras de outros
    planos (`plan_required`). Como admin da plataforma, troque o plano da sua
    empresa em **Configurações → Faturamento** (fica registrado na auditoria).
 2. Em **Tempo real → Chaves de API**, crie uma chave com escopo `iot:ingest`.
@@ -131,7 +131,8 @@ while True:
 | Sintoma | Causa |
 | --- | --- |
 | `401 unauthorized` | chave errada, revogada, expirada ou sem escopo `iot:ingest` |
-| `plan_required` | organização no plano Grátis/Básico |
+| `plan_required` | organização no plano Grátis ou Autônomo (IoT a partir do Pro Empresa) |
+| `device_limit` | plano já tem o máximo de dispositivos (Pro Empresa: 10; Premium: 50) — reutilize um `device_external_id` |
 | `429` | mais de 120 leituras/min por chave ou por IP |
 | `400 bad_input` | `value` não numérico (ex.: `nan`) ou JSON malformado |
 | ESP32 `-1`/`-11` | sem internet, DNS ou HTTPS — teste a URL no navegador do celular na mesma rede |

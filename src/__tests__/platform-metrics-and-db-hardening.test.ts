@@ -118,17 +118,26 @@ describe("banco — correções da auditoria 2026-11-16", () => {
     expect(src).toContain('supabaseAdmin.rpc("ingest_iot_reading"');
   });
 
-  it("plan_limits espelha os planos anunciados (fim do 'todo plano = grátis')", () => {
-    const sql = read("20261116101000_seed_plan_limits_and_ai_costs.sql");
+  it("plan_limits espelha os planos anunciados (planos v2: usuários, IoT, IA)", () => {
+    const sql = read("20261116150000_plans_v2_iot_limits_expiry.sql");
     const row = (plan: string) => {
-      const m = new RegExp(`\\('${plan}',\\s*(-?\\d+),\\s*(-?\\d+),`).exec(sql);
+      const m = new RegExp(
+        `\\('${plan}',\\s*(-?\\d+),\\s*(-?\\d+),\\s*(-?\\d+),\\s*(-?\\d+),\\s*(-?\\d+),`,
+      ).exec(sql);
       expect(m, plan).not.toBeNull();
-      return { maxProjects: Number(m![1]), aiCredits: Number(m![2]) };
+      return {
+        maxProjects: Number(m![1]),
+        aiCredits: Number(m![2]),
+        maxUsers: Number(m![4]),
+        maxIot: Number(m![5]),
+      };
     };
     for (const plan of Object.values(SUBSCRIPTION_PLANS)) {
       const r = row(plan.id);
-      expect(r.maxProjects).toBe(plan.maxProjects);
-      expect(r.aiCredits).toBe(plan.aiCreditsPerMonth ?? -1);
+      expect(r.maxProjects, plan.id).toBe(plan.maxProjects);
+      expect(r.aiCredits, plan.id).toBe(plan.aiCreditsPerMonth ?? -1);
+      expect(r.maxUsers, plan.id).toBe(plan.maxUsers);
+      expect(r.maxIot, plan.id).toBe(plan.maxIotDevices);
     }
     expect(sql).toMatch(/'pro'.*"realtime"/);
     expect(sql).not.toMatch(/'free'.*"realtime"/);

@@ -1,3 +1,4 @@
+import { LAUNCH_OFFER, SUBSCRIPTION_PLANS } from "@/lib/plans";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
@@ -943,18 +944,32 @@ function PricingSection({ authed }: { authed: boolean }) {
     premium: string | boolean;
   }> = [
     {
-      feature: "Projetos industriais",
-      free: "Até 3 projetos",
-      basic: "Até 10 projetos",
+      feature: "Projetos",
+      free: "Até 3",
+      basic: "Ilimitados",
       pro: "Ilimitados",
       premium: "Ilimitados",
     },
     {
+      feature: "Usuários inclusos",
+      free: "1",
+      basic: "1",
+      pro: `${SUBSCRIPTION_PLANS.pro.maxUsers}`,
+      premium: `${SUBSCRIPTION_PLANS.premium.maxUsers}`,
+    },
+    {
       feature: "Créditos de IA por mês",
-      free: "10 créditos",
-      basic: "100 créditos",
-      pro: "250 créditos",
-      premium: "Ilimitados",
+      free: `${SUBSCRIPTION_PLANS.free.aiCreditsPerMonth}`,
+      basic: `${SUBSCRIPTION_PLANS.basic.aiCreditsPerMonth}`,
+      pro: `${SUBSCRIPTION_PLANS.pro.aiCreditsPerMonth}`,
+      premium: `${SUBSCRIPTION_PLANS.premium.aiCreditsPerMonth?.toLocaleString("pt-BR")}`,
+    },
+    {
+      feature: "Dispositivos IoT (Arduino/ESP32/CLP) em tempo real",
+      free: false,
+      basic: false,
+      pro: `Até ${SUBSCRIPTION_PLANS.pro.maxIotDevices}`,
+      premium: `Até ${SUBSCRIPTION_PLANS.premium.maxIotDevices}`,
     },
     {
       feature: "Canvas Unifilar, Multifilar e Ladder IEC 61131-3",
@@ -978,9 +993,9 @@ function PricingSection({ authed }: { authed: boolean }) {
       premium: "Completo + Customizado",
     },
     {
-      feature: "Telemetria em Tempo Real (OPC-UA / Modbus) & SCADA Supervisório",
-      free: false,
-      basic: false,
+      feature: "FB Electric Studio (FBD/LAD) e SCADA Supervisório",
+      free: true,
+      basic: true,
       pro: true,
       premium: true,
     },
@@ -988,8 +1003,8 @@ function PricingSection({ authed }: { authed: boolean }) {
       feature: "Atendimento e SLA",
       free: "Comunidade",
       basic: "Suporte por email",
-      pro: "Suporte prioritário",
-      premium: "SLA + Capacidade dedicada",
+      pro: "Suporte por email",
+      premium: "Suporte prioritário",
     },
   ];
 
@@ -1020,7 +1035,8 @@ function PricingSection({ authed }: { authed: boolean }) {
             </h2>
           </div>
           <p className="text-xs text-muted-foreground font-mono">
-            Valores mensais em Reais (BRL) · Cancele a qualquer momento
+            Mensal ou anual (2 meses grátis) · Lançamento: {LAUNCH_OFFER.discountPct}% por{" "}
+            {LAUNCH_OFFER.months} meses para as {LAUNCH_OFFER.slots} primeiras empresas
           </p>
         </div>
 
@@ -1032,60 +1048,55 @@ function PricingSection({ authed }: { authed: boolean }) {
                   Parâmetro / Recurso
                 </th>
 
-                <th className="p-4 w-[18%] border-l border-border text-center">
-                  <div className="text-sm font-semibold text-foreground">Grátis</div>
-                  <div className="mt-1 font-mono text-xl font-semibold text-foreground tabular-nums">
-                    R$ 0<span className="text-xs font-normal text-muted-foreground">/mês</span>
-                  </div>
-                  <div className="mt-1 text-[11px] font-normal text-muted-foreground">
-                    Avaliação técnica
-                  </div>
-                  <Button asChild variant="outline" size="sm" className="mt-3 w-full">
-                    <Link to={authed ? "/dashboard" : "/signup"}>Começar grátis</Link>
-                  </Button>
-                </th>
-
-                <th className="p-4 w-[18%] border-l border-border text-center">
-                  <div className="text-sm font-semibold text-foreground">Básico</div>
-                  <div className="mt-1 font-mono text-xl font-semibold text-foreground tabular-nums">
-                    R$ 100<span className="text-xs font-normal text-muted-foreground">/mês</span>
-                  </div>
-                  <div className="mt-1 text-[11px] font-normal text-muted-foreground">
-                    Projetistas autônomos
-                  </div>
-                  <Button asChild variant="outline" size="sm" className="mt-3 w-full">
-                    <Link to={authed ? "/dashboard" : "/signup"}>Assinar Básico</Link>
-                  </Button>
-                </th>
-
-                <th className="p-4 w-[18%] border-l-2 border-r-2 border-t-2 border-primary bg-primary/5 text-center">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span className="text-sm font-semibold text-foreground">Pro</span>
-                    <Badge variant="brand">Recomendado</Badge>
-                  </div>
-                  <div className="mt-1 font-mono text-xl font-semibold text-foreground tabular-nums">
-                    R$ 580<span className="text-xs font-normal text-muted-foreground">/mês</span>
-                  </div>
-                  <div className="mt-1 text-[11px] font-normal text-muted-foreground">
-                    Engenharia e integradores
-                  </div>
-                  <Button asChild size="sm" className="mt-3 w-full">
-                    <Link to={authed ? "/dashboard" : "/signup"}>Assinar Pro</Link>
-                  </Button>
-                </th>
-
-                <th className="p-4 w-[18%] border-l border-border text-center">
-                  <div className="text-sm font-semibold text-foreground">Premium</div>
-                  <div className="mt-1 font-mono text-xl font-semibold text-foreground tabular-nums">
-                    R$ 1.000<span className="text-xs font-normal text-muted-foreground">/mês</span>
-                  </div>
-                  <div className="mt-1 text-[11px] font-normal text-muted-foreground">
-                    Plantas industriais
-                  </div>
-                  <Button asChild variant="outline" size="sm" className="mt-3 w-full">
-                    <Link to={authed ? "/dashboard" : "/signup"}>Assinar Premium</Link>
-                  </Button>
-                </th>
+                {(["free", "basic", "pro", "premium"] as const).map((id) => {
+                  const p = SUBSCRIPTION_PLANS[id];
+                  const featured = id === "pro";
+                  const perfil =
+                    id === "basic" ? "autonomo" : id === "free" ? undefined : "empresa";
+                  return (
+                    <th
+                      key={id}
+                      className={
+                        featured
+                          ? "p-4 w-[18%] border-l-2 border-r-2 border-t-2 border-primary bg-primary/5 text-center"
+                          : "p-4 w-[18%] border-l border-border text-center"
+                      }
+                    >
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className="text-sm font-semibold text-foreground">{p.name}</span>
+                        {featured && <Badge variant="brand">Recomendado</Badge>}
+                      </div>
+                      <div className="mt-1 font-mono text-xl font-semibold text-foreground tabular-nums">
+                        R$ {p.priceBRL.toLocaleString("pt-BR")}
+                        <span className="text-xs font-normal text-muted-foreground">/mês</span>
+                      </div>
+                      {p.priceYearlyBRL > 0 && (
+                        <div className="text-[11px] font-mono text-success">
+                          ou R$ {p.priceYearlyBRL.toLocaleString("pt-BR")}/ano
+                        </div>
+                      )}
+                      <div className="mt-1 text-[11px] font-normal text-muted-foreground">
+                        {p.audience}
+                      </div>
+                      <Button
+                        asChild
+                        variant={featured ? "default" : "outline"}
+                        size="sm"
+                        className="mt-3 w-full"
+                      >
+                        {authed ? (
+                          <Link to="/settings/billing">
+                            {id === "free" ? "Abrir painel" : `Assinar ${p.name}`}
+                          </Link>
+                        ) : (
+                          <Link to="/signup" search={{ perfil }}>
+                            {id === "free" ? "Começar grátis" : `Assinar ${p.name}`}
+                          </Link>
+                        )}
+                      </Button>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-[13px]">

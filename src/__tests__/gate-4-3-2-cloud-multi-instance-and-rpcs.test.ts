@@ -937,7 +937,7 @@ describe("Gate 4.3.2 — Cloud Multi-Instance Persistence, Atomic RPCs & Product
         JSON.stringify({
           id: 99887766,
           status: statusFromApi,
-          transaction_amount: 199.9,
+          transaction_amount: 349,
           currency_id: "BRL",
           metadata: { tenant_id: tenantId, plan: "pro" },
         }),

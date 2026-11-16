@@ -55,6 +55,7 @@ import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ProjectsProjectIdBomRouteImport } from './routes/projects.$projectId.bom'
 import { Route as ProjectsProjectIdExportRouteImport } from './routes/projects.$projectId.export'
+import { Route as ApiPublicCronExpireSubscriptionsRouteImport } from './routes/api/public/cron.expire-subscriptions'
 import { Route as ApiPublicIotIngestRouteImport } from './routes/api/public/iot.ingest'
 import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp.webhook'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
@@ -290,6 +291,12 @@ const ProjectsProjectIdExportRoute = ProjectsProjectIdExportRouteImport.update({
   path: '/$projectId/export',
   getParentRoute: () => ProjectsRoute,
 } as any)
+const ApiPublicCronExpireSubscriptionsRoute =
+  ApiPublicCronExpireSubscriptionsRouteImport.update({
+    id: '/api/public/cron/expire-subscriptions',
+    path: '/api/public/cron/expire-subscriptions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicIotIngestRoute = ApiPublicIotIngestRouteImport.update({
   id: '/api/public/iot/ingest',
   path: '/api/public/iot/ingest',
@@ -353,6 +360,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
   '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
+  '/api/public/cron/expire-subscriptions': typeof ApiPublicCronExpireSubscriptionsRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -404,6 +412,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
   '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
+  '/api/public/cron/expire-subscriptions': typeof ApiPublicCronExpireSubscriptionsRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -456,6 +465,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
   '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
+  '/api/public/cron/expire-subscriptions': typeof ApiPublicCronExpireSubscriptionsRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -509,6 +519,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/projects/$projectId/bom'
     | '/projects/$projectId/export'
+    | '/api/public/cron/expire-subscriptions'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -560,6 +571,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/projects/$projectId/bom'
     | '/projects/$projectId/export'
+    | '/api/public/cron/expire-subscriptions'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -611,6 +623,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/projects/$projectId/bom'
     | '/projects/$projectId/export'
+    | '/api/public/cron/expire-subscriptions'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
     | '/api/public/stripe/webhook'
@@ -643,6 +656,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   InviteTokenRoute: typeof InviteTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  ApiPublicCronExpireSubscriptionsRoute: typeof ApiPublicCronExpireSubscriptionsRoute
   ApiPublicIotIngestRoute: typeof ApiPublicIotIngestRoute
   ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
@@ -972,6 +986,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdExportRouteImport
       parentRoute: typeof ProjectsRoute
     }
+    '/api/public/cron/expire-subscriptions': {
+      id: '/api/public/cron/expire-subscriptions'
+      path: '/api/public/cron/expire-subscriptions'
+      fullPath: '/api/public/cron/expire-subscriptions'
+      preLoaderRoute: typeof ApiPublicCronExpireSubscriptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/iot/ingest': {
       id: '/api/public/iot/ingest'
       path: '/api/public/iot/ingest'
@@ -1093,6 +1114,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   InviteTokenRoute: InviteTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  ApiPublicCronExpireSubscriptionsRoute: ApiPublicCronExpireSubscriptionsRoute,
   ApiPublicIotIngestRoute: ApiPublicIotIngestRoute,
   ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,

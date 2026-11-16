@@ -2,10 +2,21 @@
 // Uses official @google/genai SDK with configurable model identifier.
 import { GoogleGenAI } from "@google/genai";
 
+/** Modelo para gerar o PROJETO COMPLETO (raciocínio pesado, chamada rara). */
 export const DEFAULT_GEMINI_MODEL = "gemini-3.1-pro-preview";
+/** Modelo para chat, correções no canvas e health-check (chamadas frequentes). */
+export const DEFAULT_GEMINI_FAST_MODEL = "gemini-3.8-flash";
 
-export function getGeminiModel(): string {
-  return process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+export type GeminiTask = "architect" | "fast";
+
+/**
+ * Modelo por tarefa. O Pro custa várias vezes o Flash por token; usá-lo em
+ * todo chat/ping tornava inviável o plano com muitos créditos.
+ * Sobrescritas: `GEMINI_MODEL` (projeto completo) e `GEMINI_MODEL_FAST`.
+ */
+export function getGeminiModel(task: GeminiTask = "fast"): string {
+  if (task === "architect") return process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+  return process.env.GEMINI_MODEL_FAST?.trim() || DEFAULT_GEMINI_FAST_MODEL;
 }
 
 export function getGeminiApiKey(): string | undefined {

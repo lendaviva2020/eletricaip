@@ -13,7 +13,8 @@ export type SecurityEventCategory =
   | "SSRF_BLOCKED"
   | "PATH_TRAVERSAL_BLOCKED"
   | "RATE_LIMIT_TRIGGERED"
-  | "PHYSICAL_CONTROL_BLOCKED";
+  | "PHYSICAL_CONTROL_BLOCKED"
+  | "PAYMENT_REJECTED";
 
 export interface StructuredSecurityEvent {
   timestamp: string;

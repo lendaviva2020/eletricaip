@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth, requireActiveSession } from "@/integrations/supabase/auth-middleware";
+import { LAUNCH_OFFER, planCharge, type BillingInterval } from "@/lib/plans";
 // NOTE: do NOT import `supabaseAdmin` at module scope — the getter throws if
 // SUPABASE_SERVICE_ROLE_KEY is absent, which would break every handler in this
 // file (including ones that don't need admin). Load it lazily inside handlers.
@@ -18,18 +19,37 @@ async function tryLoadAdmin() {
   }
 }
 
-const PLAN_TO_STRIPE_ENV: Record<string, string> = {
-  basic: "VITE_STRIPE_PRICE_BASIC_MONTHLY",
-  pro: "VITE_STRIPE_PRICE_PRO_MONTHLY",
-  premium: "VITE_STRIPE_PRICE_PREMIUM_MONTHLY",
+const PLAN_TO_STRIPE_ENV: Record<PaidPlan, Record<BillingInterval, string>> = {
+  basic: { monthly: "VITE_STRIPE_PRICE_BASIC_MONTHLY", yearly: "VITE_STRIPE_PRICE_BASIC_YEARLY" },
+  pro: { monthly: "VITE_STRIPE_PRICE_PRO_MONTHLY", yearly: "VITE_STRIPE_PRICE_PRO_YEARLY" },
+  premium: {
+    monthly: "VITE_STRIPE_PRICE_PREMIUM_MONTHLY",
+    yearly: "VITE_STRIPE_PRICE_PREMIUM_YEARLY",
+  },
 };
 
-const PLAN_PRICE_BRL: Record<string, number> = {
-  free: 0,
-  basic: 100,
-  pro: 580,
-  premium: 1000,
-};
+type PaidPlan = "basic" | "pro" | "premium";
+
+const CheckoutInputSchema = z.object({
+  plan: z.enum(["basic", "pro", "premium"]),
+  interval: z.enum(["monthly", "yearly"]).default("monthly"),
+});
+
+/**
+ * Preço de lançamento: vale enquanto houver menos de LAUNCH_OFFER.slots
+ * empresas pagantes. Contagem no servidor (service role); sem acesso ao
+ * admin, NÃO concede desconto (fail-closed para receita).
+ */
+async function isLaunchEligible(): Promise<boolean> {
+  const admin = await tryLoadAdmin();
+  if (!admin) return false;
+  const { count, error } = await admin
+    .from("tenants")
+    .select("id", { count: "exact", head: true })
+    .neq("plan", "free");
+  if (error) return false;
+  return (count ?? 0) < LAUNCH_OFFER.slots;
+}
 
 const ORIGIN_FALLBACK = process.env.PUBLIC_APP_URL || "https://eletricaip.vercel.app";
 
@@ -252,11 +272,11 @@ export const getIsPlatformAdmin = createServerFn({ method: "GET" })
  */
 export const createStripeCheckout = createServerFn({ method: "POST" })
   .middleware([requireActiveSession])
-  .inputValidator((input) => z.object({ plan: z.enum(["basic", "pro", "premium"]) }).parse(input))
+  .inputValidator((input) => CheckoutInputSchema.parse(input))
   .handler(async ({ data, context }) => {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) throw new Error("billing_not_configured: missing STRIPE_SECRET_KEY");
-    const priceEnv = PLAN_TO_STRIPE_ENV[data.plan];
+    const priceEnv = PLAN_TO_STRIPE_ENV[data.plan][data.interval];
     const priceId = process.env[priceEnv];
     if (!priceId) throw new Error(`billing_not_configured: missing ${priceEnv}`);
 
@@ -276,6 +296,12 @@ export const createStripeCheckout = createServerFn({ method: "POST" })
     params.set("metadata[plan]", data.plan);
     params.set("subscription_data[metadata][tenant_id]", tenantId);
     params.set("subscription_data[metadata][plan]", data.plan);
+    params.set("metadata[interval]", data.interval);
+    // Preço de lançamento no Stripe = cupom configurado no painel (30% por 12 meses).
+    const launchCoupon = process.env.STRIPE_LAUNCH_COUPON_ID?.trim();
+    if (launchCoupon && (await isLaunchEligible())) {
+      params.set("discounts[0][coupon]", launchCoupon);
+    }
 
     const r = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
@@ -296,7 +322,7 @@ export const createStripeCheckout = createServerFn({ method: "POST" })
  */
 export const createMpPreference = createServerFn({ method: "POST" })
   .middleware([requireActiveSession])
-  .inputValidator((input) => z.object({ plan: z.enum(["basic", "pro", "premium"]) }).parse(input))
+  .inputValidator((input) => CheckoutInputSchema.parse(input))
   .handler(async ({ data, context }) => {
     const token = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
     if (!token)
@@ -308,7 +334,9 @@ export const createMpPreference = createServerFn({ method: "POST" })
     const tenantId = await requireTenantBillingAdmin(supabase, userId);
 
     const origin = originFromHeader();
-    const price = PLAN_PRICE_BRL[data.plan];
+    const launch = await isLaunchEligible();
+    const price = planCharge(data.plan, data.interval, launch);
+    const periodLabel = data.interval === "yearly" ? "assinatura anual" : "assinatura mensal";
 
     const r = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
@@ -319,15 +347,15 @@ export const createMpPreference = createServerFn({ method: "POST" })
       body: JSON.stringify({
         items: [
           {
-            title: `EletricAI ${data.plan.toUpperCase()} — assinatura mensal`,
+            title: `EletricAI ${data.plan.toUpperCase()} — ${periodLabel}${launch ? " (preço de lançamento)" : ""}`,
             quantity: 1,
             currency_id: "BRL",
             unit_price: price,
           },
         ],
         payer: { email: String(claims.email ?? "") },
-        external_reference: `${tenantId}:${data.plan}`,
-        metadata: { tenant_id: tenantId, plan: data.plan },
+        external_reference: `${tenantId}:${data.plan}:${data.interval}`,
+        metadata: { tenant_id: tenantId, plan: data.plan, interval: data.interval, launch },
         back_urls: {
           success: `${origin}/settings/billing?mp=success`,
           failure: `${origin}/settings/billing?mp=failure`,

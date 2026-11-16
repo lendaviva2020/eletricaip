@@ -2,6 +2,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth, requireActiveSession } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
+import { getPlan } from "@/lib/plans";
 
 export type TenantSummary = {
   id: string;
@@ -148,6 +150,50 @@ export const listTenantInvites = createServerFn({ method: "GET" })
     return (data ?? []) as InviteSummary[];
   });
 
+/**
+ * Usuários do plano: membros + convites pendentes não podem passar de
+ * plan_limits.max_users (-1 = ilimitado). O banco tem a mesma trava num
+ * trigger de tenant_memberships (migration 20261116150000).
+ */
+async function assertSeatAvailable(
+  supabase: import("@supabase/supabase-js").SupabaseClient<Database>,
+  tenantId: string,
+): Promise<void> {
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("plan")
+    .eq("id", tenantId)
+    .maybeSingle();
+  const plan = tenant?.plan ?? "free";
+  const { data: limits } = await supabase
+    .from("plan_limits")
+    .select("max_users")
+    .eq("plan", plan)
+    .maybeSingle();
+  const max = limits?.max_users ?? getPlan(plan).maxUsers;
+  if (max < 0) return;
+  const nowIso = new Date().toISOString();
+  const [{ count: members }, { count: pending }] = await Promise.all([
+    supabase
+      .from("tenant_memberships")
+      .select("user_id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId),
+    supabase
+      .from("invites")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .is("accepted_at", null)
+      .gt("expires_at", nowIso),
+  ]);
+  const used = (members ?? 0) + (pending ?? 0);
+  if (used >= max) {
+    throw new Response(
+      `Limite de ${max} usuário(s) do plano ${getPlan(plan).name} atingido (${members ?? 0} membro(s) + ${pending ?? 0} convite(s) pendente(s)). Faça upgrade em Faturamento.`,
+      { status: 402 },
+    );
+  }
+}
+
 export const createInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -163,6 +209,7 @@ export const createInvite = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const tenantId = await requireTenantAdmin(supabase, userId);
+    await assertSeatAvailable(supabase, tenantId);
 
     const { data: invite, error } = await supabase
       .from("invites")

@@ -49,7 +49,14 @@ import {
 } from "@/lib/billing.functions";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SUBSCRIPTION_PLANS, getPlan } from "@/lib/plans";
+import {
+  EXTRA_USER_PRICE,
+  LAUNCH_OFFER,
+  SUBSCRIPTION_PLANS,
+  getPlan,
+  yearlySavingsPct,
+  type BillingInterval,
+} from "@/lib/plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -93,6 +100,7 @@ function BillingPage() {
   const navigate = useNavigate();
   const overviewFn = useServerFn(getBillingOverview);
   const stripeFn = useServerFn(createStripeCheckout);
+  const [interval, setBillingInterval] = useState<BillingInterval>("yearly");
   const mpFn = useServerFn(createMpPreference);
   const cancelFn = useServerFn(cancelSubscription);
   const manualFn = useServerFn(changePlanManual);
@@ -147,7 +155,9 @@ function BillingPage() {
     setBusy(`${provider}:${plan}`);
     try {
       const res =
-        provider === "stripe" ? await stripeFn({ data: { plan } }) : await mpFn({ data: { plan } });
+        provider === "stripe"
+          ? await stripeFn({ data: { plan, interval } })
+          : await mpFn({ data: { plan, interval } });
       window.open(res.url, "_blank");
       toast.success(`Redirecionando para ${provider.toUpperCase()}...`);
     } catch (e) {
@@ -494,12 +504,41 @@ function BillingPage() {
 
             {/* ─── Planos ─── */}
             <section>
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
                 <CreditCard className="h-4 w-4 text-primary" />
                 <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium">
                   Planos
                 </span>
+                <div
+                  role="radiogroup"
+                  aria-label="Período de cobrança"
+                  className="ml-auto inline-flex rounded-md border border-border p-0.5 text-xs"
+                  data-testid="billing-interval"
+                >
+                  {(
+                    [
+                      ["monthly", "Mensal"],
+                      ["yearly", "Anual · 2 meses grátis"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={interval === value}
+                      onClick={() => setBillingInterval(value)}
+                      className={`px-2.5 py-1 rounded ${interval === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
+              <p className="text-[11px] text-muted-foreground mb-4">
+                Preço de lançamento: {LAUNCH_OFFER.discountPct}% de desconto por{" "}
+                {LAUNCH_OFFER.months} meses para as {LAUNCH_OFFER.slots} primeiras empresas
+                (aplicado no checkout). Usuário adicional: R$ {EXTRA_USER_PRICE.monthlyBRL}/mês.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {Object.values(SUBSCRIPTION_PLANS).map((p) => {
                   const isCurrent = currentPlan === p.id;
@@ -539,9 +578,26 @@ function BillingPage() {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-baseline gap-1 mb-4">
-                          <span className="text-3xl font-bold">R$ {p.priceBRL}</span>
-                          <span className="text-[11px] text-muted-foreground/60">/mês</span>
+                        <div className="mb-4">
+                          <p className="text-[11px] text-muted-foreground mb-1">{p.audience}</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-bold">
+                              R${" "}
+                              {(interval === "yearly"
+                                ? p.priceYearlyBRL
+                                : p.priceBRL
+                              ).toLocaleString("pt-BR")}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground/60">
+                              {interval === "yearly" ? "/ano" : "/mês"}
+                            </span>
+                          </div>
+                          {interval === "yearly" && p.priceBRL > 0 && (
+                            <p className="text-[11px] text-emerald-500">
+                              ≈ R$ {(p.priceYearlyBRL / 12).toFixed(0)}/mês · economia de{" "}
+                              {yearlySavingsPct(p.id)}%
+                            </p>
+                          )}
                         </div>
                         <ul className="text-xs text-muted-foreground/80 space-y-1.5 mb-5">
                           <li className="flex items-center gap-2">
@@ -556,10 +612,14 @@ function BillingPage() {
                               ? "Créditos IA ilimitados"
                               : `${p.aiCreditsPerMonth} créditos IA/mês`}
                           </li>
-                          {p.realtime && (
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
+                            {p.maxUsers === 1 ? "1 usuário" : `Até ${p.maxUsers} usuários`}
+                          </li>
+                          {p.maxIotDevices > 0 && (
                             <li className="flex items-center gap-2">
                               <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
-                              Realtime OPC-UA / Modbus
+                              IoT em tempo real: até {p.maxIotDevices} dispositivos
                             </li>
                           )}
                           {p.features.slice(0, 3).map((f) => (
