@@ -255,7 +255,7 @@ function TeamPage() {
   ];
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* ─── Header ─── */}
       <header className="h-12 shrink-0 border-b border-border bg-panel flex items-center px-6 z-20">
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -301,7 +301,7 @@ function TeamPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto scrollbar-thin">
+      <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
         <div className="max-w-6xl mx-auto p-6">
           {(membersError || invitesError) && (
             <div className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs flex items-center justify-between text-destructive">

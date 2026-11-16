@@ -209,7 +209,7 @@ function AuthGate() {
           <LazyAppSidebar />
         </Suspense>
       )}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         {!isFocusWorkspace && (
           <Suspense fallback={<div className="h-10 border-b border-border bg-card shrink-0" />}>
             <LazyTopbar />

@@ -214,7 +214,7 @@ function BillingPage() {
     aiCredits && aiCredits > 0 ? Math.min(100, Math.round((creditsUsed / aiCredits) * 100)) : 68;
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* ─── Fixed Top Header ─── */}
       <header className="h-12 shrink-0 border-b border-border bg-panel flex items-center px-6 z-20">
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -288,7 +288,7 @@ function BillingPage() {
       </header>
 
       {error ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+        <div className="flex-1 min-h-0 overflow-auto flex flex-col items-center justify-center p-8 text-center space-y-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <WarningCircle className="h-6 w-6" />
           </div>
@@ -302,7 +302,7 @@ function BillingPage() {
           </Button>
         </div>
       ) : isLoading ? (
-        <div className="flex-1 overflow-auto scrollbar-thin">
+        <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
           <div className="max-w-6xl mx-auto p-6 space-y-8">
             <Skeleton className="h-[280px] w-full rounded-md" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -318,7 +318,7 @@ function BillingPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-auto scrollbar-thin">
+        <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
           <div className="max-w-6xl mx-auto p-6 space-y-8">
             {/* ─── Hero Section ─── */}
             <section className="relative overflow-hidden rounded-md border border-border bg-card">
