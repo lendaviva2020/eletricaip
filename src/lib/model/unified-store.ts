@@ -808,11 +808,11 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
               circuitConfig: e.circuitConfig,
               conductor: e.cable
                 ? {
-                    crossSectionMm2: e.cable.section_mm2 ?? 2.5,
+                    crossSectionMm2: e.cable.section_mm2,
                     material: "Cu",
                     insulation: e.cable.insulation ?? "PVC",
-                    lengthM: e.cable.length_m ?? 10,
-                    installationMethod: e.cable.installation ?? "B1",
+                    lengthM: e.cable.length_m,
+                    installationMethod: e.cable.installation,
                   }
                 : undefined,
             };

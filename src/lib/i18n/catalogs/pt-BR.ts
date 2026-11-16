@@ -914,6 +914,24 @@ export const ptBR = {
     disclaimer:
       "Ferramenta de apoio ao projeto. Não substitui a responsabilidade técnica (ART/TRT) nem a verificação do engenheiro habilitado.",
   },
+  eplanPanel: {
+    title: "Documentação (EPLAN)",
+    desc: "Identificação IEC 81346, fios por potencial, bornes, cabos e referência cruzada, verificados enquanto você desenha.",
+    pendingTags: "{n} sem tag",
+    numberMissing: "Numerar dispositivos",
+    renumberAll: "Renumerar tudo",
+    confirmAll:
+      "Renumerar {n} equipamento(s) em sequência? Tags atuais serão substituídas (Ctrl+Z desfaz).",
+    numbered: "{n} tag(s) aplicada(s). Ctrl+Z desfaz.",
+    nothingToNumber: "Todos os equipamentos já têm tag válida e única.",
+    devices: "Disp.",
+    cables: "Cabos",
+    terminals: "Bornes",
+    ok: "Nenhum erro ou aviso de documentação.",
+    issues: "Problemas de documentação",
+    more: "+{n} no dossiê",
+    dossierHint: "Relatórios completos: Exportar → Dossiê Técnico.",
+  },
   panelDoc: {
     title: "Documentação de painel (padrão EPLAN)",
     desc: "Gerada da topologia: designação =planta+local-tag (IEC 81346), fios numerados por potencial, bornes na fronteira painel ↔ campo, cabos e referência cruzada bobina ↔ contatos (IEC 60947-5-1).",

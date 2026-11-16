@@ -141,12 +141,19 @@ export const CanonicalEquipmentSchema = z.object({
 });
 export type CanonicalEquipment = z.infer<typeof CanonicalEquipmentSchema>;
 
+/**
+ * Condutor de uma ligação. Seção, comprimento e método de instalação são
+ * OPCIONAIS de propósito: ausentes = não informados pelo engenheiro. Antes o
+ * modelo preenchia 2,5 mm² / 10 m / B1 e a projeção de volta GRAVAVA esses
+ * valores no diagrama como se fossem dados reais. Quem precisa de um valor
+ * para cálculo deve tratar a ausência como pendência.
+ */
 export const ConductorSpecSchema = z.object({
-  crossSectionMm2: z.number().positive(),
+  crossSectionMm2: z.number().positive().optional(),
   material: z.enum(["Cu", "Al"]).default("Cu"),
   insulation: z.enum(["PVC", "EPR", "XLPE"]).default("PVC"),
-  lengthM: z.number().positive().default(10),
-  installationMethod: z.string().default("B1"),
+  lengthM: z.number().positive().optional(),
+  installationMethod: z.string().optional(),
 });
 export type ConductorSpec = z.infer<typeof ConductorSpecSchema>;
 

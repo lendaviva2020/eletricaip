@@ -86,11 +86,11 @@ export function mapEdgeToElectricalConnection(
     circuitConfig: edge.circuitConfig,
     conductor: edge.cable
       ? {
-          crossSectionMm2: edge.cable.section_mm2 ?? 2.5,
+          crossSectionMm2: edge.cable.section_mm2,
           material: "Cu",
           insulation: edge.cable.insulation ?? "PVC",
-          lengthM: edge.cable.length_m ?? 10,
-          installationMethod: edge.cable.installation ?? "B1",
+          lengthM: edge.cable.length_m,
+          installationMethod: edge.cable.installation,
         }
       : undefined,
   };
