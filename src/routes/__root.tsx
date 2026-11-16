@@ -17,6 +17,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { installDiagnosticsInterceptor } from "@/lib/diagnostics-counter";
 import { captureException, maskSensitiveString } from "@/lib/error-capture";
 import { useEditorStore } from "@/lib/editor/store";
+import { MfaChallenge, MfaCheckError, useMfaRequirement } from "@/components/auth/mfa";
 
 // Lazy-load authenticated shells and heavy modals so public routes (like Landing /)
 // don't download billing, workspace chrome, and diagnostics bundles upfront.
@@ -164,7 +165,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function AuthGate() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const { user, loading, isLoggingOut } = useAuth();
+  const { user, loading, isLoggingOut, signOut } = useAuth();
+  const mfa = useMfaRequirement(user);
   const router = useRouter();
   const focusMode = useEditorStore((s) => s.focusMode);
   const isFocusWorkspace = focusMode && path.startsWith("/workspace");
@@ -188,6 +190,21 @@ function AuthGate() {
     // NUNCA retornar null aqui: um render vazio é indistinguível de "tela branca".
     // O redirect do useAuthRedirect é best-effort; esta tela é o fallback visível.
     return <SessionExpired path={path} />;
+  }
+
+  // RISK-017: com MFA ativo, nada privado renderiza até o segundo fator.
+  if (mfa.state === "checking") {
+    return (
+      <div className="min-h-screen grid place-items-center text-muted-foreground text-sm">
+        Carregando...
+      </div>
+    );
+  }
+  if (mfa.state === "required") {
+    return <MfaChallenge onVerified={mfa.recheck} onSignOut={() => void signOut()} />;
+  }
+  if (mfa.state === "error") {
+    return <MfaCheckError onRetry={mfa.recheck} onSignOut={() => void signOut()} />;
   }
 
   if (AUTH_NO_CHROME.includes(path)) {

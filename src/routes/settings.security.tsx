@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LogoutButton } from "@/components/auth/logout-dialog";
 import { useI18n } from "@/lib/i18n";
 import { passwordPolicyError } from "@/lib/security/password-policy";
+import { MfaSettingsCard } from "@/components/auth/mfa";
 
 export const Route = createFileRoute("/settings/security")({
   head: () => ({ meta: [{ title: "Segurança · EletricAI" }] }),
@@ -41,8 +42,9 @@ function SecurityPage() {
     <div className="flex-1 overflow-auto p-6">
       <div className="max-w-2xl mx-auto space-y-4">
         <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" /> Segurança
+          <Shield className="h-5 w-5 text-primary" /> {t("settings_ext.security")}
         </h1>
+        <MfaSettingsCard />
         <Card>
           <CardContent className="p-5 space-y-4">
             <h2 className="text-sm font-semibold">{t("pages2.changePassword")}</h2>

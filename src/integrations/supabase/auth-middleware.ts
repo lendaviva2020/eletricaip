@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Database } from "./types";
 import { getSupabasePublicEnv } from "./env";
+import { mfaGate, userHasVerifiedFactor } from "./mfa-enforcement";
 
 // Usa o helper compartilhado (com fallback para o URL/anon key públicos do projeto)
 // para evitar 500 quando o runtime serverless não injeta as envs SUPABASE_*.
@@ -115,6 +116,10 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
     let userId: string | undefined;
     let claims: Record<string, unknown> = {};
     let sessionId: string | undefined;
+    /** Nível de garantia da sessão (aal1 = senha; aal2 = senha + segundo fator). */
+    let aal: unknown;
+    /** Usuário já obtido via Auth (fallback remoto) — evita segunda consulta no MFA. */
+    let fetchedUser: { factors?: { status?: string }[] | null } | null = null;
 
     if (token === "dev-access-token") {
       if (!isDevAuthAllowed()) {
@@ -136,6 +141,7 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
     const applyPayload = (payload: Record<string, unknown>) => {
       userId = typeof payload.sub === "string" ? payload.sub : undefined;
       sessionId = typeof payload.session_id === "string" ? payload.session_id : undefined;
+      aal = payload["aal"];
       claims = {
         ...((payload["app_metadata"] as Record<string, unknown> | undefined) ?? {}),
         email: payload["email"],
@@ -179,6 +185,7 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
             throw new Response("Unauthorized: Invalid token", { status: 401 });
           }
           userId = data.user.id;
+          fetchedUser = data.user;
           claims = {
             ...((data.user.app_metadata as Record<string, unknown> | undefined) ?? {}),
             email: data.user.email,
@@ -189,6 +196,28 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
 
     if (!userId) {
       throw new Response("Unauthorized: No user ID found in token", { status: 401 });
+    }
+
+    // RISK-017: usuário com MFA ativo precisa de sessão aal2 também no servidor.
+    if (token !== "dev-access-token") {
+      const decision = await mfaGate.check({
+        userId,
+        aal,
+        lookup: async () => {
+          if (fetchedUser) return userHasVerifiedFactor(fetchedUser);
+          const { data, error } = await supabase.auth.getUser(token);
+          if (error || !data.user) return null;
+          return userHasVerifiedFactor(data.user);
+        },
+      });
+      if (decision === "mfa_required") {
+        throw new Response("Unauthorized: MFA_REQUIRED — conclua a verificação em duas etapas", {
+          status: 401,
+        });
+      }
+      if (decision === "mfa_check_unavailable") {
+        throw new Response("Service Unavailable: MFA_CHECK_UNAVAILABLE", { status: 503 });
+      }
     }
 
     return next({
