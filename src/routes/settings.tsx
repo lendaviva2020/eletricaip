@@ -21,6 +21,7 @@ import {
   SignOut,
   HardDrives,
   Pulse,
+  ChartBar,
 } from "@phosphor-icons/react";
 import { LogoutButton } from "@/components/auth/logout-dialog";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
@@ -114,6 +115,15 @@ function SettingsPage() {
                 title={t("settings_ext.billing")}
                 desc={t("settings_ext.billingDesc")}
                 to="/settings/billing"
+                badge="Admin"
+              />
+            )}
+            {isPlatformAdmin && (
+              <SettingsLinkCard
+                icon={ChartBar}
+                title={t("settings_ext.platformMetrics")}
+                desc={t("settings_ext.platformMetricsDesc")}
+                to="/settings/platform-metrics"
                 badge="Admin"
               />
             )}
