@@ -512,7 +512,7 @@ export const generateArchitecture = createServerFn({ method: "POST" })
     // RAG: retrieve normative context.
     const rag = await fetchNormativeContext(supabase, `${data.prompt} ${briefingBlock}`);
     const ragBlock = rag.chunks.length
-      ? `\n\nContexto normativo (trechos relevantes):\n${rag.chunks.map((c, i) => `[${i + 1}] (${c.category}) ${c.text}`).join("\n\n")}`
+      ? `\n\nContexto normativo (resumos técnicos indicativos — cite a norma e recomende conferência na edição vigente; não apresente como texto oficial):\n${rag.chunks.map((c, i) => `[${i + 1}] (${c.category}) ${c.text}`).join("\n\n")}`
       : "";
 
     // Prompt-injection defense: isola o briefing do usuário em bloco estrito <<<USER_BRIEFING>>>
