@@ -11,11 +11,7 @@
     },
     "context7": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@upstash/context7-mcp@latest"
-      ],
+      "command": ["npx", "-y", "@upstash/context7-mcp@latest"],
       "enabled": true
     }
   }

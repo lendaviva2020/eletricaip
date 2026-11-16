@@ -43,6 +43,9 @@ jobs:
       - name: Tests
         run: bun run test
 
+      - name: Firmware Arduino Uno (simulação da lógica)
+        run: bun run test:firmware
+
       - name: Production build & Client Bundle Secret Scan
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"

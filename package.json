@@ -28,7 +28,8 @@
     "build:edge:compile:linux-x64": "bun build --compile --target=bun-linux-x64 src/edge-daemon/index.ts --outfile=dist-edge/eletricai-edge-daemon-linux-x64",
     "build:edge:compile:linux-arm64": "bun build --compile --target=bun-linux-arm64 src/edge-daemon/index.ts --outfile=dist-edge/eletricai-edge-daemon-linux-arm64",
     "build:edge:all": "bun run build:edge && bun run build:edge:compile:linux-x64 && bun run build:edge:compile:linux-arm64",
-    "verify:edge": "node scripts/verify-edge-artifacts.mjs"
+    "verify:edge": "node scripts/verify-edge-artifacts.mjs",
+    "test:firmware": "bash scripts/test-firmware.sh"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",

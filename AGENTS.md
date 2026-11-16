@@ -1428,3 +1428,15 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - **BOM ← catálogo** (`lib/catalog/bom-pricing.ts` + `applyCatalogPricesToBom`): só BRL, casa código (+fabricante), ambíguo/outra moeda/sem preço não preenche; não sobrescreve preço digitado.
 - **Ladder**: painel "Referência cruzada" (`components/editor/sidebars/ladder-xref-panel.tsx`, `lib/ladder/cross-reference.ts`): bobina dupla (por redes distintas), contato sem escrita (exceto entradas %I/tags de entrada), SET sem RESET; clique leva à rede.
 - **SQL pendente**: `docs/SQL_APLICAR_HOJE.sql` (catálogo + planos v2) — o MCP do Supabase pede confirmação que expira; aplicar pelo SQL Editor.
+
+### Bancada Arduino Uno R3 pela Web Serial (2026-11-16, 12ª rodada)
+
+- **Arquitetura** (`src/lib/hardware/`, puro e testado em `arduino-bench.test.ts`):
+  - `serial/protocol.ts` — protocolo ASCII de linha com checksum XOR `*HH` (`CMD:<pino>:<0|1>`, `PING`, `ALL:0`, `RST`, `CFG?` / `HELLO`, `ACK`, `ERR`, `DATA`). Toda linha recebida é dado não confiável: tamanho, caracteres, checksum e faixas conferidos.
+  - `serial/web-serial.ts` (tipos e suporte), `serial/bench-controller.ts` (singleton por aba + store zustand: sobrevive à troca de editor; PING a cada 500 ms; comando espera ACK; `ALL:0` ao desconectar).
+  - `bench-config.ts` (Zod: pinos D2–D13 sem conflito, sensores ACS712/SCT-013/ZMPT101B), `bench-from-diagram.ts` (contator do unifilar → relé; disjuntor do ramal → entrada auxiliar; seção de condutor nunca presumida).
+  - `command-guard.ts` — **arquitetura de autorização da regra 21**: desligar sempre permitido; ligar exige habilitação na sessão, telemetria recente, E-STOP liberado, intertravamento, disjuntor fechado, NBR 5410 §5.3.4.1 (Ib ≤ In ≤ I'z, I2 ≤ 1,45·I'z) e capacidade do contato. A UI ainda pede confirmação antes de energizar.
+  - `firmware/uno-firmware.ts` — gerador do `.ino` (sem `String`, sem `delay`, `millis()`, watchdog 1 s, E-STOP NF com trava até `RST`, saídas escritas no nível desligado antes do `pinMode`, desliga tudo sem host).
+- **Hook** `src/hooks/use-arduino-serial.ts`; **painel** "Bancada Arduino" na barra do editor unifilar (`arduino-bench-panel.tsx`), que espelha o estado REAL de contatores/disjuntores no diagrama (`setDeviceState`).
+- **Firmware base**: `firmware/arduino-uno/eletricai_uno_base/eletricai_uno_base.ino` = saída do gerador para `DEFAULT_BENCH_CONFIG` (teste garante igualdade). Mudou o gerador → regenere o `.ino`. `bun run test:firmware` roda a lógica num simulador C++ (`firmware/arduino-uno/test-harness`) e, com `avr-g++`, compila para o ATmega328P (hoje 10 KB de flash, 588 B de SRAM). Está no CI.
+- **Pendente**: gateway da telemetria serial para `iot_readings`/Realtime (server function com auth, plano e limite de dispositivos).

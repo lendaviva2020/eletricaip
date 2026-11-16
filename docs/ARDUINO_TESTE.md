@@ -143,3 +143,18 @@ while True:
   uma chave por dispositivo, revogue em **Tempo real** se vazar.
 - Leitura apenas: nenhum comando sai do app para o dispositivo neste fluxo
   (regra 21 — nada atua em equipamento real sem projeto de autorização).
+
+## Bancada pelo próprio navegador (Arduino Uno R3, sem ESP32)
+
+1. No editor **unifilar**, abra **Bancada Arduino** na barra lateral.
+2. Em "Origem", escolha **Contatores do unifilar** (cada contator vira um relé em D4, D5, D6, D7, D10…) ou **Bancada de exemplo**.
+3. Clique em **Baixar firmware (.ino)** e grave na IDE do Arduino (placa "Arduino Uno"; o CH340 dos clones SMD pede o driver WCH no Windows).
+4. Ligação mínima:
+   - **E-STOP**: contato NF entre D2 e GND (aberto ou fio rompido = parado; só volta com "Rearmar").
+   - **Relés**: MÓDULO relé optoacoplado de 5 V (ativo em nível baixo) nos pinos de saída. Nunca ligue bobina de contator direto no pino (máx. 20 mA).
+   - **Auxiliar do disjuntor**: contato NA entre o pino de entrada (D8, D9, D3) e GND.
+   - **Analógicas**: ACS712 / SCT-013 (com resistor de carga) / ZMPT101B em A0–A5, sempre 0–5 V.
+5. Use **Chrome ou Edge no computador** (HTTPS): **Conectar Arduino** → escolha a porta. O Uno reinicia e se identifica.
+6. Para ligar um relé: ative **Habilitar comando de campo** e confirme a janela. Bloqueios mostram o motivo (E-STOP, intertravamento, disjuntor aberto, NBR 5410).
+
+O firmware desliga todas as saídas sozinho se o navegador parar de falar com ele por 1,5 s, no E-STOP e se travar (watchdog). Isso é uma camada extra: a segurança das pessoas continua sendo o circuito físico de emergência (NR-10/NR-12).
