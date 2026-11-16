@@ -74,18 +74,25 @@ describe("RISK-023 — redirect do consentimento OAuth", () => {
   });
 });
 
-describe("RISK-024 — política única de senha", () => {
-  it("rejeita senhas fracas", () => {
-    expect(validatePassword("abc123")).toContain("too_short");
-    expect(validatePassword("abcdefgh")).toContain("needs_digit");
-    expect(validatePassword("12345678")).toContain("needs_letter");
-    expect(validatePassword("aaaaaaaa")).toContain("repeated");
-    expect(validatePassword("ç".repeat(37) + "1")).toContain("too_long"); // 76 bytes UTF-8
+describe("RISK-024 — política única de senha (espelha o painel do Supabase)", () => {
+  it("rejeita senhas fracas com o motivo certo", () => {
+    expect(validatePassword("Ab1!")).toContain("too_short");
+    expect(validatePassword("ABCDEFG1!")).toContain("needs_lower");
+    expect(validatePassword("abcdefg1!")).toContain("needs_upper");
+    expect(validatePassword("Abcdefgh!")).toContain("needs_digit");
+    expect(validatePassword("Abcdefg12")).toContain("needs_symbol");
+    expect(validatePassword("Aa1!" + "ç".repeat(35))).toContain("too_long"); // 74 bytes UTF-8
   });
 
-  it("aceita senha que atende à política (inclui letras acentuadas)", () => {
-    expect(passwordPolicyError("Motor7500W")).toBeNull();
-    expect(passwordPolicyError("tensão380v")).toBeNull();
+  it("conta caracteres como o Supabase (só ASCII): ç/ã não valem como minúscula", () => {
+    expect(validatePassword("TENSÃO380!")).toContain("needs_lower");
+    expect(validatePassword("Tensão380!")).not.toContain("needs_lower"); // tem "e", "n", "s", "o"
+    expect(validatePassword("Motor7500º")).toContain("needs_symbol"); // º não é símbolo do Supabase
+  });
+
+  it("aceita senha que atende à política", () => {
+    expect(passwordPolicyError("Motor7500W!")).toBeNull();
+    expect(passwordPolicyError("Tensão380v#")).toBeNull();
     expect(PASSWORD_MIN_LENGTH).toBe(8);
   });
 

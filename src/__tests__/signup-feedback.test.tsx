@@ -36,9 +36,12 @@ function fillFields() {
   fireEvent.change(screen.getByLabelText("Email corporativo"), {
     target: { value: "ada@exemplo.com" },
   });
-  fireEvent.change(screen.getByLabelText("Senha (mín. 8, com letra e número)"), {
-    target: { value: "secreta1" },
-  });
+  fireEvent.change(
+    screen.getByLabelText("Senha (mín. 8: maiúscula, minúscula, número e símbolo)"),
+    {
+      target: { value: "Secreta1!" },
+    },
+  );
 }
 
 describe("signup · feedback entre checkbox e botão", () => {
@@ -82,9 +85,12 @@ describe("signup · feedback entre checkbox e botão", () => {
   it("senha fraca (6 caracteres) é bloqueada antes de chamar o Supabase (RISK-024)", async () => {
     const { container } = render(<SignupPage />);
     fillFields();
-    fireEvent.change(screen.getByLabelText("Senha (mín. 8, com letra e número)"), {
-      target: { value: "abc123" },
-    });
+    fireEvent.change(
+      screen.getByLabelText("Senha (mín. 8: maiúscula, minúscula, número e símbolo)"),
+      {
+        target: { value: "abc123" },
+      },
+    );
     fireEvent.click(screen.getByLabelText(/Confirmo que tenho 18 anos/i));
     fireEvent.submit(container.querySelector("form")!);
     const p = await screen.findByRole("alert");

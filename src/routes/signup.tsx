@@ -81,7 +81,7 @@ function SignupPage() {
         <Input label="Nome completo" type="text" value={name} onChange={setName} required />
         <Input label="Email corporativo" type="email" value={email} onChange={setEmail} required />
         <Input
-          label="Senha (mín. 8, com letra e número)"
+          label="Senha (mín. 8: maiúscula, minúscula, número e símbolo)"
           type="password"
           value={password}
           onChange={setPassword}
