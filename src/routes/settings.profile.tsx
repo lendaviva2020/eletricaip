@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { AccountTypeCard } from "@/components/settings/account-type-card";
 
 export const Route = createFileRoute("/settings/profile")({
   head: () => ({ meta: [{ title: "Perfil · EletricAI" }] }),
@@ -165,6 +166,8 @@ function ProfilePage() {
             Suas informações pessoais e preferências de conta.
           </p>
         </div>
+
+        <AccountTypeCard />
 
         {/* Hero card */}
         <Card>

@@ -5,11 +5,34 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthShell, Input, Divider, GoogleIcon } from "./login";
 import { passwordPolicyError } from "@/lib/security/password-policy";
+import {
+  ACCOUNT_TYPES,
+  ACCOUNT_TYPE_HINT,
+  ACCOUNT_TYPE_LABEL,
+  CompanyNameSchema,
+  accountTypeFromSearch,
+  type AccountType,
+} from "@/lib/account-type";
 
 export const Route = createFileRoute("/signup")({
-  head: () => ({ meta: [{ title: "Criar conta - EletricAI" }] }),
+  // `?perfil=empresa|autonomo`: links de divulgação por público já chegam com o perfil marcado.
+  validateSearch: (search: Record<string, unknown>): { perfil?: AccountType } => ({
+    perfil: accountTypeFromSearch(search.perfil),
+  }),
+  head: () => ({
+    meta: [
+      { title: "Criar conta - EletricAI" },
+      {
+        name: "description",
+        content:
+          "Crie sua conta no EletricAI: projetos elétricos, CLP e supervisório para empresas de engenharia e profissionais autônomos.",
+      },
+    ],
+  }),
   component: SignupPage,
 });
+
+const PENDING_TYPE_KEY = "eletricai.pendingAccountType";
 
 function SignupPage() {
   const { user } = useAuth();
@@ -18,6 +41,9 @@ function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [adult, setAdult] = useState(false);
+  const { perfil } = Route.useSearch();
+  const [accountType, setAccountType] = useState<AccountType>(perfil ?? "autonomo");
+  const [companyName, setCompanyName] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,6 +60,10 @@ function SignupPage() {
       setError("É necessário confirmar que você tem 18 anos ou mais para criar uma conta.");
       return;
     }
+    if (accountType === "empresa" && !CompanyNameSchema.safeParse(companyName).success) {
+      setError("Informe o nome da empresa (2 a 120 caracteres).");
+      return;
+    }
     // RISK-024: mesma política do reset/troca (antes o cadastro aceitava 6 caracteres).
     const policyError = passwordPolicyError(password);
     if (policyError) {
@@ -46,7 +76,12 @@ function SignupPage() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?redirect=/onboarding`,
-        data: { full_name: name, age_declared_18_plus: true },
+        data: {
+          full_name: name,
+          age_declared_18_plus: true,
+          account_type: accountType,
+          ...(accountType === "empresa" ? { company_name: companyName.trim() } : {}),
+        },
       },
     });
     setLoading(false);
@@ -59,6 +94,15 @@ function SignupPage() {
     if (!adult) {
       setError("É necessário confirmar que você tem 18 anos ou mais para criar uma conta.");
       return;
+    }
+    // Google não carrega dados do formulário: guarda o perfil para o 1º login.
+    try {
+      localStorage.setItem(
+        PENDING_TYPE_KEY,
+        JSON.stringify({ account_type: accountType, company_name: companyName.trim() }),
+      );
+    } catch {
+      // armazenamento indisponível: o perfil pode ser definido depois em Configurações
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -77,9 +121,50 @@ function SignupPage() {
         <GoogleIcon /> Continuar com Google
       </button>
       <Divider />
+      <fieldset className="grid grid-cols-1 gap-2 mb-3" data-testid="account-type-choice">
+        <legend className="text-xs text-muted-foreground mb-1">
+          Como você vai usar o EletricAI?
+        </legend>
+        {ACCOUNT_TYPES.map((type) => (
+          <label
+            key={type}
+            className={`flex items-start gap-2 rounded-md border p-2.5 cursor-pointer text-xs ${
+              accountType === type ? "border-primary bg-primary/5" : "border-border"
+            }`}
+          >
+            <input
+              type="radio"
+              name="account-type"
+              value={type}
+              checked={accountType === type}
+              onChange={() => setAccountType(type)}
+              className="mt-0.5 accent-primary"
+            />
+            <span>
+              <span className="block font-medium text-foreground">{ACCOUNT_TYPE_LABEL[type]}</span>
+              <span className="text-muted-foreground">{ACCOUNT_TYPE_HINT[type]}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
       <form onSubmit={handleEmail} className="space-y-3">
         <Input label="Nome completo" type="text" value={name} onChange={setName} required />
-        <Input label="Email corporativo" type="email" value={email} onChange={setEmail} required />
+        {accountType === "empresa" && (
+          <Input
+            label="Nome da empresa"
+            type="text"
+            value={companyName}
+            onChange={setCompanyName}
+            required
+          />
+        )}
+        <Input
+          label={accountType === "empresa" ? "Email corporativo" : "Email"}
+          type="email"
+          value={email}
+          onChange={setEmail}
+          required
+        />
         <Input
           label="Senha (mín. 8: maiúscula, minúscula, número e símbolo)"
           type="password"

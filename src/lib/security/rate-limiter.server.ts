@@ -30,7 +30,8 @@ const LIMITER_CONFIG: Record<
   ai: {
     limiter: Ratelimit.slidingWindow(10, "10 s"),
     prefix: "eletricai:rl:ai",
-    critical: true, // AI: custo direto, fail-closed
+    critical: true, // AI: custo direto, fail-closed quando o Upstash configurado falha
+    fallback: { windowMs: 10_000, max: 10 },
   },
   api: {
     limiter: Ratelimit.slidingWindow(60, "60 s"),
@@ -47,7 +48,8 @@ const LIMITER_CONFIG: Record<
   iot: {
     limiter: Ratelimit.slidingWindow(120, "60 s"),
     prefix: "eletricai:rl:iot",
-    critical: true, // IoT: escrita de telemetria, fail-closed
+    critical: true, // IoT: fail-closed quando o Upstash configurado falha
+    fallback: { windowMs: 60_000, max: 120 },
   },
 };
 
@@ -242,22 +244,12 @@ export async function checkRateLimit(
   const cfg = LIMITER_CONFIG[key];
   const rl = buildLimiter(key);
 
-  // Upstash não configurado
+  // Upstash NÃO configurado (deploy sem Redis): limite local por instância
+  // para todos os limitadores. Antes, IA e IoT negavam TUDO nesse caso — a IA
+  // aparecia como "indisponível" e todo POST de dispositivo recebia 429.
+  // Falha de um Upstash CONFIGURADO (erro/circuito aberto) continua
+  // fail-closed para IA/IoT (RISK-007), abaixo.
   if (!rl) {
-    if (cfg.critical) {
-      // FAIL-CLOSED: nega a requisição
-      recordBypass(key, "unconfigured");
-      return {
-        allowed: false,
-        retryAfterSeconds: 60, // sugere retry em 1 min
-        remaining: 0,
-        limit: -1,
-        bypassed: true,
-        source: "unconfigured",
-        failClosed: true,
-      };
-    }
-    // FAIL-OPEN com fallback local
     recordBypass(key, "unconfigured");
     const fallback = cfg.fallback ?? { windowMs: 60_000, max: 60 };
     const local = localFallbackAllow(key, identifier, fallback.windowMs, fallback.max);

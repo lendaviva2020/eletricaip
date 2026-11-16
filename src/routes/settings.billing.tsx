@@ -236,7 +236,7 @@ function BillingPage() {
             <div>
               <p className="text-sm font-semibold leading-tight">{plan.name}</p>
               <p className="text-[10px] text-muted-foreground/60">
-                EletricAI Industrial · {data?.tenantId ?? "demo"}
+                EletricAI Industrial · {data?.tenantId ?? "—"}
               </p>
             </div>
           </div>

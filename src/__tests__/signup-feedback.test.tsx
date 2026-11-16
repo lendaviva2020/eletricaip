@@ -6,7 +6,10 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import React from "react";
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (opts: { component: React.ComponentType }) => opts,
+  createFileRoute: () => (opts: { component: React.ComponentType }) => ({
+    ...opts,
+    useSearch: () => ({}),
+  }),
   Link: ({ children, ...rest }: { children: React.ReactNode }) => <a {...rest}>{children}</a>,
   useRouter: () => ({ navigate: vi.fn() }),
 }));
@@ -33,7 +36,7 @@ function fillFields() {
   fireEvent.change(screen.getByLabelText("Nome completo"), {
     target: { value: "Ada Lovelace" },
   });
-  fireEvent.change(screen.getByLabelText("Email corporativo"), {
+  fireEvent.change(screen.getByLabelText(/^Email/), {
     target: { value: "ada@exemplo.com" },
   });
   fireEvent.change(

@@ -1,3 +1,4 @@
+import { accountTypeFromMetadata } from "@/lib/account-type";
 import {
   createContext,
   useCallback,
@@ -178,6 +179,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       bootstrappedUserIdRef.current = null;
       console.warn("bootstrap_personal_tenant_if_missing:", error.message);
+      return;
+    }
+    // Perfil escolhido no cadastro (empresa × autônomo) vai para a organização
+    // no primeiro login. Idempotente: não sobrescreve um tipo já gravado.
+    try {
+      const { data } = await supabase.auth.getUser();
+      let meta: Record<string, unknown> | undefined = data.user?.user_metadata;
+      // Login com Google: o perfil escolhido no cadastro ficou guardado no navegador.
+      if (!accountTypeFromMetadata(meta)) {
+        try {
+          const pending = localStorage.getItem("eletricai.pendingAccountType");
+          if (pending) meta = { ...meta, ...(JSON.parse(pending) as Record<string, unknown>) };
+          localStorage.removeItem("eletricai.pendingAccountType");
+        } catch {
+          // sem armazenamento: o perfil pode ser definido em Configurações → Perfil
+        }
+      }
+      const accountType = accountTypeFromMetadata(meta);
+      if (accountType) {
+        const { applyAccountType } = await import("@/lib/account-type.functions");
+        const companyName =
+          typeof meta?.company_name === "string" && meta.company_name.trim().length >= 2
+            ? meta.company_name.trim()
+            : null;
+        const fullName = typeof meta?.full_name === "string" ? meta.full_name : null;
+        await applyAccountType({
+          data: { accountType, companyName, fullName, mode: "initial" },
+        });
+      }
+    } catch (err) {
+      console.warn("perfil da conta não aplicado:", err);
     }
   }, []);
 

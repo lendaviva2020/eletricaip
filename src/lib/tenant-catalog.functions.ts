@@ -128,6 +128,17 @@ function rowFromSupplier(part: SupplierPart, tenantId: string, nowIso: string) {
 
 /* ------------------------------------------------------------------ */
 
+/** Tabela ainda não criada no banco (migration pendente): estado explícito, não erro 500. */
+function isMissingTable(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    (/tenant_catalog_items/.test(error.message ?? "") &&
+      /does not exist|schema cache/i.test(error.message ?? ""))
+  );
+}
+
 export const getTenantCatalogStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -137,8 +148,18 @@ export const getTenantCatalogStatus = createServerFn({ method: "POST" })
       .from(TABLE)
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", access.tenantId);
+    if (isMissingTable(error)) {
+      return {
+        canWrite: false,
+        role: access.role,
+        itemCount: 0,
+        providers: { mouser: isMouserConfigured() },
+        unavailable: true as const,
+      };
+    }
     if (error) throw new Response(error.message, { status: 500 });
     return {
+      unavailable: false as const,
       canWrite: access.canWrite,
       role: access.role,
       itemCount: count ?? 0,
@@ -171,6 +192,7 @@ export const listTenantCatalog = createServerFn({ method: "POST" })
         `part_number.ilike.%${s}%,manufacturer.ilike.%${s}%,description.ilike.%${s}%,category.ilike.%${s}%`,
       );
     const { data: rows, error } = await q;
+    if (isMissingTable(error)) return { items: [] as TenantCatalogItem[] };
     if (error) throw new Response(error.message, { status: 500 });
     const items = z.array(TenantCatalogItemSchema).parse(rows ?? []);
     return { items };

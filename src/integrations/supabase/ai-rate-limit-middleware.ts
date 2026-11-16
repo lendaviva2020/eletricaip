@@ -94,31 +94,11 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
 
     const rl = await checkRateLimit("ai", userId);
 
-    // FAIL-CLOSED: if bypassed and failClosed=true, deny immediately
+    // Upstash configurado mas falhando → fail-closed (RISK-007), salvo opt-in
+    // AI_RATE_LIMIT_LOCAL_FALLBACK=true. (Sem Upstash configurado, o próprio
+    // checkRateLimit já aplica o limite local por instância.) Antes o
+    // fail-closed era testado primeiro e o opt-in nunca tinha efeito.
     if (rl.failClosed) {
-      recordAiDecision(userId, rl.source, false, "burst");
-      throw new Response(
-        JSON.stringify({
-          ok: false,
-          error: {
-            code: "RATE_LIMITER_UNAVAILABLE",
-            message: "Serviço de rate limiting indisponível. Tente novamente em instantes.",
-            retryAfter: rl.retryAfterSeconds,
-            source: rl.source,
-          },
-        }),
-        {
-          status: 503,
-          headers: {
-            "content-type": "application/json",
-            "Retry-After": String(rl.retryAfterSeconds),
-          },
-        },
-      );
-    }
-
-    // If bypassed but not fail-closed (shouldn't happen for AI, but defensive)
-    if (rl.bypassed) {
       if (!LOCAL_FALLBACK_ENABLED) {
         recordAiDecision(userId, rl.source, false, "burst");
         throw new Response(
@@ -126,8 +106,7 @@ export const requireBurstLimit = createMiddleware({ type: "function" })
             ok: false,
             error: {
               code: "RATE_LIMITER_UNAVAILABLE",
-              message:
-                "Serviço de rate limiting indisponível. Configure AI_RATE_LIMIT_LOCAL_FALLBACK=true para fallback local.",
+              message: "Serviço de rate limiting indisponível. Tente novamente em instantes.",
               retryAfter: rl.retryAfterSeconds,
               source: rl.source,
             },

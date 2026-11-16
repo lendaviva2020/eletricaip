@@ -128,7 +128,14 @@ export function TenantCatalogPanel() {
         </p>
       )}
 
-      {status.isLoading || list.isLoading ? (
+      {status.data?.unavailable ? (
+        <p
+          className="rounded-md border border-border bg-card p-4 text-xs text-muted-foreground"
+          data-testid="tenant-catalog-unavailable"
+        >
+          O catálogo da empresa está sendo ativado no banco de dados. Volte em alguns minutos.
+        </p>
+      ) : status.isLoading || list.isLoading ? (
         <TableSkeleton rows={4} columns={5} />
       ) : status.isError || list.isError ? (
         <ErrorState
