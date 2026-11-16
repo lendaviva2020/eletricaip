@@ -34,4 +34,29 @@ describe("Tela de cálculos elétricos", () => {
     expect(screen.getAllByText("16.71 kA", { selector: "dd" })).toHaveLength(2);
     expect(screen.getByText("33.94 kA")).toBeTruthy();
   });
+
+  it("harmônicas: fator K 4,66 → transformador K-9", () => {
+    useI18nStore.setState({ locale: "pt-BR" });
+    render(<Page />);
+    fireEvent.click(screen.getByRole("tab", { name: "Harmônicas" }));
+    expect(screen.getByText("4,66")).toBeTruthy();
+    expect(screen.getByText("K-9")).toBeTruthy();
+  });
+
+  it("harmônicas: espectro malformado mostra erro e não calcula", () => {
+    useI18nStore.setState({ locale: "pt-BR" });
+    render(<Page />);
+    fireEvent.click(screen.getByRole("tab", { name: "Harmônicas" }));
+    fireEvent.change(screen.getByLabelText(/Espectro/), { target: { value: "5:20, x:1" } });
+    expect(screen.getByText(/Use o formato 5:20/)).toBeTruthy();
+    expect(screen.getByText(/Corrija os campos destacados/)).toBeTruthy();
+  });
+
+  it('aterramento: haste 5/8" × 2,4 m em 100 Ω·m ≈ 40,4 Ω e TT atende com DR 30 mA', () => {
+    useI18nStore.setState({ locale: "pt-BR" });
+    render(<Page />);
+    fireEvent.click(screen.getByRole("tab", { name: "Aterramento" }));
+    expect(screen.getAllByText(/^40,4\d Ω$/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Atende")).toBeTruthy();
+  });
 });

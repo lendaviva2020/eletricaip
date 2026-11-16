@@ -14,6 +14,8 @@ import {
   type MotorSpec,
 } from "@/lib/electrical-calc";
 import { shortCircuitIEC60909 } from "@/lib/electrical-sim";
+import { analyzeHarmonics, type HarmonicComponent } from "@/lib/power-quality";
+import { checkTTProtection, rodGroundingResistance } from "@/lib/grounding";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -22,8 +24,8 @@ export const Route = createFileRoute("/calculations")({
   component: CalculationsPage,
 });
 
-type TabId = "motor" | "drop" | "short" | "demand";
-const TABS: readonly TabId[] = ["motor", "drop", "short", "demand"];
+type TabId = "motor" | "drop" | "short" | "demand" | "harmonics" | "grounding";
+const TABS: readonly TabId[] = ["motor", "drop", "short", "demand", "harmonics", "grounding"];
 const METHODS: readonly InstallationMethod[] = ["A1", "A2", "B1", "B2", "C", "D", "E", "F"];
 const INSULATIONS: readonly InsulationType[] = ["PVC", "EPR", "XLPE"];
 
@@ -586,6 +588,234 @@ function DemandCalc() {
   );
 }
 
+/** "5:20, 7:14.3" → componentes; `null` se algum item for inválido. */
+function parseSpectrum(raw: string): HarmonicComponent[] | null {
+  const items = raw
+    .split(/[;,\n]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  if (items.length > 49) return null;
+  const out: HarmonicComponent[] = [];
+  for (const item of items) {
+    const m = /^(\d{1,2})\s*[:=]\s*([\d.]+)$/.exec(item.replace(",", "."));
+    if (!m) return null;
+    const order = Number(m[1]);
+    const current_A = Number(m[2]);
+    if (order < 2 || order > 50 || !Number.isFinite(current_A) || current_A < 0) return null;
+    out.push({ order, current_A });
+  }
+  return out;
+}
+
+function HarmonicsCalc() {
+  const { t, locale } = useI18n();
+  const [i1, setI1] = useState("100");
+  const [il, setIl] = useState("100");
+  const [ratio, setRatio] = useState("20");
+  const [spectrum, setSpectrum] = useState("5:20, 7:14.3, 11:9.1, 13:7.7");
+  const p = {
+    i1: parseNum(i1, 0.01, 100000),
+    il: parseNum(il, 0.01, 100000),
+    ratio: parseNum(ratio, 1, 100000),
+  };
+  const comps = parseSpectrum(spectrum);
+  const res = (() => {
+    if (p.i1 === null || p.il === null || p.ratio === null || comps === null) return null;
+    try {
+      return analyzeHarmonics(p.i1, comps, p.il, p.ratio);
+    } catch {
+      return null;
+    }
+  })();
+  const bad = t("calc.invalid");
+  return (
+    <Panel
+      inputs={
+        <>
+          <NumField
+            id="h-i1"
+            label={t("calc.fundamental")}
+            unit="A"
+            value={i1}
+            onChange={setI1}
+            invalid={p.i1 === null}
+            hint={bad}
+          />
+          <NumField
+            id="h-il"
+            label={t("calc.demandIL")}
+            unit="A"
+            value={il}
+            onChange={setIl}
+            invalid={p.il === null}
+            hint={bad}
+          />
+          <NumField
+            id="h-ratio"
+            label={t("calc.iscOverIl")}
+            value={ratio}
+            onChange={setRatio}
+            invalid={p.ratio === null}
+            hint={bad}
+          />
+          <label htmlFor="h-spec" className="flex flex-col gap-1 text-xs sm:col-span-2">
+            <span className="font-medium text-muted-foreground">{t("calc.spectrum")}</span>
+            <textarea
+              id="h-spec"
+              value={spectrum}
+              onChange={(e) => setSpectrum(e.target.value)}
+              aria-invalid={comps === null}
+              rows={3}
+              className={cn(
+                "rounded-md border bg-background p-2 font-mono text-sm",
+                comps === null ? "border-destructive" : "border-input",
+              )}
+            />
+            {comps === null && (
+              <span className="text-[11px] text-destructive">{t("calc.spectrumInvalid")}</span>
+            )}
+          </label>
+        </>
+      }
+      results={
+        res ? (
+          <>
+            <Result label="THD-I" value={`${fmt(res.thd_pct, 1, locale)} %`} />
+            <Result
+              label={t("calc.tdd")}
+              value={`${fmt(res.tdd_pct, 1, locale)} % / ${res.tddLimit_pct} %`}
+              tone={res.tddCompliant ? "ok" : "bad"}
+            />
+            <Result label={t("calc.rmsTotal")} value={`${fmt(res.rms_A, 1, locale)} A`} />
+            <Result label={t("calc.kFactor")} value={fmt(res.kFactor, 2, locale)} />
+            <Result label={t("calc.kTrafo")} value={`K-${res.kRatedTransformer}`} />
+            <Result
+              label={t("calc.neutral")}
+              value={`${fmt(res.neutralTriplen_A, 1, locale)} A`}
+              tone={res.thirdHarmonic_pct > 33 ? "bad" : undefined}
+            />
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("calc.harmonicsNote")}</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("calc.fixInputs")}</p>
+        )
+      }
+    />
+  );
+}
+
+function GroundingCalc() {
+  const { t, locale } = useI18n();
+  const [rho, setRho] = useState("100");
+  const [len, setLen] = useState("2.4");
+  const [diam, setDiam] = useState("15.875");
+  const [rods, setRods] = useState("1");
+  const [idn, setIdn] = useState("30");
+  const [ul, setUl] = useState<"50" | "25">("50");
+  const p = {
+    rho: parseNum(rho, 1, 100000),
+    len: parseNum(len, 0.5, 30),
+    diam: parseNum(diam, 5, 50),
+    rods: parseNum(rods, 1, 24),
+    idn: parseNum(idn, 10, 3000),
+  };
+  const res = (() => {
+    if (Object.values(p).some((x) => x === null)) return null;
+    try {
+      const g = rodGroundingResistance({
+        soilResistivity_ohm_m: p.rho!,
+        rodLength_m: p.len!,
+        rodDiameter_mm: p.diam!,
+        rods: Math.round(p.rods!),
+      });
+      return { g, tt: checkTTProtection(g.total_ohm, p.idn!, Number(ul)) };
+    } catch {
+      return null;
+    }
+  })();
+  const bad = t("calc.invalid");
+  return (
+    <Panel
+      inputs={
+        <>
+          <NumField
+            id="g-rho"
+            label={t("calc.resistivity")}
+            unit="Ω·m"
+            value={rho}
+            onChange={setRho}
+            invalid={p.rho === null}
+            hint={bad}
+          />
+          <NumField
+            id="g-len"
+            label={t("calc.rodLength")}
+            unit="m"
+            value={len}
+            onChange={setLen}
+            invalid={p.len === null}
+            hint={bad}
+          />
+          <NumField
+            id="g-d"
+            label={t("calc.rodDiameter")}
+            unit="mm"
+            value={diam}
+            onChange={setDiam}
+            invalid={p.diam === null}
+            hint={bad}
+          />
+          <NumField
+            id="g-n"
+            label={t("calc.rods")}
+            value={rods}
+            onChange={setRods}
+            invalid={p.rods === null}
+            hint={bad}
+          />
+          <NumField
+            id="g-idn"
+            label={t("calc.rcd")}
+            unit="mA"
+            value={idn}
+            onChange={setIdn}
+            invalid={p.idn === null}
+            hint={bad}
+          />
+          <SelectField
+            id="g-ul"
+            label={t("calc.touchLimit")}
+            value={ul}
+            options={["50", "25"] as const}
+            onChange={setUl}
+          />
+        </>
+      }
+      results={
+        res ? (
+          <>
+            <Result
+              label={t("calc.singleRod")}
+              value={`${fmt(res.g.singleRod_ohm, 2, locale)} Ω`}
+            />
+            <Result label={t("calc.parallelFactor")} value={fmt(res.g.multiplier, 2, locale)} />
+            <Result label={t("calc.groundTotal")} value={`${fmt(res.g.total_ohm, 2, locale)} Ω`} />
+            <Result label={t("calc.maxRA")} value={`${fmt(res.tt.maxRA_ohm, 1, locale)} Ω`} />
+            <Result
+              label={t("calc.ttCheck")}
+              value={res.tt.compliant ? t("calc.ok") : t("calc.notOk")}
+              tone={res.tt.compliant ? "ok" : "bad"}
+            />
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("calc.groundNote")}</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("calc.fixInputs")}</p>
+        )
+      }
+    />
+  );
+}
+
 function CalculationsPage() {
   const { t } = useI18n();
   const [tab, setTab] = useState<TabId>("motor");
@@ -620,6 +850,8 @@ function CalculationsPage() {
           {tab === "drop" && <DropCalc />}
           {tab === "short" && <ShortCalc />}
           {tab === "demand" && <DemandCalc />}
+          {tab === "harmonics" && <HarmonicsCalc />}
+          {tab === "grounding" && <GroundingCalc />}
         </div>
         <p className="text-[11px] text-muted-foreground">{t("calc.disclaimer")}</p>
       </div>
