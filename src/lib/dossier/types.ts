@@ -1,5 +1,6 @@
 // Types and data contracts for the ElétricAi Engineering Dossier
 // Single Source of Truth from Canvas: Unifilar, Multifilar, Ladder, FBD, SCADA
+import type { PanelDocumentation } from "@/lib/documentation";
 
 export type DossierScope = "unifilar" | "multifilar" | "ladder" | "fbd" | "scada" | "hybrid";
 
@@ -113,14 +114,16 @@ export interface ConductorScheduleRow {
   circuitCode: string;
   wireTag: string;
   phaseOrFunction: "L1" | "L2" | "L3" | "N" | "PE" | "24V+" | "0V" | "SIGNAL";
-  crossSectionMm2: number;
+  /** null = não especificado no projeto (pendência), nunca um valor presumido. */
+  crossSectionMm2: number | null;
   material: "Cu" | "Al";
   insulation: "PVC" | "EPR" | "XLPE";
   fromEquipment: string;
   fromTerminal: string;
   toEquipment: string;
   toTerminal: string;
-  lengthM: number;
+  /** null = não especificado no projeto (pendência). */
+  lengthM: number | null;
   voltageDropPct?: number;
 }
 
@@ -322,6 +325,8 @@ export interface CompleteEngineeringDossier {
   bom: BomItem[];
   conductorsSchedule: ConductorScheduleRow[];
   terminalsSchedule: TerminalBlockTerminal[];
+  /** Documentação de painel padrão EPLAN (identificação, cabos, referência cruzada, verificação). */
+  panelDocumentation?: PanelDocumentation;
   plcProgram: PlcProgramDoc;
 
   // Pending missing inputs requiring engineer resolution

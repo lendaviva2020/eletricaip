@@ -68,6 +68,7 @@ export function assembleCompleteDossier(params: {
     bom,
     conductorsSchedule: extracted.conductors,
     terminalsSchedule: extracted.terminals,
+    panelDocumentation: extracted.panelDocumentation,
     plcProgram: extracted.plcProgram,
     pendingInputs: extracted.pendingInputs,
   };

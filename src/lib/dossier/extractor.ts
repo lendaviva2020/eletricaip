@@ -17,8 +17,12 @@ import type {
   PlcProgramDoc,
   TerminalBlockTerminal,
 } from "./types";
-import { inferCircuitConfig } from "@/lib/diagram/multifilar";
 import type { DiagramDoc } from "@/lib/diagram/schema";
+import {
+  buildPanelDocumentation,
+  type ConductorFunction,
+  type PanelDocumentation,
+} from "@/lib/documentation";
 
 export interface ExtractedCanvasData {
   projectId: string;
@@ -33,6 +37,7 @@ export interface ExtractedCanvasData {
   tags: CanonicalTag[];
   conductors: ConductorScheduleRow[];
   terminals: TerminalBlockTerminal[];
+  panelDocumentation: PanelDocumentation;
   plcProgram: PlcProgramDoc;
   pendingInputs: Array<{
     id: string;
@@ -132,158 +137,68 @@ export function extractCanvasData(input: {
     }
   }
 
-  // 4. Derivar Condutores e Fiação Detalhada (L1, L2, L3, N, PE, Comando)
-  const conductors: ConductorScheduleRow[] = [];
-  let wireIndex = 1;
+  // 4–5. Fiação, régua de bornes e cabos no padrão EPLAN (motor puro em
+  // `@/lib/documentation`): terminais REAIS de cada equipamento, numeração por
+  // potencial, bornes só na fronteira painel ↔ campo. Seção/comprimento
+  // ausentes viram pendência — nada de 2,5 mm² / 15 m presumidos.
+  const panelDocumentation = buildPanelDocumentation(doc, { ladderRungs });
+  const connById = doc.engineering.connections;
+  const SIGNAL_TYPE: Record<ConductorFunction, TerminalBlockTerminal["signalType"]> = {
+    L1: "power",
+    L2: "power",
+    L3: "power",
+    N: "neutral",
+    PE: "pe",
+    SIG: "control",
+  };
 
-  for (const conn of connections) {
-    const fromEq = doc.engineering.equipments[conn.fromEquipmentId];
-    const toEq = doc.engineering.equipments[conn.toEquipmentId];
-    const config = conn.circuitConfig ?? "3F+N+PE";
-    const section = conn.conductor?.crossSectionMm2 ?? 2.5;
-    const material = conn.conductor?.material ?? "Cu";
-    const insulation = conn.conductor?.insulation ?? "PVC";
-    const lengthM = conn.conductor?.lengthM ?? 15;
+  const conductors: ConductorScheduleRow[] = panelDocumentation.wires.map((w) => {
+    const c = connById[w.connectionId]?.conductor;
+    return {
+      circuitCode: w.connectionId,
+      wireTag: w.wireNumber,
+      phaseOrFunction: w.function === "SIG" ? "SIGNAL" : w.function,
+      crossSectionMm2: c?.crossSectionMm2 ?? null,
+      material: c?.material ?? "Cu",
+      insulation: c?.insulation ?? "PVC",
+      fromEquipment: w.from,
+      fromTerminal: w.fromTerminal,
+      toEquipment: w.to,
+      toTerminal: w.toTerminal,
+      lengthM: c?.lengthM ?? null,
+    };
+  });
 
-    const fromLabel = fromEq?.displayName || conn.fromEquipmentId;
-    const toLabel = toEq?.displayName || conn.toEquipmentId;
+  const terminals: TerminalBlockTerminal[] = panelDocumentation.terminals.map((t) => ({
+    blockId: t.strip.replace(/^-/, ""),
+    terminalNumber: Number(t.terminal),
+    wireTag: t.wireNumber,
+    internalEquipment: t.panelSide,
+    internalTerminal: t.panelTerminal,
+    externalEquipment: t.fieldSide,
+    externalTerminal: t.fieldTerminal,
+    signalType: SIGNAL_TYPE[t.function],
+  }));
 
-    if (config.includes("3F")) {
-      conductors.push({
-        circuitCode: conn.id,
-        wireTag: `W${wireIndex++}.L1`,
-        phaseOrFunction: "L1",
-        crossSectionMm2: section,
-        material,
-        insulation,
-        fromEquipment: fromLabel,
-        fromTerminal: conn.fromTerminalId || "L1",
-        toEquipment: toLabel,
-        toTerminal: conn.toTerminalId || "L1",
-        lengthM,
-      });
-      conductors.push({
-        circuitCode: conn.id,
-        wireTag: `W${wireIndex++}.L2`,
-        phaseOrFunction: "L2",
-        crossSectionMm2: section,
-        material,
-        insulation,
-        fromEquipment: fromLabel,
-        fromTerminal: conn.fromTerminalId || "L2",
-        toEquipment: toLabel,
-        toTerminal: conn.toTerminalId || "L2",
-        lengthM,
-      });
-      conductors.push({
-        circuitCode: conn.id,
-        wireTag: `W${wireIndex++}.L3`,
-        phaseOrFunction: "L3",
-        crossSectionMm2: section,
-        material,
-        insulation,
-        fromEquipment: fromLabel,
-        fromTerminal: conn.fromTerminalId || "L3",
-        toEquipment: toLabel,
-        toTerminal: conn.toTerminalId || "L3",
-        lengthM,
-      });
-    } else {
-      conductors.push({
-        circuitCode: conn.id,
-        wireTag: `W${wireIndex++}.L1`,
-        phaseOrFunction: "L1",
-        crossSectionMm2: section,
-        material,
-        insulation,
-        fromEquipment: fromLabel,
-        fromTerminal: conn.fromTerminalId || "L",
-        toEquipment: toLabel,
-        toTerminal: conn.toTerminalId || "L",
-        lengthM,
+  for (const cable of panelDocumentation.cables) {
+    if (cable.sectionMm2 === null) {
+      pendingInputs.push({
+        id: `pend-sec-${cable.connectionId}`,
+        entityId: cable.connectionId,
+        label: `${cable.cable} (${cable.from} → ${cable.to})`,
+        missingField: "Seção do condutor (mm²)",
+        recommendedDefault: "Dimensionar pela memória de cálculo",
+        impact: "Sem seção não há verificação de capacidade de condução nem de queda de tensão.",
       });
     }
-
-    if (config.includes("N")) {
-      conductors.push({
-        circuitCode: conn.id,
-        wireTag: `W${wireIndex++}.N`,
-        phaseOrFunction: "N",
-        crossSectionMm2: section,
-        material,
-        insulation,
-        fromEquipment: fromLabel,
-        fromTerminal: "N",
-        toEquipment: toLabel,
-        toTerminal: "N",
-        lengthM,
-      });
-    }
-
-    if (config.includes("PE")) {
-      conductors.push({
-        circuitCode: conn.id,
-        wireTag: `W${wireIndex++}.PE`,
-        phaseOrFunction: "PE",
-        crossSectionMm2: section,
-        material,
-        insulation,
-        fromEquipment: fromLabel,
-        fromTerminal: "PE",
-        toEquipment: toLabel,
-        toTerminal: "PE",
-        lengthM,
-      });
-    }
-  }
-
-  // 5. Derivar Lista de Bornes / Borneiras (Terminal Blocks X1, X2)
-  const terminals: TerminalBlockTerminal[] = [];
-  let termNum = 1;
-
-  for (const eq of equipments) {
-    if (eq.category === "load" || eq.catalogType === "motor") {
-      const motorTag = eq.tagCode || eq.displayName;
-      const motorLabel = eq.displayName || eq.tagCode;
-      terminals.push({
-        blockId: "X1",
-        terminalNumber: termNum++,
-        wireTag: `${motorTag}-U1`,
-        internalEquipment: `KM_${eq.tagCode}`,
-        internalTerminal: "2/T1",
-        externalEquipment: motorLabel,
-        externalTerminal: "U1",
-        signalType: "power",
-      });
-      terminals.push({
-        blockId: "X1",
-        terminalNumber: termNum++,
-        wireTag: `${motorTag}-V1`,
-        internalEquipment: `KM_${eq.tagCode}`,
-        internalTerminal: "4/T2",
-        externalEquipment: motorLabel,
-        externalTerminal: "V1",
-        signalType: "power",
-      });
-      terminals.push({
-        blockId: "X1",
-        terminalNumber: termNum++,
-        wireTag: `${motorTag}-W1`,
-        internalEquipment: `KM_${eq.tagCode}`,
-        internalTerminal: "6/T3",
-        externalEquipment: motorLabel,
-        externalTerminal: "W1",
-        signalType: "power",
-      });
-      terminals.push({
-        blockId: "X1",
-        terminalNumber: termNum++,
-        wireTag: `${motorTag}-PE`,
-        internalEquipment: "BARRA_PE",
-        internalTerminal: "PE",
-        externalEquipment: motorLabel,
-        externalTerminal: "PE",
-        signalType: "pe",
+    if (cable.lengthM === null) {
+      pendingInputs.push({
+        id: `pend-len-${cable.connectionId}`,
+        entityId: cable.connectionId,
+        label: `${cable.cable} (${cable.from} → ${cable.to})`,
+        missingField: "Comprimento do cabo (m)",
+        recommendedDefault: "Medir no layout",
+        impact: "Queda de tensão (NBR 5410 6.2.7) não verificável.",
       });
     }
   }
@@ -410,6 +325,7 @@ export function extractCanvasData(input: {
     tags,
     conductors,
     terminals,
+    panelDocumentation,
     plcProgram,
     pendingInputs,
   };

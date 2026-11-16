@@ -40,6 +40,7 @@ import { generateEngineeringDossierPdf } from "@/lib/dossier/pdf-builder";
 import { buildDossierExcelWorkbook, buildBomCsv } from "@/lib/dossier/export-spreadsheets";
 import { generatePlcopenXml, generateStructuredText } from "@/lib/dossier/plcopen";
 import { extractCanvasData } from "@/lib/dossier/extractor";
+import { PanelDocumentationSection } from "./panel-documentation-section";
 import {
   BOM_GROUP_NAMES,
   type BomGroupCategory,
@@ -584,7 +585,7 @@ export function EngineeringDossierModal({
               <TabsContent value="wiring" className="flex-1 overflow-y-auto p-6 space-y-6 m-0">
                 <div>
                   <h4 className="text-sm font-semibold mb-2">
-                    Régua de Bornes de Saída (Borneira X1)
+                    Régua de Bornes (X1 potência · X2 comando)
                   </h4>
                   <div className="border border-border rounded-lg overflow-hidden">
                     <table className="w-full text-xs text-left">
@@ -617,6 +618,10 @@ export function EngineeringDossierModal({
                     </table>
                   </div>
                 </div>
+
+                {dossier.panelDocumentation && (
+                  <PanelDocumentationSection doc={dossier.panelDocumentation} />
+                )}
 
                 <div>
                   <h4 className="text-sm font-semibold mb-2">

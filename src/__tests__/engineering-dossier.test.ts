@@ -161,12 +161,20 @@ describe("ElétricAi Engineering Dossier — Industrial Suite", () => {
     expect(extracted.plcProgram.ioMappings[0].address).toBe("%I0.0");
     expect(extracted.plcProgram.ioMappings[0].symbolicTag).toBe("SB_ESTOP_1");
 
-    // Verifica régua de bornes X1
+    // Verifica régua de bornes X1 (padrão EPLAN: gerada na fronteira painel ↔ campo,
+    // a partir dos terminais REAIS — o motor sai do disjuntor -QG_01, sem contator inventado)
     expect(extracted.terminals.length).toBeGreaterThan(0);
-    const m1Terminals = extracted.terminals.filter(
-      (t) => t.externalEquipment.includes("m1") || t.wireTag.includes("m1"),
-    );
-    expect(m1Terminals.length).toBe(4); // U1, V1, W1, PE
+    const m1Terminals = extracted.terminals.filter((t) => t.externalEquipment === "-M1");
+    expect(m1Terminals.map((t) => t.externalTerminal)).toEqual(["U1", "V1", "W1", "PE"]);
+    expect(m1Terminals.slice(0, 3).map((t) => t.internalTerminal)).toEqual([
+      "2/T1",
+      "4/T2",
+      "6/T3",
+    ]);
+    expect(m1Terminals.some((t) => t.internalEquipment.startsWith("KM_"))).toBe(false);
+    // seção/comprimento não informados não são inventados
+    expect(extracted.conductors.every((c) => c.crossSectionMm2 === null)).toBe(true);
+    expect(extracted.pendingInputs.some((p) => p.missingField.startsWith("Seção"))).toBe(true);
   });
 
   it("2. Fórmulas determinísticas: PE Tabela 58, Neutro e Queda de Tensão com Reatância", () => {
