@@ -13,6 +13,12 @@ import {
   Cylinder,
 } from "@phosphor-icons/react";
 import { EteSynopticPAndId } from "../synoptic/ete-synoptic-p-and-id";
+import { ProcessPlantSynoptic } from "../synoptic/process-plant-synoptic";
+import {
+  PROCESS_AREA_LABEL,
+  PROCESS_AREA_ORDER,
+  type ProcessArea,
+} from "@/lib/scada/process-classifier";
 import { useScadaStore } from "@/lib/scada/scada-store";
 import type { ScadaSynopticSector } from "@/lib/scada/types";
 import { cn } from "@/lib/utils";
@@ -26,6 +32,56 @@ interface SectorTab {
 }
 
 export function ScadaSynopticsView() {
+  const isDemoProject = useScadaStore((s) => s.isDemoProject);
+  // Projeto real: o sinótico é gerado dos equipamentos do próprio projeto.
+  // O P&ID fixo da ETE é exclusivo da planta de demonstração.
+  if (!isDemoProject) return <ProjectProcessSynopticsView />;
+  return <DemoEteSynopticsView />;
+}
+
+function ProjectProcessSynopticsView() {
+  const [area, setArea] = useState<ProcessArea | "all">("all");
+  const currentProjectName = useScadaStore((s) => s.currentProjectName);
+  const tabs: Array<{ id: ProcessArea | "all"; label: string }> = [
+    { id: "all", label: "Planta completa" },
+    ...PROCESS_AREA_ORDER.map((a) => ({ id: a, label: PROCESS_AREA_LABEL[a] })),
+  ];
+  return (
+    <div className="flex-1 flex flex-col p-3 overflow-y-auto min-h-0 bg-[#080b11] text-zinc-200 space-y-3">
+      <div className="bg-zinc-950/80 border border-zinc-800 rounded-lg p-2.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setArea(t.id)}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-xs font-mono font-medium transition-colors shrink-0",
+              area === t.id
+                ? "bg-blue-600 text-white font-semibold shadow-sm"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-md px-3.5 py-2 text-xs font-mono flex items-center justify-between gap-2 text-zinc-300">
+        <span className="truncate">
+          <span className="font-bold text-white uppercase">{currentProjectName ?? "Projeto"}:</span>{" "}
+          <span className="text-zinc-400">
+            sinótico gerado dos equipamentos do Unifilar — clique para telemetria e comandos
+          </span>
+        </span>
+        <span className="text-[10px] text-blue-400 uppercase font-semibold shrink-0">
+          ISA-101 HMI
+        </span>
+      </div>
+      <ProcessPlantSynoptic areaFilter={area} className="min-h-[420px]" />
+    </div>
+  );
+}
+
+function DemoEteSynopticsView() {
   const selectedSector = useScadaStore((s) => s.selectedSector);
   const setSelectedSector = useScadaStore((s) => s.setSelectedSector);
   const equipments = useScadaStore((s) => s.equipments);

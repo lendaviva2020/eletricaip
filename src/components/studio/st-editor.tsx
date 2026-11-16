@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import Editor, { OnMount } from "@monaco-editor/react";
+import type { OnMount } from "@monaco-editor/react";
+import { LazyMonacoEditor } from "@/components/canvases/lazy";
 import { useStudioStore } from "../../lib/studio/studio-store";
 import { StParser } from "../../lib/studio/iec/parser/st-parser";
 import { StSemanticAnalyzer } from "../../lib/studio/iec/parser/st-semantic";
@@ -243,7 +244,7 @@ END_PROGRAM`,
 
       {/* Editor Monaco */}
       <div className="flex-1 relative">
-        <Editor
+        <LazyMonacoEditor
           height="100%"
           language="iecst"
           theme="vs-dark"

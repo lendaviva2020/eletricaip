@@ -36,6 +36,7 @@ import {
   Broadcast,
 } from "@phosphor-icons/react";
 import { EteSynopticPAndId } from "../synoptic/ete-synoptic-p-and-id";
+import { ProcessPlantSynoptic } from "../synoptic/process-plant-synoptic";
 import { useScadaStore } from "@/lib/scada/scada-store";
 import type {
   ScadaSynopticSector,
@@ -211,11 +212,7 @@ export function ScadaOverviewView() {
               </div>
             </div>
           ) : (
-            <CustomerProjectSynoptic
-              equipments={equipments}
-              selectedEquipmentId={selectedEquipmentId}
-              onSelect={selectEquipment}
-            />
+            <ProcessPlantSynoptic className="h-full min-h-[380px]" />
           )}
         </div>
 
@@ -886,80 +883,6 @@ export function ScadaOverviewView() {
             )}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-function CustomerProjectSynoptic({
-  equipments,
-  selectedEquipmentId,
-  onSelect,
-}: {
-  equipments: Record<string, any>;
-  selectedEquipmentId: string | null;
-  onSelect: (id: string) => void;
-}) {
-  const eqList = Object.values(equipments).filter((e): e is any => Boolean(e && e.id));
-
-  return (
-    <div
-      className="relative w-full h-full min-h-[380px] bg-[#070A0E] border border-[#1E293B] rounded-lg overflow-hidden select-none flex flex-col p-4 shadow-2xl"
-      data-testid="scada-p-and-id-synoptic"
-    >
-      <div className="flex items-center justify-between pb-3 border-b border-[#1E293B]">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-mono uppercase tracking-wider text-white font-bold">
-            Sinótico Canônico do Projeto ({eqList.length} Ativos Conectados)
-          </span>
-        </div>
-        <span className="text-[10px] font-mono text-zinc-400">
-          Clique no equipamento para abrir telemetria e comandos
-        </span>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {eqList.map((eq) => {
-          const isSelected = selectedEquipmentId === eq.id;
-          const isRunning = eq.status === "RUNNING";
-          const isTripped = eq.status === "TRIPPED";
-
-          return (
-            <div
-              key={eq.id}
-              onClick={() => onSelect(eq.id)}
-              className={cn(
-                "p-3 rounded-lg border text-xs font-mono transition-all cursor-pointer flex flex-col justify-between",
-                isSelected
-                  ? "bg-[#1E293B] border-blue-400 shadow-md ring-1 ring-blue-400"
-                  : "bg-[#151C24] border-[#1E293B] hover:border-zinc-600 hover:bg-[#1A232E]",
-              )}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-white uppercase truncate">{eq.tag || eq.id}</span>
-                <span
-                  className={cn(
-                    "px-1.5 py-0.2 rounded text-[9px] font-bold uppercase",
-                    isRunning
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                      : isTripped
-                        ? "bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse"
-                        : "bg-zinc-800 text-zinc-400 border border-zinc-700",
-                  )}
-                >
-                  {eq.status || "STANDBY"}
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-300 truncate mb-2">{eq.name || eq.id}</p>
-              <div className="pt-2 border-t border-[#1E293B]/80 flex items-center justify-between text-[10px] text-zinc-400">
-                <span>{eq.voltageV || 380}V</span>
-                <span className="text-amber-400 font-bold">{(eq.powerKw || 0).toFixed(1)} kW</span>
-                <span className="text-cyan-400">{(eq.currentA || 0).toFixed(1)} A</span>
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );

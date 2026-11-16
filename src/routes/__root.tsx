@@ -215,7 +215,13 @@ function AuthGate() {
             <LazyTopbar />
           </Suspense>
         )}
-        <Outlet />
+        {/* Área de conteúdo: páginas que gerenciam a própria rolagem
+            (flex-1 min-h-0 overflow-auto) ficam limitadas à altura daqui; páginas
+            de altura natural rolam neste <main> em vez de serem cortadas pelo
+            overflow-hidden do shell (ex.: /settings/billing não rolava). */}
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ import { validateProject } from "@/lib/norm-validator";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
+import { buildBoundedPrompt } from "@/lib/ai/prompt-budget";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { AiPatchPreview } from "@/components/ai-patch-preview";
 import { detectFormat } from "@/lib/importer/universal-importer";
@@ -285,18 +286,32 @@ export function CanvasAiChat() {
     setBusy(true);
 
     try {
-      const activeViolationsText = findings
+      const severityRank: Record<string, number> = { error: 0, warn: 1, info: 2 };
+      const violationLines = [...findings]
+        .sort((x, y) => (severityRank[x.severity] ?? 3) - (severityRank[y.severity] ?? 3))
         .map(
           (f) =>
             `- [${isEn ? "Standard" : "Norma"} ${f.norm} - ${isEn ? "Severity" : "Gravidade"} ${f.severity.toUpperCase()}]: ${f.title}. ${isEn ? "Detail" : "Detalhe"}: ${f.detail}. ${isEn ? "Suggested Fix" : "Dica de Correção"}: ${f.fixHint || "N/A"}`,
-        )
-        .join("\n");
+        );
 
-      const contextualPrompt = activeViolationsText
-        ? isEn
-          ? `[ACTIVE ERRORS/VIOLATIONS CONTEXT ON CANVAS]:\n${activeViolationsText}\n\n[USER REQUEST]:\n${p}\n\nPlease respond suggesting electrical design improvements complying with IEC 60364, NFPA 70E, and ISA-18.2, generating a new corrected diagram if requested.`
-          : `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:\n${activeViolationsText}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${p}\n\nPor favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`
-        : p;
+      // Orçamento: o servidor rejeita prompts > 32 000 caracteres.
+      const contextualPrompt = buildBoundedPrompt(p, violationLines, (violations, request) =>
+        isEn
+          ? `[ACTIVE ERRORS/VIOLATIONS CONTEXT ON CANVAS]:
+${violations}
+
+[USER REQUEST]:
+${request}
+
+Please respond suggesting electrical design improvements complying with IEC 60364, NFPA 70E, and ISA-18.2, generating a new corrected diagram if requested.`
+          : `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:
+${violations}
+
+[SOLICITAÇÃO DO USUÁRIO]:
+${request}
+
+Por favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`,
+      );
 
       const effectivePatchMode = forcePatchMode ?? patchMode;
       if (effectivePatchMode) {

@@ -53,7 +53,7 @@ export function HardwareConfigurator({ model, onChangeModel }: HardwareConfigura
   );
 
   return (
-    <div className="flex flex-col h-full w-full bg-background text-foreground overflow-auto p-4 gap-4">
+    <div className="flex flex-col h-full w-full bg-background text-foreground overflow-auto p-4 gap-4 [&>*]:shrink-0">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
         <div>
           <h2 className="text-sm font-semibold flex items-center gap-2">

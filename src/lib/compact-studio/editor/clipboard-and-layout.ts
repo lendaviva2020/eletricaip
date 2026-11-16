@@ -88,6 +88,23 @@ function categoryFromBlockType(blockType: string, registryCategory?: string): Co
 }
 
 /**
+ * Gera um nome de instância livre no programa (`B1`, `B2`…), comparando sem
+ * diferenciar maiúsculas como o validador (`DUPLICATE_INSTANCE_NAME`). Contar
+ * por tipo de bloco gerava `B1` repetido para AND/OR/TON com o mesmo prefixo.
+ */
+export function nextUniqueInstanceName(
+  usedNames: Iterable<string>,
+  prefix: string,
+  startAt = 1,
+): string {
+  const used = new Set<string>();
+  for (const name of usedNames) used.add(name.trim().toLowerCase());
+  let n = Math.max(1, startAt);
+  while (used.has(`${prefix}${n}`.toLowerCase())) n += 1;
+  return `${prefix}${n}`;
+}
+
+/**
  * Creates a strictly typed CompactNode from the single shared BlockRegistry.
  */
 export function createCompactBlockNode(opts: {
@@ -233,6 +250,16 @@ export function pasteClipboardIntoPage(
   };
   const pastedNodeIds: string[] = [];
 
+  const usedNames = new Set(model.nodes.map((n) => n.instanceName.trim().toLowerCase()));
+  const uniqueCopyName = (base: string): string => {
+    const first = `${base}_copy`;
+    const name = usedNames.has(first.toLowerCase())
+      ? nextUniqueInstanceName(usedNames, `${base}_copy`, 2)
+      : first;
+    usedNames.add(name.toLowerCase());
+    return name;
+  };
+
   payload.nodes.forEach((n, idx) => {
     const newId = `${idPrefix}_n_${idx + 1}`;
     idMap.set(n.id, newId);
@@ -241,7 +268,7 @@ export function pasteClipboardIntoPage(
       ...n,
       id: newId,
       pageId: targetPageId,
-      instanceName: `${n.instanceName}_copy`,
+      instanceName: uniqueCopyName(n.instanceName),
     });
     const origPos = payload.layouts[n.id] ?? { x: 80, y: 80 };
     nextLayoutBucket[newId] = {

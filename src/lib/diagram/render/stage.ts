@@ -7,6 +7,11 @@
 // seleção e exclusão de condutores/arestas, simulação elétrica com
 // coloração por estado real (energizado, desenergizado, falha) e fundo cinza técnico.
 
+// CSP estrita (sem 'unsafe-eval'): o Pixi v8 gera shaders/UBO via `new Function`.
+// Este módulo oficial instala geradores estáticos e DEVE ser importado antes de
+// qualquer `app.init()` — sem ele o WebGL falha com "Current environment does not
+// allow unsafe-eval" e o canvas cai no modo somente-visualização.
+import "pixi.js/unsafe-eval";
 import { Application, Container, FederatedPointerEvent, Graphics, Text } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import type {
@@ -38,6 +43,46 @@ import { isSwitchingDevice } from "../electrical-simulation";
 const PORT_HIT_RADIUS = 7;
 const PORT_COLOR = 0x60a5fa;
 const PORT_COLOR_HOVER = 0xfbbf24;
+
+/** Espaçamento (px de mundo) entre partículas de corrente num condutor energizado. */
+const FLOW_SPACING = 22;
+/** Velocidade da corrente animada (px de mundo por segundo). */
+const FLOW_SPEED = 70;
+
+interface FlowPath {
+  points: Point[];
+  /** Comprimento acumulado ao fim de cada segmento. */
+  cumulative: number[];
+  length: number;
+  state: "on" | "fault";
+}
+
+function buildFlowPath(points: ReadonlyArray<Point>, state: "on" | "fault"): FlowPath | null {
+  if (points.length < 2) return null;
+  const cumulative: number[] = [0];
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    total += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+    cumulative.push(total);
+  }
+  if (total < 1) return null;
+  return { points: points.map((p) => ({ x: p.x, y: p.y })), cumulative, length: total, state };
+}
+
+function pointAtDistance(path: FlowPath, d: number): Point {
+  const { points, cumulative } = path;
+  for (let i = 1; i < points.length; i++) {
+    if (d <= cumulative[i]) {
+      const segLen = cumulative[i] - cumulative[i - 1] || 1;
+      const t = (d - cumulative[i - 1]) / segLen;
+      return {
+        x: points[i - 1].x + (points[i].x - points[i - 1].x) * t,
+        y: points[i - 1].y + (points[i].y - points[i - 1].y) * t,
+      };
+    }
+  }
+  return points[points.length - 1];
+}
 
 interface SegmentDragState {
   pointerId: number;
@@ -167,6 +212,12 @@ export class DiagramStage {
   viewport!: Viewport;
   private nodesLayer = new Container();
   private edgesLayer = new Container();
+  /** Camada única (não interativa) com a corrente animada dos condutores energizados. */
+  private flowLayer = new Graphics();
+  private flowPaths = new Map<string, FlowPath>();
+  private flowElapsed = 0;
+  private flowWasDrawn = false;
+  private flowTicker = () => this.tickFlow();
   private junctionsLayer = new Graphics();
   private overlayLayer = new Container();
   private nodes = new Map<string, NodeView>();
@@ -265,6 +316,8 @@ export class DiagramStage {
     });
     this.app.stage.addChild(this.viewport);
     this.viewport.addChild(this.edgesLayer);
+    this.flowLayer.eventMode = "none";
+    this.viewport.addChild(this.flowLayer);
     this.viewport.addChild(this.junctionsLayer);
     this.viewport.addChild(this.nodesLayer);
     this.viewport.addChild(this.overlayLayer);
@@ -333,6 +386,8 @@ export class DiagramStage {
     });
     this.resizeObs.observe(host);
 
+    this.app.ticker.add(this.flowTicker);
+
     this.initialized = true;
   }
 
@@ -340,6 +395,12 @@ export class DiagramStage {
     this.destroyed = true;
     this.initialized = false;
     this.resizeObs?.disconnect();
+    try {
+      this.app.ticker?.remove(this.flowTicker);
+    } catch {
+      // ticker já destruído
+    }
+    this.flowPaths.clear();
     if (this.app.renderer && this.app.canvas) {
       if (this.wheelListener) {
         this.app.canvas.removeEventListener("wheel", this.wheelListener);
@@ -363,6 +424,43 @@ export class DiagramStage {
     }
     this.nodes.clear();
     this.edges.clear();
+  }
+
+  /**
+   * Anima a corrente: partículas percorrem cada condutor energizado no sentido
+   * fonte→carga; condutores em falha pulsam em vermelho. Uma única Graphics é
+   * redesenhada por quadro — custo O(partículas visíveis), sem alocar nós Pixi.
+   */
+  private tickFlow() {
+    if (this.destroyed || !this.initialized) return;
+    if (this.flowPaths.size === 0) {
+      if (this.flowWasDrawn) {
+        this.flowLayer.clear();
+        this.flowWasDrawn = false;
+      }
+      return;
+    }
+    // Em pausa a corrente fica congelada (mantém a última posição das partículas).
+    if (this.lastEnergization?.status === "paused" && this.flowWasDrawn) return;
+    this.flowElapsed += this.app.ticker.deltaMS / 1000;
+    const g = this.flowLayer;
+    g.clear();
+    const phase = (this.flowElapsed * FLOW_SPEED) % FLOW_SPACING;
+    const pulse = 0.35 + 0.65 * Math.abs(Math.sin(this.flowElapsed * 6));
+    for (const path of this.flowPaths.values()) {
+      if (path.state === "fault") {
+        g.moveTo(path.points[0].x, path.points[0].y);
+        for (let i = 1; i < path.points.length; i++) g.lineTo(path.points[i].x, path.points[i].y);
+        g.stroke({ width: 5, color: 0xef4444, alpha: 0.25 * pulse });
+        continue;
+      }
+      for (let d = phase; d < path.length; d += FLOW_SPACING) {
+        const p = pointAtDistance(path, d);
+        g.circle(p.x, p.y, 2.6);
+      }
+      g.fill({ color: 0xfde047, alpha: 0.95 });
+    }
+    this.flowWasDrawn = true;
   }
 
   /**
@@ -611,6 +709,7 @@ export class DiagramStage {
       if (!wantEdgeIds.has(id)) {
         v.graphics.destroy();
         this.edges.delete(id);
+        this.flowPaths.delete(id);
       }
     }
 
@@ -955,6 +1054,14 @@ export class DiagramStage {
           ? "on"
           : "off"
       : "idle";
+
+    if (simFlag === "on" || simFlag === "fault") {
+      const flow = buildFlowPath(points, simFlag);
+      if (flow) this.flowPaths.set(e.id, flow);
+      else this.flowPaths.delete(e.id);
+    } else {
+      this.flowPaths.delete(e.id);
+    }
 
     const hash = computeEdgeRenderHash({
       edge: e,

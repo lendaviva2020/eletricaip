@@ -27,6 +27,7 @@ import {
   alignCompactNodes,
   copySelectionToClipboard,
   createCompactBlockNode,
+  nextUniqueInstanceName,
   createEmptyCompactHistory,
   pasteClipboardIntoPage,
   pushCompactHistory,
@@ -182,6 +183,7 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
   };
 
   const handleAddBlock = (blockType: string) => {
+    // Índice de posição na grade (independe do nome de instância).
     const count = model.nodes.filter((n) => n.blockType === blockType).length + 1;
     const prefix =
       blockType === "INPUT_DI"
@@ -198,7 +200,10 @@ export function CompactStudioWorkspace({ projectId: _projectId }: CompactStudioW
       id,
       pageId: validPageId,
       blockType,
-      instanceName: `${prefix}${count}`,
+      instanceName: nextUniqueInstanceName(
+        model.nodes.map((n) => n.instanceName),
+        prefix,
+      ),
     });
     commitModel(
       {

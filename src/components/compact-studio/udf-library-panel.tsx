@@ -5,7 +5,7 @@ import React, { useMemo, useState } from "react";
 import { Cube, Plus, Warning, DownloadSimple } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import type { CompactProgramModel, CompactUdfDefinition } from "@/lib/compact-studio/domain/types";
-import { createCompactBlockNode } from "@/lib/compact-studio/editor";
+import { createCompactBlockNode, nextUniqueInstanceName } from "@/lib/compact-studio/editor";
 import {
   createUdfDefinitionFromSubgraph,
   detectUdfCycles,
@@ -48,11 +48,15 @@ export function UdfLibraryPanel({
 
   const handleInsertInstance = (def: CompactUdfDefinition) => {
     const count = model.nodes.filter((n) => n.udfId === def.id).length + 1;
+    const instanceName = nextUniqueInstanceName(
+      model.nodes.map((n) => n.instanceName),
+      `${def.name}_`,
+    );
     const nodeId = `udf_inst_${Date.now()}`;
     const node = instantiateUdfNode(def, {
       nodeId,
       pageId: activePageId,
-      instanceName: `${def.name}_${count}`,
+      instanceName,
     });
     const fallbackNode =
       node.inputs.length === 0 && node.outputs.length === 0
@@ -60,7 +64,7 @@ export function UdfLibraryPanel({
             id: nodeId,
             pageId: activePageId,
             blockType: "AND",
-            instanceName: `${def.name}_${count}`,
+            instanceName,
           })
         : node;
 

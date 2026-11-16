@@ -863,12 +863,15 @@ export const useUnifiedProjectStore = create<UnifiedProjectStoreState>()(
       mergeEquipmentsIntoProjectStore(nextDoc);
     },
 
-    setCompactStudioProgram: (program) => {
-      if (program !== undefined) {
-        const check = parseCompactProgramModel(program);
+    setCompactStudioProgram: (rawProgram) => {
+      let program = rawProgram;
+      if (rawProgram !== undefined) {
+        const check = parseCompactProgramModel(rawProgram);
         if (!check.ok) {
           throw new Error(`COMPACT_STUDIO_SCHEMA_ERROR: ${check.errors[0] ?? "modelo inválido"}`);
         }
+        // Persiste a forma normalizada pelo schema (ex.: grade fora da faixa).
+        program = check.model as typeof rawProgram;
       }
       const nextDoc = produce(get().doc, (d) => {
         d.compactStudio = program;

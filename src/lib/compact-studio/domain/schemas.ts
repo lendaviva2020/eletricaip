@@ -62,13 +62,28 @@ export const CompactConnectionSchema = z.object({
   comment: z.string().max(500).optional(),
 });
 
+/**
+ * Dimensão de grade de página: valores numéricos fora de [4, 200] (projetos
+ * antigos, importações externas ou geração automática) são normalizados por
+ * clamp em vez de rejeitar o programa inteiro — antes isso derrubava a UI com
+ * `COMPACT_STUDIO_SCHEMA_ERROR: pages.N.gridRows: Too big`.
+ */
+const gridDimension = (fallback: number) =>
+  z
+    .preprocess(
+      (v) =>
+        typeof v === "number" && Number.isFinite(v) ? Math.min(200, Math.max(4, Math.round(v))) : v,
+      z.number().int().min(4).max(200),
+    )
+    .default(fallback);
+
 export const CompactPageSchema = z.object({
   id: z.string().min(1).max(128),
   name: z.string().min(1).max(80),
   order: z.number().int().nonnegative(),
   description: z.string().max(500).optional(),
-  gridCols: z.number().int().min(4).max(200).default(24),
-  gridRows: z.number().int().min(4).max(200).default(16),
+  gridCols: gridDimension(24),
+  gridRows: gridDimension(16),
 });
 
 export const CompactIoSymbolSchema = z.object({

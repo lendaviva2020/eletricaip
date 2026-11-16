@@ -233,7 +233,7 @@ CRUD, duplicar, arquivar, excluir (server functions com limite por plano via `pl
 
 `industrial-workspace.tsx` com modos: `unifilar | ladder | fbd | scada | twin | plc | sim | alarms`, cada um em `React.lazy` + `ErrorBoundary`.
 
-- **Unifilar/Multifilar** — `webgl-canvas.tsx` + `lib/diagram/render/stage.ts` (Pixi.js 8 + viewport): símbolos IEC, portas, conexões, marquee, snap, undo/redo (padrão de comandos), paleta (`lib/palette/component-catalog.ts`), geração de multifilar, BOM, export DXF/PDF. Persistência no snapshot `diagrams.canvas_data` (Zod `SnapshotSchema`). ✅
+- **Unifilar/Multifilar** — `webgl-canvas.tsx` + `lib/diagram/render/stage.ts` (Pixi.js 8 + viewport; importa `pixi.js/unsafe-eval` porque a CSP não tem `'unsafe-eval'` — sem ele o WebGL não inicia; corrente animada nos condutores energizados e pulso vermelho em falha via `app.ticker`): símbolos IEC, portas, conexões, marquee, snap, undo/redo (padrão de comandos), paleta (`lib/palette/component-catalog.ts`), geração de multifilar, BOM, export DXF/PDF. Persistência no snapshot `diagrams.canvas_data` (Zod `SnapshotSchema`). ✅
 - **Ladder** — `ladder-canvas.tsx` → `rung-grid.tsx`: matriz de células (XIC/XIO/OTE/OTL/OTU/TON/TOF/TP/CTU), runtime de scan puro (`scan-core.ts`, orçamento 50 ms/2000 rungs), compilação IL/ST, importação IL/ST, validador estático, verificação de E-STOP por simulação. Elementos de paleta além dos 9 executáveis (comparadores/mat/lógica) são **decorativos** (sem suporte no engine). ✅ (paleta parcial)
 - **FBD** — `fbd-canvas.tsx` (React Flow) + `lib/fbd/engine`: compilação com grafo de dependências → AST → IR tipado, EN/ENO IEC, runtime determinístico, simulação de passo fixo, forçamento de saídas, diagnósticos; ponte para SCADA (`scada-bridge.ts`). Caminho legado (`lib/fbd/{types,compiler,runtime}.ts`) ainda usado para FBD→ST no PLC. **Sem blocos customizados/fabricante no motor.** ✅
 - **PLC** — `plc-canvas.tsx` (839 linhas): hardware (catálogo S7-like), rack com validação, variáveis (I/Q/M/DB), blocos (OB/FC/FB/DB) com Monaco, compilação de Ladder/FBD → ST, export PLCopen XML. **Sem download/execução em PLC físico.** ✅ (camada de projeto)
@@ -1284,7 +1284,10 @@ O módulo SCADA SUPERVISÓRIO é um subsistema de primeira classe integrado à p
    - Sempre que o sistema estiver operando com dados virtuais/simulados, é mandatório exibir o banner amarelo/âmbar: `MODO SIMULAÇÃO — DADOS ILUSTRATIVOS, NÃO ORIGINADOS DE EQUIPAMENTO FÍSICO.`
 5. **Isolamento de Persistência**:
    - A telemetria de alta frequência (100 ms) roda no `useScadaStore` de forma desacoplada do documento do projeto para garantir zero poluição de histórico e evitar requisições repetitivas de autosave ao Supabase.
-6. **Preservação de Código e Ferramental**:
+6. **Sinótico gerado do projeto (2026-11-16)**:
+   - Em projetos reais, Visão Geral e Sinóticos Industriais usam `ProcessPlantSynoptic` (`components/scada/synoptic/process-plant-synoptic.tsx`), gerado dos equipamentos canônicos via `lib/scada/process-classifier.ts` (rosca, elevador de canecas, correia/redler, exaustor, condensador, torre, bomba, compressor, caldeira, tanque, silo, moega, misturador, moinho, secador, prensa, extrator, ciclone, filtro, trocador, válvula, motor, trafo, gerador; sensores → bolhas ISA). Classificação por tipo de catálogo + nome/TAG; manobra/proteção fica fora do sinótico. O P&ID fixo da ETE é exclusivo do projeto demo.
+   - Animação só com status RUNNING; nível de tanque/silo só com TAG de nível vinculada (sem TAG → "sem TAG de nível"). "Partir/Parar todos" atuam só no modelo virtual (`commandEquipment`, bloqueado por E-STOP).
+7. **Preservação de Código e Ferramental**:
    - O editor de telas Konva 2D e o script sandbox com Monaco Editor são integrados na Visão 10 ("Editor HMI"), preservando os componentes legados sem descarte.
 
 ---
