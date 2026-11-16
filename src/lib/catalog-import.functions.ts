@@ -5,6 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireActiveSession } from "@/integrations/supabase/auth-middleware";
+import { toSafeExternalHref } from "@/lib/security/url-safety";
 
 const numeric = z
   .union([z.number(), z.string()])
@@ -171,7 +172,8 @@ export const importCatalogBatch = createServerFn({ method: "POST" })
           rated_voltage_v: row.ratedVoltageV,
           list_price_brl: row.listPriceBRL,
           etim_class: row.etimClass,
-          datasheet_url: row.datasheetUrl,
+          // RISK-012: só http(s) sem credenciais; `javascript:` etc. é descartado na importação.
+          datasheet_url: toSafeExternalHref(row.datasheetUrl),
           certifications: row.certifications,
           specs: row.specs ?? {},
           embedding: null,

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CircleNotch } from "@phosphor-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthShell, Input } from "./login";
+import { passwordPolicyError } from "@/lib/security/password-policy";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({ meta: [{ title: "Nova senha - EletricAI" }] }),
@@ -26,7 +27,8 @@ function ResetPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) return setError("A senha precisa ter pelo menos 8 caracteres.");
+    const policyError = passwordPolicyError(password);
+    if (policyError) return setError(policyError);
     if (password !== confirm) return setError("As senhas não coincidem.");
     setError("");
     setLoading(true);

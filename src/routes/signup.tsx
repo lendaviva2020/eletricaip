@@ -4,6 +4,7 @@ import { CircleNotch } from "@phosphor-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthShell, Input, Divider, GoogleIcon } from "./login";
+import { passwordPolicyError } from "@/lib/security/password-policy";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Criar conta - EletricAI" }] }),
@@ -31,6 +32,12 @@ function SignupPage() {
     setSuccess("");
     if (!adult) {
       setError("É necessário confirmar que você tem 18 anos ou mais para criar uma conta.");
+      return;
+    }
+    // RISK-024: mesma política do reset/troca (antes o cadastro aceitava 6 caracteres).
+    const policyError = passwordPolicyError(password);
+    if (policyError) {
+      setError(policyError);
       return;
     }
     setLoading(true);
@@ -74,7 +81,7 @@ function SignupPage() {
         <Input label="Nome completo" type="text" value={name} onChange={setName} required />
         <Input label="Email corporativo" type="email" value={email} onChange={setEmail} required />
         <Input
-          label="Senha (mín. 6 caracteres)"
+          label="Senha (mín. 8, com letra e número)"
           type="password"
           value={password}
           onChange={setPassword}

@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { useI18n } from "@/lib/i18n";
+import { toSafeExternalHref } from "@/lib/security/url-safety";
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({ meta: [{ title: "Catálogo de componentes · EletricAI" }] }),
@@ -104,11 +105,12 @@ function CatalogPage() {
                   <p className="font-mono text-[11px] text-muted-foreground">{c.part_number}</p>
                   <h3 className="text-sm font-semibold">{c.commercial_name ?? c.part_number}</h3>
                 </div>
-                {c.datasheet_url && (
+                {/* RISK-012: valida também na exibição (dados antigos importados antes da correção). */}
+                {toSafeExternalHref(c.datasheet_url) && (
                   <a
-                    href={c.datasheet_url}
+                    href={toSafeExternalHref(c.datasheet_url) ?? undefined}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                   >
                     PDF <ArrowSquareOut className="w-3 h-3" />

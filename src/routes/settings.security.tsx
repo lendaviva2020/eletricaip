@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoutButton } from "@/components/auth/logout-dialog";
 import { useI18n } from "@/lib/i18n";
+import { passwordPolicyError } from "@/lib/security/password-policy";
 
 export const Route = createFileRoute("/settings/security")({
   head: () => ({ meta: [{ title: "Segurança · EletricAI" }] }),
@@ -22,7 +23,8 @@ function SecurityPage() {
   const [saving, setSaving] = useState(false);
 
   const changePw = async () => {
-    if (pw.length < 8) return toast.error("Senha deve ter ao menos 8 caracteres");
+    const policyError = passwordPolicyError(pw);
+    if (policyError) return toast.error(policyError);
     if (pw !== pw2) return toast.error("Senhas não conferem");
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password: pw });

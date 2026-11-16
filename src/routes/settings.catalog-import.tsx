@@ -100,6 +100,14 @@ function CatalogImportPage() {
     setFileName(file.name);
     importMutation.reset();
     try {
+      const { DEFAULT_SAFE_XLSX_LIMITS, sanitizeSpreadsheetRecord } =
+        await import("@/lib/security/safe-xlsx");
+      // RISK-021: limite ANTES de ler — um arquivo gigante travava a aba.
+      if (file.size > DEFAULT_SAFE_XLSX_LIMITS.maxBytes) {
+        throw new Error(
+          `Arquivo muito grande (${(file.size / 1048576).toFixed(1)} MB). Limite: ${DEFAULT_SAFE_XLSX_LIMITS.maxBytes / 1048576} MB.`,
+        );
+      }
       const isCsv = /\.csv$/i.test(file.name);
       let records: Record<string, unknown>[] = [];
       if (isCsv) {
@@ -107,8 +115,16 @@ function CatalogImportPage() {
         const result = Papa.parse<Record<string, unknown>>(text, {
           header: true,
           skipEmptyLines: true,
+          preview: DEFAULT_SAFE_XLSX_LIMITS.maxRows,
         });
-        records = result.data ?? [];
+        // Mesmas defesas do XLSX: chaves __proto__/constructor e injeção de fórmula.
+        // Colunas sem cabeçalho (vírgula final, comum em exportações) são descartadas:
+        // o saneador trata chave vazia como violação e rejeitaria um CSV legítimo.
+        records = (result.data ?? []).map((r) =>
+          sanitizeSpreadsheetRecord(
+            Object.fromEntries(Object.entries(r).filter(([k]) => k.trim() !== "")),
+          ),
+        );
       } else {
         const { safeReadXlsxWorkbook, safeSheetToJson } = await import("@/lib/security/safe-xlsx");
         const buffer = await file.arrayBuffer();

@@ -36,7 +36,7 @@ function fillFields() {
   fireEvent.change(screen.getByLabelText("Email corporativo"), {
     target: { value: "ada@exemplo.com" },
   });
-  fireEvent.change(screen.getByLabelText("Senha (mín. 6 caracteres)"), {
+  fireEvent.change(screen.getByLabelText("Senha (mín. 8, com letra e número)"), {
     target: { value: "secreta1" },
   });
 }
@@ -77,5 +77,18 @@ describe("signup · feedback entre checkbox e botão", () => {
     expect(p.className).toContain("text-success");
     expect(p.textContent).toBe("Confirme seu email para ativar a conta.");
     expect(container.querySelector("p.text-destructive")).toBeNull();
+  });
+
+  it("senha fraca (6 caracteres) é bloqueada antes de chamar o Supabase (RISK-024)", async () => {
+    const { container } = render(<SignupPage />);
+    fillFields();
+    fireEvent.change(screen.getByLabelText("Senha (mín. 8, com letra e número)"), {
+      target: { value: "abc123" },
+    });
+    fireEvent.click(screen.getByLabelText(/Confirmo que tenho 18 anos/i));
+    fireEvent.submit(container.querySelector("form")!);
+    const p = await screen.findByRole("alert");
+    expect(p.textContent).toBe("A senha precisa ter pelo menos 8 caracteres.");
+    expect(signUpMock).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { CircleNotch, ShieldCheck } from "@phosphor-icons/react";
 import { BrandBolt } from "@/components/brand-bolt";
 import { supabase } from "@/integrations/supabase/client";
+import { isSafeOAuthRedirect } from "@/lib/security/url-safety";
 
 interface OAuthClientInfo {
   name?: string;
@@ -66,7 +67,12 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     const { data, error } = await oauthApi().getAuthorizationDetails(authorizationId);
     if (error) throw new Error(error.message);
     const immediate = data?.redirect_url ?? data?.redirect_to;
-    if (immediate && !data?.client) throw redirect({ href: immediate });
+    // RISK-023: destino é externo por definição (callback do cliente OAuth), mas
+    // só https (ou http em loopback) e sem credenciais — bloqueia javascript:/data:.
+    if (immediate && !data?.client) {
+      if (!isSafeOAuthRedirect(immediate)) throw new Error("Endereço de retorno OAuth inválido.");
+      throw redirect({ href: immediate });
+    }
     return data;
   },
   head: () => ({ meta: [{ title: "Autorizar aplicativo - EletricAI" }] }),
@@ -108,6 +114,11 @@ function ConsentPage() {
       if (!target) {
         setBusy(null);
         setError("O servidor de autorização não retornou um endereço de retorno.");
+        return;
+      }
+      if (!isSafeOAuthRedirect(target)) {
+        setBusy(null);
+        setError("O servidor de autorização retornou um endereço de retorno inválido.");
         return;
       }
       window.location.href = target;
