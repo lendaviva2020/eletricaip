@@ -445,6 +445,9 @@ export const en: TranslationCatalog = {
     confirmDelete: 'Permanently delete "{name}"?\n\nThis action cannot be undone.',
   },
   bom: {
+    exportXlsx: "Export Excel",
+    exporting: "Generating…",
+    exportFailed: "Could not generate the spreadsheet.",
     title: "Bill of Materials (BOM)",
     backToProjects: "Projects",
     estimatedTotal: "Estimated total:",

@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash, MagicWand, MagnifyingGlass } from "@phosphor-icons/react";
+import { ArrowLeft, FileXls, Plus, Trash, MagicWand, MagnifyingGlass } from "@phosphor-icons/react";
 import {
   listBom,
   addBomItem,
@@ -16,6 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import { formatCurrency } from "@/lib/i18n/format";
+import { useCurrentProject } from "@/lib/current-project";
+import {
+  buildBomWorkbook,
+  safeReportFileName,
+  type BomExportItem,
+} from "@/lib/reports/xlsx-export";
 
 export const Route = createFileRoute("/projects/$projectId/bom")({
   head: () => ({ meta: [{ title: "BOM · EletricAI" }] }),
@@ -35,6 +41,8 @@ function BomPage() {
 
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const currentProject = useCurrentProject((st) => st.project);
 
   const { data, isLoading } = useQuery({
     queryKey: ["bom", projectId],
@@ -129,6 +137,35 @@ function BomPage() {
     }
   }
 
+  const handleExportXlsx = async () => {
+    const items = (data?.items ?? []) as BomExportItem[];
+    if (items.length === 0) return;
+    setExporting(true);
+    try {
+      const projectName =
+        currentProject?.id === projectId ? currentProject.name : `projeto-${projectId.slice(0, 8)}`;
+      const blob = await buildBomWorkbook(items, {
+        projectName,
+        generatedAtIso: new Date().toISOString(),
+        locale: locale === "en" ? "en" : "pt-BR",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = safeReportFileName(projectName, "BOM");
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Libera a memória do blob após o navegador iniciar o download.
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch (err) {
+      console.error("[BOM] exportação Excel falhou:", err);
+      toast.error(t("bom.exportFailed"));
+    } finally {
+      setExporting(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-background text-foreground p-6 max-w-6xl mx-auto">
       <Link
@@ -148,7 +185,17 @@ function BomPage() {
             · {t("bom.itemsCount", { count: data?.items?.length ?? 0 })}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportXlsx}
+            disabled={exporting || (data?.items?.length ?? 0) === 0}
+            data-testid="bom-export-xlsx"
+          >
+            <FileXls className="w-4 h-4 mr-1" />
+            {exporting ? t("bom.exporting") : t("bom.exportXlsx")}
+          </Button>
           <Button size="sm" variant="outline" onClick={handleAddManual}>
             <Plus className="w-4 h-4 mr-1" /> {t("bom.addManual")}
           </Button>

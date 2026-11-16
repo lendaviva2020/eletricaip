@@ -444,6 +444,9 @@ export const ptBR = {
     confirmDelete: 'Excluir permanentemente "{name}"?\n\nEsta ação não pode ser desfeita.',
   },
   bom: {
+    exportXlsx: "Exportar Excel",
+    exporting: "Gerando…",
+    exportFailed: "Não foi possível gerar a planilha.",
     title: "Lista de Materiais (BOM)",
     backToProjects: "Projetos",
     estimatedTotal: "Total estimado:",
