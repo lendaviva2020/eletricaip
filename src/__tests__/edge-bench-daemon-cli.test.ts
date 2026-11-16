@@ -141,26 +141,42 @@ describe("GATE 3.3A — Standalone Linux Daemon CLI, Configuration & System Life
     });
   });
 
-  describe("3. Binary Integrity Verification", () => {
-    it("valida integridade dos artefatos compilados no diretório dist-edge/", () => {
-      const distDir = path.resolve(process.cwd(), "dist-edge");
-      expect(fs.existsSync(distDir)).toBe(true);
+  describe("3. Build Integrity Verification", () => {
+    // Antes: exigia binários de release de 70 MB em dist-edge/, que só existem
+    // depois de `bun run build:edge:all` — falhava em toda máquina de dev e no
+    // CI. Agora o teste COMPILA o daemon de verdade (esbuild, ~1 s) e valida o
+    // pacote; a checagem dos binários de release roda no pipeline de release
+    // (`bun run verify:edge`, scripts/verify-edge-artifacts.mjs).
+    it("o daemon compila em um pacote Node autocontido e válido", async () => {
+      const { build } = await import("esbuild");
+      const result = await build({
+        entryPoints: [path.resolve(process.cwd(), "src/edge-daemon/index.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        write: false,
+        logLevel: "silent",
+        alias: { "@": path.resolve(process.cwd(), "src") },
+      });
+      expect(result.errors).toEqual([]);
+      const code = result.outputFiles[0].text;
+      expect(code.length).toBeGreaterThan(50 * 1024);
+      // segredos de laboratório nunca podem entrar no artefato distribuído
+      expect(code).not.toMatch(
+        /egw_token_lab_ete_secret_123|SECRET_ELETRICAI_PRIVATE_RELEASE_SIGNER/,
+      );
+    }, 60_000);
 
-      const linuxX64 = path.join(distDir, "eletricai-edge-daemon-linux-x64");
-      const linuxArm64 = path.join(distDir, "eletricai-edge-daemon-linux-arm64");
-      const jsBundle = path.join(distDir, "eletricai-edge-daemon.js");
-
-      expect(fs.existsSync(linuxX64)).toBe(true);
-      expect(fs.existsSync(linuxArm64)).toBe(true);
-      expect(fs.existsSync(jsBundle)).toBe(true);
-
-      const statX64 = fs.statSync(linuxX64);
-      const statArm64 = fs.statSync(linuxArm64);
-      const statJs = fs.statSync(jsBundle);
-
-      expect(statX64.size).toBeGreaterThan(70 * 1024 * 1024); // Standalone binary with embedded runtime
-      expect(statArm64.size).toBeGreaterThan(70 * 1024 * 1024);
-      expect(statJs.size).toBeGreaterThan(50 * 1024); // JS bundle >50KB
+    it("o pipeline de release verifica os binários compilados", () => {
+      const pkg = JSON.parse(
+        fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf8"),
+      ) as {
+        scripts: Record<string, string>;
+      };
+      expect(pkg.scripts["verify:edge"]).toContain("verify-edge-artifacts");
+      expect(fs.existsSync(path.resolve(process.cwd(), "scripts/verify-edge-artifacts.mjs"))).toBe(
+        true,
+      );
     });
   });
 });
