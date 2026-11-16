@@ -2,13 +2,14 @@
 // Cada função desenha em coordenadas locais (origem no centro do símbolo).
 // Cor única (currentColor) — overlays/labels via HTML.
 import { Graphics } from "pixi.js";
+import { CANVAS_PALETTE } from "./palette";
 import type { NodeKind } from "../schema";
 
 export const SYMBOL_SIZE = 56; // grid lógico
 
 type Draw = (g: Graphics) => void;
 
-const stroke = (g: Graphics) => g.stroke({ width: 1.5, color: 0x1e293b });
+const stroke = (g: Graphics) => g.stroke({ width: 1.6, color: CANVAS_PALETTE.symbol });
 
 const breaker: Draw = (g) => {
   // Disjuntor IEC 60617 vertical/bidirecional com terminais de contato
@@ -227,7 +228,7 @@ const softstarter: Draw = (g) => {
 const busbar: Draw = (g) => {
   // Barramento de distribuição trifásico principal (como linha horizontal grossa na imagem)
   g.moveTo(-60, 0).lineTo(60, 0);
-  g.stroke({ width: 5.5, color: 0x1e293b });
+  g.stroke({ width: 5.5, color: CANVAS_PALETTE.symbol });
 };
 
 const ccm: Draw = (g) => {

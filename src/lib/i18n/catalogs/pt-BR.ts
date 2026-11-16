@@ -914,6 +914,14 @@ export const ptBR = {
     disclaimer:
       "Ferramenta de apoio ao projeto. Não substitui a responsabilidade técnica (ART/TRT) nem a verificação do engenheiro habilitado.",
   },
+  canvasHint: {
+    shiftDrag: "Shift+arraste",
+    marquee: "seleção em área",
+    port: "Porta",
+    connect: "ligação",
+    rotate: "rotaciona",
+    delete: "apaga",
+  },
   sidebarSearch: {
     noResults: "Nenhum resultado para a busca.",
   },

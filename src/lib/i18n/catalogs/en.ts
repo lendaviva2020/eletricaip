@@ -910,6 +910,14 @@ export const en: TranslationCatalog = {
     disclaimer:
       "Design support tool. It does not replace professional responsibility or verification by a licensed engineer.",
   },
+  canvasHint: {
+    shiftDrag: "Shift+drag",
+    marquee: "area selection",
+    port: "Port",
+    connect: "connect",
+    rotate: "rotate",
+    delete: "delete",
+  },
   sidebarSearch: {
     noResults: "No results for this search.",
   },

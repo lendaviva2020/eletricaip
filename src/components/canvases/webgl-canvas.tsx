@@ -240,6 +240,9 @@ interface Props {
   projectId?: string | null;
 }
 
+/** Console recolhido automaticamente no celular só na primeira abertura da sessão. */
+let mobileConsoleAutoCollapsed = false;
+
 export function WebglCanvas({ sheet, projectId }: Props) {
   const { t } = useI18n();
   const listBomFn = useServerFn(listBom);
@@ -270,6 +273,16 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const simulationCycle = useEditorStore((s) => s.simulationCycle);
   const deviceStates = useEditorStore((s) => s.deviceStates);
   const toggleDeviceState = useEditorStore((s) => s.toggleDeviceState);
+
+  // Celular: o console inferior ocupava ~metade da tela e espremia o canvas.
+  // Recolhe UMA vez por sessão; se o usuário abrir, a escolha dele vale.
+  useEffect(() => {
+    if (mobileConsoleAutoCollapsed || typeof window === "undefined") return;
+    mobileConsoleAutoCollapsed = true;
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      useEditorStore.getState().setConsoleOpen(false);
+    }
+  }, []);
   const resetSimulationState = useEditorStore((s) => s.resetSimulationState);
   const emergencyLatched = useSafetyStore((s) => s.emergencyLatched);
   const triggerEmergency = useSafetyStore((s) => s.triggerEmergency);
@@ -1218,8 +1231,8 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         </div>
       </div>
 
-      {/* 2. ÁREA CENTRAL DO CANVAS PIXI.JS (Fundo Cinza Técnico #F0F2F3) */}
-      <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-[#F0F2F3]">
+      {/* 2. ÁREA CENTRAL DO CANVAS PIXI.JS (tema escuro técnico — ver render/palette.ts) */}
+      <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-[#0b1220]">
         <div ref={hostRef} className="absolute inset-0" />
 
         {/* Toolbar flutuante de apoio à direita */}
@@ -1248,11 +1261,13 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         </div>
 
         {/* Legenda de atalhos rápidos industrial */}
-        <div className="absolute bottom-3 right-3 z-10 rounded-md border border-border/40 bg-[#0e1626]/95 px-3 py-1 text-[11px] font-mono text-muted-foreground shadow-sm">
-          <span className="text-[#38bdf8]">Shift+arraste:</span> seleção em área ·{" "}
-          <span className="text-[#38bdf8]">Porta:</span> ligação ·{" "}
-          <span className="text-[#38bdf8]">R:</span> rotaciona ·{" "}
-          <span className="text-[#38bdf8]">Del:</span> apaga
+        {/* Atalhos de teclado/mouse: inúteis no toque e cobriam o desenho no celular. */}
+        <div className="absolute bottom-3 right-3 z-10 hidden rounded-md border border-border/40 bg-[#0e1626]/95 px-3 py-1 text-[11px] font-mono text-muted-foreground shadow-sm md:block">
+          <span className="text-[#38bdf8]">{t("canvasHint.shiftDrag")}:</span>{" "}
+          {t("canvasHint.marquee")} ·{" "}
+          <span className="text-[#38bdf8]">{t("canvasHint.port")}:</span> {t("canvasHint.connect")}{" "}
+          · <span className="text-[#38bdf8]">R:</span> {t("canvasHint.rotate")} ·{" "}
+          <span className="text-[#38bdf8]">Del:</span> {t("canvasHint.delete")}
         </div>
 
         <ContextMenu onClose={closeContextMenu} hostRef={hostRef} />

@@ -18,6 +18,7 @@ import type {
   SheetKind,
 } from "../schema";
 import { drawSymbol } from "./symbols";
+import { CANVAS_PALETTE, conductorColor } from "./palette";
 import { CONDUCTOR_LABELS } from "../multifilar";
 import { getPorts, resolveVisualPort, rotatePort, type PortDef } from "./ports";
 import {
@@ -36,8 +37,11 @@ import type { CircuitEnergizationState } from "../electrical-simulation";
 import { isSwitchingDevice } from "../electrical-simulation";
 
 const PORT_HIT_RADIUS = 7;
-const PORT_COLOR = 0x60a5fa;
-const PORT_COLOR_HOVER = 0xfbbf24;
+/** Largura abaixo da qual o enquadramento prioriza legibilidade (celular). */
+const MOBILE_BREAKPOINT_PX = 640;
+const MOBILE_MIN_FIT_SCALE = 0.45;
+const PORT_COLOR = CANVAS_PALETTE.port;
+const PORT_COLOR_HOVER = CANVAS_PALETTE.portHover;
 
 interface SegmentDragState {
   pointerId: number;
@@ -165,7 +169,7 @@ export class DiagramStage {
     const targetResolution = Math.max(dpr, 2);
 
     await this.app.init({
-      background: 0xf0f2f3,
+      background: CANVAS_PALETTE.background,
       antialias: true,
       resolution: targetResolution,
       autoDensity: true,
@@ -238,21 +242,58 @@ export class DiagramStage {
     };
     this.app.canvas.addEventListener("wheel", this.wheelListener, { passive: false });
 
-    this.resizeObs = new ResizeObserver(() => {
-      if (this.destroyed || !this.viewport) return;
-      const w = host.clientWidth;
-      const h = host.clientHeight;
-      if (w && h) this.viewport.resize(w, h, 20000, 20000);
-    });
+    // O ResizePlugin do Pixi (`resizeTo`) só reage ao `resize` da JANELA. No
+    // celular a área do canvas costuma nascer com altura 0 e crescer quando o
+    // layout termina (barras, dock, painéis) sem a janela mudar: o buffer
+    // ficava com o tamanho de fallback e o desenho saía esmagado/em branco.
+    // Aqui o renderer acompanha o TAMANHO REAL do contêiner, e o primeiro
+    // tamanho válido refaz o enquadramento que foi calculado às cegas.
+    this.resizeObs = new ResizeObserver(() => this.syncSizeToHost());
     this.resizeObs.observe(host);
+    window.addEventListener("orientationchange", this.onOrientationChange);
 
     this.initialized = true;
+    this.syncSizeToHost();
+  }
+
+  private onOrientationChange = () => {
+    // Alguns navegadores móveis só reportam o novo tamanho após a rotação.
+    requestAnimationFrame(() => this.syncSizeToHost(true));
+  };
+
+  /** Tamanho efetivo do contêiner, ou null enquanto ele ainda não tem área. */
+  private hostSize(): { w: number; h: number } | null {
+    const w = this.host?.clientWidth ?? 0;
+    const h = this.host?.clientHeight ?? 0;
+    return w > 0 && h > 0 ? { w, h } : null;
+  }
+
+  /** Último enquadramento foi feito sem o tamanho real do contêiner. */
+  private fitPendingRealSize = false;
+  private lastSize = { w: 0, h: 0 };
+
+  private syncSizeToHost(forceFit = false) {
+    if (this.destroyed || !this.viewport || !this.app.renderer) return;
+    const size = this.hostSize();
+    if (!size) return;
+    const changed = size.w !== this.lastSize.w || size.h !== this.lastSize.h;
+    if (!changed && !forceFit) return;
+    this.lastSize = size;
+    this.app.renderer.resize(size.w, size.h);
+    this.viewport.resize(size.w, size.h, 20000, 20000);
+    if (this.fitPendingRealSize || forceFit) {
+      this.fitPendingRealSize = false;
+      this.fitView(undefined, { recordHistory: false });
+    }
   }
 
   destroy() {
     this.destroyed = true;
     this.initialized = false;
     this.resizeObs?.disconnect();
+    if (typeof window !== "undefined") {
+      window.removeEventListener("orientationchange", this.onOrientationChange);
+    }
     if (this.wheelListener && this.app.renderer && this.app.canvas) {
       this.app.canvas.removeEventListener("wheel", this.wheelListener);
     }
@@ -291,7 +332,7 @@ export class DiagramStage {
         grid.moveTo(min, y).lineTo(max, y);
       }
     }
-    grid.stroke({ width: 0.8, color: 0xe1e5e9, alpha: 0.9 });
+    grid.stroke({ width: 0.8, color: CANVAS_PALETTE.gridMinor, alpha: 0.9 });
 
     // Grade principal (100px)
     for (let x = min; x <= max; x += 100) {
@@ -300,7 +341,7 @@ export class DiagramStage {
     for (let y = min; y <= max; y += 100) {
       grid.moveTo(min, y).lineTo(max, y);
     }
-    grid.stroke({ width: 1.2, color: 0xcbd3da, alpha: 1.0 });
+    grid.stroke({ width: 1.2, color: CANVAS_PALETTE.gridMajor, alpha: 1.0 });
 
     this.viewport.addChildAt(grid, 0);
   }
@@ -365,6 +406,15 @@ export class DiagramStage {
       return;
     }
 
+    // Sem área real ainda (layout montando): enquadra com o fallback e marca
+    // para refazer assim que o contêiner tiver tamanho (syncSizeToHost).
+    const real = this.hostSize();
+    this.fitPendingRealSize = !real;
+    if (real && (real.w !== this.viewport.screenWidth || real.h !== this.viewport.screenHeight)) {
+      this.lastSize = real;
+      this.app.renderer.resize(real.w, real.h);
+      this.viewport.resize(real.w, real.h, 20000, 20000);
+    }
     const screenW = Math.max(240, this.viewport.screenWidth || 800);
     const screenH = Math.max(200, this.viewport.screenHeight || 600);
     const padPx =
@@ -380,6 +430,14 @@ export class DiagramStage {
     if (!Number.isFinite(scale) || scale <= 0) scale = 1;
     // Permite diagramas grandes reduzirem o suficiente para caberem inteiros e pequenos crescerem até 1.5x
     scale = Math.max(0.12, Math.min(scale, 1.5));
+    // Tela estreita (celular): enquadrar uma planta inteira deixa símbolos e
+    // rótulos ilegíveis. Garante escala mínima legível; o usuário arrasta
+    // lateralmente para ver o restante (gesto natural no toque).
+    // Critério é a largura do APARELHO, não da coluna do canvas (no PC a coluna
+    // fica estreita por causa das barras laterais e o desenho deve caber inteiro).
+    const isPhoneViewport =
+      typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT_PX;
+    if (isPhoneViewport) scale = Math.max(scale, MOBILE_MIN_FIT_SCALE);
 
     this.viewport.setZoom(scale, true);
     this.viewport.moveCenter(bounds.centerX, bounds.centerY);
@@ -550,7 +608,7 @@ export class DiagramStage {
       const label = new Text({
         text: n.label || n.params.kind,
         style: {
-          fill: 0x0f172a,
+          fill: CANVAS_PALETTE.label,
           fontSize: 11.5,
           fontFamily: "system-ui, -apple-system, sans-serif",
           fontWeight: "600",
@@ -596,13 +654,13 @@ export class DiagramStage {
         if (isOpen) {
           view.deviceStatusBadge
             .rect(-16, -26, 32, 12)
-            .fill({ color: 0xef4444, alpha: 0.9 })
-            .stroke({ width: 1, color: 0xb91c1c });
+            .fill({ color: CANVAS_PALETTE.badgeOff, alpha: 0.9 })
+            .stroke({ width: 1, color: CANVAS_PALETTE.badgeOffStroke });
         } else {
           view.deviceStatusBadge
             .rect(-16, -26, 32, 12)
-            .fill({ color: 0x10b981, alpha: 0.9 })
-            .stroke({ width: 1, color: 0x047857 });
+            .fill({ color: CANVAS_PALETTE.badgeOn, alpha: 0.9 })
+            .stroke({ width: 1, color: CANVAS_PALETTE.badgeOnStroke });
         }
       }
     }
@@ -627,7 +685,9 @@ export class DiagramStage {
         g = new Graphics();
         g.eventMode = "static";
         g.cursor = "crosshair";
-        g.circle(0, 0, 4.5).fill({ color: PORT_COLOR }).stroke({ width: 1.2, color: 0x1e293b });
+        g.circle(0, 0, 4.5)
+          .fill({ color: PORT_COLOR })
+          .stroke({ width: 1.2, color: CANVAS_PALETTE.portStroke });
         g.hitArea = {
           contains: (x: number, y: number) => x * x + y * y <= PORT_HIT_RADIUS * PORT_HIT_RADIUS,
         };
@@ -648,9 +708,11 @@ export class DiagramStage {
       const w = view.kind === "busbar" ? 66 : 32;
       const h = view.kind === "busbar" ? 14 : 26;
       // Moldura interna translúcida ciano
-      view.selection.rect(-w, -h, w * 2, h * 2).stroke({ width: 1.5, color: 0x38bdf8, alpha: 0.8 });
+      view.selection
+        .rect(-w, -h, w * 2, h * 2)
+        .stroke({ width: 1.5, color: CANVAS_PALETTE.selection, alpha: 0.8 });
 
-      // Alças de canto industriais em laranja elétrico (#F97316)
+      // Alças de canto na cor de seleção (ciano: não se confunde com o âmbar dos símbolos)
       const cLen = 7;
       view.selection
         .moveTo(-w - 2, -h + cLen)
@@ -665,7 +727,7 @@ export class DiagramStage {
         .moveTo(w - cLen, h + 2)
         .lineTo(w + 2, h + 2)
         .lineTo(w + 2, h - cLen)
-        .stroke({ width: 2.5, color: 0xf97316 });
+        .stroke({ width: 2.5, color: CANVAS_PALETTE.selection });
     }
   }
 
@@ -771,12 +833,12 @@ export class DiagramStage {
 
     this.junctionsLayer.clear();
     const isSimRunning = energization && energization.status !== "stopped";
-    const defaultDotColor = isSimRunning ? 0x10b981 : 0x1e293b;
+    const defaultDotColor = isSimRunning ? CANVAS_PALETTE.wireEnergized : CANVAS_PALETTE.junction;
     for (const j of junctions) {
       this.junctionsLayer
         .circle(j.x, j.y, 4)
         .fill({ color: defaultDotColor })
-        .stroke({ width: 1, color: 0xf0f2f3 });
+        .stroke({ width: 1, color: CANVAS_PALETTE.background });
     }
 
     for (const plan of edgePlans) {
@@ -869,19 +931,19 @@ export class DiagramStage {
     if (existing) existing.graphics.destroy({ children: true });
 
     // Determina cor do condutor
-    let strokeColor = 0x334155; // Padrão grafite escuro em repouso
+    let strokeColor: number = CANVAS_PALETTE.wire; // condutor em repouso
     if (isSelected) {
-      strokeColor = 0xf97316; // Laranja industrial quando selecionado
+      strokeColor = CANVAS_PALETTE.selection;
     } else if (isSimRunning) {
       if (energization.faultEdgeIds.has(e.id)) {
-        strokeColor = 0xef4444; // Vermelho em falha
+        strokeColor = CANVAS_PALETTE.wireFault;
       } else if (energization.energizedEdgeIds.has(e.id)) {
-        strokeColor = 0x10b981; // Verde elétrico vivo quando energizado
+        strokeColor = CANVAS_PALETTE.wireEnergized;
       } else {
-        strokeColor = 0x64748b; // Cinza neutro sem energização
+        strokeColor = CANVAS_PALETTE.wireDeenergized;
       }
     } else if (e.kind === "signal") {
-      strokeColor = 0xf97316;
+      strokeColor = CANVAS_PALETTE.neutral; // comando/sinal tracejado visualmente distinto da potência
     }
 
     // Multifilar: N condutores paralelos (renderizado EXCLUSIVAMENTE na folha multifilar)
@@ -899,7 +961,7 @@ export class DiagramStage {
         const offset = (i - (total - 1) / 2) * spacing;
         let cColor = strokeColor;
         if (!isSelected && !isSimRunning) {
-          cColor = label === "N" ? 0x0284c7 : label === "PE" ? 0x15803d : 0x334155;
+          cColor = conductorColor(label);
         }
 
         const shifted = points.map((pt, idx) => {
@@ -1002,8 +1064,8 @@ export class DiagramStage {
         handle.cursor = isHoriz ? "ns-resize" : "ew-resize";
         handle
           .rect(-4.5, -4.5, 9, 9)
-          .fill({ color: 0xf97316 })
-          .stroke({ width: 1, color: 0xffffff });
+          .fill({ color: CANVAS_PALETTE.selection })
+          .stroke({ width: 1, color: CANVAS_PALETTE.background });
         handle.position.set(hx, hy);
         const segIdx = i;
         const orientation: "H" | "V" = isHoriz ? "H" : "V";
@@ -1200,12 +1262,12 @@ export class DiagramStage {
         for (let i = 1; i < previewPts.length; i++) {
           this.draft.preview.lineTo(previewPts[i].x, previewPts[i].y);
         }
-        this.draft.preview.stroke({ width: 1.8, color: 0xf59e0b, alpha: 0.9 });
+        this.draft.preview.stroke({ width: 1.8, color: CANVAS_PALETTE.draft, alpha: 0.9 });
       }
       if (this.draft.hoverTarget) {
         this.draft.preview
           .circle(targetPt.x, targetPt.y, 6)
-          .stroke({ width: 1.8, color: 0x0284c7 });
+          .stroke({ width: 1.8, color: CANVAS_PALETTE.draftSnap });
       }
       return;
     }
@@ -1219,8 +1281,8 @@ export class DiagramStage {
       this.marquee.rect.clear();
       this.marquee.rect
         .rect(x, y, w, h)
-        .fill({ color: 0x0284c7, alpha: 0.08 })
-        .stroke({ width: 1, color: 0x0284c7, alpha: 0.8 });
+        .fill({ color: CANVAS_PALETTE.marquee, alpha: 0.08 })
+        .stroke({ width: 1, color: CANVAS_PALETTE.marquee, alpha: 0.8 });
     }
   }
 
