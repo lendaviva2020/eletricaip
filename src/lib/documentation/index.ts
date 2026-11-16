@@ -1,5 +1,5 @@
 /**
- * Pacote de documentação de painel (padrão EPLAN / PC|SCHEMATIC) derivado do
+ * Documentação EletricAI: pacote de documentação de painel derivado do
  * modelo canônico: identificação de equipamentos, referência cruzada,
  * numeração de fios, régua de bornes, lista de cabos e verificação.
  */

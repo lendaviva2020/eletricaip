@@ -1,5 +1,5 @@
 /**
- * Identificação de equipamentos no padrão EPLAN / IEC 81346.
+ * Identificação de equipamentos — IEC 81346 (Documentação EletricAI).
  *
  * Designação completa: `=PLANTA+LOCAL-TAG` (ex.: `=ETE+QGBT-K3`):
  * - `=` aspecto funcional (planta/instalação);
@@ -7,7 +7,7 @@
  * - `-` aspecto de produto (o equipamento).
  *
  * Letras de classe conforme IEC 81346-2:2009 (a convenção de letra única
- * usada por padrão no EPLAN IEC e no mercado brasileiro). As tags que o
+ * usual no mercado brasileiro). As tags que o
  * usuário digitou NUNCA são renomeadas: só sugerimos tag para quem não tem
  * uma tag válida e apontamos duplicidades.
  */

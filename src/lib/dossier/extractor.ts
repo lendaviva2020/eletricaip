@@ -137,7 +137,7 @@ export function extractCanvasData(input: {
     }
   }
 
-  // 4–5. Fiação, régua de bornes e cabos no padrão EPLAN (motor puro em
+  // 4–5. Fiação, régua de bornes e cabos da documentação de painel EletricAI (motor puro em
   // `@/lib/documentation`): terminais REAIS de cada equipamento, numeração por
   // potencial, bornes só na fronteira painel ↔ campo. Seção/comprimento
   // ausentes viram pendência — nada de 2,5 mm² / 15 m presumidos.

@@ -85,8 +85,8 @@ export const EngineeringStudio: React.FC<EngineeringStudioProps> = ({ projectId 
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-xs tracking-wide text-zinc-100 flex items-center gap-1.5">
-              ELÉTRICAI INDUSTRIAL OS <span className="text-zinc-500 font-normal">|</span> CODESYS
-              PARITY STUDIO
+              ELÉTRICAI INDUSTRIAL OS <span className="text-zinc-500 font-normal">|</span> STUDIO
+              IEC 61131-3
             </span>
             <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-2">
               <span>

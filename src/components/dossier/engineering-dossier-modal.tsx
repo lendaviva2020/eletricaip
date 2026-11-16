@@ -889,8 +889,8 @@ export function EngineeringDossierModal({
                       <Cpu className="h-6 w-6 text-accent-foreground mb-2" />
                       <h4 className="font-semibold text-sm">PLCopen XML (TC6-0201)</h4>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Formato padrão IEC 61131-3 para importação no Siemens TIA Portal, CODESYS,
-                        Beckhoff TwinCAT e Rockwell.
+                        Formato padrão IEC 61131-3 (PLCopen XML), importável nas ferramentas de
+                        programação de CLP compatíveis com a norma.
                       </p>
                     </div>
                     <Button

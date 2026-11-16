@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Controller Fleet Management & Controller Shadow Engine
- * Paridade com as capacidades do CODESYS Automation Server:
+ * Studio IEC EletricAI — gestão de frota de controladores:
  * Inventário de controladores, sincronismo de estado runtime (Shadow),
  * detecção de desvio de versão (Drift) e controle de acesso granular (RBAC).
  */

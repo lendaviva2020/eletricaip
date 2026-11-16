@@ -13,7 +13,7 @@ type Cell = string | number | boolean | null | undefined;
  * Excel (CSV/Formula Injection — OWASP). Números continuam números.
  */
 /**
- * Designação EPLAN estrita (`-Q1`, `=ETE+QGBT-K3`): só letras, dígitos, `_` e
+ * Designação IEC 81346 estrita (`-Q1`, `=ETE+QGBT-K3`): só letras, dígitos, `_` e
  * `.` entre os prefixos de aspecto. Sem `(`, `|`, aspas ou `!` não há chamada
  * de função, DDE nem link externo — e a célula do .xlsx é gravada como TEXTO
  * (tipo "s"), que o Excel não avalia. Exibimos sem o apóstrofo que estragaria
@@ -142,7 +142,7 @@ export function buildDossierExcelWorkbook(dossier: CompleteEngineeringDossier): 
   const wsCalc = sheet(calcRows);
   XLSX.utils.book_append_sheet(wb, wsCalc, "Memória de Cálculo");
 
-  // ── Abas EPLAN: dispositivos, cabos, referência cruzada, verificação ────
+  // ── Abas de documentação de painel: dispositivos, cabos, referência cruzada, verificação ────
   const doc = dossier.panelDocumentation;
   if (doc) {
     XLSX.utils.book_append_sheet(

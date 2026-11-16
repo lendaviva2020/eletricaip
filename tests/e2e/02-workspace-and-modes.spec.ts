@@ -59,7 +59,7 @@ test.describe("Phase 2: Industrial Workspace & Modes Testing", () => {
       { name: "SCADA", selector: 'button:has-text("SCADA"), [data-mode="scada"]' },
       {
         name: "Studio",
-        selector: 'button:has-text("Studio"), button:has-text("CODESYS"), [data-mode="studio"]',
+        selector: 'button:has-text("Studio"), [data-mode="studio"]',
       },
     ];
 

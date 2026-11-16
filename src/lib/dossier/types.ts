@@ -325,7 +325,7 @@ export interface CompleteEngineeringDossier {
   bom: BomItem[];
   conductorsSchedule: ConductorScheduleRow[];
   terminalsSchedule: TerminalBlockTerminal[];
-  /** Documentação de painel padrão EPLAN (identificação, cabos, referência cruzada, verificação). */
+  /** Documentação de painel EletricAI (identificação, cabos, referência cruzada, verificação). */
   panelDocumentation?: PanelDocumentation;
   plcProgram: PlcProgramDoc;
 

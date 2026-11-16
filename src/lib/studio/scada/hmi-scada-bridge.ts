@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Deep HMI, SCADA, ISA-18.2 Alarms & Recipe Engine
- * Paridade funcional ao CODESYS Visualization, Alarm Manager e Recipe Management.
+ * Studio IEC EletricAI — visualização, gerenciador de alarmes e receitas.
  *
  * Regra de Segurança:
  * IS_PHYSICAL_CONTROL_ALLOWED = false

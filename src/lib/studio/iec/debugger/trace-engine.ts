@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Trace Oscilloscope Engine
- * Paridade com o Trace Manager do CODESYS V3.5:
+ * Studio IEC EletricAI — gerenciador de trace:
  * Aquisição multicanal com amostragem em tempo real, disparo por gatilhos (Triggers)
  * e buffer circular para diagnóstico de transitórios rápidos.
  */

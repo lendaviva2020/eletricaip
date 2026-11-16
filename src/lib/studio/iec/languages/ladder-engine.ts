@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Ladder Diagram (LD) Engine & IR Translation
- * Paridade com o editor e executor gráfico de Ladder IEC 61131-3 do CODESYS.
+ * Studio IEC EletricAI — editor e executor gráfico de Ladder IEC 61131-3.
  */
 
 import { LadderRung, LadderElement, POU } from "../../canonical/types";

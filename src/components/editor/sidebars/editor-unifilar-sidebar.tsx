@@ -1,4 +1,4 @@
-import { EplanDocPanel } from "./eplan-doc-panel";
+import { EletricaiDocPanel } from "./eletricai-doc-panel";
 import { useState, useMemo, useCallback } from "react";
 import {
   Cube,
@@ -450,7 +450,7 @@ export function EditorUnifilarSidebar() {
 
       {/* Lista de Categorias com acordeom e cards profissionais */}
       <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-thin">
-        <EplanDocPanel />
+        <EletricaiDocPanel />
 
         {/* Categoria 1: Alimentação & Fontes */}
         <LibraryAccordion

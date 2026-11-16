@@ -51,7 +51,7 @@ export class CanonicalProjectService {
       projectId: projId,
       name: "PLC_Main",
       vendor: "CODESYS_VIRTUAL",
-      model: "CODESYS Control Win V3 x64",
+      model: "Controlador virtual IEC 61131-3 (x64)",
       ipAddress: "127.0.0.1",
       firmwareVersion: "3.5.20.0",
       rackModules: [

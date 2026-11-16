@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Industrial Communication & Protocol Engine
- * Paridade funcional aos drivers de barramento de campo do CODESYS V3.5:
+ * Studio IEC EletricAI — drivers de barramento de campo:
  * Modbus TCP/RTU com validação de frames PDU e CRC16,
  * OPC UA (NodeId, Assinaturas e StatusCodes) e MQTT / Sparkplug B.
  *

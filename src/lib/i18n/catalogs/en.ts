@@ -111,7 +111,7 @@ export const en: TranslationCatalog = {
       alarms: "Alarms",
       alarmsHint: "ISA-18.2",
       studio: "Studio IEC",
-      studioHint: "CODESYS Parity",
+      studioHint: "IEC 61131-3",
       compactStudio: "eletric Studio",
       compactStudioHint: "Compact PLC",
     },
@@ -910,8 +910,8 @@ export const en: TranslationCatalog = {
     disclaimer:
       "Design support tool. It does not replace professional responsibility or verification by a licensed engineer.",
   },
-  eplanPanel: {
-    title: "Documentation (EPLAN)",
+  docPanel: {
+    title: "EletricAI Documentation",
     desc: "IEC 81346 designation, potential-based wires, terminals, cables and cross-reference, checked while you draw.",
     pendingTags: "{n} untagged",
     numberMissing: "Number devices",
@@ -929,7 +929,7 @@ export const en: TranslationCatalog = {
     dossierHint: "Full reports: Export → Engineering Dossier.",
   },
   panelDoc: {
-    title: "Panel documentation (EPLAN standard)",
+    title: "EletricAI panel documentation",
     desc: "Generated from the topology: =plant+location-tag designation (IEC 81346), potential-based wire numbers, terminals at the panel ↔ field boundary, cables and coil ↔ contact cross-reference (IEC 60947-5-1).",
     errors: "{n} error(s)",
     warnings: "{n} warning(s)",

@@ -48,7 +48,7 @@ export const DeviceTreeView: React.FC = () => {
           <div className="flex items-center gap-2">
             <Cpu className="w-6 h-6 text-indigo-400" />
             <h2 className="text-base font-bold text-zinc-100">
-              {controller?.name || "CODESYS Control Win V3"}
+              {controller?.name || "Controlador virtual IEC 61131-3"}
             </h2>
             <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">
               IP: {controller?.ipAddress}

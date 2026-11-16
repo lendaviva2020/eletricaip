@@ -11,7 +11,7 @@ test.beforeAll(() => {
   }
 });
 
-test.describe("Phase 3: CODESYS Functional Parity Engineering Studio E2E", () => {
+test.describe("Phase 3: IEC 61131-3 Engineering Studio E2E", () => {
   test.beforeEach(async ({ context }) => {
     await context.addInitScript(() => {
       localStorage.setItem("eletricai.dev-auth-bypass", "true");
@@ -22,7 +22,7 @@ test.describe("Phase 3: CODESYS Functional Parity Engineering Studio E2E", () =>
     });
   });
 
-  test("opens Studio IEC mode and verifies CODESYS parity interface and security lock", async ({
+  test("opens Studio IEC mode and verifies IEC 61131-3 studio interface and security lock", async ({
     page,
   }) => {
     await page.goto(`/workspace?projectId=${TEST_PROJECT_ID}`, { waitUntil: "domcontentloaded" });
@@ -35,7 +35,7 @@ test.describe("Phase 3: CODESYS Functional Parity Engineering Studio E2E", () =>
     await studioTab.click();
 
     // Verify Studio header title
-    await expect(page.locator("text=CODESYS PARITY STUDIO")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=STUDIO IEC 61131-3")).toBeVisible({ timeout: 10000 });
 
     // Verify physical control lock badge
     const securityLock = page.locator("text=PHYSICAL CONTROL LOCK: ACTIVE");
@@ -136,7 +136,7 @@ test.describe("Phase 3: CODESYS Functional Parity Engineering Studio E2E", () =>
     await studioTab.click();
 
     // Wait for Studio header to ensure EngineeringStudio component is mounted
-    await expect(page.locator("text=CODESYS PARITY STUDIO")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("text=STUDIO IEC 61131-3")).toBeVisible({ timeout: 15000 });
 
     // Select "Simulador & Forcing" bottom dock tab
     const simTab = page.locator('button:has-text("Simulador & Forcing")').first();

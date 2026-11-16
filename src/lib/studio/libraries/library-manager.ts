@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Industrial Library Manager & Dependency Engine
- * Paridade funcional ao CODESYS Library Manager e Placeholder Resolution System.
+ * Studio IEC EletricAI — gerenciador de bibliotecas e resolução de placeholders.
  *
  * Regras estritas:
  * - Clean Room Mode: Modelagem original e contratos formais de engenharia

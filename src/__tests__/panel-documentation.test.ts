@@ -182,7 +182,7 @@ describe("fiação: terminais reais, potenciais, bornes e cabos", () => {
     expect(pe.panelTerminal).toBe("PE_OUT");
   });
 
-  it("lista de cabos: composição EPLAN (4G4 mm²) e alimentador do trafo sem borne", () => {
+  it("lista de cabos: composição 4G4 mm² e alimentador do trafo sem borne", () => {
     const m1Cable = w.cables.find((c) => c.connectionId === "c6")!;
     expect(m1Cable.composition).toBe("4G4 mm²");
     expect(m1Cable.lengthM).toBe(30);
@@ -337,7 +337,7 @@ describe("pacote completo", () => {
   });
 });
 
-describe("dossiê — planilha EPLAN e defesa contra injeção de fórmula", () => {
+describe("dossiê — planilha de documentação e defesa contra injeção de fórmula", () => {
   it("abas novas presentes e nenhuma célula de texto começa com fórmula", async () => {
     const { assembleCompleteDossier } = await import("@/lib/dossier/dossier.functions");
     const { buildDossierExcelWorkbook, buildBomCsv } =
@@ -391,7 +391,7 @@ describe("dossiê — planilha EPLAN e defesa contra injeção de fórmula", () 
       for (const row of rows) {
         for (const v of Object.values(row)) {
           if (typeof v !== "string") continue;
-          // designação EPLAN pura é permitida; qualquer outra coisa iniciando
+          // designação IEC 81346 pura é permitida; qualquer outra coisa iniciando
           // com operador de fórmula precisa estar neutralizada
           const plainDesignation = /^(?:[=+-][A-Za-z0-9_.]{1,24}){1,3}$/.test(v);
           if (!plainDesignation) expect(v, `${name}: ${v}`).not.toMatch(/^[=+\-@\t\r|]/);

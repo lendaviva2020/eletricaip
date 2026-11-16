@@ -1,5 +1,5 @@
 /**
- * Ponte DiagramDoc (editor) → documentação de painel EPLAN, usando o MESMO
+ * Ponte DiagramDoc (editor) → Documentação EletricAI, usando o MESMO
  * conversor canônico do resto do app (`upgradeSnapshotV2ToV3`), para que o
  * editor, o dossiê e os relatórios vejam exatamente a mesma topologia.
  */

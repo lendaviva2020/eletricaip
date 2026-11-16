@@ -66,7 +66,7 @@ O fluxo de processamento de um prompt executa rigorosamente 6 etapas sequenciais
 │ ETAPA 4: AUTO-LAYOUT E ROTEAMENTO ORTOGONAL (AutoLayoutRouter)              │
 │  • Cálculo de níveis hierárquicos topológicos (Árvore de Potência)          │
 │  • Distribuição horizontal equidistante dos ramais derivados                │
-│  • Geração de waypoints ortogonais em ângulo reto (estilo EPLAN / CAD)     │
+│  • Geração de waypoints ortogonais em ângulo reto (estilo CAD)             │
 └─────────────────────────────────────┬───────────────────────────────────────┘
                                       │
                                       ▼

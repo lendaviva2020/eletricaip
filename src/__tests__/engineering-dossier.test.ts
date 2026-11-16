@@ -161,7 +161,7 @@ describe("ElétricAi Engineering Dossier — Industrial Suite", () => {
     expect(extracted.plcProgram.ioMappings[0].address).toBe("%I0.0");
     expect(extracted.plcProgram.ioMappings[0].symbolicTag).toBe("SB_ESTOP_1");
 
-    // Verifica régua de bornes X1 (padrão EPLAN: gerada na fronteira painel ↔ campo,
+    // Verifica régua de bornes X1 (Documentação EletricAI: gerada na fronteira painel ↔ campo,
     // a partir dos terminais REAIS — o motor sai do disjuntor -QG_01, sem contator inventado)
     expect(extracted.terminals.length).toBeGreaterThan(0);
     const m1Terminals = extracted.terminals.filter((t) => t.externalEquipment === "-M1");

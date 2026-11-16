@@ -1,9 +1,8 @@
 /**
- * Numeração de dispositivos no editor (EPLAN "Numerar dispositivos" / PC|SCHEMATIC
- * "Renumerar"), aplicada como UM comando reversível (Ctrl+Z desfaz tudo).
+ * Numeração de dispositivos no editor (Documentação EletricAI), aplicada como UM comando reversível (Ctrl+Z desfaz tudo).
  *
  * - Ordem de numeração: por coluna (x, em faixas de 100 px) e depois linha (y),
- *   como a numeração por página/coluna do EPLAN.
+ *   como a numeração por página/coluna usual em CAE elétrico.
  * - Modo "missing": só equipamentos sem tag válida + o 2º, 3º… de uma tag
  *   duplicada. Tags válidas e únicas do engenheiro nunca são alteradas.
  * - Modo "all": renumera tudo em sequência limpa (Q1, Q2…, K1, K2…).

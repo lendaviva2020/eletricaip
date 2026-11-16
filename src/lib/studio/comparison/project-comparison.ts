@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Project Comparison & Semantic Diff Engine
- * Paridade com o Project Compare & Versioning do CODESYS V3.5:
+ * Studio IEC EletricAI — comparação e versionamento de projetos:
  * Comparação estrutural profunda, diff semântico de POUs e código-fonte,
  * detecção de conflitos e mesclagem automatizada de projetos de automação.
  */

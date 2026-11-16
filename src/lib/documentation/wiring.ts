@@ -1,5 +1,5 @@
 /**
- * Fiação no padrão EPLAN: condutores, numeração por POTENCIAL, régua de
+ * Fiação (Documentação EletricAI): condutores, numeração por POTENCIAL, régua de
  * bornes gerada na fronteira painel ↔ campo e lista de cabos.
  *
  * Regras (sem fabricar dados):

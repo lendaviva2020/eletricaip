@@ -110,7 +110,7 @@ export const ptBR = {
       alarms: "Alarmes",
       alarmsHint: "ISA-18.2",
       studio: "Studio IEC",
-      studioHint: "CODESYS Parity",
+      studioHint: "IEC 61131-3",
       compactStudio: "eletric Studio",
       compactStudioHint: "CLP Compacto",
     },
@@ -914,8 +914,8 @@ export const ptBR = {
     disclaimer:
       "Ferramenta de apoio ao projeto. Não substitui a responsabilidade técnica (ART/TRT) nem a verificação do engenheiro habilitado.",
   },
-  eplanPanel: {
-    title: "Documentação (EPLAN)",
+  docPanel: {
+    title: "Documentação EletricAI",
     desc: "Identificação IEC 81346, fios por potencial, bornes, cabos e referência cruzada, verificados enquanto você desenha.",
     pendingTags: "{n} sem tag",
     numberMissing: "Numerar dispositivos",
@@ -933,7 +933,7 @@ export const ptBR = {
     dossierHint: "Relatórios completos: Exportar → Dossiê Técnico.",
   },
   panelDoc: {
-    title: "Documentação de painel (padrão EPLAN)",
+    title: "Documentação de painel EletricAI",
     desc: "Gerada da topologia: designação =planta+local-tag (IEC 81346), fios numerados por potencial, bornes na fronteira painel ↔ campo, cabos e referência cruzada bobina ↔ contatos (IEC 60947-5-1).",
     errors: "{n} erro(s)",
     warnings: "{n} aviso(s)",

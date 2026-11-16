@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Function Block Diagram (FBD) Engine & IR Translation
- * Paridade com o editor e executor gráfico de blocos de função do CODESYS.
+ * Studio IEC EletricAI — editor e executor gráfico de blocos de função.
  */
 
 import { FBDNode, FBDConnection } from "../../canonical/types";

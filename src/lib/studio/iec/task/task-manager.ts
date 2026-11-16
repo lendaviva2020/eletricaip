@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Multi-Type IEC Task Scheduler & Watchdog Engine
- * Paridade com o Task Configuration do CODESYS V3.5.
+ * Studio IEC EletricAI — configuração de tarefas (IEC 61131-3).
  *
  * Suporta:
  * - CYCLIC: Disparo periódico por intervalo (ex: 10ms, 20ms, 100ms)

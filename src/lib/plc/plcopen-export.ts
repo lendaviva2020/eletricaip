@@ -2,7 +2,7 @@
 // Generates a minimal but well-formed .plcproj XML representing the current
 // PlcProject: variables (global VAR), POUs (one per program block, language
 // inferred), and a hardware comment block. Designed to be re-importable by
-// CODESYS/B&R/Beremiz as a starting point; not a 100% conformant build.
+// PLCopen-compatible IDEs as a starting point; not a 100% conformant build.
 
 import type { PlcProject, PlcProgramBlock, PlcVariable } from "./types";
 

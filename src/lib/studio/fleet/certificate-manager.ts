@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — X.509 Certificate Manager
- * Paridade com o Security & Certificate Management do CODESYS V3.5:
+ * Studio IEC EletricAI — segurança e gestão de certificados:
  * Gerenciamento de certificados TLS e OPC UA, verificação de validade e alertas de expiração.
  */
 

@@ -1,12 +1,12 @@
 /**
- * Referência cruzada bobina ↔ contatos (estilo EPLAN "imagem de contatos").
+ * Referência cruzada bobina ↔ contatos ("imagem de contatos").
  *
  * Para cada contator/relé/relé térmico do projeto lista onde está a bobina e
  * onde cada contato é usado, com a numeração de terminais da IEC 60947-5-1:
  * contato NA = x3-x4, NF = x1-x2 (x = dígito de sequência 1..9); contatos
  * principais de potência 1-2 / 3-4 / 5-6; relé térmico NF 95-96 / NA 97-98.
  *
- * Erros detectados (os mesmos que o EPLAN aponta na verificação):
+ * Erros detectados (verificação da documentação):
  * - bobina dupla (duas saídas OTE na mesma bobina);
  * - contato de dispositivo sem bobina programada;
  * - mais contatos do que o dispositivo tem (relé / relé térmico);

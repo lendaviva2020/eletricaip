@@ -37,7 +37,7 @@ export const MODES: { id: WorkspaceMode; label: string; hint: string }[] = [
   { id: "plc", label: "PLC", hint: "Config" },
   { id: "sim", label: "Simulação", hint: "Runtime" },
   { id: "alarms", label: "Alarmes", hint: "ISA-18.2" },
-  { id: "studio", label: "Studio IEC", hint: "CODESYS Parity" },
+  { id: "studio", label: "Studio IEC", hint: "IEC 61131-3" },
   { id: "compactStudio", label: PRODUCT_NAME, hint: "CLP Compacto" },
 ];
 

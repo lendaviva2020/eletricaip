@@ -1,6 +1,6 @@
 /**
  * ElétricAi Industrial OS — Real Interactive IEC Debugger Service
- * Paridade com as capacidades de depuração online do CODESYS V3.5:
+ * Studio IEC EletricAI — depuração online:
  * Breakpoints condicionais, execução passo a passo (Step In/Over/Out),
  * Tabela de inspeção de variáveis (Watch Table) com histórico e Forcing isolado.
  *

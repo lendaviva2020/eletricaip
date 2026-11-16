@@ -1,5 +1,5 @@
 /**
- * Documentação de painel padrão EPLAN dentro do dossiê: verificação,
+ * Documentação de painel EletricAI dentro do dossiê: verificação,
  * lista de cabos, referência cruzada bobina ↔ contatos e dispositivos.
  */
 import { useMemo, useState } from "react";
