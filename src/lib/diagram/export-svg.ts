@@ -6,6 +6,16 @@ import { SYMBOL_SIZE } from "@/lib/diagram/render/symbols";
 
 const HALF = SYMBOL_SIZE / 2;
 
+/** Texto vindo do projeto (tags, título) nunca entra cru no SVG. */
+export function escapeSvgText(raw: unknown): string {
+  return String(raw ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function portWorld(
   node: { position: { x: number; y: number }; rotation?: number; params: { kind: string } },
   portId: string | undefined,
@@ -25,7 +35,7 @@ export function diagramToSvg(doc: DiagramDoc, sheet: SheetKind): string {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
       <rect width="800" height="600" fill="#0b0f17"/>
       <text x="400" y="300" fill="#94a3b8" text-anchor="middle" font-family="monospace" font-size="16">
-        Diagrama Vazio (${sheet})
+        Diagrama Vazio (${escapeSvgText(sheet)})
       </text>
     </svg>`;
   }
@@ -52,10 +62,10 @@ export function diagramToSvg(doc: DiagramDoc, sheet: SheetKind): string {
   const width = Math.max(800, maxX - minX);
   const height = Math.max(600, maxY - minY);
 
-  const title = doc.metadata.title || "MCC-01_REFORCO";
+  const title = escapeSvgText(doc.metadata.title || "Projeto");
   const dateStr = new Date().toLocaleDateString("pt-BR");
 
-  const norms = (doc.metadata.norms ?? ["NBR 5410", "IEC 60617"]).join(" · ");
+  const norms = escapeSvgText((doc.metadata.norms ?? ["NBR 5410", "IEC 60617"]).join(" · "));
 
   let svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${minX} ${minY} ${width} ${height}">
@@ -110,7 +120,8 @@ export function diagramToSvg(doc: DiagramDoc, sheet: SheetKind): string {
   <g id="nodes">`;
 
   for (const n of sheetNodes) {
-    const tag = (n.params as any).tag || n.label || n.id;
+    const params = n.params as { tag?: string; voltage_V?: number; current_A?: number };
+    const tag = escapeSvgText(params.tag || n.label || n.id);
     const isBusbar = n.params.kind === "busbar";
     const isSelected = false;
 
@@ -121,7 +132,7 @@ export function diagramToSvg(doc: DiagramDoc, sheet: SheetKind): string {
       <g transform="translate(${n.position.x}, ${n.position.y})">
         <line x1="${-barLen / 2}" y1="0" x2="${barLen / 2}" y2="0" stroke="#f8fafc" stroke-width="5" stroke-linecap="round"/>
         <text x="0" y="-12" fill="#38bdf8" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">
-          ${tag} · 380V / 630A
+          ${tag}${params.voltage_V ? ` · ${params.voltage_V} V` : ""}${params.current_A ? ` / ${params.current_A} A` : ""}
         </text>
       </g>`;
       continue;
@@ -132,7 +143,7 @@ export function diagramToSvg(doc: DiagramDoc, sheet: SheetKind): string {
       <!-- Caixa do símbolo -->
       <rect x="${-HALF}" y="${-HALF}" width="${SYMBOL_SIZE}" height="${SYMBOL_SIZE}" rx="4" fill="#131b2c" stroke="#334155" stroke-width="1.5"/>
       <text x="0" y="4" fill="#38bdf8" font-family="monospace" font-size="11" font-weight="bold" text-anchor="middle">
-        ${n.params.kind.slice(0, 4).toUpperCase()}
+        ${escapeSvgText(n.params.kind.slice(0, 4).toUpperCase())}
       </text>
       <!-- Tag do componente -->
       <text x="0" y="${-HALF - 8}" fill="#f8fafc" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle">
@@ -149,7 +160,7 @@ export function diagramToSvg(doc: DiagramDoc, sheet: SheetKind): string {
     <rect width="320" height="90" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5" rx="2"/>
     <text x="12" y="22" fill="#38bdf8" font-family="sans-serif" font-size="13" font-weight="bold">⚡ ElétricAi · CAD Elétrico</text>
     <text x="12" y="42" fill="#f8fafc" font-family="monospace" font-size="11">PROJETO: ${title}</text>
-    <text x="12" y="60" fill="#94a3b8" font-family="monospace" font-size="10">FOLHA: ${sheet === "unifilar" ? "01/03 (Unifilar)" : "02/03 (Multifilar)"} · DATA: ${dateStr}</text>
+    <text x="12" y="60" fill="#94a3b8" font-family="monospace" font-size="10">FOLHA: ${sheet === "unifilar" ? "Unifilar" : "Multifilar"} · DATA: ${dateStr}</text>
     <text x="12" y="76" fill="#64748b" font-family="monospace" font-size="9">NORMAS: ${norms}</text>
   </g>
 </svg>`;

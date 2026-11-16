@@ -58,6 +58,7 @@ import { useEditorStore } from "@/lib/editor/store";
 import { useI18n } from "@/lib/i18n";
 import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
 import { exportDiagramSvg } from "@/lib/diagram/export-svg";
+import { DiagramCompatView } from "./diagram-compat-view";
 import {
   buildMultifilarCommands,
   buildUnifilarFromMultifilarCommands,
@@ -247,6 +248,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const { t } = useI18n();
   const listBomFn = useServerFn(listBom);
   const hostRef = useRef<HTMLDivElement>(null);
+  // WebGL indisponível ou contexto derrubado pelo navegador → modo de compatibilidade (SVG).
+  const [renderFailure, setRenderFailure] = useState<"init" | "contextlost" | null>(null);
+  const [stageGeneration, setStageGeneration] = useState(0);
   const stageRef = useRef<DiagramStage | null>(null);
 
   const activeSheet = useDiagramStore((s) => s.activeSheet);
@@ -411,6 +415,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         onZoomChange: (pct) => {
           setZoomPercent(pct);
         },
+        onRenderFailure: (reason) => {
+          if (!disposed) setRenderFailure(reason);
+        },
         onContextMenu: ({ nodeId, edgeId, clientX, clientY }) => {
           const hostRect = host.getBoundingClientRect();
           openContextMenu({
@@ -436,6 +443,11 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         lastFittedDocIdRef.current = currentDoc.id;
         hadSheetNodesRef.current = sheetNodes.length > 0;
         stage.fitView(sheetNodes, { recordHistory: false });
+      })
+      .catch((err: unknown) => {
+        // Antes: rejeição sem tratamento e canvas preto para sempre no celular.
+        console.error("[canvas] falha ao iniciar o WebGL:", err);
+        if (!disposed) setRenderFailure("init");
       });
     return () => {
       disposed = true;
@@ -445,7 +457,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [stageGeneration]);
 
   // Sincronização automática ao alternar entre Unifilar e Multifilar (inclusive pelas ModeTabs do topo)
   useEffect(() => {
@@ -1233,7 +1245,18 @@ export function WebglCanvas({ sheet, projectId }: Props) {
 
       {/* 2. ÁREA CENTRAL DO CANVAS PIXI.JS (tema escuro técnico — ver render/palette.ts) */}
       <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-[#0b1220]">
-        <div ref={hostRef} className="absolute inset-0" />
+        <div ref={hostRef} className="absolute inset-0" aria-hidden={renderFailure !== null} />
+        {renderFailure && (
+          <DiagramCompatView
+            doc={doc}
+            sheet={effectiveSheet}
+            reason={renderFailure}
+            onRetry={() => {
+              setRenderFailure(null);
+              setStageGeneration((g) => g + 1);
+            }}
+          />
+        )}
 
         {/* Toolbar flutuante de apoio à direita */}
         <div className="absolute right-3 top-3 z-10 flex gap-1 rounded-md border border-border/50 bg-[#101929]/95 p-1 shadow-md">

@@ -85,6 +85,47 @@ export interface StageEvents {
   onToggleDevice?: (nodeId: string) => void;
   /** Aplica snap-to-grid no commit do drag. */
   snap?: (v: number) => number;
+  /**
+   * O navegador derrubou o contexto WebGL (comum em celular com pouca memória
+   * de vídeo). Quem usa o stage deve mostrar um modo de compatibilidade.
+   */
+  onRenderFailure?: (reason: "contextlost") => void;
+}
+
+/**
+ * Resolução do framebuffer. No PC, no mínimo 2x (nitidez de sub-pixel). No
+ * celular, a densidade do aparelho limitada a 2x: um buffer 3x em tela alta
+ * estoura a memória de vídeo e o navegador derruba o contexto (tela preta).
+ */
+export function stageResolution(dpr: number, viewportWidth: number): number {
+  const safeDpr = Number.isFinite(dpr) && dpr > 0 ? dpr : 1;
+  if (viewportWidth < MOBILE_BREAKPOINT_PX) return Math.min(safeDpr, 2);
+  return Math.max(safeDpr, 2);
+}
+
+/**
+ * Centro do enquadramento. Se a escala foi travada no mínimo legível do
+ * celular, o desenho inteiro não cabe: mostra o INÍCIO do circuito (canto
+ * superior esquerdo, onde ficam a entrada e o QGBT), em vez do meio da folha,
+ * que em plantas grandes costuma ser espaço vazio entre ramais.
+ */
+export function fitCenter(
+  bounds: {
+    minX: number;
+    minY: number;
+    centerX: number;
+    centerY: number;
+    width: number;
+    height: number;
+  },
+  scale: number,
+  screen: { w: number; h: number },
+): { x: number; y: number } {
+  const visibleW = screen.w / scale;
+  const visibleH = screen.h / scale;
+  const x = bounds.width > visibleW ? bounds.minX + visibleW / 2 - 20 : bounds.centerX;
+  const y = bounds.height > visibleH ? bounds.minY + visibleH / 2 - 20 : bounds.centerY;
+  return { x, y };
 }
 
 interface NodeView {
@@ -166,9 +207,12 @@ export class DiagramStage {
     // Fundo cinza técnico claro (#F0F2F3) conforme norma e preferência industrial.
     // Resolução técnica para alta nitidez: mínimo 2x no framebuffer para sub-pixels nítidos.
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-    const targetResolution = Math.max(dpr, 2);
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
+    const targetResolution = stageResolution(dpr, vw);
 
     await this.app.init({
+      // WebGL explícito: o WebGPU do Chrome Android ainda é instável com o Pixi.
+      preference: "webgl",
       background: CANVAS_PALETTE.background,
       antialias: true,
       resolution: targetResolution,
@@ -191,6 +235,7 @@ export class DiagramStage {
     while (host.firstChild) {
       host.removeChild(host.firstChild);
     }
+    this.app.canvas.addEventListener("webglcontextlost", this.onContextLost, false);
     this.app.canvas.style.display = "block";
     this.app.canvas.style.width = "100%";
     this.app.canvas.style.height = "100%";
@@ -261,6 +306,13 @@ export class DiagramStage {
     requestAnimationFrame(() => this.syncSizeToHost(true));
   };
 
+  private onContextLost = (ev: Event) => {
+    ev.preventDefault();
+    if (this.destroyed) return;
+    console.warn("[canvas] contexto WebGL perdido — ativando modo de compatibilidade");
+    this.events.onRenderFailure?.("contextlost");
+  };
+
   /** Tamanho efetivo do contêiner, ou null enquanto ele ainda não tem área. */
   private hostSize(): { w: number; h: number } | null {
     const w = this.host?.clientWidth ?? 0;
@@ -293,6 +345,9 @@ export class DiagramStage {
     this.resizeObs?.disconnect();
     if (typeof window !== "undefined") {
       window.removeEventListener("orientationchange", this.onOrientationChange);
+    }
+    if (this.app.renderer && this.app.canvas) {
+      this.app.canvas.removeEventListener("webglcontextlost", this.onContextLost, false);
     }
     if (this.wheelListener && this.app.renderer && this.app.canvas) {
       this.app.canvas.removeEventListener("wheel", this.wheelListener);
@@ -440,7 +495,8 @@ export class DiagramStage {
     if (isPhoneViewport) scale = Math.max(scale, MOBILE_MIN_FIT_SCALE);
 
     this.viewport.setZoom(scale, true);
-    this.viewport.moveCenter(bounds.centerX, bounds.centerY);
+    const center = fitCenter(bounds, scale, { w: screenW, h: screenH });
+    this.viewport.moveCenter(center.x, center.y);
     this.events.onZoomChange?.(this.getZoomPercent());
   }
 
