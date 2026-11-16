@@ -119,6 +119,7 @@ Usadas no código (confirmadas por inspeção):
 - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `VITE_STRIPE_PRICE_BASIC_MONTHLY`, `VITE_STRIPE_PRICE_PRO_MONTHLY`, `VITE_STRIPE_PRICE_PREMIUM_MONTHLY`
 - **Mercado Pago:** `MP_ACCESS_TOKEN` (alias `MERCADO_PAGO_ACCESS_TOKEN`), `MP_WEBHOOK_SECRET`
 - **Rate limiting:** `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+- **Catálogo (distribuidor):** `MOUSER_API_KEY` (gratuita; só servidor)
 - **App:** `PUBLIC_APP_URL`
 - **Deploy (GitHub Actions, documentadas no README):** `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 
@@ -1386,3 +1387,11 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - **Regra**: nada exibido como leitura real pode ser inventado. Sem fonte de dado → 0/"pendente"/"sem sinal", nunca um valor plausível. Simulação só com rótulo de simulação. Teste-guarda: `real-data-integrity.test.ts`.
 - Corrigidos: `sim-canvas.tsx` (senoides com runtime real, 1750 rpm/11,6 A presumidos por bobina ligada, temperatura exibida como corrente, nível 50% fixo); `runtime-client.ts` (alarme fixo "M-02" e ciclo aleatório → ciclo medido por `performance.now()`); faturamento (gráfico de 7 dias era vetor de zeros → `getAiUsageSummary().daily` de `ai_usage_events`); barra do PLC (árvore fictícia → `usePlcStore` com navegação); busca inoperante nas barras PLC/FBD/SCADA (`SidebarSearch` agora controlado + `normalizeSearch`).
 - **Base normativa da IA** (migration `20261116120000_normative_knowledge_base`, aplicada): 11 documentos / 28 resumos técnicos PRÓPRIOS (não copiar texto de norma — direito autoral) + coluna gerada `normative_chunks.search_text` sem acento; `fetchNormativeContext` consulta `search_text` (antes "tensão" nunca casava). Catálogo (`catalog_components`) segue vazio: depende da planilha de fornecedores do dono.
+
+### Base normativa revisada e catálogo da empresa (2026-11-16, 8ª rodada)
+
+- **Base normativa** (migration `20261116130000_normative_knowledge_review`, aplicada): 5 trechos corrigidos após conferência com fontes públicas (κ IEC 60909 de 1,02 a 2,0; 1,25 × In atribuído ao NEC 430.22; neutro sem número de tabela não confirmado; DR em tomadas internas que alimentam área externa; NBR 14039 edição 2021). Todos os 28 trechos têm `metadata.aviso` e a IA os recebe como "resumos indicativos". Ainda vale revisão por engenheiro.
+- **Catálogo da empresa** (`tenant_catalog_items`, migration `20261116140000`): começa VAZIO; o cliente escolhe cadastro manual, planilha ou distribuidor. RLS: leitura por membro; escrita owner/admin/engineer. Preço guarda valor + moeda + origem (`manual|planilha|mouser`) + data; nunca convertido nem estimado.
+- **Mouser** (`lib/catalog/mouser.ts` puro + `mouser-client.server.ts`): host fixo, `redirect: "error"`, timeout 12 s, resposta ≤ 2 MB validada por Zod, rate limit `api` por usuário. O navegador só envia CÓDIGOS; preço/estoque são reconsultados no servidor na importação e em "Atualizar preços" (até 50 itens, mais antigos primeiro).
+- **Importação de planilha** passou a gravar no catálogo da empresa por padrão; o global (`catalog_components`) só para admin da plataforma.
+- **Pendente**: regenerar `types.ts` com `tenant_catalog_items` (hoje acessado sem genérico, saída validada por Zod) e ligar o BOM ao catálogo da empresa.

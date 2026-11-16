@@ -34,7 +34,7 @@ Legenda: ✅ funcional com dados reais · 🟡 funcional com lacunas · 🔴 dad
 | Equipe, clientes, notificações, segurança, MFA | ✅ | Dados do banco |
 | Centro de operações | ✅ | Funções de servidor reais |
 | Realtime/IoT | ✅ | Depende de dispositivos cadastrados (hoje 0 no banco) |
-| Catálogo | 🟡 | Funciona, mas o banco tem **0 componentes e 0 fabricantes** |
+| Catálogo | ✅ | **Catálogo da empresa** (`tenant_catalog_items`, RLS por organização) começa vazio; o cliente escolhe: cadastro manual, planilha CSV/XLSX ou busca na API gratuita da Mouser (preço/estoque reais, reconsultados no servidor, botão "Atualizar preços"). Ativar a Mouser: `MOUSER_API_KEY` na Vercel. Catálogo global da plataforma segue vazio e só aparece quando tiver itens |
 | IA (arquiteto/chat) | 🟡 | 🔴 **base normativa vazia** (`normative_chunks` = 0) e busca que **nunca encontrava palavras acentuadas** (`ai-architect.functions.ts:406-420`) — corrigido nesta rodada |
 | Documentos/manuais | ⚪ | Tabelas `knowledge_*` existem, sem tela de upload |
 
@@ -51,7 +51,7 @@ Legenda: ✅ funcional com dados reais · 🟡 funcional com lacunas · 🔴 dad
 
 | # | Item | Por quê | Depende de você? |
 |---|---|---|---|
-| 1 | Catálogo real: importar sua lista de fornecedores (CSV/XLSX já suportado em Configurações → Importar catálogo) | BOM com preço real e valor de materiais no painel mensal | **Sim** — planilha de fornecedores/preços |
+| 1 | ~~Catálogo real~~ — feito (2026-11-16): catálogo por empresa + Mouser. Pendente: criar a chave gratuita da Mouser e configurar `MOUSER_API_KEY`; ligar o BOM ao catálogo da empresa | BOM com preço real | Só a chave da Mouser |
 | 2 | Referência cruzada dentro do editor Ladder | Ver contatos de cada bobina enquanto programa | Não |
 | 3 | Unifilar com várias folhas e carimbo | Projetos grandes e documentação de entrega | Não |
 | 4 | Tela de documentos/manuais (upload + busca) | Usa as tabelas `knowledge_*` já existentes | Não |

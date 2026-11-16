@@ -11,6 +11,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { useI18n } from "@/lib/i18n";
 import { toSafeExternalHref } from "@/lib/security/url-safety";
+import { TenantCatalogPanel } from "@/components/catalog/tenant-catalog-panel";
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({ meta: [{ title: "Catálogo de componentes · EletricAI" }] }),
@@ -32,6 +33,7 @@ function CatalogPage() {
     queryKey: ["catalog", search, categoryId],
     queryFn: () => listFn({ data: { search, categoryId, limit: 100 } }),
   });
+  const globalHasItems = (data?.components?.length ?? 0) > 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6 max-w-6xl mx-auto">
@@ -41,92 +43,103 @@ function CatalogPage() {
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
       </Link>
-      <h1 className="text-xl font-semibold mb-1">{t("catalogPage.title")}</h1>
-      <p className="text-xs text-muted-foreground mb-5">{t("catalogPage.subtitle")}</p>
+      <TenantCatalogPanel />
 
-      <div className="flex flex-col sm:flex-row gap-2.5 mb-5">
-        <div className="relative flex-1">
-          <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("catalogPage.searchPlaceholder")}
-            className="pl-8"
-          />
-        </div>
-        <select
-          aria-label="Filtrar catalogo por categoria"
-          title="Filtrar catalogo por categoria"
-          value={categoryId ?? ""}
-          onChange={(e) => setCategoryId(e.target.value || undefined)}
-          className="h-8 [@media(pointer:coarse)]:h-10 rounded-md border border-input bg-card px-2.5 text-[13px]"
-        >
-          <option value="">{t("catalogPage.allCategories")}</option>
-          {(cats?.categories ?? []).map((c: any) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Catálogo global da plataforma: só aparece quando o admin publicou itens. */}
+      {(globalHasItems || search || categoryId) && (
+        <section className="mt-10 border-t border-border pt-6" data-testid="platform-catalog">
+          <h2 className="text-lg font-semibold mb-1">{t("catalogPage.title")}</h2>
+          <p className="text-xs text-muted-foreground mb-5">{t("catalogPage.subtitle")}</p>
 
-      {isLoading ? (
-        <TableSkeleton rows={5} columns={4} />
-      ) : isError ? (
-        <ErrorState
-          message={(error as Error)?.message ?? "Falha ao carregar catálogo."}
-          onRetry={() => refetch()}
-        />
-      ) : (data?.components?.length ?? 0) === 0 ? (
-        <EmptyState
-          icon={<Package className="h-5 w-5" />}
-          title={t("catalogPage.empty")}
-          action={
-            (search || categoryId) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearch("");
-                  setCategoryId(undefined);
-                }}
-              >
-                Limpar filtros
-              </Button>
-            )
-          }
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {(data?.components ?? []).map((c: any) => (
-            <div key={c.id} className="border border-border rounded-md p-3.5 bg-card">
-              <div className="flex items-start justify-between mb-1.5">
-                <div>
-                  <p className="font-mono text-[11px] text-muted-foreground">{c.part_number}</p>
-                  <h3 className="text-sm font-semibold">{c.commercial_name ?? c.part_number}</h3>
-                </div>
-                {/* RISK-012: valida também na exibição (dados antigos importados antes da correção). */}
-                {toSafeExternalHref(c.datasheet_url) && (
-                  <a
-                    href={toSafeExternalHref(c.datasheet_url) ?? undefined}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-                  >
-                    PDF <ArrowSquareOut className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
-              {c.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{c.description}</p>
-              )}
-              <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground pt-2 border-t border-border">
-                <span>{c.catalog_manufacturers?.name ?? "—"}</span>
-                <span>{c.catalog_component_categories?.name ?? "—"}</span>
-              </div>
+          <div className="flex flex-col sm:flex-row gap-2.5 mb-5">
+            <div className="relative flex-1">
+              <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("catalogPage.searchPlaceholder")}
+                className="pl-8"
+              />
             </div>
-          ))}
-        </div>
+            <select
+              aria-label="Filtrar catalogo por categoria"
+              title="Filtrar catalogo por categoria"
+              value={categoryId ?? ""}
+              onChange={(e) => setCategoryId(e.target.value || undefined)}
+              className="h-8 [@media(pointer:coarse)]:h-10 rounded-md border border-input bg-card px-2.5 text-[13px]"
+            >
+              <option value="">{t("catalogPage.allCategories")}</option>
+              {(cats?.categories ?? []).map((c: any) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {isLoading ? (
+            <TableSkeleton rows={5} columns={4} />
+          ) : isError ? (
+            <ErrorState
+              message={(error as Error)?.message ?? "Falha ao carregar catálogo."}
+              onRetry={() => refetch()}
+            />
+          ) : (data?.components?.length ?? 0) === 0 ? (
+            <EmptyState
+              icon={<Package className="h-5 w-5" />}
+              title={t("catalogPage.empty")}
+              action={
+                (search || categoryId) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearch("");
+                      setCategoryId(undefined);
+                    }}
+                  >
+                    Limpar filtros
+                  </Button>
+                )
+              }
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(data?.components ?? []).map((c: any) => (
+                <div key={c.id} className="border border-border rounded-md p-3.5 bg-card">
+                  <div className="flex items-start justify-between mb-1.5">
+                    <div>
+                      <p className="font-mono text-[11px] text-muted-foreground">{c.part_number}</p>
+                      <h3 className="text-sm font-semibold">
+                        {c.commercial_name ?? c.part_number}
+                      </h3>
+                    </div>
+                    {/* RISK-012: valida também na exibição (dados antigos importados antes da correção). */}
+                    {toSafeExternalHref(c.datasheet_url) && (
+                      <a
+                        href={toSafeExternalHref(c.datasheet_url) ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        PDF <ArrowSquareOut className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                  {c.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                      {c.description}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground pt-2 border-t border-border">
+                    <span>{c.catalog_manufacturers?.name ?? "—"}</span>
+                    <span>{c.catalog_component_categories?.name ?? "—"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       <div className="mt-8 border-t border-border pt-6 text-sm text-muted-foreground">

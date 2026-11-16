@@ -12,6 +12,9 @@ import {
   canImportCatalog,
   type CatalogRow,
 } from "@/lib/catalog-import.functions";
+import { getTenantCatalogStatus, importTenantCatalogRows } from "@/lib/tenant-catalog.functions";
+
+type ImportTarget = "empresa" | "plataforma";
 
 export const Route = createFileRoute("/settings/catalog-import")({
   ssr: false,
@@ -81,6 +84,9 @@ function mapRecord(raw: Record<string, unknown>): CatalogRow {
 function CatalogImportPage() {
   const canFn = useServerFn(canImportCatalog);
   const importFn = useServerFn(importCatalogBatch);
+  const tenantStatusFn = useServerFn(getTenantCatalogStatus);
+  const tenantImportFn = useServerFn(importTenantCatalogRows);
+  const [target, setTarget] = useState<ImportTarget>("empresa");
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -90,9 +96,21 @@ function CatalogImportPage() {
     queryFn: () => canFn({}),
     retry: false,
   });
+  const { data: tenantStatus, isLoading: tenantLoading } = useQuery({
+    queryKey: ["tenant-catalog", "status"],
+    queryFn: () => tenantStatusFn({}),
+    retry: false,
+  });
+  const isPlatformAdmin = Boolean(perm?.allowed);
+  const canTenant = Boolean(tenantStatus?.canWrite);
+  const effectiveTarget: ImportTarget = canTenant ? target : "plataforma";
 
+  // Padrão: catálogo da empresa. O global só para admin da plataforma.
   const importMutation = useMutation({
-    mutationFn: () => importFn({ data: { rows } }),
+    mutationFn: () =>
+      effectiveTarget === "plataforma" && isPlatformAdmin
+        ? importFn({ data: { rows } })
+        : tenantImportFn({ data: { rows } }),
   });
 
   async function handleFile(file: File) {
@@ -142,11 +160,11 @@ function CatalogImportPage() {
     }
   }
 
-  if (permLoading) {
+  if (permLoading || tenantLoading) {
     return <div className="p-6 text-sm text-muted-foreground">Verificando permissões…</div>;
   }
 
-  if (!perm?.allowed) {
+  if (!canTenant && !isPlatformAdmin) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
         <BackLink />
@@ -154,7 +172,7 @@ function CatalogImportPage() {
           <CardHeader>
             <CardTitle className="text-base">Acesso restrito</CardTitle>
             <CardDescription>
-              Apenas owner ou admin do workspace pode importar catálogo.
+              Apenas owner, admin ou engineer da organização pode importar itens no catálogo.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -179,6 +197,32 @@ function CatalogImportPage() {
             completado automaticamente — somente o conteúdo do arquivo é persistido.
           </p>
         </div>
+
+        {isPlatformAdmin && (
+          <Card>
+            <CardContent className="p-4 flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-muted-foreground">Destino:</span>
+              {(
+                [
+                  ["empresa", "Catálogo da empresa"],
+                  ["plataforma", "Catálogo global da plataforma"],
+                ] as const
+              ).map(([value, label]) => (
+                <label key={value} className="inline-flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    name="import-target"
+                    value={value}
+                    checked={effectiveTarget === value}
+                    disabled={value === "empresa" && !canTenant}
+                    onChange={() => setTarget(value)}
+                  />
+                  {label}
+                </label>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
