@@ -8,7 +8,15 @@
 -- 3. Pagamento avulso (Mercado Pago) passa a ter vencimento em subscriptions;
 --    expire_overdue_subscriptions() rebaixa para "free" após 3 dias de
 --    tolerância. Só service_role executa.
+-- 5. Corrige comparação text = uuid em iot_readings.device_id (toda leitura
+--    com message_id falhava com "operator does not exist").
+-- 6. kind = NULL ao criar dispositivo: o tipo iot_device_kind não existe no
+--    banco (a coluna é sensor_kind) e TODO dispositivo novo era recusado.
+-- 7. iot_readings.ingested_at era NOT NULL sem default e a função não o
+--    preenchia: toda leitura falhava. Default now().
 -- Idempotente.
+
+ALTER TABLE public.iot_readings ALTER COLUMN ingested_at SET DEFAULT now();
 
 ALTER TABLE public.plan_limits
   ADD COLUMN IF NOT EXISTS max_iot_devices integer NOT NULL DEFAULT 0;
@@ -84,18 +92,18 @@ BEGIN
       END IF;
     END IF;
     INSERT INTO public.iot_devices (tenant_id, device_external_id, name, kind, metadata)
-    VALUES (v_tenant, p_device_external_id, p_device_external_id, 'sensor'::iot_device_kind, '{}'::jsonb)
+    VALUES (v_tenant, p_device_external_id, p_device_external_id, NULL, '{}'::jsonb)
     RETURNING id INTO v_device;
   END IF;
 
   IF p_message_id IS NOT NULL AND EXISTS (
-    SELECT 1 FROM public.iot_readings WHERE device_id = v_device AND message_id = p_message_id
+    SELECT 1 FROM public.iot_readings WHERE device_id = v_device::text AND message_id = p_message_id
   ) THEN
     RETURN jsonb_build_object('ok', true, 'duplicate', true);
   END IF;
 
   INSERT INTO public.iot_readings (device_id, value, quality, message_id, ttl_ms, timestamp)
-  VALUES (v_device, p_value, COALESCE(p_quality,'GOOD'), p_message_id, COALESCE(p_ttl_ms,5000), now())
+  VALUES (v_device::text, p_value, COALESCE(p_quality,'GOOD'), p_message_id, COALESCE(p_ttl_ms,5000), now())
   RETURNING id INTO v_reading_id;
 
   RETURN jsonb_build_object('ok', true, 'reading_id', v_reading_id, 'device_id', v_device);

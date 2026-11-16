@@ -158,3 +158,11 @@ while True:
 6. Para ligar um relé: ative **Habilitar comando de campo** e confirme a janela. Bloqueios mostram o motivo (E-STOP, intertravamento, disjuntor aberto, NBR 5410).
 
 O firmware desliga todas as saídas sozinho se o navegador parar de falar com ele por 1,5 s, no E-STOP e se travar (watchdog). Isso é uma camada extra: a segurança das pessoas continua sendo o circuito físico de emergência (NR-10/NR-12).
+
+### Enviar as leituras reais para a nuvem
+
+Com o Arduino conectado, ative **Enviar para a nuvem** no painel. As leituras entram no **Realtime** da sua empresa (menu Realtime), com uma aba por grandeza: `A0`, `A1` (corrente/tensão com unidade), `out.D4`… (relé ligado = 1), `in.D8`… (contato fechado = 1) e `estop`.
+
+- Requer login e plano **Pro Empresa** ou **Premium**; a bancada conta como **um** dispositivo.
+- Só valores que mudaram (ou um a cada 60 s) são enviados, para não encher o banco.
+- Não funciona no projeto de demonstração.

@@ -47,7 +47,18 @@ export interface BenchState {
   /** Linhas recebidas com checksum/formato inválido (qualidade do enlace). */
   badFrames: number;
   log: BenchLogEntry[];
+  /** Amostras REAIS recentes (contagens ADC) para o gráfico ao vivo. */
+  history: BenchSample[];
 }
+
+export interface BenchSample {
+  readonly at: number;
+  readonly mean: readonly number[];
+  readonly rms: readonly number[];
+}
+
+/** ~60 s com telemetria a 250 ms. */
+export const HISTORY_MAX = 240;
 
 const LOG_MAX = 60;
 
@@ -60,6 +71,7 @@ export const useBenchStore = create<BenchState>(() => ({
   lastError: null,
   badFrames: 0,
   log: [],
+  history: [],
 }));
 
 function pushLog(dir: BenchLogEntry["dir"], text: string) {
@@ -120,6 +132,7 @@ export class BenchController {
       data: null,
       dataAt: null,
       badFrames: 0,
+      history: [],
     });
     try {
       const port = await serial.requestPort(opts.allPorts ? {} : { filters: [...UNO_USB_FILTERS] });
@@ -197,11 +210,17 @@ export class BenchController {
         );
         break;
       case "data":
-        useBenchStore.setState((s) => ({
-          data: f,
-          dataAt: Date.now(),
-          status: s.status === "connecting" ? "connected" : s.status,
-        }));
+        useBenchStore.setState((s) => {
+          const at = Date.now();
+          const history = s.history.length >= HISTORY_MAX ? s.history.slice(1) : s.history.slice();
+          history.push({ at, mean: f.analogMean, rms: f.analogAcRms });
+          return {
+            data: f,
+            dataAt: at,
+            history,
+            status: s.status === "connecting" ? "connected" : s.status,
+          };
+        });
         break;
       case "ack":
         pushLog("rx", `ACK D${f.pin} → ${f.state ? "ligado" : "desligado"}`);

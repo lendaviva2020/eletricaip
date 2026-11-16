@@ -39,7 +39,21 @@ export const Route = createFileRoute("/realtime")({
   }),
 });
 
-type Reading = { id: string; device_id: string; value: number; quality: string; timestamp: string };
+type Reading = {
+  id: string;
+  device_id: string | null;
+  value: number;
+  quality: string;
+  timestamp: string;
+  /** Grandeza (dispositivos com várias, ex.: bancada Arduino). null = única. */
+  metric?: string | null;
+  unit?: string | null;
+};
+
+/** Ordena grandezas: analógicas (A0..A5) primeiro, depois estados. */
+function metricOrder(m: string): string {
+  return /^A\d$/.test(m) ? `0${m}` : m === "estop" ? `9${m}` : `5${m}`;
+}
 type Alert = {
   id: string;
   device_id: string | null;
@@ -77,7 +91,7 @@ function RealtimePage() {
 
   const initial = useQuery({
     queryKey: ["iot", "readings", activeId],
-    queryFn: () => fetchReadings({ data: { deviceId: activeId ?? undefined, limit: 100 } }),
+    queryFn: () => fetchReadings({ data: { deviceId: activeId ?? undefined, limit: 500 } }),
     enabled: !!activeId,
   });
 
@@ -88,6 +102,17 @@ function RealtimePage() {
   });
 
   const [live, setLive] = useState<Reading[]>([]);
+  const [metric, setMetric] = useState<string | null>(null);
+  const metrics = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of live) if (r.metric) set.add(r.metric);
+    return [...set].sort((a, b) => metricOrder(a).localeCompare(metricOrder(b)));
+  }, [live]);
+  const shownMetric = metric && metrics.includes(metric) ? metric : (metrics[0] ?? null);
+  const shownReadings = useMemo(
+    () => (shownMetric ? live.filter((r) => r.metric === shownMetric) : live),
+    [live, shownMetric],
+  );
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
@@ -108,7 +133,7 @@ function RealtimePage() {
         },
         (payload) => {
           const r = payload.new as Reading;
-          setLive((prev) => [...prev.slice(-199), r]);
+          setLive((prev) => [...prev.slice(-599), r]);
         },
       )
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "iot_alerts" }, () => {
@@ -195,7 +220,27 @@ function RealtimePage() {
 
         {/* Main */}
         <div className="space-y-4">
-          <LiveChart readings={live} />
+          {metrics.length > 1 && (
+            <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Grandeza">
+              {metrics.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={m === shownMetric}
+                  onClick={() => setMetric(m)}
+                  className={`rounded border px-2 py-0.5 font-mono text-xs ${
+                    m === shownMetric
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          )}
+          <LiveChart readings={shownReadings} metric={shownMetric} />
           <CommandPanel
             deviceExternalId={
               devices.data?.ok
@@ -250,7 +295,7 @@ function RealtimePage() {
   );
 }
 
-function LiveChart({ readings }: { readings: Reading[] }) {
+function LiveChart({ readings, metric }: { readings: Reading[]; metric: string | null }) {
   const { min, max, path, last } = useMemo(() => {
     if (readings.length === 0) return { min: 0, max: 1, path: "", last: 0 };
     const vals = readings.map((r) => r.value);
@@ -268,13 +313,18 @@ function LiveChart({ readings }: { readings: Reading[] }) {
       .join(" ");
     return { min: mn, max: mx, path, last: vals[vals.length - 1] };
   }, [readings]);
+  const unit = readings.length ? readings[readings.length - 1].unit : null;
 
   return (
     <Card className="p-4">
       <div className="flex items-baseline justify-between mb-2">
-        <h2 className="font-semibold">Telemetria ao vivo</h2>
+        <h2 className="font-semibold">
+          Telemetria ao vivo
+          {metric && <span className="ml-2 font-mono text-sm text-primary">{metric}</span>}
+        </h2>
         <div className="text-xs text-muted-foreground font-mono">
-          última: <span className="text-foreground">{last.toFixed(3)}</span> · {readings.length} pts
+          última: <span className="text-foreground">{last.toFixed(3)}</span>
+          {unit ? ` ${unit}` : ""} · {readings.length} pts
         </div>
       </div>
       <div className="aspect-[4/1] w-full bg-muted/20 rounded relative overflow-hidden">

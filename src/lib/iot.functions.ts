@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/edge/protocol-classification";
@@ -17,27 +18,56 @@ export const listIotDevices = createServerFn({ method: "GET" })
     return { ok: true as const, devices: data ?? [] };
   });
 
+const IotReadingRowSchema = z.object({
+  id: z.string(),
+  device_id: z.string().nullable(),
+  value: z.number(),
+  quality: z.string(),
+  timestamp: z.string(),
+  ttl_ms: z.number().nullable().optional(),
+  metric: z.string().nullable().optional().default(null),
+  unit: z.string().nullable().optional().default(null),
+});
+
 export const getLatestReadings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
     z
       .object({
         deviceId: z.string().uuid().optional(),
+        /** Grandeza de um dispositivo com várias (ex.: bancada Arduino: A0, out.D4). */
+        metric: z
+          .string()
+          .regex(/^[A-Za-z0-9_.:-]{1,48}$/)
+          .optional(),
         limit: z.number().min(1).max(500).default(100),
       })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    let q = supabase
-      .from("iot_readings")
-      .select("id, device_id, value, quality, timestamp, ttl_ms")
-      .order("timestamp", { ascending: false })
-      .limit(data.limit);
-    if (data.deviceId) q = q.eq("device_id", data.deviceId);
-    const { data: rows, error } = await q;
-    if (error) return { ok: false as const, error: error.message };
-    return { ok: true as const, readings: (rows ?? []).reverse() };
+    // metric/unit ainda fora dos tipos gerados: consulta sem genérico, saída validada.
+    const db = context.supabase as unknown as SupabaseClient;
+    const run = (withMetric: boolean) => {
+      let q = db
+        .from("iot_readings")
+        .select(
+          withMetric
+            ? "id, device_id, value, quality, timestamp, ttl_ms, metric, unit"
+            : "id, device_id, value, quality, timestamp, ttl_ms",
+        )
+        .order("timestamp", { ascending: false })
+        .limit(data.limit);
+      if (data.deviceId) q = q.eq("device_id", data.deviceId);
+      if (withMetric && data.metric) q = q.eq("metric", data.metric);
+      return q;
+    };
+    let res = await run(true);
+    // Banco sem as colunas novas (migration pendente): segue sem grandeza.
+    if (res.error?.code === "42703") res = await run(false);
+    if (res.error) return { ok: false as const, error: res.error.message };
+    const parsed = z.array(IotReadingRowSchema).safeParse(res.data ?? []);
+    if (!parsed.success) return { ok: false as const, error: "Resposta inválida do banco." };
+    return { ok: true as const, readings: parsed.data.reverse() };
   });
 
 export const listIotAlerts = createServerFn({ method: "GET" })

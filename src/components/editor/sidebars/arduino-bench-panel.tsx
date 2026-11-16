@@ -7,7 +7,7 @@
  * confirmação antes de energizar e o guarda NBR 5410/intertravamento
  * (regra 21 do AGENTS.md). Desligar é sempre permitido.
  */
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import {
   CaretDown,
   CaretRight,
@@ -15,6 +15,7 @@ import {
   PlugsConnected,
   Warning,
   DownloadSimple,
+  CloudArrowUp,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { useDiagramStore } from "@/lib/diagram/store";
@@ -26,6 +27,12 @@ import { auditBenchConfig } from "@/lib/hardware/command-guard";
 import { generateUnoFirmware } from "@/lib/hardware/firmware/uno-firmware";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useBenchCloudSync } from "@/hooks/use-bench-cloud-sync";
+import { benchDeviceExternalId, type BenchSnapshot } from "@/lib/hardware/bench-telemetry";
+import { staleLimitMs } from "@/lib/hardware/command-guard";
+import { isDemoProject } from "@/lib/use-project-persistence";
+import { useProjectStore } from "@/lib/project-store";
+import { BenchTrend } from "./bench-trend";
 
 type Source = "diagram" | "example";
 
@@ -44,9 +51,16 @@ export function ArduinoBenchPanel() {
   const [source, setSource] = useState<Source>("diagram");
   const [armed, setArmed] = useState(false);
   const [confirmPin, setConfirmPin] = useState<number | null>(null);
-  const doc = useDiagramStore((s) => s.doc);
+  const [cloudOn, setCloudOn] = useState(false);
+  const liveDoc = useDiagramStore((s) => s.doc);
+  // Fora do caminho crítico de arraste. Calculado mesmo com o painel fechado:
+  // o espelho no unifilar e o envio à nuvem continuam usando os pinos certos.
+  const doc = useDeferredValue(liveDoc);
+  // Projeto aberto (preenchido pela persistência) — sem depender do roteador.
+  const projectId = useProjectStore((st) => st.projectId);
+  const cloudAvailable = !isDemoProject(projectId);
 
-  const mapping = useMemo(() => (open ? benchConfigFromDiagram(doc) : null), [open, doc]);
+  const mapping = useMemo(() => benchConfigFromDiagram(doc), [doc]);
   const config: BenchConfig =
     source === "diagram" && mapping && mapping.config.outputs.length > 0
       ? mapping.config
@@ -66,6 +80,27 @@ export function ArduinoBenchPanel() {
       .join(",");
     return hello.outputs.join(",") !== want;
   }, [bench.firmwarePins, config.outputs]);
+
+  const snapshot: BenchSnapshot | null =
+    connected &&
+    bench.live.telemetryAgeMs !== null &&
+    bench.live.telemetryAgeMs <= staleLimitMs(config)
+      ? {
+          readings: bench.readings,
+          inputsMask: bench.live.inputsMask,
+          outputsMask: bench.live.outputsMask,
+          estop: bench.live.estop,
+        }
+      : null;
+  const cloud = useBenchCloudSync({
+    enabled: cloudOn && cloudAvailable,
+    config,
+    deviceExternalId: benchDeviceExternalId(projectId, usingExample),
+    deviceName: usingExample ? "Bancada Arduino (exemplo)" : config.name,
+    firmware: bench.firmware,
+    snapshot,
+    onFatal: () => setCloudOn(false),
+  });
 
   const run = async (pin: number, on: boolean) => {
     const r = await bench.command(pin, on, armed);
@@ -323,8 +358,54 @@ export function ArduinoBenchPanel() {
                       </li>
                     ))}
                   </ul>
+                  <BenchTrend config={config} />
                 </div>
               )}
+
+              <div className="rounded border border-border p-1.5">
+                <label className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <CloudArrowUp size={14} />
+                    <span>
+                      <span className="font-semibold">{t("bench.cloud")}</span>
+                      <span className="block text-muted-foreground">
+                        {cloudAvailable ? t("bench.cloudHint") : t("bench.cloudDemo")}
+                      </span>
+                    </span>
+                  </span>
+                  <Switch
+                    checked={cloudOn && cloudAvailable}
+                    disabled={!cloudAvailable}
+                    onCheckedChange={(v) => {
+                      if (v) cloud.reset();
+                      setCloudOn(v);
+                    }}
+                    aria-label={t("bench.cloud")}
+                  />
+                </label>
+                {cloudAvailable && (cloudOn || cloud.errorCode) && (
+                  <p
+                    className={`mt-1 ${cloud.status === "error" ? "text-red-600" : "text-muted-foreground"}`}
+                    role="status"
+                  >
+                    {cloud.status === "error" && cloud.errorCode
+                      ? t(`bench.cloudErr_${cloud.errorCode}`)
+                      : cloud.status === "waiting"
+                        ? t("bench.cloudWaiting")
+                        : t("bench.cloudSent", {
+                            n: cloud.sentReadings,
+                            time: cloud.lastSentAt
+                              ? new Date(cloud.lastSentAt).toLocaleTimeString()
+                              : "—",
+                          })}
+                  </p>
+                )}
+                {cloud.sentReadings > 0 && (
+                  <a href="/realtime" className="mt-1 inline-block text-primary underline">
+                    {t("bench.cloudOpen")}
+                  </a>
+                )}
+              </div>
             </>
           )}
         </div>
