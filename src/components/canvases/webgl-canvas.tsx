@@ -142,7 +142,9 @@ function voltaiComponentToNodeKind(type: VoltaiComponentType): NodeKind {
 function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
   switch (kind) {
     case "breaker":
-      return { kind, in_A: 63, curve: "C", poles: 1, manufacturer: "Schneider", model: "iC60N" };
+      // 3 polos: a biblioteca é de BT industrial 380 V; com 1 polo todo disjuntor
+      // posto num circuito trifásico já nascia com erro de fases.
+      return { kind, in_A: 63, curve: "C", poles: 3, manufacturer: "Schneider", model: "iC60N" };
     case "rcd":
       return { kind, in_A: 25, sensitivity_mA: 30, poles: 2 };
     case "contactor":

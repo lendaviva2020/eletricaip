@@ -7,6 +7,7 @@ import {
   syncMultifilarCommands,
   detectMultifilarPhaseMismatches,
   calculateVoltageDropNbr5410,
+  listCablesMissingData,
   runDiagramDiagnostics,
 } from "@/lib/diagram/multifilar";
 import { diagramToSvg } from "@/lib/diagram/export-svg";
@@ -445,22 +446,31 @@ describe("ElétricAi — Canvas Elétrico Unifilar + Multifilar Profissional", (
     expect(postSyncDoc.nodes[multiNode!.id].position.y).toBe(customPos.y);
   });
 
-  it("6. Valida cálculos reais de queda de tensão segundo NBR 5410 (< 4.0%)", () => {
+  it("6. Queda de tensão NBR 5410: só calcula com cabo informado; sem dados vira pendência", () => {
     const doc = useDiagramStore.getState().doc;
+    // Sem comprimento/seção NADA é presumido: o trecho fica fora do cálculo.
+    const missing = listCablesMissingData(doc);
     const results = calculateVoltageDropNbr5410(doc);
-
-    expect(results.length).toBeGreaterThan(0);
-
-    for (const r of results) {
-      expect(typeof r.drop_V).toBe("number");
-      expect(typeof r.drop_pct).toBe("number");
-      expect(r.max_allowed_pct).toBe(4.0);
-      expect(r.length_m).toBeGreaterThan(0);
-      expect(r.section_mm2).toBeGreaterThan(0);
-      expect(r.current_A).toBeGreaterThan(0);
-      expect(r.drop_pct).toBeLessThanOrEqual(r.max_allowed_pct);
-      expect(r.compliant).toBe(true);
+    for (const r of results) expect(missing).not.toContain(r.edgeId);
+    if (missing.length > 0) {
+      expect(runDiagramDiagnostics(doc).some((a) => a.id === "vd_missing_data")).toBe(true);
     }
+
+    // Com o cabo informado, o cálculo continua: 15,2 A, 30 m, 4 mm², 380 V.
+    const edgeId = Object.values(doc.edges).find(
+      (e) => e.sheet === "unifilar" && e.kind === "power",
+    )?.id;
+    expect(edgeId).toBeDefined();
+    const withCable = structuredClone(doc);
+    const edge = withCable.edges[edgeId as string];
+    edge.circuitConfig = "3F+N+PE";
+    edge.cable = { insulation: "PVC", ...edge.cable, section_mm2: 4, length_m: 30 };
+    const r = calculateVoltageDropNbr5410(withCable).find((x) => x.edgeId === edgeId);
+    expect(r).toBeDefined();
+    expect(r?.length_m).toBe(30);
+    expect(r?.section_mm2).toBe(4);
+    expect(r?.max_allowed_pct).toBe(4.0);
+    expect(r?.drop_pct).toBeGreaterThan(0);
   });
 
   it("7. Executa diagnóstico em tempo real e detecta conformidade ou inconsistências", () => {

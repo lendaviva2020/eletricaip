@@ -7,6 +7,7 @@
 // seleção e exclusão de condutores/arestas, simulação elétrica com
 // coloração por estado real (energizado, desenergizado, falha) e fundo cinza técnico.
 
+import { nodeDisplayLabel } from "./node-label";
 import { Application, Container, FederatedPointerEvent, Graphics, Text } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import type {
@@ -662,7 +663,7 @@ export class DiagramStage {
       const selection = new Graphics();
       const symbol = drawSymbol(n.params.kind);
       const label = new Text({
-        text: n.label || n.params.kind,
+        text: nodeDisplayLabel(n),
         style: {
           fill: CANVAS_PALETTE.label,
           fontSize: 11.5,
@@ -701,7 +702,7 @@ export class DiagramStage {
 
     view.container.position.set(n.position.x, n.position.y);
     view.container.rotation = ((n.rotation ?? 0) * Math.PI) / 180;
-    view.label.text = n.label || n.params.kind;
+    view.label.text = nodeDisplayLabel(n);
 
     // Indicador visual de estado de dispositivo de manobra (aberto/fechado)
     if (view.deviceStatusBadge) {

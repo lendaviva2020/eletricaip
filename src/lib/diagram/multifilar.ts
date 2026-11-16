@@ -467,13 +467,14 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
     if (!src || !tgt) continue;
 
     const cable = e.cable;
+    // Sem comprimento ou seção informados a queda NÃO é calculada: valor
+    // presumido (antes 25 m / 4 mm²) virava ERRO falso no diagnóstico e
+    // pintava o condutor como falha na simulação. Fica como pendência
+    // (`listCablesMissingData`).
+    if (!cable?.length_m || !cable?.section_mm2) continue;
     const assumptions: string[] = [];
-    if (!cable?.length_m) assumptions.push("Comprimento adotado como padrão (25 m)");
-    if (!cable?.section_mm2) assumptions.push("Seção adotada como padrão (4 mm²)");
-
-    // Se o cabo não estiver explícito na aresta, infere valores nominais da carga ou padrão
-    const length_m = cable?.length_m ?? 25;
-    const section_mm2 = cable?.section_mm2 ?? 4;
+    const length_m = cable.length_m;
+    const section_mm2 = cable.section_mm2;
 
     // Determina a corrente do circuito a partir dos parâmetros do nó de carga ou proteção
     let current_A = 20;
@@ -491,6 +492,8 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
           );
       } else if (p.kind === "breaker") {
         current_A = (p as any).in_A ?? 20;
+        // In do disjuntor é limite superior, não a corrente de projeto (Ib).
+        assumptions.push(`Corrente adotada = In do disjuntor (${current_A} A)`);
       } else if (p.kind === "load") {
         current_A = Math.round((p as any).power_W / ((p as any).voltage_V * (p as any).fp));
       }
@@ -534,6 +537,14 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
   }
 
   return results;
+}
+
+/** Ligações de potência (unifilar) sem comprimento ou seção do condutor. */
+export function listCablesMissingData(doc: DiagramDoc): string[] {
+  return Object.values(doc.edges)
+    .filter((e) => e.sheet === "unifilar" && e.kind === "power")
+    .filter((e) => !e.cable?.length_m || !e.cable?.section_mm2)
+    .map((e) => e.id);
 }
 
 export interface DiagnosticAlert {
@@ -595,7 +606,19 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
     });
   }
 
-  // 3. Verificação de queda de tensão NBR 5410 com classificação determinística de margem
+  // 3. Cabos sem dados: queda de tensão não verificável (pendência, nunca valor presumido)
+  const missing = listCablesMissingData(doc);
+  if (missing.length > 0) {
+    alerts.push({
+      id: "vd_missing_data",
+      type: "AVISO",
+      severity: "warning",
+      message: `${missing.length} cabo(s) sem comprimento ou seção: queda de tensão não verificável (NBR 5410). Informe os dados do condutor.`,
+      edgeId: missing[0],
+    });
+  }
+
+  // 4. Verificação de queda de tensão NBR 5410 com classificação determinística de margem
   const voltageDrops = calculateVoltageDropNbr5410(doc);
   for (const vd of voltageDrops) {
     const marginRatio = vd.max_allowed_pct > 0 ? vd.drop_pct / vd.max_allowed_pct : 1;

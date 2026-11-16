@@ -247,3 +247,66 @@ describe("motor-fleet — frota derivada do unifilar", () => {
     expect(en.energizedNodeIds.has(m.chain.contactorId!)).toBe(true);
   });
 });
+
+describe("ramais sem barramento (disjuntor geral derivando dois ramais)", () => {
+  // TR → Q0 → {Q1 → K1 → F1 → M1 (partida direta), Q2 → U1 (inversor) → M2}
+  const node = (id: string, x: number, params: Record<string, unknown>) => ({
+    id,
+    sheet: "unifilar" as const,
+    position: { x, y: 0 },
+    rotation: 0,
+    label: id,
+    params,
+  });
+  const edge = (source: string, target: string) => ({
+    id: `${source}-${target}`,
+    sheet: "unifilar" as const,
+    source,
+    target,
+    kind: "power" as const,
+  });
+  const doc = {
+    id: "d",
+    version: 2,
+    sheets: ["unifilar"],
+    nodes: Object.fromEntries(
+      [
+        node("TR", 0, { kind: "transformer", power_kVA: 75, primary_V: 13800, secondary_V: 380 }),
+        node("Q0", 0, { kind: "breaker", in_A: 100, curve: "C", poles: 3 }),
+        node("Q1", -1, { kind: "breaker", in_A: 20, curve: "C", poles: 3 }),
+        node("K1", -1, { kind: "contactor", in_A: 18, coil_V: 24 }),
+        node("F1", -1, { kind: "thermal_relay", tag: "F1" }),
+        node("M1", -1, { kind: "motor", power_kW: 7.5, voltage_V: 380, startMethod: "DOL" }),
+        node("Q2", 1, { kind: "breaker", in_A: 25, curve: "C", poles: 3 }),
+        node("U1", 1, { kind: "vfd", power_kW: 7.5 }),
+        node("M2", 1, { kind: "motor", power_kW: 7.5, voltage_V: 380, startMethod: "DOL" }),
+      ].map((n) => [n.id, n]),
+    ),
+    edges: Object.fromEntries(
+      [
+        edge("TR", "Q0"),
+        edge("Q0", "Q1"),
+        edge("Q0", "Q2"),
+        edge("Q1", "K1"),
+        edge("K1", "F1"),
+        edge("F1", "M1"),
+        edge("Q2", "U1"),
+        edge("U1", "M2"),
+      ].map((e) => [e.id, e]),
+    ),
+  } as unknown as Parameters<typeof buildMotorFleet>[0];
+
+  it("cada motor só vê o próprio ramal (M1 não herda o inversor de M2)", () => {
+    const fleet = buildMotorFleet(doc);
+    const m1 = fleet.find((m) => m.nodeId === "M1");
+    const m2 = fleet.find((m) => m.nodeId === "M2");
+    expect(m1?.chain.driveId).toBeUndefined();
+    expect(m1?.chain.contactorId).toBe("K1");
+    expect(m1?.chain.breakerId).toBe("Q1");
+    expect(m1?.config.startMethod).toBe("DOL");
+    expect(m2?.chain.driveId).toBe("U1");
+    expect(m2?.chain.contactorId).toBeUndefined();
+    expect(m2?.chain.breakerId).toBe("Q2");
+    expect(m2?.config.startMethod).toBe("VFD");
+  });
+});

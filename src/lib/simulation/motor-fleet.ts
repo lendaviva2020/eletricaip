@@ -113,6 +113,10 @@ export function discoverFeederChain(
         else if ((kind === "vfd" || kind === "softstarter") && !chain.driveId)
           chain.driveId = node.id;
         else if (kind === "fuse" && !chain.fuseId) chain.fuseId = node.id;
+        // Ponto de derivação (alimenta mais de um ramal, ex.: disjuntor geral
+        // sem barramento): conta como proteção a montante, mas a busca não
+        // desce pelos ramais vizinhos — antes M1 herdava o inversor de M2.
+        if ((adj.get(other)?.length ?? 0) > 2) continue;
         next.push(other);
       }
     }
