@@ -45,6 +45,8 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/privacidade",
   "/termos",
+  "/para-empresas",
+  "/para-autonomos",
   "/design-system",
 ];
 const PUBLIC_PREFIXES = ["/auth/callback", "/invite/"];

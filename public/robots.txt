@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /settings
+Disallow: /workspace
+Disallow: /dashboard
+
+Sitemap: https://eletricai.vercel.app/sitemap.xml

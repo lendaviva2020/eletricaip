@@ -3,7 +3,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, FileXls, Plus, Trash, MagicWand, MagnifyingGlass } from "@phosphor-icons/react";
+import { applyCatalogPricesToBom } from "@/lib/tenant-catalog.functions";
+import {
+  ArrowLeft,
+  FileXls,
+  Plus,
+  Trash,
+  MagicWand,
+  MagnifyingGlass,
+  Tag,
+} from "@phosphor-icons/react";
 import {
   listBom,
   addBomItem,
@@ -37,6 +46,8 @@ function BomPage() {
   const updFn = useServerFn(updateBomItem);
   const delFn = useServerFn(deleteBomItem);
   const genFn = useServerFn(generateBomFromCanvas);
+  const priceFn = useServerFn(applyCatalogPricesToBom);
+  const [pricing, setPricing] = useState(false);
   const catalogFn = useServerFn(listCatalog);
 
   const [search, setSearch] = useState("");
@@ -53,6 +64,19 @@ function BomPage() {
     queryFn: () => catalogFn({ data: { search, limit: 20 } }),
     enabled: search.trim().length > 1,
   });
+
+  async function handleFillFromCatalog() {
+    setPricing(true);
+    try {
+      const r = await priceFn({ data: { projectId, overwrite: false } });
+      toast.success(t("bom.fillFromCatalogResult", r));
+      await qc.invalidateQueries({ queryKey: ["bom", projectId] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setPricing(false);
+    }
+  }
 
   async function handleGenerate() {
     setBusy(true);
@@ -195,6 +219,16 @@ function BomPage() {
           >
             <FileXls className="w-4 h-4 mr-1" />
             {exporting ? t("bom.exporting") : t("bom.exportXlsx")}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleFillFromCatalog}
+            disabled={pricing || (data?.items?.length ?? 0) === 0}
+            data-testid="bom-fill-from-catalog"
+          >
+            <Tag className="w-4 h-4 mr-1" />
+            {pricing ? t("bom.fillingFromCatalog") : t("bom.fillFromCatalog")}
           </Button>
           <Button size="sm" variant="outline" onClick={handleAddManual}>
             <Plus className="w-4 h-4 mr-1" /> {t("bom.addManual")}

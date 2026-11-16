@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
 import { ArrowLeft, CircleNotch } from "@phosphor-icons/react";
 import { BrandBolt } from "@/components/brand-bolt";
+import { fillLegalTokens } from "@/lib/legal";
 
 export function LegalPage({
   title,
@@ -23,7 +24,8 @@ export function LegalPage({
         const res = await fetch(docPath);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
-        if (!cancelled) setMd(text);
+        // Dados da empresa e versões vêm de lib/legal (nunca valores inventados no .md).
+        if (!cancelled) setMd(fillLegalTokens(text));
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       }

@@ -1144,7 +1144,7 @@ export function RungGrid() {
             const isEditingComment = editingCommentRungId === rung.id;
 
             return (
-              <div key={rung.id} className="mb-6">
+              <div key={rung.id} className="mb-6" data-rung-index={rungIndex + 1}>
                 <div
                   onClick={() => {
                     select(rung.id);

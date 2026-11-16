@@ -444,6 +444,10 @@ export const ptBR = {
     confirmDelete: 'Excluir permanentemente "{name}"?\n\nEsta ação não pode ser desfeita.',
   },
   bom: {
+    fillFromCatalog: "Preencher preços do catálogo",
+    fillingFromCatalog: "Buscando preços…",
+    fillFromCatalogResult:
+      "{updated} de {total} itens receberam preço do catálogo. Sem correspondência: {notFound}; outra moeda: {otherCurrency}; ambíguos: {ambiguous}; já tinham preço: {keptExisting}.",
     exportXlsx: "Exportar Excel",
     exporting: "Gerando…",
     exportFailed: "Não foi possível gerar a planilha.",

@@ -1,10 +1,10 @@
 # Termos de Uso — EletricAI Industrial OS
 
-**Última atualização:** 12 de outubro de 2026
-**Versão:** 1.1 (nova §17 — confidencialidade de projetos industriais)
-**Operador:** EletricAI Tecnologia Ltda. (CNPJ: 00.000.000/0001-00)
-**Contato:** contato@eletricai.com · **Privacidade/DPO:** privacidade@eletricai.com
-**Endereço:** Av. Paulista, 1000 — São Paulo/SP — CEP 01310-100
+**Última atualização:** 16 de novembro de 2026
+**Versão:** {{TERMS_VERSION}} (planos v2: mensal/anual, limites de usuários e dispositivos)
+**Operador:** {{LEGAL_NAME}} (CNPJ: {{CNPJ}})
+**Contato:** {{CONTACT_EMAIL}} · **Privacidade/DPO:** {{PRIVACY_EMAIL}}
+**Endereço:** {{ADDRESS}}
 
 Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendido e aceito estes Termos e a [Política de Privacidade](/privacidade). Se não concordar, não utilize os serviços.
 
@@ -26,7 +26,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 2.3. **Papéis e responsabilidades no Tenant:** `owner`, `admin`, `engineer`, `operator`, `viewer`. Owners/admins respondem pelos convites, papéis atribuídos e uso feito pelos membros do seu Tenant — incluindo os deveres de confidencialidade da §17.
 
-2.4. Comunique imediatamente qualquer uso não autorizado para contato@eletricai.com. Reservamo-nos o direito de suspender contas em caso de suspeita fundada de fraude, abuso ou violação destes Termos.
+2.4. Comunique imediatamente qualquer uso não autorizado para {{CONTACT_EMAIL}}. Reservamo-nos o direito de suspender contas em caso de suspeita fundada de fraude, abuso ou violação destes Termos.
 
 ## 3. Licença de uso e propriedade intelectual
 
@@ -53,7 +53,11 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 ## 5. Planos, pagamentos e créditos de IA
 
-5.1. **Planos e limites:** cada plano possui limites de projetos, membros, telemetria, storage e **créditos mensais de IA**. Os limites vigentes estão descritos em `/settings/billing` e na proposta contratada.
+5.1. **Planos e limites:** os planos (Grátis, Autônomo, Pro Empresa e Premium) possuem limites de projetos, **usuários**, **dispositivos IoT**, storage e **créditos mensais de IA**. Os valores e limites vigentes estão em `/settings/billing` e na página inicial. Ao atingir um limite, novos itens (usuário, dispositivo, projeto) são recusados; nada já existente é apagado.
+
+5.1.1. **Mensal ou anual:** a assinatura anual é cobrada antecipadamente pelo período de 12 meses, com desconto equivalente a cerca de 2 mensalidades.
+
+5.1.2. **Preço de lançamento:** desconto promocional informado no checkout, válido para as primeiras empresas contratantes, pelo prazo nele indicado; após o prazo vale o preço de tabela.
 
 5.2. **Cobrança:** assinaturas via **Stripe** e/ou **Mercado Pago** (cartão, boleto, PIX onde disponível). Preços em BRL, cobrados antecipadamente por ciclo. Impostos incidentes no Brasil serão acrescidos/recolhidos conforme a legislação.
 
@@ -63,11 +67,13 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 5.5. **Reajuste e alteração de preços:** comunicados com **30 dias de antecedência**; o novo valor aplica-se a partir do ciclo seguinte. O Cliente pode cancelar antes da vigência (seção 6).
 
-5.6. **Inadimplência:** após 15 dias de atraso, os recursos pagos poderão ser suspensos (modo leitura); após 60 dias, a conta poderá ser degradada para o plano free, preservados os direitos de exportação da seção 8.
+5.6. **Vencimento e inadimplência:** pagamentos avulsos (ex.: PIX/boleto pelo Mercado Pago) liberam o plano até o fim do período pago (1 mês ou 1 ano); sem novo pagamento, a conta volta ao plano Grátis **3 dias após o vencimento**, preservados os dados e os direitos de exportação da seção 8. Assinaturas recorrentes com cartão (Stripe) seguem o ciclo do processador.
 
 ## 6. Vigência, cancelamento e renovação
 
-6.1. Assinaturas renovam-se automaticamente por iguais períodos até o cancelamento em `/settings/billing` ou por solicitação a contato@eletricai.com.
+6.1. Assinaturas recorrentes com cartão renovam-se automaticamente por iguais períodos até o cancelamento em `/settings/billing` ou por solicitação a {{CONTACT_EMAIL}}. Pagamentos avulsos não renovam sozinhos (ver 5.6).
+
+6.1.1. **Direito de arrependimento:** a pessoa física que contratar como consumidora pode desistir em até 7 dias da contratação (art. 49 do Código de Defesa do Consumidor), com devolução integral do valor pago.
 
 6.2. O cancelamento produz efeitos ao fim do ciclo pago (sem reembolso proporcional), mantido o acesso até essa data, salvo disposição legal em contrário.
 
@@ -85,7 +91,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 8.2. Após o encerramento, mantemos os dados por **90 dias** (janela de recuperação) e depois os excluímos, ressalvadas retenções legais (fiscais: 5 anos para faturas). Backups pontuais (Supabase PITR, 7 dias) expiram por rotação automática.
 
-8.3. Solicitações de portabilidade/exclusão seguem a Política de Privacidade (privacidade@eletricai.com, prazo de 15 dias úteis).
+8.3. Solicitações de portabilidade/exclusão seguem a Política de Privacidade ({{PRIVACY_EMAIL}}, prazo de 15 dias úteis).
 
 ## 9. Inteligência Artificial — escopo, limites e isenções
 
@@ -113,7 +119,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 11.1. Meta de disponibilidade: **99,5% mensal** para o núcleo autenticado (excluídas manutenções programadas com aviso de 48h e eventos de força maior).
 
-11.2. Suporte por e-mail (contato@eletricai.com) em horário comercial, com priorização por severidade. Status e diagnósticos em `/settings/diagnostics` e `/settings/ai-status`.
+11.2. Suporte por e-mail ({{CONTACT_EMAIL}}) em horário comercial, com priorização por severidade. Status e diagnósticos em `/settings/diagnostics` e `/settings/ai-status`.
 
 11.3. Telemetria, Realtime e upload de modelos 3D dependem de conectividade e limites do plano; indisponibilidades de provedores (Supabase, Vercel, Upstash, Google Gemini, Stripe/MP) serão comunicadas e mitigadas por fallback/fail-closed documentado, sem constituir descumprimento quando fora do nosso controle razoável.
 
@@ -153,7 +159,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 16.3. **Força maior:** nenhuma parte responde por atrasos decorrentes de eventos fora de seu controle razoável (falhas de provedores globais, desastres, atos governamentais).
 
-16.4. **Contato:** contato@eletricai.com (comercial/suporte) · privacidade@eletricai.com (DPO/privacidade).
+16.4. **Contato:** {{CONTACT_EMAIL}} (comercial/suporte) · {{PRIVACY_EMAIL}} (DPO/privacidade).
 
 ## 17. Confidencialidade de projetos industriais
 
@@ -173,7 +179,7 @@ Ao criar uma conta ou utilizar a Plataforma, você declara ter lido, compreendid
 
 17.5. **Vigência do sigilo.** Os deveres desta seção valem durante a assinatura e por **5 (cinco) anos** após o encerramento, para qualquer fim. Segredos industriais protegidos por lei permanecem sigilosos enquanto mantiverem esse caráter.
 
-17.6. **Devolução e eliminação.** Ao encerrar, o Cliente pode exportar seu conteúdo (§8.1); após a janela de 90 dias (§8.2) e ressalvadas retenções legais, eliminamos o conteúdo dos sistemas ativos e propagamos a eliminação aos operadores (§6 da Política). Backups expiram por rotação. Pedidos antecipados seguem o fluxo de eliminação (privacidade@eletricai.com).
+17.6. **Devolução e eliminação.** Ao encerrar, o Cliente pode exportar seu conteúdo (§8.1); após a janela de 90 dias (§8.2) e ressalvadas retenções legais, eliminamos o conteúdo dos sistemas ativos e propagamos a eliminação aos operadores (§6 da Política). Backups expiram por rotação. Pedidos antecipados seguem o fluxo de eliminação ({{PRIVACY_EMAIL}}).
 
 17.7. **Descumprimento.** A violação desta seção autoriza a parte prejudicada a buscar tutela de urgência, sem prejuízo de perdas e danos. O Cliente responde por acessos indevidos originados da má gestão de membros, papéis e credenciais do seu Tenant (§2.3).
 

@@ -1196,6 +1196,16 @@ function Footer({ authed }: { authed: boolean }) {
           </div>
           <ul className="space-y-1.5">
             <li>
+              <Link to="/para-empresas" className="hover:text-foreground transition-colors">
+                Para empresas
+              </Link>
+            </li>
+            <li>
+              <Link to="/para-autonomos" className="hover:text-foreground transition-colors">
+                Para autônomos
+              </Link>
+            </li>
+            <li>
               <Link to="/privacidade" className="hover:text-foreground transition-colors">
                 Política de Privacidade
               </Link>

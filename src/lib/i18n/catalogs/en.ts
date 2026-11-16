@@ -445,6 +445,10 @@ export const en: TranslationCatalog = {
     confirmDelete: 'Permanently delete "{name}"?\n\nThis action cannot be undone.',
   },
   bom: {
+    fillFromCatalog: "Fill prices from catalog",
+    fillingFromCatalog: "Looking up prices…",
+    fillFromCatalogResult:
+      "{updated} of {total} items got a catalog price. No match: {notFound}; other currency: {otherCurrency}; ambiguous: {ambiguous}; already priced: {keptExisting}.",
     exportXlsx: "Export Excel",
     exporting: "Generating…",
     exportFailed: "Could not generate the spreadsheet.",

@@ -22,6 +22,8 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as ParaAutonomosRouteImport } from './routes/para-autonomos'
+import { Route as ParaEmpresasRouteImport } from './routes/para-empresas'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as RealtimeRouteImport } from './routes/realtime'
@@ -123,6 +125,16 @@ const McpRoute = McpRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParaAutonomosRoute = ParaAutonomosRouteImport.update({
+  id: '/para-autonomos',
+  path: '/para-autonomos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParaEmpresasRoute = ParaEmpresasRouteImport.update({
+  id: '/para-empresas',
+  path: '/para-empresas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
@@ -327,6 +339,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
+  '/para-autonomos': typeof ParaAutonomosRoute
+  '/para-empresas': typeof ParaEmpresasRoute
   '/privacidade': typeof PrivacidadeRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/realtime': typeof RealtimeRoute
@@ -379,6 +393,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
+  '/para-autonomos': typeof ParaAutonomosRoute
+  '/para-empresas': typeof ParaEmpresasRoute
   '/privacidade': typeof PrivacidadeRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/realtime': typeof RealtimeRoute
@@ -432,6 +448,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
+  '/para-autonomos': typeof ParaAutonomosRoute
+  '/para-empresas': typeof ParaEmpresasRoute
   '/privacidade': typeof PrivacidadeRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/realtime': typeof RealtimeRoute
@@ -486,6 +504,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/mcp'
     | '/onboarding'
+    | '/para-autonomos'
+    | '/para-empresas'
     | '/privacidade'
     | '/projects'
     | '/realtime'
@@ -538,6 +558,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/mcp'
     | '/onboarding'
+    | '/para-autonomos'
+    | '/para-empresas'
     | '/privacidade'
     | '/projects'
     | '/realtime'
@@ -590,6 +612,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/mcp'
     | '/onboarding'
+    | '/para-autonomos'
+    | '/para-empresas'
     | '/privacidade'
     | '/projects'
     | '/realtime'
@@ -643,6 +667,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   OnboardingRoute: typeof OnboardingRoute
+  ParaAutonomosRoute: typeof ParaAutonomosRoute
+  ParaEmpresasRoute: typeof ParaEmpresasRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ProjectsRoute: typeof ProjectsRouteWithChildren
   RealtimeRoute: typeof RealtimeRoute
@@ -753,6 +779,20 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/para-autonomos': {
+      id: '/para-autonomos'
+      path: '/para-autonomos'
+      fullPath: '/para-autonomos'
+      preLoaderRoute: typeof ParaAutonomosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/para-empresas': {
+      id: '/para-empresas'
+      path: '/para-empresas'
+      fullPath: '/para-empresas'
+      preLoaderRoute: typeof ParaEmpresasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidade': {
@@ -1100,6 +1140,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   OnboardingRoute: OnboardingRoute,
+  ParaAutonomosRoute: ParaAutonomosRoute,
+  ParaEmpresasRoute: ParaEmpresasRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ProjectsRoute: ProjectsRouteWithChildren,
   RealtimeRoute: RealtimeRoute,

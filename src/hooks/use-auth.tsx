@@ -196,6 +196,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // sem armazenamento: o perfil pode ser definido em Configurações → Perfil
         }
       }
+      // Login com Google: grava no perfil o aceite versionado feito no cadastro.
+      if (!data.user?.user_metadata?.terms_version && typeof meta?.terms_version === "string") {
+        await supabase.auth.updateUser({
+          data: {
+            terms_version: meta.terms_version,
+            privacy_version: meta.privacy_version,
+            terms_accepted_at: meta.terms_accepted_at,
+          },
+        });
+      }
       const accountType = accountTypeFromMetadata(meta);
       if (accountType) {
         const { applyAccountType } = await import("@/lib/account-type.functions");

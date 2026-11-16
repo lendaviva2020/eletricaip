@@ -3,10 +3,10 @@
 **LGPD (Lei 13.709/2018) e GDPR — Como tratamos seus dados**
 
 - **Aplicação:** EletricAI Industrial OS
-- **Última atualização:** 12 de outubro de 2026
-- **Versão:** 1.0
-- **Responsável pelo tratamento:** EletricAI Tecnologia Ltda. (CNPJ: 00.000.000/0001-00)
-- **Encarregado de Dados (DPO):** privacidade@eletricai.com
+- **Última atualização:** 16 de novembro de 2026
+- **Versão:** {{PRIVACY_VERSION}}
+- **Responsável pelo tratamento:** {{LEGAL_NAME}} (CNPJ: {{CNPJ}})
+- **Encarregado de Dados (DPO):** {{PRIVACY_EMAIL}}
 
 ---
 
@@ -137,7 +137,7 @@ Em conformidade com a LGPD (Art. 18) e GDPR (Arts. 15–22), você possui os seg
 
 ### Atendimento a Solicitações:
 
-- **E-mail:** privacidade@eletricai.com
+- **E-mail:** {{PRIVACY_EMAIL}}
 - **Prazo de resposta:** Até 15 dias úteis (LGPD Art. 18, §1º).
 - **Identificação:** Informe o e-mail da conta e, se possível, o ID do usuário (UUID). Para sua segurança, poderemos solicitar confirmação de identidade.
 
@@ -192,7 +192,6 @@ Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer controvér
 
 **EletricAI Tecnologia Ltda.**
 
-- **Encarregado de Dados (DPO):** privacidade@eletricai.com
-- **Endereço:** Av. Paulista, 1000 - São Paulo/SP - CEP 01310-100
-- **Website:** [https://eletricai.com](https://eletricai.com)
-- **Telefone:** +55 11 0000-0000
+- **Encarregado de Dados (DPO):** {{PRIVACY_EMAIL}}
+- **Endereço:** {{ADDRESS}}
+- **Website:** [https://eletricai.vercel.app](https://eletricai.vercel.app)

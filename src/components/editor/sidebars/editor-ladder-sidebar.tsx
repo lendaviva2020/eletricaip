@@ -18,6 +18,7 @@ import { LADDER_ELEMENTS, type LadderElement, type LadderCategory } from "@/lib/
 import { SidebarShell } from "./sidebar-primitives";
 import { useI18n } from "@/lib/i18n";
 import { useEditorStore } from "@/lib/editor/store";
+import { LadderCrossReferencePanel } from "./ladder-xref-panel";
 
 const CATEGORY_ICONS: Record<LadderCategory, typeof Gauge> = {
   "Contatos e Bordas": Stack,
@@ -164,6 +165,7 @@ export function EditorLadderSidebar() {
           );
         })}
       </div>
+      <LadderCrossReferencePanel />
     </SidebarShell>
   );
 }

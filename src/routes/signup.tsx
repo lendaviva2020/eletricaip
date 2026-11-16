@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthShell, Input, Divider, GoogleIcon } from "./login";
 import { passwordPolicyError } from "@/lib/security/password-policy";
+import { PRIVACY_VERSION, TERMS_VERSION, termsAcceptanceRecord } from "@/lib/legal";
 import {
   ACCOUNT_TYPES,
   ACCOUNT_TYPE_HINT,
@@ -79,6 +80,8 @@ function SignupPage() {
         data: {
           full_name: name,
           age_declared_18_plus: true,
+          // Aceite explícito e versionado (LGPD/CDC): qual texto foi aceito e quando.
+          ...termsAcceptanceRecord(),
           account_type: accountType,
           ...(accountType === "empresa" ? { company_name: companyName.trim() } : {}),
         },
@@ -99,7 +102,11 @@ function SignupPage() {
     try {
       localStorage.setItem(
         PENDING_TYPE_KEY,
-        JSON.stringify({ account_type: accountType, company_name: companyName.trim() }),
+        JSON.stringify({
+          account_type: accountType,
+          company_name: companyName.trim(),
+          ...termsAcceptanceRecord(),
+        }),
       );
     } catch {
       // armazenamento indisponível: o perfil pode ser definido depois em Configurações
@@ -175,12 +182,22 @@ function SignupPage() {
         <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
           <input
             type="checkbox"
-            aria-label="Confirmo que tenho 18 anos ou mais"
+            aria-label="Confirmo que tenho 18 anos ou mais, uso profissional e aceito os Termos de Uso e a Política de Privacidade"
             checked={adult}
             onChange={(e) => setAdult(e.target.checked)}
             className="mt-0.5 h-4 w-4 rounded-sm border-border accent-primary"
           />
-          <span>Confirmo que tenho 18 anos ou mais e uso profissional (B2B).</span>
+          <span>
+            Confirmo que tenho 18 anos ou mais, uso profissional e li e aceito os{" "}
+            <Link to="/termos" className="underline hover:text-foreground">
+              Termos de Uso (v{TERMS_VERSION})
+            </Link>{" "}
+            e a{" "}
+            <Link to="/privacidade" className="underline hover:text-foreground">
+              Política de Privacidade (v{PRIVACY_VERSION})
+            </Link>
+            .
+          </span>
         </label>
         {typeof error === "string" && error.trim() !== "" && (
           <p role="alert" className="text-xs text-destructive">
@@ -200,17 +217,6 @@ function SignupPage() {
           {loading && <CircleNotch className="h-4 w-4 animate-spin" />} Criar conta grátis
         </button>
       </form>
-      <p className="text-[10px] text-muted-foreground mt-3 text-center">
-        Ao criar conta, você concorda com os{" "}
-        <Link to="/termos" className="underline hover:text-foreground">
-          Termos
-        </Link>{" "}
-        e a{" "}
-        <Link to="/privacidade" className="underline hover:text-foreground">
-          Política de Privacidade
-        </Link>
-        .
-      </p>
       <p className="text-xs text-center text-muted-foreground mt-6">
         Já tem conta?{" "}
         <Link

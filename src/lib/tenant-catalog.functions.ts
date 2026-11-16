@@ -514,3 +514,94 @@ export const refreshSupplierPrices = createServerFn({ method: "POST" })
     }
     return { updated, missing, checked: targets.length };
   });
+
+/* ---------------------------- BOM ← catálogo ---------------------------- */
+
+/**
+ * Preenche o preço dos itens da lista de materiais com o catálogo da empresa
+ * (só BRL, casando código/fabricante; ver `lib/catalog/bom-pricing`). RLS do
+ * usuário garante que o projeto é da organização dele.
+ */
+export const applyCatalogPricesToBom = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ projectId: z.string().uuid(), overwrite: z.boolean().default(false) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const ctx = context as unknown as AuthContext;
+    const access = await resolveAccess(ctx);
+    requireWrite(access);
+
+    const { data: bomRows, error: bomErr } = await ctx.supabase
+      .from("project_bom_items")
+      .select("id, part_number, manufacturer, unit_price_brl")
+      .eq("project_id", data.projectId);
+    if (bomErr) throw new Response(bomErr.message, { status: 500 });
+    const items = z
+      .array(
+        z.object({
+          id: z.string(),
+          part_number: z.string().nullable(),
+          manufacturer: z.string().nullable(),
+          unit_price_brl: z
+            .union([z.number(), z.string()])
+            .nullable()
+            .transform((v) => (v === null ? null : Number(v))),
+        }),
+      )
+      .parse(bomRows ?? []);
+    if (items.length === 0)
+      return {
+        updated: 0,
+        total: 0,
+        notFound: 0,
+        ambiguous: 0,
+        otherCurrency: 0,
+        withoutPrice: 0,
+        keptExisting: 0,
+      };
+
+    const { data: catRows, error: catErr } = await access.db
+      .from(TABLE)
+      .select("manufacturer, part_number, unit_price, currency")
+      .eq("tenant_id", access.tenantId);
+    if (isMissingTable(catErr)) {
+      throw new Response("Catálogo da empresa ainda não ativado no banco.", { status: 409 });
+    }
+    if (catErr) throw new Response(catErr.message, { status: 500 });
+    const catalog = z
+      .array(
+        z.object({
+          manufacturer: z.string(),
+          part_number: z.string(),
+          unit_price: z
+            .union([z.number(), z.string()])
+            .nullable()
+            .transform((v) => (v === null ? null : Number(v))),
+          currency: z.string().nullable(),
+        }),
+      )
+      .parse(catRows ?? []);
+
+    const { planBomPricing } = await import("@/lib/catalog/bom-pricing");
+    const plan = planBomPricing(items, catalog, { overwrite: data.overwrite });
+
+    let updated = 0;
+    for (const u of plan.updates) {
+      const { error } = await ctx.supabase
+        .from("project_bom_items")
+        .update({ unit_price_brl: u.unitPriceBRL })
+        .eq("id", u.id)
+        .eq("project_id", data.projectId);
+      if (!error) updated++;
+    }
+    return {
+      updated,
+      total: items.length,
+      notFound: plan.notFound,
+      ambiguous: plan.ambiguous,
+      otherCurrency: plan.otherCurrency,
+      withoutPrice: plan.withoutPrice,
+      keptExisting: plan.keptExisting,
+    };
+  });
