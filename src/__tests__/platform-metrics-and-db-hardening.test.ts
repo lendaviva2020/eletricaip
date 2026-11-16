@@ -171,3 +171,26 @@ describe("banco — correções da auditoria 2026-11-16", () => {
     }
   });
 });
+
+describe("banco — desempenho (advisors 0001/0003/0004)", () => {
+  const sql = readFileSync(
+    resolve(__dirname, "../../supabase/migrations/20261116110000_perf_rls_initplan_fk_indexes.sql"),
+    "utf8",
+  );
+
+  it("envolve auth.*() em SELECT sem duplicar envoltório já existente (idempotente)", () => {
+    expect(sql).toContain("(?<!SELECT )auth\\.(uid|jwt|role|email)\\(\\)");
+    expect(sql).toContain("'(SELECT auth.\\1())'");
+    // só reescreve a expressão: não recria policy (preserva roles/comando/permissive)
+    expect(sql).toContain("ALTER POLICY %I ON %I.%I");
+    expect(sql).not.toMatch(/DROP POLICY|CREATE POLICY/);
+  });
+
+  it("índices de FK com IF NOT EXISTS e PKs só por índice único existente ou sem duplicatas", () => {
+    expect(sql).toContain("CREATE INDEX IF NOT EXISTS");
+    expect(sql).toContain("PRIMARY KEY USING INDEX uq_mp_webhook_processed_payment_id");
+    expect(sql).toContain("PRIMARY KEY USING INDEX uq_stripe_webhook_events_event_id");
+    expect(sql).toMatch(/GROUP BY tag_id HAVING count\(\*\) > 1/);
+    expect(sql).not.toMatch(/DROP INDEX/);
+  });
+});
