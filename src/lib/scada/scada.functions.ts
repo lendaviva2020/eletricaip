@@ -3,6 +3,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { AuthContext } from "@/integrations/supabase/auth-middleware";
@@ -25,6 +26,12 @@ import {
   type AuditVerificationResult,
 } from "./audit-verifier";
 import { calculateEnergyKwhTrapezoidal } from "./energy-calculator";
+
+/** Erro de banco sem vazar detalhes internos (tabela, constraint) ao cliente. */
+function scadaDbError(code: string, err: { code?: string; message?: string }): Error {
+  console.error(`[scada] ${code}`, err.code ?? "", err.message ?? "");
+  return new Error(`${code}: falha ao acessar o banco de dados.`);
+}
 
 export interface ScadaProjectContext {
   project: {
@@ -165,7 +172,7 @@ export const resolveScadaProjectContext = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (pErr) {
-      throw new Error(`DB_ERROR: ${pErr.message}`);
+      throw scadaDbError("DB_ERROR", pErr);
     }
 
     if (!project) {
@@ -181,7 +188,7 @@ export const resolveScadaProjectContext = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (mErr) {
-      throw new Error(`SECURITY_CHECK_ERROR: ${mErr.message}`);
+      throw scadaDbError("SECURITY_CHECK_ERROR", mErr);
     }
 
     const { data: profile } = await supabase
@@ -245,7 +252,7 @@ export const listAccessibleScadaProjects = createServerFn({ method: "GET" })
       .limit(50);
 
     if (error) {
-      throw new Error(`DB_ERROR: ${error.message}`);
+      throw scadaDbError("DB_ERROR", error);
     }
 
     return (projects ?? []).map((p) => ({
@@ -260,23 +267,40 @@ export const listAccessibleScadaProjects = createServerFn({ method: "GET" })
 /**
  * Ingests a batch of telemetry samples into the persistent historian table (tag_samples).
  */
+export const MAX_HISTORIAN_BATCH = 500;
+
 export const ingestTagSamplesBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) =>
     z
       .object({
         projectId: z.guid(),
-        samples: z.array(
-          z.object({
-            tagName: z.string().min(1),
-            value: z.number(),
-            quality: z.string().default("GOOD"),
-            source: z.string().default("SIMULATION"),
-            sampledAt: z.union([z.string(), z.number()]),
-            receivedAt: z.union([z.string(), z.number()]).optional(),
-            sequenceNumber: z.number().optional(),
-          }),
-        ),
+        samples: z
+          .array(
+            z.object({
+              tagName: z.string().min(1).max(128),
+              value: z.number().finite(),
+              quality: z
+                .enum(["GOOD", "BAD", "UNCERTAIN", "STALE", "NOT_CONNECTED", "FORCED"])
+                .default("GOOD"),
+              // Origem é obrigatória: simulado nunca se mistura com real no histórico.
+              source: z.enum([
+                "SIMULATION",
+                "INTERNAL_RUNTIME",
+                "OPC_UA",
+                "MODBUS_TCP",
+                "MQTT",
+                "IOT",
+                "IMPORTED",
+              ]),
+              unit: z.string().max(16).optional(),
+              equipmentId: z.string().max(128).optional(),
+              sampledAt: z.union([z.string(), z.number()]),
+              receivedAt: z.union([z.string(), z.number()]).optional(),
+              sequenceNumber: z.number().int().nonnegative().optional(),
+            }),
+          )
+          .max(MAX_HISTORIAN_BATCH),
       })
       .parse(d),
   )
@@ -295,8 +319,8 @@ export const ingestTagSamplesBatch = createServerFn({ method: "POST" })
           projectId: data.projectId,
           tagName: s.tagName,
           value: s.value,
-          quality: (s.quality as TagQuality) || "GOOD",
-          source: (s.source as ProtocolDriver) || "SIMULATION",
+          quality: s.quality as TagQuality,
+          source: s.source === "IOT" ? "IMPORTED" : s.source,
           sampledAt:
             typeof s.sampledAt === "number" ? s.sampledAt : new Date(s.sampledAt).getTime(),
           receivedAt: Date.now(),
@@ -309,22 +333,28 @@ export const ingestTagSamplesBatch = createServerFn({ method: "POST" })
     }
 
     const { supabase } = authCtx;
-    const rows = data.samples.map((s) => {
-      const sampledAtIso = parseSafeIsoTimestamp(s.sampledAt);
+    const rows = data.samples.map((s) => ({
+      project_id: data.projectId,
+      tag_name: s.tagName,
+      value: s.value,
+      quality: s.quality,
+      source: s.source,
+      unit: s.unit ?? null,
+      equipment_id: s.equipmentId ?? null,
+      sequence_number: s.sequenceNumber ?? null,
+      sampled_at: parseSafeIsoTimestamp(s.sampledAt),
+      received_at:
+        s.receivedAt !== undefined ? parseSafeIsoTimestamp(s.receivedAt) : new Date().toISOString(),
+    }));
 
-      return {
-        project_id: data.projectId,
-        tag_name: s.tagName,
-        value: s.value,
-        quality: s.quality,
-        sampled_at: sampledAtIso,
-      };
-    });
-
-    const { error } = await supabase.from("tag_samples").insert(rows);
+    // Colunas novas (origem/unidade) ainda fora dos tipos gerados.
+    const { error } = await (supabase as unknown as SupabaseClient)
+      .from("tag_samples")
+      .insert(rows);
 
     if (error) {
-      throw new Error(`HISTORIAN_INGESTION_ERROR: ${error.message}`);
+      console.error("[scada.historian] insert falhou:", error.code, error.message);
+      throw new Error("HISTORIAN_INGESTION_ERROR: falha ao gravar o histórico.");
     }
 
     return { inserted: rows.length, success: true };
@@ -395,7 +425,7 @@ export const queryHistorianRange = createServerFn({ method: "POST" })
 
       const { data: rows, error } = await query;
       if (error) {
-        throw new Error(`HISTORIAN_QUERY_ERROR: ${error.message}`);
+        throw scadaDbError("HISTORIAN_QUERY_ERROR", error);
       }
       rawRows = (rows as typeof rawRows) || [];
     }
@@ -656,7 +686,7 @@ export const recordAlarmHistoryBatch = createServerFn({ method: "POST" })
 
     const { error } = await supabase.from("alarm_history").insert(rows);
     if (error) {
-      throw new Error(`ALARM_HISTORY_INSERT_ERROR: ${error.message}`);
+      throw scadaDbError("ALARM_HISTORY_INSERT_ERROR", error);
     }
 
     return { success: true, inserted: rows.length };
@@ -725,7 +755,7 @@ export const recordScadaAuditEvent = createServerFn({ method: "POST" })
     });
 
     if (error) {
-      throw new Error(`AUDIT_LOG_ERROR: ${error.message}`);
+      throw scadaDbError("AUDIT_LOG_ERROR", error);
     }
 
     return { success: true, chainHash };
@@ -767,7 +797,7 @@ export const verifyProjectAuditChain = createServerFn({ method: "POST" })
       .limit(data.limit);
 
     if (error) {
-      throw new Error(`AUDIT_VERIFICATION_QUERY_ERROR: ${error.message}`);
+      throw scadaDbError("AUDIT_VERIFICATION_QUERY_ERROR", error);
     }
 
     const records: AuditChainRecord[] = (logs ?? []).map((l) => ({

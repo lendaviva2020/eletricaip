@@ -188,6 +188,8 @@ export class IndustrialTagRuntime {
               sampledAt: input.sourceTimestamp || nowUtc,
               receivedAt: input.receivedAt || nowUtc,
               sequenceNumber: input.sequenceNumber,
+              unit: input.unit || undefined,
+              equipmentId: input.equipmentId,
             }
           : null;
 

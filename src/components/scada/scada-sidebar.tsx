@@ -18,6 +18,7 @@ import {
   WifiHigh,
 } from "@phosphor-icons/react";
 import { useScadaStore } from "@/lib/scada/scada-store";
+import { summarizeDrivers } from "@/lib/scada/types";
 import type { ScadaViewId } from "@/lib/scada/types";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,8 @@ export function ScadaSidebar() {
   const criticalAlarmsCount = useScadaStore((s) => s.criticalAlarmsCount);
   const totalAlarms = warningAlarmsCount + criticalAlarmsCount;
   const gatewayStatus = useScadaStore((s) => s.gatewayStatus);
+  const isDemoProject = useScadaStore((s) => s.isDemoProject);
+  const drivers = summarizeDrivers(gatewayStatus, isDemoProject);
 
   const navItems: NavItemDef[] = [
     { id: "overview", label: "Visão Geral", icon: Gauge },
@@ -116,9 +119,18 @@ export function ScadaSidebar() {
       <div className="p-3 border-t border-zinc-800/80 bg-zinc-950/60 text-[11px] font-mono space-y-2">
         <div className="flex items-center justify-between text-zinc-400 text-[10px] uppercase font-bold tracking-wider">
           <span>Drivers Industriais</span>
-          <span className="text-emerald-400 flex items-center gap-1">
-            <CheckCircle className="w-3 h-3 text-emerald-400" />
-            100% OK
+          <span
+            className={cn(
+              "flex items-center gap-1",
+              drivers.tone === "ok"
+                ? "text-emerald-400"
+                : drivers.tone === "warn"
+                  ? "text-amber-400"
+                  : "text-zinc-500",
+            )}
+          >
+            <CheckCircle className="w-3 h-3" />
+            {drivers.label}
           </span>
         </div>
 
@@ -155,8 +167,7 @@ export function ScadaSidebar() {
         </div>
 
         <div className="flex items-center justify-between text-[10px] text-zinc-500 pt-0.5">
-          <span>Scan Cycle: 100 ms</span>
-          <span className="text-zinc-400 font-mono">v4.2 PRO</span>
+          <span>Ciclo de atualização: 1 s</span>
         </div>
       </div>
     </aside>

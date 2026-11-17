@@ -101,7 +101,7 @@ export function ScadaReportsView() {
         <div className="border-b-2 border-zinc-700 pb-4 flex justify-between items-start">
           <div>
             <span className="text-[10px] text-zinc-500 uppercase block tracking-wider font-bold">
-              ElétricAi Supervisory Core v4.2 • Engenharia Industrial
+              ElétricAi SCADA • Engenharia Industrial
             </span>
             <h1 className="text-lg font-bold text-white uppercase tracking-tight mt-1">
               {reportType === "daily" && "Boletim Diário de Operação — ETE"}

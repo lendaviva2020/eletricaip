@@ -15,6 +15,8 @@ import { useScadaStore } from "@/lib/scada/scada-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+const HISTORIAN_FLUSH_MS = 10_000;
+
 export function ScadaHeader() {
   const {
     currentProjectName,
@@ -66,6 +68,16 @@ export function ScadaHeader() {
 
     return () => clearInterval(timer);
   }, [tickSimulation]);
+
+  // Grava o histórico do projeto do cliente a cada 10 s (e ao sair da tela).
+  useEffect(() => {
+    const flush = () => void useScadaStore.getState().flushHistoricalSamples();
+    const timer = setInterval(flush, HISTORIAN_FLUSH_MS);
+    return () => {
+      clearInterval(timer);
+      flush();
+    };
+  }, []);
 
   const handleEstopToggle = () => {
     if (estopActive) {
@@ -129,7 +141,7 @@ export function ScadaHeader() {
               </div>
             </div>
             <p className="text-[10px] text-zinc-400 font-mono truncate">
-              ElétricAi Supervisory Core v4.2 • Sinótico Geral
+              ElétricAi SCADA • Sinótico Geral
             </p>
           </div>
         </div>

@@ -17,8 +17,14 @@ import {
   ToggleRight,
 } from "@phosphor-icons/react";
 import { useScadaStore } from "@/lib/scada/scada-store";
+import { isRotatingEquipment } from "@/lib/scada/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+/** Valor de placa ou "—" quando o projeto não informou (nunca um padrão presumido). */
+function fmtOrDash(v: number | undefined, unit: string, digits: number): string {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? `${v.toFixed(digits)}${unit}` : "—";
+}
 
 export function EquipmentInspectorDrawer() {
   const selectedId = useScadaStore((s) => s.selectedEquipmentId);
@@ -137,7 +143,7 @@ export function EquipmentInspectorDrawer() {
 
           {/* Action buttons based on equipment category */}
           <div className="grid grid-cols-2 gap-2 pt-1">
-            {eq.category === "PUMP" ? (
+            {isRotatingEquipment(eq.category) ? (
               <>
                 <button
                   onClick={() => handleCommand("START")}
@@ -192,29 +198,33 @@ export function EquipmentInspectorDrawer() {
             <div className="bg-zinc-950/60 p-2 rounded border border-zinc-800/80">
               <span className="text-zinc-500 block text-[10px]">TENSÃO NOMINAL</span>
               <span className="font-semibold text-zinc-200">
-                {typeof eq.voltageV === "number" && eq.voltageV > 0 ? `${eq.voltageV} V` : "380 V"}
+                {fmtOrDash(
+                  eq.nominal?.voltageV ?? (eq.voltageV > 0 ? eq.voltageV : undefined),
+                  " V",
+                  0,
+                )}
               </span>
             </div>
             <div className="bg-zinc-950/60 p-2 rounded border border-zinc-800/80">
               <span className="text-zinc-500 block text-[10px]">CORRENTE REAL</span>
               <span className="font-semibold text-amber-400">
-                {typeof eq.currentA === "number" && eq.currentA > 0
-                  ? `${eq.currentA.toFixed(1)} A`
-                  : "0.0 A"}
+                {eq.currentA > 0 ? `${eq.currentA.toFixed(1)} A` : "sem leitura"}
               </span>
             </div>
             <div className="bg-zinc-950/60 p-2 rounded border border-zinc-800/80">
-              <span className="text-zinc-500 block text-[10px]">POTÊNCIA ATIVA</span>
+              <span className="text-zinc-500 block text-[10px]">POTÊNCIA NOMINAL</span>
               <span className="font-semibold text-cyan-400">
-                {typeof eq.powerKw === "number" && eq.powerKw > 0
-                  ? `${eq.powerKw.toFixed(1)} kW`
-                  : "0.0 kW"}
+                {fmtOrDash(eq.powerKw > 0 ? eq.powerKw : undefined, " kW", 1)}
               </span>
             </div>
             <div className="bg-zinc-950/60 p-2 rounded border border-zinc-800/80">
-              <span className="text-zinc-500 block text-[10px]">FATOR DE POTÊNCIA</span>
+              <span className="text-zinc-500 block text-[10px]">FATOR DE POTÊNCIA NOMINAL</span>
               <span className="font-semibold text-zinc-200">
-                {typeof eq.powerFactor === "number" ? eq.powerFactor.toFixed(2) : "0.92"}
+                {fmtOrDash(
+                  eq.nominal?.powerFactor ?? (eq.powerFactor > 0 ? eq.powerFactor : undefined),
+                  "",
+                  2,
+                )}
               </span>
             </div>
             {eq.flowRateM3h !== undefined && (

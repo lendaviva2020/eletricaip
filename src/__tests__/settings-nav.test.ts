@@ -29,7 +29,7 @@ describe("Settings page navigation", () => {
 
   it("declares at least the documented set of cards", () => {
     // sanity: catches accidental removal of major sections
-    expect(targets.length).toBeGreaterThanOrEqual(13);
+    expect(targets.length).toBeGreaterThanOrEqual(10);
   });
 
   it.each(extractToTargets(settingsSrc))("links to a registered route: %s", (target) => {
@@ -46,13 +46,16 @@ describe("Settings page navigation", () => {
     expect(lastGuard).toBeGreaterThan(lastClose);
   });
 
-  it("gates the rate-limits card behind isPlatformAdmin", () => {
-    const rlIdx = settingsSrc.indexOf('to="/settings/rate-limits"');
-    expect(rlIdx).toBeGreaterThan(-1);
-    const before = settingsSrc.slice(0, rlIdx);
-    const lastGuard = before.lastIndexOf("isPlatformAdmin &&");
-    const lastClose = lastBlockClose(before);
-    expect(lastGuard).toBeGreaterThan(lastClose);
+  it("não oferece mais as páginas removidas (IA, limites, monitor, diagnóstico, autosave)", () => {
+    for (const gone of [
+      "/settings/ai-status",
+      "/settings/rate-limits",
+      "/settings/security-monitor",
+      "/settings/diagnostics",
+      "/settings/autosave",
+    ]) {
+      expect(settingsSrc).not.toContain(`to="${gone}"`);
+    }
   });
 
   it("does not gate non-admin cards (profile, security, team) behind admin", () => {

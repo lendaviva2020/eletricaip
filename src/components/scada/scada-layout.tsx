@@ -47,6 +47,8 @@ import {
   DEMO_ETE_TENANT_ID,
 } from "@/lib/scada/demo-ete-seed";
 import { syncUnifiedDocToScada } from "@/lib/scada/canonical-bridge";
+import { SnapshotSchema } from "@/lib/projects.functions";
+import { upgradeSnapshotV2ToV3 } from "@/lib/model/migration-v2-to-v3";
 import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { Button } from "@/components/ui/button";
 import { ScadaHeader } from "./scada-header";
@@ -156,12 +158,20 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
     if (unifiedDoc && unifiedDoc.metadata?.id === project.id) {
       syncUnifiedDocToScada(unifiedDoc, project.tenantId);
     } else {
-      setProjectContext({
-        projectId: project.id,
-        tenantId: project.tenantId,
-        projectName: project.name,
-        isDemo: false,
-      });
+      // Aberto direto no SCADA (sem passar pelo workspace): monta a frota a
+      // partir do diagrama SALVO, validado por Zod. Snapshot inválido = vazio.
+      const parsed = SnapshotSchema.safeParse(projectContext.canvasData ?? null);
+      if (parsed.success) {
+        const doc = upgradeSnapshotV2ToV3(parsed.data, { id: project.id, name: project.name });
+        syncUnifiedDocToScada(doc, project.tenantId);
+      } else {
+        setProjectContext({
+          projectId: project.id,
+          tenantId: project.tenantId,
+          projectName: project.name,
+          isDemo: false,
+        });
+      }
     }
   }, [projectContext, projectId, setProjectContext, clearProjectContext]);
 

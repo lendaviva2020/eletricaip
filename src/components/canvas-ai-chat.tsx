@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link } from "@tanstack/react-router";
 import {
   Sparkle,
   PaperPlaneRight,
@@ -7,7 +6,6 @@ import {
   X,
   ChatText,
   Warning,
-  SlidersHorizontal,
   UploadSimple,
   ShieldCheck,
   Compass,
@@ -22,6 +20,12 @@ import { validateProject } from "@/lib/norm-validator";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
+import { getAiProviderPreference, setAiProviderPreference } from "@/lib/ai-preference.functions";
+import {
+  detectProviderIntent,
+  switchConfirmation,
+  whichProviderAnswer,
+} from "@/lib/ai/provider-switch";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { AiPatchPreview } from "@/components/ai-patch-preview";
 import { detectFormat } from "@/lib/importer/universal-importer";
@@ -70,6 +74,8 @@ export function CanvasAiChat() {
     };
   }, [creditsQuery.data, t]);
   const genPatch = useServerFn(generateDiagramPatch);
+  const getProviderPref = useServerFn(getAiProviderPreference);
+  const setProviderPref = useServerFn(setAiProviderPreference);
   const applyAiPatch = useDiagramStore((s) => s.applyAiPatch);
   const diagramDoc = useDiagramStore((s) => s.doc);
 
@@ -228,6 +234,36 @@ export function CanvasAiChat() {
         },
       ]);
       window.dispatchEvent(new CustomEvent("eletricai-open-importer", { detail: { payload: p } }));
+      return;
+    }
+
+    // Troca de IA conversando (DeepSeek ↔ Gemini): sem créditos, sem modelo.
+    const providerIntent = detectProviderIntent(p);
+    if (providerIntent) {
+      setMsgs((m) => [...m, { role: "user", text: p }, { role: "ai", text: "…" }]);
+      try {
+        let reply: string;
+        if (providerIntent.kind === "switch") {
+          const r = await setProviderPref({ data: { provider: providerIntent.provider } });
+          reply = r.saved
+            ? switchConfirmation(providerIntent.provider, r.available)
+            : "Não consegui salvar sua preferência agora. Tente de novo em instantes.";
+        } else {
+          const r = await getProviderPref();
+          reply = whichProviderAnswer(r.preferred, r.available);
+        }
+        setMsgs((m) => {
+          const c = [...m];
+          c[c.length - 1] = { role: "ai", text: reply };
+          return c;
+        });
+      } catch {
+        setMsgs((m) => {
+          const c = [...m];
+          c[c.length - 1] = { role: "ai", text: "Não consegui trocar a IA agora." };
+          return c;
+        });
+      }
       return;
     }
 
@@ -628,15 +664,6 @@ export function CanvasAiChat() {
                   <li key={j}>{s}</li>
                 ))}
               </ol>
-            )}
-
-            {m.needsConfig && (
-              <Link
-                to="/settings/ai-status"
-                className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-primary hover:underline font-mono"
-              >
-                <SlidersHorizontal className="h-3 w-3" /> {t("aiChat.configAiKey")}
-              </Link>
             )}
 
             {m.hasPatch && !m.patchApplied && (

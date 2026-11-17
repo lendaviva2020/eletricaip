@@ -5,7 +5,6 @@ import {
   SlidersHorizontal,
   CreditCard,
   Users,
-  Sparkle,
   CaretRight,
   WifiHigh,
   Lightning,
@@ -127,15 +126,6 @@ function SettingsPage() {
                 badge="Admin"
               />
             )}
-            {isPlatformAdmin && (
-              <SettingsLinkCard
-                icon={Shield}
-                title={t("settings_ext.rateLimits")}
-                desc={t("settings_ext.rateLimitsDesc")}
-                to="/settings/rate-limits"
-                badge="Admin"
-              />
-            )}
 
             <SettingsLinkCard
               icon={Users}
@@ -143,34 +133,6 @@ function SettingsPage() {
               desc={t("settings_ext.teamDesc")}
               to="/settings/team"
               badge={null}
-            />
-            <SettingsLinkCard
-              icon={Sparkle}
-              title={t("settings_ext.aiStatus")}
-              desc={t("settings_ext.aiStatusDesc")}
-              to="/settings/ai-status"
-              badge="Gemini 3.1 Pro"
-            />
-            <SettingsLinkCard
-              icon={Shield}
-              title={t("settings_ext.secMonitor")}
-              desc={t("settings_ext.secMonitorDesc")}
-              to="/settings/security-monitor"
-              badge={t("pages2.badgeNew")}
-            />
-            <SettingsLinkCard
-              icon={SlidersHorizontal}
-              title={t("settings_ext.diagnostics")}
-              desc={t("settings_ext.diagnosticsDesc")}
-              to="/settings/diagnostics"
-              badge={t("pages2.badgeNew")}
-            />
-            <SettingsLinkCard
-              icon={SlidersHorizontal}
-              title={t("settings_ext.autosave")}
-              desc={t("settings_ext.autosaveDesc")}
-              to="/settings/autosave"
-              badge={t("pages2.badgeNew")}
             />
 
             <SettingsLinkCard

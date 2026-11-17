@@ -29,6 +29,8 @@ export function ScadaSynopticsView() {
   const selectedSector = useScadaStore((s) => s.selectedSector);
   const setSelectedSector = useScadaStore((s) => s.setSelectedSector);
   const equipments = useScadaStore((s) => s.equipments);
+  const isDemoProject = useScadaStore((s) => s.isDemoProject);
+  const setActiveView = useScadaStore((s) => s.setActiveView);
 
   const sectors: SectorTab[] = [
     {
@@ -137,8 +139,22 @@ export function ScadaSynopticsView() {
         </span>
       </div>
 
-      {/* Synoptic Graphic Canvas */}
-      <EteSynopticPAndId />
+      {/* Synoptic Graphic Canvas — o P&ID da ETE é exclusivo da demonstração */}
+      {isDemoProject ? (
+        <EteSynopticPAndId />
+      ) : (
+        <div className="rounded-md border border-dashed border-zinc-700 bg-zinc-900/40 p-6 text-center text-xs text-zinc-400">
+          Este projeto ainda não tem sinótico desenhado. Monte a tela no{" "}
+          <button
+            type="button"
+            className="text-sky-400 underline"
+            onClick={() => setActiveView("hmi")}
+          >
+            Editor HMI
+          </button>{" "}
+          ou acompanhe os motores na aba CCM.
+        </div>
+      )}
 
       {/* Sector Equipments Quick Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

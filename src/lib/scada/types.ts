@@ -123,7 +123,8 @@ export interface EquipmentTelemetry {
   id: string;
   tag: string;
   name: string;
-  category: "PUMP" | "TANK" | "VALVE" | "TRANSFORMER" | "PANEL" | "PLC" | "SENSOR" | "FILTER";
+  category:
+    "PUMP" | "MOTOR" | "TANK" | "VALVE" | "TRANSFORMER" | "PANEL" | "PLC" | "SENSOR" | "FILTER";
   status: "RUNNING" | "STOPPED" | "TRIPPED" | "STANDBY" | "OPEN" | "CLOSED" | "MAINTENANCE";
   mode: "AUTO" | "MANUAL" | "LOCAL" | "REMOTE";
   // Electrical ratings
@@ -148,6 +149,12 @@ export interface EquipmentTelemetry {
   alarmsCount: number;
   // Linked canonical tags
   linkedTags: string[];
+  /** Dados de PLACA/projeto (não medidos). Exibir sempre rotulados como nominais. */
+  nominal?: {
+    voltageV?: number;
+    currentA?: number;
+    powerFactor?: number;
+  };
 }
 
 export interface ScadaTrendPoint {
@@ -196,6 +203,55 @@ export interface CommunicationGatewayStatus {
     messagesRx: number;
     messagesTx: number;
   };
+}
+
+/** Equipamento rotativo comandável (partida/parada no SCADA e queda no E-STOP). */
+export function isRotatingEquipment(category: EquipmentTelemetry["category"]): boolean {
+  return category === "PUMP" || category === "MOTOR";
+}
+
+/** Projeto sem driver de campo configurado: nada conectado (sem endereço inventado). */
+export const NO_FIELD_DRIVERS: CommunicationGatewayStatus = {
+  opcua: {
+    status: "DISCONNECTED",
+    endpoint: "não configurado",
+    sessions: 0,
+    subscriptions: 0,
+    samplingIntervalMs: 0,
+    rxBytes: 0,
+    txBytes: 0,
+  },
+  modbus: {
+    status: "DISCONNECTED",
+    host: "não configurado",
+    port: 0,
+    unitId: 0,
+    holdingRegisters: 0,
+    pollIntervalMs: 0,
+    requestsCount: 0,
+    crcErrors: 0,
+  },
+  mqtt: {
+    status: "DISCONNECTED",
+    broker: "não configurado",
+    clientId: "—",
+    subscribedTopics: [],
+    messagesRx: 0,
+    messagesTx: 0,
+  },
+};
+
+/** Resumo honesto dos drivers para a barra de status e a lateral. */
+export function summarizeDrivers(
+  g: CommunicationGatewayStatus,
+  isDemo: boolean,
+): { label: string; tone: "ok" | "warn" | "off" } {
+  if (isDemo) return { label: "Simulação", tone: "warn" };
+  const states = [g.opcua.status, g.modbus.status, g.mqtt.status];
+  const up = states.filter((x) => x === "CONNECTED").length;
+  if (states.some((x) => x === "ERROR")) return { label: `${up}/3 · erro`, tone: "warn" };
+  if (up === 0) return { label: "Sem driver de campo", tone: "off" };
+  return { label: `${up}/3 conectados`, tone: up === 3 ? "ok" : "warn" };
 }
 
 export interface ScadaSystemSettings {
@@ -333,6 +389,9 @@ export interface HistoricalSample {
   sampledAt: string | number;
   receivedAt?: string | number;
   sequenceNumber?: number;
+  /** Unidade de engenharia no momento da amostra (ex.: "A", "°C"). */
+  unit?: string;
+  equipmentId?: string;
 }
 
 export interface HistorianQueryOptions {

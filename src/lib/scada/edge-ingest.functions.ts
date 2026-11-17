@@ -7,6 +7,9 @@ import { z } from "zod";
 import { CLOUD_EDGE_PROTOCOL_VERSION } from "../edge/types";
 import type { EdgeTelemetryBatch, EdgeIngestAck } from "../edge/types";
 
+/** Mesmo teto do histórico do SCADA (o gateway envia até 500 por padrão). */
+const MAX_HISTORIAN_BATCH = 500;
+
 export const EdgeSamplePayloadSchema = z.object({
   sampleId: z.string().min(1),
   sequenceNumber: z.number().int().nonnegative(),
@@ -29,7 +32,7 @@ export const EdgeTelemetryBatchSchema = z.object({
   batchId: z.string().min(1),
   batchSequenceNumber: z.number().int().nonnegative(),
   sentAt: z.number().int().positive(),
-  samples: z.array(EdgeSamplePayloadSchema),
+  samples: z.array(EdgeSamplePayloadSchema).max(MAX_HISTORIAN_BATCH),
 });
 
 /**

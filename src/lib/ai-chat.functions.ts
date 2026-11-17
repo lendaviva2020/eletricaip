@@ -8,13 +8,13 @@ import {
   requireBurstLimit,
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { sanitizePromptText } from "@/lib/ai/context-sanitizer";
+import { AiProviderError, availableProviders, streamText } from "@/lib/ai/ai-provider.server";
 import {
-  getGeminiClient,
-  getGeminiModel,
-  getGeminiApiKey,
-  validateGeminiKey,
-  mapGeminiError,
-} from "@/lib/ai/gemini-client.server";
+  detectProviderIntent,
+  switchConfirmation,
+  whichProviderAnswer,
+} from "@/lib/ai/provider-switch";
+import { loadUserAiProvider, saveUserAiProvider } from "@/lib/ai-preference.functions";
 
 export type ChatConversation = {
   id: string;
@@ -289,17 +289,34 @@ export const streamChat = createServerFn({ method: "POST" })
   )
   .handler(async function* ({ data, context }) {
     const { supabase, userId } = context;
-    const apiKey = getGeminiApiKey();
-    const keyValidation = validateGeminiKey(apiKey);
-    if (!keyValidation.ok) {
-      yield {
-        type: "error" as const,
-        message: !apiKey
-          ? "GEMINI_API_KEY ausente nos secrets do servidor."
-          : "GEMINI_API_KEY com formato inesperado.",
-      };
+
+    // Troca de IA conversando: responde direto, sem chamar modelo nem gastar crédito.
+    const intent = detectProviderIntent(data.prompt);
+    if (intent) {
+      const available = availableProviders();
+      let reply: string;
+      if (intent.kind === "switch") {
+        const saved = await saveUserAiProvider(supabase, userId, intent.provider);
+        reply = saved
+          ? switchConfirmation(intent.provider, available)
+          : "Não consegui salvar sua preferência agora. Tente de novo em instantes.";
+      } else {
+        reply = whichProviderAnswer(await loadUserAiProvider(supabase, userId), available);
+      }
+      await supabase.from("ai_messages").insert([
+        { conversation_id: data.conversationId, role: "user", content: data.prompt },
+        { conversation_id: data.conversationId, role: "assistant", content: reply, tokens_used: 0 },
+      ]);
+      yield { type: "delta" as const, text: reply };
+      yield { type: "done" as const, tokens: 0 };
       return;
     }
+
+    if (availableProviders().length === 0) {
+      yield { type: "error" as const, message: "IA temporariamente indisponível." };
+      return;
+    }
+    const preferred = await loadUserAiProvider(supabase, userId);
 
     // Quota check.
     const { data: quota, error: qErr } = await supabaseAdmin.rpc("check_ai_quota_for_user", {
@@ -338,63 +355,36 @@ export const streamChat = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true })
       .limit(40);
 
-    const rawMessages = [
-      ...((history ?? []) as Array<{ role: string; content: string }>).map((m) => ({
-        role: m.role === "assistant" ? ("model" as const) : ("user" as const),
-        text: sanitizePromptText(m.content, 2000),
-      })),
-    ];
-    if (rawMessages.length === 0 || rawMessages[rawMessages.length - 1].role !== "user") {
-      rawMessages.push({
-        role: "user" as const,
-        text: sanitizePromptText(data.prompt, 2000),
-      });
-    }
-
-    // Consolidate adjacent turns of the same role for strict Gemini adherence
-    const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
-    for (const msg of rawMessages) {
-      if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
-        contents[contents.length - 1].parts.push({ text: msg.text });
-      } else {
-        contents.push({ role: msg.role, parts: [{ text: msg.text }] });
-      }
-    }
-
-    let streamResponse;
-    try {
-      const ai = getGeminiClient();
-      const model = getGeminiModel();
-      streamResponse = await ai.models.generateContentStream({
-        model,
-        contents,
-        config: {
-          systemInstruction: getChatSystemPrompt(data.locale ?? "pt-BR"),
-          temperature: 0.4,
-        },
-      });
-    } catch (e) {
-      const mapped = mapGeminiError(e);
-      yield { type: "error" as const, message: mapped.message };
-      return;
+    const turns: Array<{ role: "user" | "assistant"; content: string }> = (
+      (history ?? []) as Array<{ role: string; content: string }>
+    ).map((m) => ({
+      role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+      content: sanitizePromptText(m.content, 2000),
+    }));
+    if (turns.length === 0 || turns[turns.length - 1].role !== "user") {
+      turns.push({ role: "user", content: sanitizePromptText(data.prompt, 2000) });
     }
 
     let accumulated = "";
     let totalTokens = 0;
     try {
-      for await (const chunk of streamResponse) {
-        const delta = chunk.text || "";
-        if (delta) {
-          accumulated += delta;
-          yield { type: "delta" as const, text: delta };
-        }
-        if (chunk.usageMetadata?.totalTokenCount) {
-          totalTokens = chunk.usageMetadata.totalTokenCount;
+      for await (const part of streamText({
+        system: getChatSystemPrompt(data.locale ?? "pt-BR"),
+        turns,
+        preferred,
+        temperature: 0.4,
+      })) {
+        if (part.type === "delta") {
+          accumulated += part.text;
+          yield { type: "delta" as const, text: part.text };
+        } else if (part.type === "usage") {
+          totalTokens = part.tokens;
         }
       }
     } catch (err) {
-      const mapped = mapGeminiError(err);
-      yield { type: "error" as const, message: mapped.message };
+      const message =
+        err instanceof AiProviderError ? err.detail.message : "Falha ao consultar a IA.";
+      yield { type: "error" as const, message };
       return;
     }
 

@@ -10,10 +10,14 @@ import {
   ShieldWarning,
 } from "@phosphor-icons/react";
 import { useScadaStore } from "@/lib/scada/scada-store";
+import { summarizeDrivers } from "@/lib/scada/types";
 import { toast } from "sonner";
 
 export function ScadaOsStatusBar() {
   const isPhysicalControlAllowed = useScadaStore((s) => s.isPhysicalControlAllowed);
+  const gatewayStatus = useScadaStore((s) => s.gatewayStatus);
+  const isDemoProject = useScadaStore((s) => s.isDemoProject);
+  const drivers = summarizeDrivers(gatewayStatus, isDemoProject);
 
   const handleRuntimeClick = () => {
     toast.info("Modo Runtime em Execução Contínua (Virtual)", {
@@ -30,7 +34,7 @@ export function ScadaOsStatusBar() {
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 text-white font-semibold tracking-wide">
           <Monitor className="w-3.5 h-3.5 text-[#FF8A00]" />
-          <span>ElétricAi Industrial OS v2.0.0</span>
+          <span>ElétricAi SCADA</span>
         </div>
 
         <span className="text-zinc-600">•</span>
@@ -39,27 +43,21 @@ export function ScadaOsStatusBar() {
           <span className="text-[10px] uppercase text-zinc-500">Modo:</span>
           <span className="text-[#38BDF8] font-medium">Supervisão ISA-101</span>
         </div>
-
-        <span className="text-zinc-600 hidden md:inline">•</span>
-
-        <div className="hidden md:flex items-center gap-1.5 text-zinc-300">
-          <Pulse className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Status: 60Hz Sync</span>
-        </div>
       </div>
 
       {/* Center: Deterministic Bus & Security */}
       <div className="hidden lg:flex items-center gap-2 xl:gap-3 text-xs">
-        <div className="flex items-center gap-1.5 text-zinc-400">
-          <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Drivers 100% OK</span>
-        </div>
-
-        <span className="text-zinc-600 hidden xl:inline">•</span>
-
-        <div className="hidden xl:flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-          <span className="text-zinc-400">Segurança: IEC 62443 SL-2</span>
+        <div className="flex items-center gap-1.5 text-zinc-400" data-testid="scada-driver-summary">
+          <CheckCircle
+            className={`w-3.5 h-3.5 ${
+              drivers.tone === "ok"
+                ? "text-emerald-400"
+                : drivers.tone === "warn"
+                  ? "text-amber-400"
+                  : "text-zinc-500"
+            }`}
+          />
+          <span>Drivers: {drivers.label}</span>
         </div>
 
         <span className="text-zinc-600 hidden xl:inline">•</span>

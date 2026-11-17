@@ -25,13 +25,13 @@ import {
   type VerificationReport,
 } from "@/lib/ai/verification-types";
 import {
-  getGeminiClient,
-  getGeminiModel,
-  getGeminiApiKey,
-  validateGeminiKey,
-  mapGeminiError,
-  pingGemini,
-} from "@/lib/ai/gemini-client.server";
+  AiProviderError,
+  availableProviders,
+  generateJson,
+  pingAi,
+} from "@/lib/ai/ai-provider.server";
+import type { AiProviderId } from "@/lib/ai/provider-switch";
+import { loadUserAiProvider } from "@/lib/ai-preference.functions";
 
 export function getArchitectSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
   const isEn = locale === "en";
@@ -274,7 +274,7 @@ type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]:
 type ArchitectOk = {
   ok: true;
   system: JsonValue;
-  provider: "gemini";
+  provider: AiProviderId;
   model?: string;
   tokensUsed: number;
   ragHits: number;
@@ -288,71 +288,56 @@ type ArchitectOk = {
   verification: VerificationReport;
 };
 
-// ── Chamada ao Google Gemini parametrizada pelas mensagens e schema ──
+// ── Chamada ao provedor de IA (DeepSeek padrão, Gemini alternativo) ──
 async function callArchitectModel(
   messages: Array<{ role: string; content: string }>,
+  preferred: AiProviderId,
 ): Promise<
-  | { ok: true; parsed: JsonValue; tokensUsed: number }
+  | { ok: true; parsed: JsonValue; tokensUsed: number; provider: AiProviderId; model: string }
   | { ok: false; error: ArchitectError["error"] }
 > {
-  const model = getGeminiModel("architect");
-  let ai: ReturnType<typeof getGeminiClient>;
-  try {
-    ai = getGeminiClient();
-  } catch (e) {
-    const mapped = mapGeminiError(e);
-    return { ok: false, error: { code: mapped.code, message: mapped.message } };
-  }
-
-  const contents = messages
+  const systemInstruction = messages.find((m) => m.role === "system")?.content || SYSTEM;
+  const turns = messages
     .filter((m) => m.role !== "system")
     .map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
+      role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+      content: m.content,
     }));
 
-  const systemInstruction = messages.find((m) => m.role === "system")?.content || SYSTEM;
-
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents,
-      config: {
-        systemInstruction,
-        temperature: 0.2,
-        responseMimeType: "application/json",
-        responseSchema: SCHEMA,
-      },
+    const res = await generateJson({
+      task: "architect",
+      system: systemInstruction,
+      turns,
+      jsonSchema: SCHEMA,
+      preferred,
+      temperature: 0.2,
     });
-
-    const text = response.text?.trim();
-    if (!text) {
-      console.error("Gemini empty response text:", response);
-      return {
-        ok: false,
-        error: { code: "BAD_RESPONSE", message: "A IA não devolveu estrutura válida." },
-      };
-    }
-
     let parsed: JsonValue;
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(res.text);
     } catch (e) {
-      console.error("JSON parse error from Gemini output:", e);
+      console.error("JSON parse error from AI output:", e);
       return {
         ok: false,
         error: { code: "BAD_RESPONSE", message: "JSON inválido devolvido pela IA." },
       };
     }
-
-    const tokensUsed = Number(response.usageMetadata?.totalTokenCount) || 0;
-    return { ok: true, parsed, tokensUsed };
+    return {
+      ok: true,
+      parsed,
+      tokensUsed: res.tokensUsed,
+      provider: res.provider,
+      model: res.model,
+    };
   } catch (e) {
-    console.error("Gemini call error:", e);
-    const mapped = mapGeminiError(e);
+    const detail = e instanceof AiProviderError ? e.detail : null;
     return {
       ok: false,
-      error: { code: mapped.code, message: mapped.message },
+      error: {
+        code: detail?.code ?? "BAD_RESPONSE",
+        message: detail?.message ?? "Falha ao consultar a IA.",
+      },
     };
   }
 }
@@ -448,17 +433,13 @@ export const generateArchitecture = createServerFn({ method: "POST" })
   .inputValidator((input) => InputSchema.parse(input))
   .handler(async ({ data, context }): Promise<ArchitectOk | ArchitectError> => {
     const { supabase } = context;
-    const apiKey = getGeminiApiKey();
-    const keyValidation = validateGeminiKey(apiKey);
-    if (!keyValidation.ok) {
+    if (availableProviders().length === 0) {
       return {
         ok: false,
-        error: {
-          code: !apiKey ? "MISSING_KEY" : "INVALID_KEY_FORMAT",
-          message: keyValidation.reason || "GEMINI_API_KEY ausente ou inválida.",
-        },
+        error: { code: "MISSING_KEY", message: "IA temporariamente indisponível." },
       };
     }
+    const preferred = await loadUserAiProvider(supabase, context.userId);
 
     // Atomic credit gate: deduct BEFORE calling provider.
     const { data: gate, error: gateErr } = await supabase.rpc("consume_ai_credits", {
@@ -541,7 +522,7 @@ export const generateArchitecture = createServerFn({ method: "POST" })
       { role: "user", content: userMsg },
     ];
 
-    const first = await callArchitectModel(messages);
+    const first = await callArchitectModel(messages, preferred);
     if (!first.ok) return { ok: false, error: first.error };
 
     let parsed = first.parsed;
@@ -583,7 +564,10 @@ ${errors
 Contexto atual do projeto (JSON):
 ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed), plcLogic: (parsed as any)?.plcLogic }).slice(0, 20000)}`;
 
-      const fix = await callArchitectModel([...messages, { role: "user", content: fixMsg }]);
+      const fix = await callArchitectModel(
+        [...messages, { role: "user", content: fixMsg }],
+        preferred,
+      );
       rounds++;
       if (!fix.ok) {
         correctionFailed = true;
@@ -607,8 +591,8 @@ ${JSON.stringify({ nodes: nodesOf(parsed), edges: edgesOf(parsed), plcLogic: (pa
     return {
       ok: true,
       system: parsed,
-      provider: "gemini",
-      model: getGeminiModel("architect"),
+      provider: first.provider,
+      model: first.model,
       tokensUsed,
       ragHits: rag.hits,
       credits: gateInfo,
@@ -642,6 +626,6 @@ export const getAiCredits = createServerFn({ method: "GET" })
 
 export const pingArchitect = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth, requireBurstLimit])
-  .handler(async () => {
-    return await pingGemini();
+  .handler(async ({ context }) => {
+    return await pingAi(await loadUserAiProvider(context.supabase, context.userId));
   });

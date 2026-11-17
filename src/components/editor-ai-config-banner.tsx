@@ -1,10 +1,9 @@
 // Banner discreto no topo do workspace que avisa quando a IA do ELETRICAI
-// não está pronta (chave LOVABLE_API_KEY ausente, 401, sem créditos ou
-// health-check falhando). Faz UM ping ao montar — não fica em polling —
-// e pode ser dispensado pelo usuário até o próximo reload.
+// não está pronta (sessão expirada, sem créditos ou provedor fora do ar).
+// A chave de IA é da plataforma: o usuário não tem o que configurar.
+// Faz UM ping ao montar — não fica em polling — e pode ser dispensado.
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Warning, SlidersHorizontal, X } from "@phosphor-icons/react";
+import { Warning, X } from "@phosphor-icons/react";
 import { pingArchitectHealth } from "@/lib/ai-architect-client";
 
 type Status = "checking" | "ok" | "missing-key" | "auth" | "quota" | "down";
@@ -14,7 +13,7 @@ function classify(res: unknown): Status {
   const r = res as { ok?: boolean; error?: string; code?: string };
   if (r.ok) return "ok";
   const msg = `${r.error ?? ""} ${r.code ?? ""}`.toUpperCase();
-  if (msg.includes("MISSING_KEY") || msg.includes("LOVABLE_API_KEY")) return "missing-key";
+  if (msg.includes("MISSING_KEY") || msg.includes("API_KEY")) return "missing-key";
   if (msg.includes("401") || msg.includes("AUTH") || msg.includes("UNAUTHORIZED")) return "auth";
   if (msg.includes("402") || msg.includes("CREDIT") || msg.includes("QUOTA")) return "quota";
   return "down";
@@ -22,10 +21,10 @@ function classify(res: unknown): Status {
 
 const MESSAGES: Record<Exclude<Status, "ok" | "checking">, string> = {
   "missing-key":
-    "IA NexusMind indisponível: chave LOVABLE_API_KEY ausente no servidor. Configure para liberar o copiloto.",
-  auth: "IA NexusMind sem autenticação válida. Faça login novamente ou revise as credenciais.",
-  quota: "Créditos de IA insuficientes neste período. Faça upgrade do plano para continuar.",
-  down: "IA NexusMind temporariamente indisponível. O canvas continua funcionando normalmente.",
+    "IA temporariamente indisponível no servidor. O canvas continua funcionando normalmente.",
+  auth: "Sua sessão expirou. Entre novamente para usar a IA.",
+  quota: "Créditos de IA do plano esgotados neste período. Faça upgrade para continuar.",
+  down: "IA temporariamente indisponível. O canvas continua funcionando normalmente.",
 };
 
 export function EditorAiConfigBanner() {
@@ -56,12 +55,6 @@ export function EditorAiConfigBanner() {
     >
       <Warning className="h-3.5 w-3.5 shrink-0" />
       <span className="flex-1 truncate">{MESSAGES[status]}</span>
-      <Link
-        to="/settings/ai-status"
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-warning/40 hover:bg-warning/20 font-medium"
-      >
-        <SlidersHorizontal className="h-3 w-3" /> Configurar
-      </Link>
       <button
         onClick={() => setDismissed(true)}
         className="h-5 w-5 grid place-items-center rounded hover:bg-warning/20 cursor-pointer"

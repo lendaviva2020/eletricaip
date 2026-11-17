@@ -20,6 +20,7 @@ import type {
   ProtocolDriver,
   HistoricalSample,
 } from "./types";
+import { NO_FIELD_DRIVERS, isRotatingEquipment } from "./types";
 import type { GatewayHealthTelemetry } from "../edge/types";
 import {
   DEMO_ETE_PROJECT_ID,
@@ -35,6 +36,20 @@ import { IndustrialTagRuntime } from "./tag-runtime";
 import { DeterministicAlarmEngine } from "./alarm-engine";
 
 export const scadaTagRuntime = new IndustrialTagRuntime();
+
+/** Teto do buffer de histórico no navegador (aba aberta por horas na sala de controle). */
+export const MAX_BUFFERED_SAMPLES = 2000;
+/** Igual ao `MAX_HISTORIAN_BATCH` do servidor. */
+export const MAX_FLUSH_BATCH = 500;
+
+/** Mantém as amostras mais recentes; as mais antigas são descartadas e registradas. */
+export function capHistoricalBuffer(samples: HistoricalSample[]): HistoricalSample[] {
+  if (samples.length <= MAX_BUFFERED_SAMPLES) return samples;
+  console.warn(
+    `[scada.historian] buffer cheio: ${samples.length - MAX_BUFFERED_SAMPLES} amostra(s) antiga(s) descartada(s)`,
+  );
+  return samples.slice(-MAX_BUFFERED_SAMPLES);
+}
 export const scadaAlarmEngine = new DeterministicAlarmEngine();
 
 interface ScadaState {
@@ -254,36 +269,9 @@ export const useScadaStore = create<ScadaState>()(
             scadaTagRuntime.registerTags(Object.values(tags));
           }
 
-          // Automatically configure analog alarm limits for customer canonical tags
-          if (tags) {
-            for (const tag of Object.values(tags)) {
-              if (
-                tag.name.toUpperCase().includes("CORRENTE") ||
-                tag.name.toUpperCase().includes("CURRENT")
-              ) {
-                scadaAlarmEngine.registerDefinition({
-                  id: `alm_def_${tag.id}`,
-                  projectId,
-                  tagId: tag.id,
-                  tagName: tag.name,
-                  description: `Sobrecarga de Corrente Alta ${tag.name}`,
-                  equipmentId: tag.linkedEquipmentId,
-                  alarmClass: "ELECTRICAL",
-                  severity: "HIGH",
-                  analogLimits: {
-                    high: 30.0,
-                    highHigh: 40.0,
-                    hysteresis: 1.0,
-                    delayOnMs: 0,
-                    delayOffMs: 0,
-                  },
-                  requireAck: true,
-                  autoClear: false,
-                  enabled: true,
-                });
-              }
-            }
-          }
+          // Alarmes NÃO são criados automaticamente: limites fixos (30/40 A para
+          // todo tag "CORRENTE") não têm relação com o equipamento. Alarme só com
+          // configuração do usuário (ISA-18.2: racionalização).
 
           const cleanLogs: ScadaAuditLog[] = [
             {
@@ -302,6 +290,7 @@ export const useScadaStore = create<ScadaState>()(
             currentTenantId: tenantId,
             currentProjectName: projectName || "Projeto Autorizado",
             isDemoProject: false,
+            gatewayStatus: NO_FIELD_DRIVERS,
             isSimulationMode: true, // Simulation engine active for design verification
             estopActive: false,
             safetyLevel: "SIMULATION_HALT",
@@ -379,7 +368,7 @@ export const useScadaStore = create<ScadaState>()(
           const updatedEquipments = { ...state.equipments };
           for (const key of Object.keys(updatedEquipments)) {
             const eq = updatedEquipments[key];
-            if (eq.category === "PUMP") {
+            if (isRotatingEquipment(eq.category)) {
               updatedEquipments[key] = {
                 ...eq,
                 status: "TRIPPED",
@@ -514,8 +503,10 @@ export const useScadaStore = create<ScadaState>()(
               ...eq,
               status: newStatus,
               mode: newMode,
+              // Vazão nominal só existe na planta de demonstração; em projeto de
+              // cliente nenhuma vazão é inventada ao dar partida.
               flowRateM3h:
-                newStatus === "RUNNING" && eq.category === "PUMP"
+                s.isDemoProject && newStatus === "RUNNING" && eq.category === "PUMP"
                   ? equipmentId === "P-01"
                     ? 92.4
                     : 90.3
@@ -704,7 +695,6 @@ export const useScadaStore = create<ScadaState>()(
           let activeFlow = 0;
           const updatedTags = { ...state.tags };
           const newSamples: HistoricalSample[] = [];
-          const jitter = Math.sin(now / 3000) * 0.2;
 
           for (const eq of Object.values(state.equipments)) {
             if (eq && eq.status === "RUNNING") {
@@ -713,49 +703,11 @@ export const useScadaStore = create<ScadaState>()(
             }
           }
 
-          for (const [key, tag] of Object.entries(updatedTags)) {
-            if (!tag) continue;
-            const eq = tag.linkedEquipmentId ? state.equipments[tag.linkedEquipmentId] : undefined;
-            const isRunning = eq ? eq.status === "RUNNING" : true;
-
-            let newValue = tag.value;
-            if (
-              typeof tag.value === "number" &&
-              !tag.forced &&
-              tag.quality !== "STALE" &&
-              tag.quality !== "NOT_CONNECTED"
-            ) {
-              const nameUpper = tag.name.toUpperCase();
-              if (nameUpper.includes("CORRENTE") || nameUpper.includes("CURRENT")) {
-                newValue = isRunning ? +(26.5 + jitter).toFixed(1) : 0;
-              } else if (nameUpper.includes("POTENCIA") || nameUpper.includes("POWER")) {
-                newValue = isRunning ? +(11.2 + jitter * 0.5).toFixed(1) : 0;
-              } else if (nameUpper.includes("TEMP")) {
-                newValue = isRunning ? +(48.5 + jitter * 0.3).toFixed(1) : 25.0;
-              } else if (nameUpper.includes("VAZAO") || nameUpper.includes("FLOW")) {
-                newValue = isRunning ? +(85.0 + jitter * 0.8).toFixed(1) : 0;
-              }
-
-              const res = scadaTagRuntime.processUpdate({
-                tagId: tag.id,
-                tagName: tag.name,
-                projectId: state.currentProjectId || "default",
-                equipmentId: tag.linkedEquipmentId,
-                rawValue: newValue,
-                dataType: tag.dataType,
-                unit: tag.unit,
-                source: "SIMULATION",
-                sourceTimestamp: now,
-                receivedAt: now,
-                quality: tag.quality,
-              });
-
-              updatedTags[key] = res.tag;
-              if (res.historicalSample) {
-                newSamples.push(res.historicalSample);
-              }
-            }
-
+          // Valores de tag NÃO são inventados: um tag só muda quando uma fonte
+          // (simulação explícita, IoT, Edge) publica nele via setTagValue.
+          // Antes, o valor era fabricado pelo NOME do tag ("CORRENTE" → 26,5 A).
+          for (const key of Object.keys(updatedTags)) {
+            if (!updatedTags[key]) continue;
             scadaAlarmEngine.evaluateTag(updatedTags[key], now);
           }
 
@@ -801,7 +753,10 @@ export const useScadaStore = create<ScadaState>()(
             trendHistory: [...s.trendHistory.slice(-119), customerPoint],
             tags: updatedTags,
             alarms: mappedAlarms.length > 0 ? mappedAlarms : s.alarms,
-            bufferedHistoricalSamples: [...s.bufferedHistoricalSamples, ...newSamples],
+            bufferedHistoricalSamples: capHistoricalBuffer([
+              ...s.bufferedHistoricalSamples,
+              ...newSamples,
+            ]),
           }));
           return;
         }
@@ -1029,21 +984,32 @@ export const useScadaStore = create<ScadaState>()(
 
       flushHistoricalSamples: async () => {
         const state = get();
-        if (state.bufferedHistoricalSamples.length === 0 || !state.currentProjectId) {
+        // Demonstração não grava no banco do cliente.
+        if (
+          state.bufferedHistoricalSamples.length === 0 ||
+          !state.currentProjectId ||
+          state.isDemoProject
+        ) {
           return 0;
         }
-        const batch = [...state.bufferedHistoricalSamples];
-        set({ bufferedHistoricalSamples: [] });
+        const projectId = state.currentProjectId;
+        // O servidor recusa lotes acima do teto: envia em fatias, o resto fica.
+        const batch = state.bufferedHistoricalSamples.slice(0, MAX_FLUSH_BATCH);
+        set((s) => ({
+          bufferedHistoricalSamples: s.bufferedHistoricalSamples.slice(batch.length),
+        }));
         try {
           const { ingestTagSamplesBatch } = await import("./scada.functions");
           const res = await ingestTagSamplesBatch({
             data: {
-              projectId: state.currentProjectId,
+              projectId,
               samples: batch.map((s) => ({
                 tagName: s.tagName,
                 value: s.value,
                 quality: s.quality,
                 source: s.source,
+                unit: s.unit,
+                equipmentId: s.equipmentId,
                 sampledAt: s.sampledAt,
                 receivedAt: s.receivedAt,
                 sequenceNumber: s.sequenceNumber,
@@ -1053,6 +1019,18 @@ export const useScadaStore = create<ScadaState>()(
           return res.inserted;
         } catch (err) {
           console.error("Flush historical samples error:", err);
+          // Devolve à fila (se ainda for o mesmo projeto) para nova tentativa,
+          // respeitando o teto do buffer — nada é descartado em silêncio além dele.
+          set((s) =>
+            s.currentProjectId === projectId
+              ? {
+                  bufferedHistoricalSamples: capHistoricalBuffer([
+                    ...batch,
+                    ...s.bufferedHistoricalSamples,
+                  ]),
+                }
+              : {},
+          );
           return 0;
         }
       },

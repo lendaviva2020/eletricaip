@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   User,
@@ -10,6 +12,8 @@ import {
   EnvelopeSimple,
   Globe,
   Briefcase,
+  Buildings,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,116 +22,82 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, useI18nStore } from "@/lib/i18n";
+import type { SupportedLocale } from "@/lib/i18n/types";
 import { AccountTypeCard } from "@/components/settings/account-type-card";
+import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
+import {
+  PROFILE_LIMITS,
+  ProfileUpdateSchema,
+  normalizeAvatarUrl,
+  organizationRoleLabel,
+  type ProfileUpdate,
+} from "@/lib/profile";
 
 export const Route = createFileRoute("/settings/profile")({
   head: () => ({ meta: [{ title: "Perfil · EletricAI" }] }),
   component: ProfilePage,
 });
 
-interface ProfileState {
-  fullName: string;
-  locale: string;
-  role: string;
-  avatarUrl: string;
+const EMPTY: ProfileUpdate = { fullName: "", jobTitle: "", locale: "pt-BR", avatarUrl: "" };
+
+function errorMessage(e: unknown): string {
+  if (e instanceof Response) return "Não foi possível concluir. Tente novamente.";
+  return e instanceof Error && e.message ? e.message : "Não foi possível concluir.";
 }
 
 function ProfilePage() {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+  const getFn = useServerFn(getMyProfile);
+  const saveFn = useServerFn(updateMyProfile);
   const [copied, setCopied] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [createdAt, setCreatedAt] = useState<string | null>(null);
-  const [initial, setInitial] = useState<ProfileState>({
-    fullName: "",
-    locale: "pt-BR",
-    role: "",
-    avatarUrl: "",
-  });
-  const [form, setForm] = useState<ProfileState>(initial);
+  const [initial, setInitial] = useState<ProfileUpdate>(EMPTY);
+  const [form, setForm] = useState<ProfileUpdate>(EMPTY);
 
-  const dirty = useMemo(
-    () =>
-      form.fullName !== initial.fullName ||
-      form.locale !== initial.locale ||
-      form.role !== initial.role ||
-      form.avatarUrl !== initial.avatarUrl,
-    [form, initial],
-  );
+  const q = useQuery({ queryKey: ["my-profile"], queryFn: () => getFn(), retry: 1 });
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: u, error: uErr } = await supabase.auth.getUser();
-        if (uErr || !u.user) {
-          if (!cancelled) setLoading(false);
-          return;
-        }
-        if (cancelled) return;
-        setUserId(u.user.id);
-        setEmail(u.user.email ?? "");
-        setCreatedAt(u.user.created_at ?? null);
-        const { data: p, error: pErr } = await supabase
-          .from("profiles")
-          .select("full_name, locale, role, avatar_url")
-          .eq("id", u.user.id)
-          .maybeSingle();
-        if (cancelled) return;
-        if (pErr) {
-          toast.error(`Falha ao carregar perfil: ${pErr.message}`);
-        } else if (p) {
-          const next: ProfileState = {
-            fullName: p.full_name ?? "",
-            locale: p.locale ?? "pt-BR",
-            role: p.role ?? "",
-            avatarUrl: p.avatar_url ?? "",
-          };
-          setInitial(next);
-          setForm(next);
-        }
-      } catch (e) {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
+    if (!q.data) return;
+    const next: ProfileUpdate = {
+      fullName: q.data.fullName,
+      jobTitle: q.data.jobTitle,
+      locale: q.data.locale,
+      avatarUrl: q.data.avatarUrl,
     };
-  }, []);
-
-  const save = async () => {
-    if (!userId) return;
-    setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: form.fullName.trim(),
-        locale: form.locale,
-        role: form.role.trim(),
-        avatar_url: form.avatarUrl.trim() || null,
-      })
-      .eq("id", userId);
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      setInitial(form);
-      toast.success("Perfil atualizado com sucesso");
+    setInitial(next);
+    setForm(next);
+    // O idioma salvo no perfil vale em qualquer dispositivo.
+    if (useI18nStore.getState().locale !== q.data.locale) {
+      useI18nStore.getState().setLocale(q.data.locale, { syncProfile: false });
     }
+  }, [q.data]);
+
+  const dirty = useMemo(
+    () => (Object.keys(form) as (keyof ProfileUpdate)[]).some((k) => form[k] !== initial[k]),
+    [form, initial],
+  );
+  const validation = ProfileUpdateSchema.safeParse(form);
+  const fieldError = (field: keyof ProfileUpdate): string | null => {
+    if (validation.success || !dirty) return null;
+    return validation.error.issues.find((i) => i.path[0] === field)?.message ?? null;
   };
 
-  const reset = () => setForm(initial);
+  const save = useMutation({
+    mutationFn: (data: ProfileUpdate) => saveFn({ data }),
+    onSuccess: (_r, data) => {
+      setInitial(data);
+      useI18nStore.getState().setLocale(data.locale, { syncProfile: false });
+      void queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      toast.success("Perfil atualizado");
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
 
   const copyEmail = async () => {
-    if (!email) return;
+    if (!q.data?.email) return;
     try {
-      await navigator.clipboard.writeText(email);
+      await navigator.clipboard.writeText(q.data.email);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -135,15 +105,7 @@ function ProfilePage() {
     }
   };
 
-  const initials = (form.fullName || email || "U")
-    .split(/\s+/)
-    .map((s) => s[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  if (loading) {
+  if (q.isLoading) {
     return (
       <div className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
         <CircleNotch className="h-4 w-4 animate-spin" /> Carregando perfil…
@@ -151,12 +113,29 @@ function ProfilePage() {
     );
   }
 
-  if (!userId) {
-    return <div className="p-6 text-sm text-muted-foreground">{t("pages.profNeedAuth")}</div>;
+  if (q.isError || !q.data) {
+    return (
+      <div className="p-6 space-y-3 text-sm text-muted-foreground">
+        <p>{q.isError ? "Não foi possível carregar o perfil." : t("pages.profNeedAuth")}</p>
+        <Button variant="outline" size="sm" onClick={() => void q.refetch()}>
+          Tentar novamente
+        </Button>
+      </div>
+    );
   }
 
+  const profile = q.data;
+  const avatarSrc = normalizeAvatarUrl(form.avatarUrl) ?? profile.providerAvatarUrl ?? undefined;
+  const initials = (form.fullName || profile.email || "U")
+    .split(/\s+/)
+    .map((s) => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
-    <div className="flex-1 overflow-auto scrollbar-thin p-6">
+    <div className="flex-1 overflow-auto scrollbar-thin p-4 sm:p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
@@ -167,64 +146,66 @@ function ProfilePage() {
           </p>
         </div>
 
-        <AccountTypeCard />
-
-        {/* Hero card */}
         <Card>
           <CardContent className="p-6 flex items-start gap-5 flex-wrap">
-            <div className="relative">
-              <Avatar className="h-20 w-20 ring-2 ring-border">
-                <AvatarImage src={form.avatarUrl || undefined} alt={form.fullName || email} />
-                <AvatarFallback className="text-lg font-semibold bg-primary/15 text-primary">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-card border border-border grid place-items-center">
-                <Camera className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-            </div>
+            <Avatar className="h-20 w-20 ring-2 ring-border">
+              <AvatarImage
+                src={avatarSrc}
+                alt={form.fullName || profile.email}
+                referrerPolicy="no-referrer"
+              />
+              <AvatarFallback className="text-lg font-semibold bg-primary/15 text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg font-semibold truncate">
                   {form.fullName || "Sem nome definido"}
                 </h2>
-                {form.role && (
-                  <Badge variant="outline" className="capitalize">
-                    {form.role}
-                  </Badge>
-                )}
+                {form.jobTitle && <Badge variant="outline">{form.jobTitle}</Badge>}
               </div>
               <button
                 type="button"
                 onClick={copyEmail}
-                className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                title="Copiar email"
+                className="mt-1 inline-flex max-w-full items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                title="Copiar e-mail"
               >
-                <EnvelopeSimple className="h-3.5 w-3.5" />
-                <span className="truncate">{email}</span>
+                <EnvelopeSimple className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{profile.email}</span>
                 {copied ? (
                   <Check className="h-3.5 w-3.5 text-primary" />
                 ) : (
                   <Copy className="h-3.5 w-3.5 opacity-60" />
                 )}
               </button>
-              {createdAt && (
+              {profile.organization && (
+                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Buildings className="h-3.5 w-3.5" /> {profile.organization.name}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {organizationRoleLabel(profile.organization.role)}
+                  </span>
+                </p>
+              )}
+              {profile.createdAt && (
                 <p className="text-[11px] text-muted-foreground mt-2">
-                  Membro desde {new Date(createdAt).toLocaleDateString("pt-BR")}
+                  Membro desde {new Date(profile.createdAt).toLocaleDateString("pt-BR")}
                 </p>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Editable fields */}
         <Card>
           <CardContent className="p-6 space-y-5">
             <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" value={email} disabled className="mt-1.5" />
+              <Label htmlFor="email">E-mail</Label>
+              <Input id="email" value={profile.email} disabled className="mt-1.5" />
               <p className="text-[11px] text-muted-foreground mt-1">
-                O email é gerenciado pelo provedor de autenticação.
+                O e-mail de login não é alterado por aqui.
               </p>
             </div>
 
@@ -238,37 +219,52 @@ function ProfilePage() {
                   value={form.fullName}
                   onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
                   placeholder="Seu nome"
-                  maxLength={120}
+                  maxLength={PROFILE_LIMITS.fullName}
                   className="mt-1.5"
+                  aria-invalid={Boolean(fieldError("fullName"))}
                 />
+                {fieldError("fullName") && (
+                  <p className="text-[11px] text-destructive mt-1">{fieldError("fullName")}</p>
+                )}
               </div>
               <div>
-                <Label htmlFor="role" className="flex items-center gap-1.5">
-                  <Briefcase className="h-3.5 w-3.5" /> Cargo
+                <Label htmlFor="jobTitle" className="flex items-center gap-1.5">
+                  <Briefcase className="h-3.5 w-3.5" /> Cargo / profissão
                 </Label>
                 <Input
-                  id="role"
-                  value={form.role}
-                  onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
-                  placeholder="Ex.: Engenheiro Eletricista"
-                  maxLength={80}
+                  id="jobTitle"
+                  value={form.jobTitle}
+                  onChange={(e) => setForm((p) => ({ ...p, jobTitle: e.target.value }))}
+                  placeholder="Ex.: Engenheiro eletricista"
+                  maxLength={PROFILE_LIMITS.jobTitle}
                   className="mt-1.5"
                 />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Só informativo. As permissões na empresa são definidas em Equipe.
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="avatarUrl" className="flex items-center gap-1.5">
-                  <Camera className="h-3.5 w-3.5" /> URL do avatar
+                  <Camera className="h-3.5 w-3.5" /> Foto (endereço HTTPS)
                 </Label>
                 <Input
                   id="avatarUrl"
                   value={form.avatarUrl}
                   onChange={(e) => setForm((p) => ({ ...p, avatarUrl: e.target.value }))}
-                  placeholder="https://…"
+                  placeholder={
+                    profile.providerAvatarUrl ? "Usando a foto da conta Google" : "https://…"
+                  }
+                  maxLength={PROFILE_LIMITS.avatarUrl}
+                  inputMode="url"
                   className="mt-1.5"
+                  aria-invalid={Boolean(fieldError("avatarUrl"))}
                 />
+                {fieldError("avatarUrl") && (
+                  <p className="text-[11px] text-destructive mt-1">{fieldError("avatarUrl")}</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="locale" className="flex items-center gap-1.5">
@@ -277,14 +273,10 @@ function ProfilePage() {
                 <select
                   id="locale"
                   value={form.locale}
-                  onChange={(e) => {
-                    const l = e.target.value;
-                    setForm((p) => ({ ...p, locale: l }));
-                    // Atualiza imediatamente o i18n store global sem esperar salvar
-                    import("@/lib/i18n").then((m) => m.useI18nStore.getState().setLocale(l));
-                  }}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, locale: e.target.value as SupportedLocale }))
+                  }
                   className="mt-1.5 h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
-                  aria-label="Idioma"
                 >
                   <option value="pt-BR">Português (Brasil)</option>
                   <option value="en">English (US)</option>
@@ -292,9 +284,12 @@ function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
-              <Button onClick={save} disabled={saving || !dirty}>
-                {saving ? (
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <Button
+                onClick={() => validation.success && save.mutate(validation.data)}
+                disabled={save.isPending || !dirty || !validation.success}
+              >
+                {save.isPending ? (
                   <>
                     <CircleNotch className="h-4 w-4 animate-spin" /> Salvando…
                   </>
@@ -302,17 +297,21 @@ function ProfilePage() {
                   "Salvar alterações"
                 )}
               </Button>
-              <Button variant="ghost" onClick={reset} disabled={saving || !dirty}>
+              <Button
+                variant="ghost"
+                onClick={() => setForm(initial)}
+                disabled={save.isPending || !dirty}
+              >
                 Descartar
               </Button>
               {dirty && (
-                <span className="text-[11px] text-muted-foreground ml-1">
-                  Há alterações não salvas
-                </span>
+                <span className="text-[11px] text-muted-foreground">Há alterações não salvas</span>
               )}
             </div>
           </CardContent>
         </Card>
+
+        <AccountTypeCard />
       </div>
     </div>
   );

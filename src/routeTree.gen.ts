@@ -37,12 +37,9 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
-import { Route as SettingsAiStatusRouteImport } from './routes/settings.ai-status'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
-import { Route as SettingsAutosaveRouteImport } from './routes/settings.autosave'
 import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
 import { Route as SettingsCatalogImportRouteImport } from './routes/settings.catalog-import'
-import { Route as SettingsDiagnosticsRouteImport } from './routes/settings.diagnostics'
 import { Route as SettingsEdgeFleetRouteImport } from './routes/settings.edge-fleet'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
@@ -50,9 +47,7 @@ import { Route as SettingsObservabilityRouteImport } from './routes/settings.obs
 import { Route as SettingsPlatformMetricsRouteImport } from './routes/settings.platform-metrics'
 import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsProtocolsRouteImport } from './routes/settings.protocols'
-import { Route as SettingsRateLimitsRouteImport } from './routes/settings.rate-limits'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
-import { Route as SettingsSecurityMonitorRouteImport } from './routes/settings.security-monitor'
 import { Route as SettingsTeamRouteImport } from './routes/settings.team'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ProjectsProjectIdBomRouteImport } from './routes/projects.$projectId.bom'
@@ -203,19 +198,9 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsAiStatusRoute = SettingsAiStatusRouteImport.update({
-  id: '/ai-status',
-  path: '/ai-status',
-  getParentRoute: () => SettingsRoute,
-} as any)
 const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsAutosaveRoute = SettingsAutosaveRouteImport.update({
-  id: '/autosave',
-  path: '/autosave',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsBillingRoute = SettingsBillingRouteImport.update({
@@ -226,11 +211,6 @@ const SettingsBillingRoute = SettingsBillingRouteImport.update({
 const SettingsCatalogImportRoute = SettingsCatalogImportRouteImport.update({
   id: '/catalog-import',
   path: '/catalog-import',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsDiagnosticsRoute = SettingsDiagnosticsRouteImport.update({
-  id: '/diagnostics',
-  path: '/diagnostics',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsEdgeFleetRoute = SettingsEdgeFleetRouteImport.update({
@@ -268,19 +248,9 @@ const SettingsProtocolsRoute = SettingsProtocolsRouteImport.update({
   path: '/protocols',
   getParentRoute: () => SettingsRoute,
 } as any)
-const SettingsRateLimitsRoute = SettingsRateLimitsRouteImport.update({
-  id: '/rate-limits',
-  path: '/rate-limits',
-  getParentRoute: () => SettingsRoute,
-} as any)
 const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
   id: '/security',
   path: '/security',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsSecurityMonitorRoute = SettingsSecurityMonitorRouteImport.update({
-  id: '/security-monitor',
-  path: '/security-monitor',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsTeamRoute = SettingsTeamRouteImport.update({
@@ -354,12 +324,9 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/invite/$token': typeof InviteTokenRoute
-  '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
-  '/settings/autosave': typeof SettingsAutosaveRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/catalog-import': typeof SettingsCatalogImportRoute
-  '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/edge-fleet': typeof SettingsEdgeFleetRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
@@ -367,9 +334,7 @@ export interface FileRoutesByFullPath {
   '/settings/platform-metrics': typeof SettingsPlatformMetricsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/protocols': typeof SettingsProtocolsRoute
-  '/settings/rate-limits': typeof SettingsRateLimitsRoute
   '/settings/security': typeof SettingsSecurityRoute
-  '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
@@ -408,12 +373,9 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/invite/$token': typeof InviteTokenRoute
-  '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
-  '/settings/autosave': typeof SettingsAutosaveRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/catalog-import': typeof SettingsCatalogImportRoute
-  '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/edge-fleet': typeof SettingsEdgeFleetRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
@@ -421,9 +383,7 @@ export interface FileRoutesByTo {
   '/settings/platform-metrics': typeof SettingsPlatformMetricsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/protocols': typeof SettingsProtocolsRoute
-  '/settings/rate-limits': typeof SettingsRateLimitsRoute
   '/settings/security': typeof SettingsSecurityRoute
-  '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
@@ -463,12 +423,9 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/invite/$token': typeof InviteTokenRoute
-  '/settings/ai-status': typeof SettingsAiStatusRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
-  '/settings/autosave': typeof SettingsAutosaveRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/catalog-import': typeof SettingsCatalogImportRoute
-  '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/settings/edge-fleet': typeof SettingsEdgeFleetRoute
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
@@ -476,9 +433,7 @@ export interface FileRoutesById {
   '/settings/platform-metrics': typeof SettingsPlatformMetricsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/protocols': typeof SettingsProtocolsRoute
-  '/settings/rate-limits': typeof SettingsRateLimitsRoute
   '/settings/security': typeof SettingsSecurityRoute
-  '/settings/security-monitor': typeof SettingsSecurityMonitorRoute
   '/settings/team': typeof SettingsTeamRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
@@ -519,12 +474,9 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/clients/$clientId'
     | '/invite/$token'
-    | '/settings/ai-status'
     | '/settings/appearance'
-    | '/settings/autosave'
     | '/settings/billing'
     | '/settings/catalog-import'
-    | '/settings/diagnostics'
     | '/settings/edge-fleet'
     | '/settings/integrations'
     | '/settings/notifications'
@@ -532,9 +484,7 @@ export interface FileRouteTypes {
     | '/settings/platform-metrics'
     | '/settings/profile'
     | '/settings/protocols'
-    | '/settings/rate-limits'
     | '/settings/security'
-    | '/settings/security-monitor'
     | '/settings/team'
     | '/.lovable/oauth/consent'
     | '/projects/$projectId/bom'
@@ -573,12 +523,9 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/clients/$clientId'
     | '/invite/$token'
-    | '/settings/ai-status'
     | '/settings/appearance'
-    | '/settings/autosave'
     | '/settings/billing'
     | '/settings/catalog-import'
-    | '/settings/diagnostics'
     | '/settings/edge-fleet'
     | '/settings/integrations'
     | '/settings/notifications'
@@ -586,9 +533,7 @@ export interface FileRouteTypes {
     | '/settings/platform-metrics'
     | '/settings/profile'
     | '/settings/protocols'
-    | '/settings/rate-limits'
     | '/settings/security'
-    | '/settings/security-monitor'
     | '/settings/team'
     | '/.lovable/oauth/consent'
     | '/projects/$projectId/bom'
@@ -627,12 +572,9 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/clients/$clientId'
     | '/invite/$token'
-    | '/settings/ai-status'
     | '/settings/appearance'
-    | '/settings/autosave'
     | '/settings/billing'
     | '/settings/catalog-import'
-    | '/settings/diagnostics'
     | '/settings/edge-fleet'
     | '/settings/integrations'
     | '/settings/notifications'
@@ -640,9 +582,7 @@ export interface FileRouteTypes {
     | '/settings/platform-metrics'
     | '/settings/profile'
     | '/settings/protocols'
-    | '/settings/rate-limits'
     | '/settings/security'
-    | '/settings/security-monitor'
     | '/settings/team'
     | '/.lovable/oauth/consent'
     | '/projects/$projectId/bom'
@@ -886,25 +826,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/ai-status': {
-      id: '/settings/ai-status'
-      path: '/ai-status'
-      fullPath: '/settings/ai-status'
-      preLoaderRoute: typeof SettingsAiStatusRouteImport
-      parentRoute: typeof SettingsRoute
-    }
     '/settings/appearance': {
       id: '/settings/appearance'
       path: '/appearance'
       fullPath: '/settings/appearance'
       preLoaderRoute: typeof SettingsAppearanceRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/autosave': {
-      id: '/settings/autosave'
-      path: '/autosave'
-      fullPath: '/settings/autosave'
-      preLoaderRoute: typeof SettingsAutosaveRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/billing': {
@@ -919,13 +845,6 @@ declare module '@tanstack/react-router' {
       path: '/catalog-import'
       fullPath: '/settings/catalog-import'
       preLoaderRoute: typeof SettingsCatalogImportRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/diagnostics': {
-      id: '/settings/diagnostics'
-      path: '/diagnostics'
-      fullPath: '/settings/diagnostics'
-      preLoaderRoute: typeof SettingsDiagnosticsRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/edge-fleet': {
@@ -977,25 +896,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsProtocolsRouteImport
       parentRoute: typeof SettingsRoute
     }
-    '/settings/rate-limits': {
-      id: '/settings/rate-limits'
-      path: '/rate-limits'
-      fullPath: '/settings/rate-limits'
-      preLoaderRoute: typeof SettingsRateLimitsRouteImport
-      parentRoute: typeof SettingsRoute
-    }
     '/settings/security': {
       id: '/settings/security'
       path: '/security'
       fullPath: '/settings/security'
       preLoaderRoute: typeof SettingsSecurityRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/security-monitor': {
-      id: '/settings/security-monitor'
-      path: '/security-monitor'
-      fullPath: '/settings/security-monitor'
-      preLoaderRoute: typeof SettingsSecurityMonitorRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/team': {
@@ -1083,12 +988,9 @@ const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
 )
 
 interface SettingsRouteChildren {
-  SettingsAiStatusRoute: typeof SettingsAiStatusRoute
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
-  SettingsAutosaveRoute: typeof SettingsAutosaveRoute
   SettingsBillingRoute: typeof SettingsBillingRoute
   SettingsCatalogImportRoute: typeof SettingsCatalogImportRoute
-  SettingsDiagnosticsRoute: typeof SettingsDiagnosticsRoute
   SettingsEdgeFleetRoute: typeof SettingsEdgeFleetRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
@@ -1096,19 +998,14 @@ interface SettingsRouteChildren {
   SettingsPlatformMetricsRoute: typeof SettingsPlatformMetricsRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
   SettingsProtocolsRoute: typeof SettingsProtocolsRoute
-  SettingsRateLimitsRoute: typeof SettingsRateLimitsRoute
   SettingsSecurityRoute: typeof SettingsSecurityRoute
-  SettingsSecurityMonitorRoute: typeof SettingsSecurityMonitorRoute
   SettingsTeamRoute: typeof SettingsTeamRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
-  SettingsAiStatusRoute: SettingsAiStatusRoute,
   SettingsAppearanceRoute: SettingsAppearanceRoute,
-  SettingsAutosaveRoute: SettingsAutosaveRoute,
   SettingsBillingRoute: SettingsBillingRoute,
   SettingsCatalogImportRoute: SettingsCatalogImportRoute,
-  SettingsDiagnosticsRoute: SettingsDiagnosticsRoute,
   SettingsEdgeFleetRoute: SettingsEdgeFleetRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
@@ -1116,9 +1013,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsPlatformMetricsRoute: SettingsPlatformMetricsRoute,
   SettingsProfileRoute: SettingsProfileRoute,
   SettingsProtocolsRoute: SettingsProtocolsRoute,
-  SettingsRateLimitsRoute: SettingsRateLimitsRoute,
   SettingsSecurityRoute: SettingsSecurityRoute,
-  SettingsSecurityMonitorRoute: SettingsSecurityMonitorRoute,
   SettingsTeamRoute: SettingsTeamRoute,
 }
 

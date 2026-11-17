@@ -15,52 +15,51 @@ import { useScadaStore } from "./scada-store";
  * Maps a CanonicalEquipment from the unified engineering schema (v3) to SCADA telemetry.
  * Retains 100% stable equipment identity (`id`) across all views.
  */
+const SENSOR_TYPES = new Set(["pt100", "pressure", "flow", "level", "encoder", "sensor"]);
+
+/** Categoria pelo tipo real do equipamento (antes todo motor/carga virava "PUMP"). */
+export function scadaCategoryOf(eq: CanonicalEquipment): EquipmentTelemetry["category"] {
+  const t = (eq.catalogType || "").toLowerCase();
+  if (t === "motor") return "MOTOR";
+  if (t === "pump") return "PUMP";
+  if (t === "transformer") return "TRANSFORMER";
+  if (t === "plc" || eq.category === "plc_module") return "PLC";
+  if (SENSOR_TYPES.has(t) || eq.category === "instrumentation") return "SENSOR";
+  if (t === "valve") return "VALVE";
+  return "PANEL";
+}
+
 export function canonicalToScadaTelemetry(
   eq: CanonicalEquipment,
   linkedTags: CanonicalTag[] = [],
 ): EquipmentTelemetry {
-  const categoryMap: Record<string, EquipmentTelemetry["category"]> = {
-    drive: "PUMP",
-    load: "PUMP",
-    source: "TRANSFORMER",
-    protection: "PANEL",
-    switching: "PANEL",
-    instrumentation: "SENSOR",
-    safety: "PANEL",
-    plc_module: "PLC",
-    passive: "PANEL",
-    reference: "PANEL",
-  };
-
   const specs = eq.specs || {};
   const powerKw = specs.powerKw ?? (specs.powerW ? specs.powerW / 1000 : 0);
-  const nominalVoltage = specs.voltageV ?? 380;
-  const nominalCurrent =
-    specs.nominalCurrentA ??
-    (powerKw > 0
-      ? Number(
-          (
-            (powerKw * 1000) /
-            (Math.sqrt(3) * nominalVoltage * (specs.powerFactor ?? 0.88))
-          ).toFixed(1),
-        )
-      : 0);
+  const nominalVoltage = specs.voltageV ?? 0;
+  const nominalCurrent = specs.nominalCurrentA ?? 0;
 
   return {
     id: eq.id,
     tag: eq.tagCode || eq.id,
     name: eq.displayName || `${eq.catalogType || "Equipamento"} ${eq.tagCode || eq.id}`,
-    category: categoryMap[eq.category] || "PANEL",
+    category: scadaCategoryOf(eq),
     status: "STANDBY",
     mode: "AUTO",
-    voltageV: nominalVoltage,
-    currentA: nominalCurrent,
+    // Telemetria: zero até uma fonte publicar. Parâmetros de projeto (tensão,
+    // fator de potência) não são exibidos como se fossem medidos.
+    voltageV: 0,
+    currentA: 0,
     powerKw,
-    powerFactor: specs.powerFactor ?? 0.92,
-    frequencyHz: 60.0,
+    powerFactor: 0,
+    frequencyHz: 0,
     runningHours: 0,
     startsCount: 0,
-    lastMaintenance: new Date().toLocaleDateString("pt-BR"),
+    lastMaintenance: "—",
+    nominal: {
+      voltageV: nominalVoltage || undefined,
+      currentA: nominalCurrent || undefined,
+      powerFactor: specs.powerFactor,
+    },
     alarmsCount: 0,
     linkedTags: linkedTags.filter((t) => t && t.name).map((t) => t.name),
   };
@@ -91,7 +90,8 @@ export function canonicalToScadaTag(tag: CanonicalTag): ScadaTagDefinition {
     scaleMin: tag.scaleMin ?? 0,
     scaleMax: tag.scaleMax ?? 100,
     value: tag.initialValue,
-    quality: "GOOD",
+    // Sem fonte publicando ainda: não é leitura boa.
+    quality: "NOT_CONNECTED",
     driver: "INTERNAL_RUNTIME",
     scanRateMs: 100,
     lastUpdated: Date.now(),

@@ -121,7 +121,10 @@ export class DeterministicAlarmEngine {
   ): AlarmTransitionEvent[] {
     const events: AlarmTransitionEvent[] = [];
     const commAlarmId = `comm_${tag.id}`;
-    const isCommLost = tag.quality === "STALE" || tag.quality === "NOT_CONNECTED";
+    // Só PERDA de sinal (estava publicando e parou) é alarme. Tag sem fonte
+    // configurada (NOT_CONNECTED) não alarma: inundaria o operador ao abrir o
+    // projeto (ISA-18.2 — alarme precisa exigir ação do operador).
+    const isCommLost = tag.quality === "STALE";
     const existing = this.activeInstances.get(commAlarmId);
 
     if (isCommLost) {

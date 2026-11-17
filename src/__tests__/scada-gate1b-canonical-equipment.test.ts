@@ -26,7 +26,7 @@ describe("GATE 1B — RSK-P1-01: Modelo Canônico de Equipamentos & Single Sourc
       id: "EQ-MOTOR-01",
       tagCode: "M-01",
       displayName: "Motor de Indução Gaiola M-01",
-      catalogType: "WEG W22 Premium IE3",
+      catalogType: "motor",
       category: "drive",
       phases: "3F",
       terminals: [
@@ -63,11 +63,15 @@ describe("GATE 1B — RSK-P1-01: Modelo Canônico de Equipamentos & Single Sourc
     expect(scadaTelemetry.id).toBe("EQ-MOTOR-01");
     expect(scadaTelemetry.tag).toBe("M-01");
     expect(scadaTelemetry.name).toBe("Motor de Indução Gaiola M-01");
-    expect(scadaTelemetry.category).toBe("PUMP");
+    // Motor é MOTOR (antes todo "drive" virava bomba).
+    expect(scadaTelemetry.category).toBe("MOTOR");
     expect(scadaTelemetry.powerKw).toBe(75.0);
-    expect(scadaTelemetry.voltageV).toBe(380);
-    expect(scadaTelemetry.currentA).toBe(138.5);
-    expect(scadaTelemetry.powerFactor).toBe(0.89);
+    // Dados de placa ficam em `nominal`; a leitura ao vivo começa em 0 e
+    // sem qualidade até uma fonte publicar.
+    expect(scadaTelemetry.nominal).toEqual({ voltageV: 380, currentA: 138.5, powerFactor: 0.89 });
+    expect(scadaTelemetry.voltageV).toBe(0);
+    expect(scadaTelemetry.currentA).toBe(0);
+    expect(scadaTelemetry.powerFactor).toBe(0);
     expect(scadaTelemetry.linkedTags).toContain("M01.RUNNING");
   });
 
@@ -97,7 +101,7 @@ describe("GATE 1B — RSK-P1-01: Modelo Canônico de Equipamentos & Single Sourc
     expect(scadaTag.scaleMin).toBe(0);
     expect(scadaTag.scaleMax).toBe(300);
     expect(scadaTag.value).toBe(145.2);
-    expect(scadaTag.quality).toBe("GOOD");
+    expect(scadaTag.quality).toBe("NOT_CONNECTED");
     expect(scadaTag.driver).toBe("INTERNAL_RUNTIME");
     expect(scadaTag.isSimulated).toBe(false);
   });
@@ -238,7 +242,8 @@ describe("GATE 1B — RSK-P1-01: Modelo Canônico de Equipamentos & Single Sourc
     expect(scadaState.equipments["EQ-PRENSA-01"].tag).toBe("PRS-01");
 
     expect(scadaState.equipments["EQ-DISJ-01"]).toBeDefined();
-    expect(scadaState.equipments["EQ-DISJ-01"].currentA).toBe(250);
+    expect(scadaState.equipments["EQ-DISJ-01"].nominal?.currentA).toBe(250);
+    expect(scadaState.equipments["EQ-DISJ-01"].currentA).toBe(0);
 
     // Assert Canonical Tags exist in SCADA
     expect(scadaState.tags["PRS01.START"]).toBeDefined();

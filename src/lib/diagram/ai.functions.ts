@@ -9,13 +9,9 @@ import {
 } from "@/integrations/supabase/ai-rate-limit-middleware";
 import { AiDiagramPatchSchema, type AiDiagramPatch } from "@/lib/diagram/schema";
 import { buildPatchJsonSchema } from "@/lib/diagram/zod-to-json-schema";
-import {
-  getGeminiClient,
-  getGeminiModel,
-  getGeminiApiKey,
-  validateGeminiKey,
-  mapGeminiError,
-} from "@/lib/ai/gemini-client.server";
+import { AiProviderError, availableProviders, generateJson } from "@/lib/ai/ai-provider.server";
+import type { AiProviderId } from "@/lib/ai/provider-switch";
+import { loadUserAiProvider } from "@/lib/ai-preference.functions";
 import { BRIEFING_SECURITY_DIRECTIVE, wrapUserBriefing } from "@/lib/ai/context-sanitizer";
 import {
   BriefingDocumentInputSchema,
@@ -199,29 +195,22 @@ const SYSTEM = buildDiagramSystemPrompt("pt-BR");
 // Se adicionar campos ao Zod, o schema plano será atualizado via buildPatchJsonSchema().
 const PATCH_JSON_SCHEMA = buildPatchJsonSchema();
 
-async function callGeminiDiagramPatch(
+async function callDiagramPatchModel(
   userMsg: string,
-  locale: "pt-BR" | "en" = "pt-BR",
+  locale: "pt-BR" | "en",
+  preferred: AiProviderId,
   fixHint?: string,
 ) {
-  const ai = getGeminiClient();
-  const model = getGeminiModel();
   const systemPrompt = buildDiagramSystemPrompt(locale);
   const fixHeader = locale === "en" ? "\n\nREQUIRED CORRECTION:\n" : "\n\nCORREÇÃO NECESSÁRIA:\n";
-  const systemInstruction = systemPrompt + (fixHint ? `${fixHeader}${fixHint}` : "");
-
-  const response = await ai.models.generateContent({
-    model,
-    contents: userMsg,
-    config: {
-      systemInstruction,
-      temperature: 0.2,
-      responseMimeType: "application/json",
-      responseSchema: PATCH_JSON_SCHEMA,
-    },
+  return generateJson({
+    task: "fast",
+    system: systemPrompt + (fixHint ? `${fixHeader}${fixHint}` : ""),
+    turns: [{ role: "user", content: userMsg }],
+    jsonSchema: PATCH_JSON_SCHEMA,
+    preferred,
+    temperature: 0.2,
   });
-
-  return response;
 }
 
 // Projeta o doc para um resumo enxuto (evita estourar payload). Corta por
@@ -269,18 +258,13 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
   .inputValidator((input) => InputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PatchOk | PatchErr> => {
     const { supabase } = context;
-    const apiKey = getGeminiApiKey();
-    const keyValidation = validateGeminiKey(apiKey);
-    if (!keyValidation.ok) {
+    if (availableProviders().length === 0) {
       return {
         ok: false,
-        error: {
-          code: !apiKey ? "MISSING_KEY" : "INVALID_KEY_FORMAT",
-          message:
-            keyValidation.reason || "GEMINI_API_KEY ausente ou inválida nos secrets do servidor.",
-        },
+        error: { code: "MISSING_KEY", message: "IA temporariamente indisponível." },
       };
     }
+    const preferred = await loadUserAiProvider(supabase, context.userId);
 
     const { error: gateErr } = await supabase.rpc("consume_ai_credits", {
       p_operation: "generate_panel",
@@ -327,13 +311,14 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
     let lastErr = "";
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const response = await callGeminiDiagramPatch(
+        const response = await callDiagramPatchModel(
           userMsg,
           locale,
+          preferred,
           attempt > 0 ? lastErr : undefined,
         );
-        const text = response.text?.trim();
-        const tokensUsed = Number(response.usageMetadata?.totalTokenCount) || 0;
+        const text = response.text.trim();
+        const tokensUsed = response.tokensUsed;
         if (!text) {
           lastErr = "resposta vazia da IA";
           continue;
@@ -488,7 +473,11 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
           .join("; ");
         console.warn(`[generateDiagramPatch] attempt ${attempt + 1} validation failed:`, lastErr);
       } catch (e) {
-        const mapped = mapGeminiError(e);
+        // A camada de provedor já tentou o outro provedor antes de falhar.
+        const mapped =
+          e instanceof AiProviderError
+            ? e.detail
+            : { code: "BAD_RESPONSE" as const, message: "Falha ao consultar a IA." };
         if (mapped.code === "AUTH_401" || mapped.code === "MISSING_KEY") {
           return { ok: false, error: { code: mapped.code, message: mapped.message } };
         }

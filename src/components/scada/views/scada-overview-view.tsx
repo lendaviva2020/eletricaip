@@ -324,54 +324,65 @@ export function ScadaOverviewView() {
               <h2 className="text-[11px] font-mono font-bold uppercase tracking-wider text-white">
                 KPIs Operacionais & Confiabilidade
               </h2>
-              <span className="text-[9.5px] font-mono text-emerald-400">Tempo Real</span>
+              <span
+                className={`text-[9.5px] font-mono ${isDemoProject ? "text-amber-400" : "text-zinc-500"}`}
+              >
+                {isDemoProject ? "Demonstração" : "Sem dados"}
+              </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              {/* KPI 1: Disponibilidade */}
-              <div className="bg-[#0F141C] border border-[#1E293B] p-2 rounded">
-                <div className="text-[9.5px] font-mono text-[#A7B0BB] uppercase">
-                  Disponibilidade
+            {!isDemoProject ? (
+              <p className="text-[10.5px] font-mono text-zinc-400 leading-relaxed">
+                Disponibilidade, OEE, MTBF e MTTR são calculados a partir do histórico de estados
+                dos equipamentos. Este projeto ainda não tem histórico gravado.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {/* KPI 1: Disponibilidade */}
+                <div className="bg-[#0F141C] border border-[#1E293B] p-2 rounded">
+                  <div className="text-[9.5px] font-mono text-[#A7B0BB] uppercase">
+                    Disponibilidade
+                  </div>
+                  <div className="flex items-baseline justify-between mt-0.5">
+                    <span className="text-base font-bold font-mono text-emerald-400">99.2%</span>
+                    <span className="text-[9px] font-mono text-zinc-500">Meta &gt;98%</span>
+                  </div>
                 </div>
-                <div className="flex items-baseline justify-between mt-0.5">
-                  <span className="text-base font-bold font-mono text-emerald-400">99.2%</span>
-                  <span className="text-[9px] font-mono text-zinc-500">Meta &gt;98%</span>
-                </div>
-              </div>
 
-              {/* KPI 2: OEE */}
-              <div className="bg-[#0F141C] border border-[#1E293B] p-2 rounded">
-                <div className="text-[9.5px] font-mono text-[#A7B0BB] uppercase">
-                  OEE Operacional
+                {/* KPI 2: OEE */}
+                <div className="bg-[#0F141C] border border-[#1E293B] p-2 rounded">
+                  <div className="text-[9.5px] font-mono text-[#A7B0BB] uppercase">
+                    OEE Operacional
+                  </div>
+                  <div className="flex items-baseline justify-between mt-0.5">
+                    <span className="text-base font-bold font-mono text-[#38BDF8]">91.4%</span>
+                    <span className="text-[9px] font-mono text-zinc-500">Meta &gt;85%</span>
+                  </div>
                 </div>
-                <div className="flex items-baseline justify-between mt-0.5">
-                  <span className="text-base font-bold font-mono text-[#38BDF8]">91.4%</span>
-                  <span className="text-[9px] font-mono text-zinc-500">Meta &gt;85%</span>
-                </div>
-              </div>
 
-              {/* KPI 3: MTBF */}
-              <div className="bg-[#0F141C] border border-[#1E293B] p-2 rounded">
-                <div className="text-[9.5px] font-mono text-[#A7B0BB] uppercase">
-                  MTBF (Confiabilidade)
+                {/* KPI 3: MTBF */}
+                <div className="bg-[#0F141C] border border-[#1E293B] p-2 rounded">
+                  <div className="text-[9.5px] font-mono text-[#A7B0BB] uppercase">
+                    MTBF (Confiabilidade)
+                  </div>
+                  <div className="flex items-baseline justify-between mt-0.5">
+                    <span className="text-base font-bold font-mono text-[#F59E0B]">420h</span>
+                    <span className="text-[9px] font-mono text-zinc-500">Entre Falhas</span>
+                  </div>
                 </div>
-                <div className="flex items-baseline justify-between mt-0.5">
-                  <span className="text-base font-bold font-mono text-[#F59E0B]">420h</span>
-                  <span className="text-[9px] font-mono text-zinc-500">Entre Falhas</span>
-                </div>
-              </div>
 
-              {/* KPI 4: MTTR */}
-              <div className="bg-[#0F141C] border border-[#1E293B] p-2 rounded">
-                <div className="text-[9.5px] font-mono text-[#A7B0BB] uppercase">
-                  MTTR (Manutenibilidade)
-                </div>
-                <div className="flex items-baseline justify-between mt-0.5">
-                  <span className="text-base font-bold font-mono text-zinc-200">18min</span>
-                  <span className="text-[9px] font-mono text-zinc-500">Para Reparo</span>
+                {/* KPI 4: MTTR */}
+                <div className="bg-[#0F141C] border border-[#1E293B] p-2 rounded">
+                  <div className="text-[9.5px] font-mono text-[#A7B0BB] uppercase">
+                    MTTR (Manutenibilidade)
+                  </div>
+                  <div className="flex items-baseline justify-between mt-0.5">
+                    <span className="text-base font-bold font-mono text-zinc-200">18min</span>
+                    <span className="text-[9px] font-mono text-zinc-500">Para Reparo</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Card 3: Tendências Principais (Multi-pen Line Chart) */}
