@@ -63,7 +63,7 @@ export function ScadaSidebar() {
 
   return (
     <aside
-      className="w-60 shrink-0 border-r border-border bg-[#0a0d14] flex flex-col justify-between select-none text-zinc-300"
+      className="hidden w-60 shrink-0 border-r border-border bg-[#0a0d14] md:flex flex-col justify-between select-none text-zinc-300"
       data-testid="scada-sidebar"
     >
       {/* Navigation List */}
@@ -171,5 +171,48 @@ export function ScadaSidebar() {
         </div>
       </div>
     </aside>
+  );
+}
+
+const MOBILE_VIEWS: ReadonlyArray<{ id: ScadaViewId; label: string }> = [
+  { id: "overview", label: "Visão Geral" },
+  { id: "motors", label: "CCM — Motores" },
+  { id: "synoptics", label: "Sinóticos Industriais" },
+  { id: "alarms", label: "Alarmes" },
+  { id: "trends", label: "Tendências" },
+  { id: "equipments", label: "Equipamentos" },
+  { id: "tags", label: "TAGs Industriais" },
+  { id: "communication", label: "Comunicação" },
+  { id: "events", label: "Eventos e Logs" },
+  { id: "reports", label: "Relatórios" },
+  { id: "hmi", label: "Editor HMI" },
+  { id: "settings", label: "Configurações" },
+];
+
+/**
+ * Celular: a barra lateral (240 px) ocupava metade da tela e espremia as
+ * visões. Abaixo de 768 px ela some e a navegação vira este seletor.
+ */
+export function ScadaMobileNav() {
+  const activeView = useScadaStore((s) => s.activeView);
+  const setActiveView = useScadaStore((s) => s.setActiveView);
+  const alarms = useScadaStore((s) => s.warningAlarmsCount + s.criticalAlarmsCount);
+  return (
+    <div className="shrink-0 border-b border-border bg-[#0a0d14] px-2 py-1.5 md:hidden">
+      <select
+        value={activeView}
+        onChange={(e) => setActiveView(e.target.value as ScadaViewId)}
+        className="h-9 w-full rounded-md border border-zinc-800 bg-zinc-950 px-2 text-sm text-zinc-200"
+        aria-label="Visão do SCADA"
+        data-testid="scada-mobile-nav"
+      >
+        {MOBILE_VIEWS.map((v) => (
+          <option key={v.id} value={v.id}>
+            {v.label}
+            {v.id === "alarms" && alarms > 0 ? ` (${alarms})` : ""}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }

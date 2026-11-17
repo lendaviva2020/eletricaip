@@ -554,3 +554,66 @@
   margin: 1em 0;
   color: var(--color-muted-foreground);
 }
+
+/* ── Editor HMI de processo: animações dos equipamentos (simulação) ── */
+.hmi-spin {
+  animation: hmi-spin 1.2s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.hmi-flow {
+  stroke-dasharray: 10 8;
+  animation: hmi-flow 0.9s linear infinite;
+}
+.hmi-shake {
+  animation: hmi-shake 0.12s ease-in-out infinite alternate;
+}
+.hmi-flame {
+  animation: hmi-flame 0.35s ease-in-out infinite alternate;
+  transform-box: fill-box;
+  transform-origin: bottom;
+}
+.hmi-rev {
+  animation-direction: reverse;
+}
+.hmi-pipe-flow {
+  stroke-dasharray: 12 10;
+  animation: hmi-flow 0.8s linear infinite;
+}
+@keyframes hmi-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes hmi-flow {
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+@keyframes hmi-shake {
+  from {
+    transform: translateX(-1.5px);
+  }
+  to {
+    transform: translateX(1.5px);
+  }
+}
+@keyframes hmi-flame {
+  from {
+    transform: scaleY(0.75);
+    opacity: 0.7;
+  }
+  to {
+    transform: scaleY(1.1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hmi-spin,
+  .hmi-flow,
+  .hmi-shake,
+  .hmi-flame,
+  .hmi-pipe-flow {
+    animation: none;
+  }
+}

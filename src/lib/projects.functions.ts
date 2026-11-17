@@ -1,4 +1,5 @@
 // Project server functions — CRUD operations for industrial projects
+import { HmiDocSchema } from "@/lib/hmi/hmi-model";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth, requireActiveSession } from "@/integrations/supabase/auth-middleware";
@@ -117,6 +118,8 @@ export const SnapshotSchema = z
     diagnostics: z.array(z.any()).optional(),
     unifiedDoc: z.any().optional(),
     compactStudio: CompactProgramModelSchema.optional(),
+    /** Tela HMI de processo (editor HMI). Validada também ao abrir. */
+    hmiProcess: HmiDocSchema.optional().catch(undefined),
   })
   .passthrough()
   .transform((snapshot) => ({

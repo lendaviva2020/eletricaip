@@ -52,7 +52,7 @@ import { upgradeSnapshotV2ToV3 } from "@/lib/model/migration-v2-to-v3";
 import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { Button } from "@/components/ui/button";
 import { ScadaHeader } from "./scada-header";
-import { ScadaSidebar } from "./scada-sidebar";
+import { ScadaMobileNav, ScadaSidebar } from "./scada-sidebar";
 import { ScadaOsStatusBar } from "./scada-os-status-bar";
 import { EquipmentInspectorDrawer } from "./equipment-inspector-drawer";
 import { ScadaOverviewView } from "./views/scada-overview-view";
@@ -386,6 +386,7 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
         <ScadaSidebar />
 
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+          <ScadaMobileNav />
           {activeView === "overview" && <ScadaOverviewView />}
           {activeView === "motors" && <ScadaMotorsView />}
           {activeView === "synoptics" && <ScadaSynopticsView />}

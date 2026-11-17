@@ -1,3 +1,4 @@
+import { useHmiStore } from "@/lib/hmi/hmi-store";
 import { syncUnifiedDocToScada } from "@/lib/scada/canonical-bridge";
 import { useScadaStore } from "@/lib/scada/scada-store";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -122,6 +123,8 @@ export function useProjectPersistence(projectId: string | null) {
           snap.project.tags,
         );
       useProjectStore.getState().setProjectId(projectId);
+      // Tela HMI de processo (Zod no store; inválida abre vazia).
+      useHmiStore.getState().hydrate((snap as { hmiProcess?: unknown }).hmiProcess);
 
       const ds = useDiagramStore.getState();
       let loadedDiagramDoc = snap.diagram as DiagramDoc | undefined;
@@ -297,6 +300,7 @@ export function useProjectPersistence(projectId: string | null) {
         ps.markSaved();
         es.markSaved();
         us.markSaved();
+        useHmiStore.getState().markSaved();
         if (mountedRef.current) {
           setSaveState("saved");
           setConflict(null);
@@ -359,6 +363,12 @@ export function useProjectPersistence(projectId: string | null) {
       schedule("plc-store");
     });
 
+    const unsub7 = useHmiStore.subscribe((s, prev) => {
+      if (isHydratingRef.current) return;
+      if (s.doc === prev.doc || !s.dirty) return;
+      schedule("hmi-store");
+    });
+
     const unsub6 = useUnifiedProjectStore.subscribe((s, prev) => {
       if (isHydratingRef.current) return;
       if (!s.dirty || s.dirty === prev.dirty) return;
@@ -371,6 +381,7 @@ export function useProjectPersistence(projectId: string | null) {
       unsub4();
       unsub5();
       unsub6();
+      unsub7();
       if (timer.current) {
         clearTimeout(timer.current);
         timer.current = null;
@@ -401,6 +412,7 @@ export function useProjectPersistence(projectId: string | null) {
           useProjectStore.getState().markSaved();
           useEditorStore.getState().markSaved();
           useUnifiedProjectStore.getState().markSaved();
+          useHmiStore.getState().markSaved();
           setSaveState("saved");
           setConflict(null);
           toast.success("Projeto salvo sobrescrevendo a versão do servidor.");
@@ -467,5 +479,6 @@ export function buildProjectSnapshot(): ProjectSnapshot {
     diagnostics: us.doc.diagnostics,
     unifiedDoc: us.doc,
     compactStudio: us.doc.compactStudio,
+    hmiProcess: useHmiStore.getState().doc,
   };
 }
