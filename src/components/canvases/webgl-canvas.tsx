@@ -51,7 +51,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DiagramStage, type EdgeDraftCommit, type MoveDelta } from "@/lib/diagram/render/stage";
+import {
+  DiagramStage,
+  type StageRendererMode,
+  type EdgeDraftCommit,
+  type MoveDelta,
+} from "@/lib/diagram/render/stage";
 import { cmd } from "@/lib/diagram/commands";
 import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { useEditorStore } from "@/lib/editor/store";
@@ -253,6 +258,25 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   // WebGL indisponível ou contexto derrubado pelo navegador → modo de compatibilidade (SVG).
   const [renderFailure, setRenderFailure] = useState<"init" | "contextlost" | null>(null);
   const [stageGeneration, setStageGeneration] = useState(0);
+  // Sempre WebGL. Falhou ao criar ou perdeu o contexto → recria em WebGL
+  // "leve" (sem antialias, 1x, baixo consumo), que cabe em aparelhos fracos.
+  // Perda de contexto no modo leve também recria (até 3 vezes); o aviso de
+  // navegador sem WebGL só aparece se nem o modo leve conseguir iniciar.
+  const rendererModeRef = useRef<StageRendererMode>("full");
+  const liteRetriesRef = useRef(0);
+  const retryWebGl = useCallback((reason: "init" | "contextlost") => {
+    if (rendererModeRef.current === "full") {
+      rendererModeRef.current = "lite";
+      setStageGeneration((g) => g + 1);
+      return;
+    }
+    if (reason === "contextlost" && liteRetriesRef.current < 3) {
+      liteRetriesRef.current++;
+      setStageGeneration((g) => g + 1);
+      return;
+    }
+    setRenderFailure(reason);
+  }, []);
   const stageRef = useRef<DiagramStage | null>(null);
 
   const activeSheet = useDiagramStore((s) => s.activeSheet);
@@ -364,7 +388,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     const host = hostRef.current;
     if (!host) return;
     let disposed = false;
-    const stage = new DiagramStage();
+    const stage = new DiagramStage({ renderer: rendererModeRef.current });
     stageRef.current = stage;
     stage
       .init(host, {
@@ -418,7 +442,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           setZoomPercent(pct);
         },
         onRenderFailure: (reason) => {
-          if (!disposed) setRenderFailure(reason);
+          if (!disposed) retryWebGl(reason);
         },
         onContextMenu: ({ nodeId, edgeId, clientX, clientY }) => {
           const hostRect = host.getBoundingClientRect();
@@ -448,8 +472,8 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       })
       .catch((err: unknown) => {
         // Antes: rejeição sem tratamento e canvas preto para sempre no celular.
-        console.error("[canvas] falha ao iniciar o WebGL:", err);
-        if (!disposed) setRenderFailure("init");
+        console.error("[canvas] falha ao iniciar o renderizador:", err);
+        if (!disposed) retryWebGl("init");
       });
     return () => {
       disposed = true;
@@ -1254,6 +1278,8 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             sheet={effectiveSheet}
             reason={renderFailure}
             onRetry={() => {
+              rendererModeRef.current = "full";
+              liteRetriesRef.current = 0;
               setRenderFailure(null);
               setStageGeneration((g) => g + 1);
             }}
@@ -1261,7 +1287,11 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         )}
 
         {/* Toolbar flutuante de apoio à direita */}
-        <div className="absolute right-3 top-3 z-10 flex gap-1 rounded-md border border-border/50 bg-[#101929]/95 p-1 shadow-md">
+        <div
+          className={`absolute bottom-16 left-3 z-10 gap-1 rounded-md border border-border/50 bg-[#101929]/95 p-1 shadow-md md:bottom-auto md:left-auto md:right-3 md:top-3 ${
+            renderFailure ? "hidden" : "flex"
+          }`}
+        >
           <Button
             size="icon"
             variant="ghost"

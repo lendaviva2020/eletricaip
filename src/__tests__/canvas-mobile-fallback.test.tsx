@@ -69,39 +69,37 @@ describe("SVG do diagrama", () => {
   });
 });
 
-describe("modo de compatibilidade do canvas", () => {
+describe("canvas do unifilar: somente WebGL, funcionando em produção", () => {
   afterEach(() => cleanup());
 
-  it("mostra o diagrama como imagem e permite tentar de novo", () => {
-    const create = vi.fn(() => "blob:test");
-    const revoke = vi.fn();
-    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke }));
+  it("sem WebGL: aviso com instruções (não imagem travada) e nova tentativa", () => {
     const onRetry = vi.fn();
     render(
-      <DiagramCompatView
-        doc={docWith("B1")}
-        sheet="unifilar"
-        reason="contextlost"
-        onRetry={onRetry}
-      />,
+      <DiagramCompatView doc={docWith("B1")} sheet="unifilar" reason="init" onRetry={onRetry} />,
     );
-    expect(screen.getByTestId("diagram-compat-view")).toBeTruthy();
-    expect(screen.getByRole("img").getAttribute("src")).toBe("blob:test");
-    expect(screen.getByText(/memória de vídeo/)).toBeTruthy();
+    expect(screen.getByTestId("diagram-webgl-unavailable")).toBeTruthy();
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(screen.getByText(/aceleração de hardware quando disponível/)).toBeTruthy();
     fireEvent.click(screen.getByText("Tentar novamente"));
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("o canvas trata falha de inicialização e perda de contexto (antes: tela preta)", () => {
+  it("Pixi roda sob a CSP sem unsafe-eval; só WebGL, com modo leve e perda de contexto tratada", () => {
     const canvas = readFileSync(
       resolve(__dirname, "../components/canvases/webgl-canvas.tsx"),
       "utf8",
     );
     const stage = readFileSync(resolve(__dirname, "../lib/diagram/render/stage.ts"), "utf8");
-    expect(canvas).toMatch(/\.catch\(\(err: unknown\) =>/);
-    expect(canvas).toContain('setRenderFailure("init")');
-    expect(canvas).toContain("<DiagramCompatView");
+    const vercel = readFileSync(resolve(__dirname, "../../vercel.json"), "utf8");
+    // Regressão: sem este import o canvas NUNCA iniciava em produção.
+    expect(vercel).not.toContain("unsafe-eval");
+    expect(stage).toMatch(/^import "pixi\.js\/unsafe-eval";/m);
+    expect(stage).toContain('preference: ["webgl"]');
+    expect(stage).not.toMatch(/preference:[^\n]*"canvas"/);
+    expect(stage).toContain("failIfMajorPerformanceCaveat: false");
     expect(stage).toContain('addEventListener("webglcontextlost"');
-    expect(stage).toContain('preference: "webgl"');
+    expect(canvas).toMatch(/\.catch\(\(err: unknown\) =>/);
+    expect(canvas).toContain('rendererModeRef.current = "lite"');
+    expect(canvas).toContain("<DiagramCompatView");
   });
 });

@@ -8,7 +8,18 @@
 // coloração por estado real (energizado, desenergizado, falha) e fundo cinza técnico.
 
 import { nodeDisplayLabel } from "./node-label";
-import { Application, Container, FederatedPointerEvent, Graphics, Text } from "pixi.js";
+// Sem este módulo o Pixi v8 gera código de shader com `new Function`, que a
+// CSP de produção (sem 'unsafe-eval') bloqueia: o canvas nunca iniciava em
+// produção e o app caía no modo de compatibilidade (imagem travada).
+import "pixi.js/unsafe-eval";
+import {
+  Application,
+  Container,
+  FederatedPointerEvent,
+  Graphics,
+  Text,
+  type Ticker,
+} from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import type {
   DiagramDoc,
@@ -36,6 +47,25 @@ import {
 } from "./wire-router";
 import type { CircuitEnergizationState } from "../electrical-simulation";
 import { isSwitchingDevice } from "../electrical-simulation";
+import {
+  faultBlinkAlpha,
+  flowParticles,
+  prefersReducedMotion,
+  tripPulse,
+  type FlowPoint,
+} from "./flow-animation";
+
+/**
+ * Sempre WebGL. "full" = antialias e alta resolução; "lite" = sem antialias,
+ * resolução 1x e GPU de baixo consumo — usado quando o aparelho não consegue
+ * criar o contexto completo ou o perde por falta de memória de vídeo.
+ */
+export type StageRendererMode = "full" | "lite";
+
+interface FlowPath {
+  points: FlowPoint[];
+  state: "on" | "fault";
+}
 
 const PORT_HIT_RADIUS = 7;
 /** Largura abaixo da qual o enquadramento prioriza legibilidade (celular). */
@@ -176,6 +206,15 @@ export class DiagramStage {
   private edgesLayer = new Container();
   private junctionsLayer = new Graphics();
   private overlayLayer = new Container();
+  /** Partículas de corrente e pulsos de manobra (redesenhado a cada quadro). */
+  private flowLayer = new Graphics();
+  private flowPaths = new Map<string, FlowPath>();
+  private tripPulses = new Map<string, { x: number; y: number; at: number }>();
+  private lastOpenDevices = new Set<string>();
+  private flowTicker: ((t: Ticker) => void) | null = null;
+  private lastFlowDraw = 0;
+  private reducedMotion = false;
+  private rendererMode: StageRendererMode;
   private nodes = new Map<string, NodeView>();
   private edges = new Map<string, EdgeView>();
   private events: StageEvents = {};
@@ -197,8 +236,15 @@ export class DiagramStage {
   private draft: EdgeDraft | null = null;
   private marquee: MarqueeState | null = null;
 
-  constructor() {
+  constructor(options: { renderer?: StageRendererMode } = {}) {
     this.app = new Application();
+    this.rendererMode = options.renderer ?? "full";
+  }
+
+  /** Renderizador efetivamente em uso ("webgl", "webgpu" ou "canvas"). */
+  get rendererName(): string {
+    const r = this.app.renderer as { name?: string } | undefined;
+    return r?.name ?? "desconhecido";
   }
 
   async init(host: HTMLElement, events: StageEvents = {}) {
@@ -209,13 +255,18 @@ export class DiagramStage {
     // Resolução técnica para alta nitidez: mínimo 2x no framebuffer para sub-pixels nítidos.
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
     const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
-    const targetResolution = stageResolution(dpr, vw);
+    const lite = this.rendererMode === "lite";
+    const targetResolution = lite ? 1 : stageResolution(dpr, vw);
 
     await this.app.init({
-      // WebGL explícito: o WebGPU do Chrome Android ainda é instável com o Pixi.
-      preference: "webgl",
+      // SOMENTE WebGL (sem WebGPU, instável no Chrome Android; sem Canvas 2D).
+      preference: ["webgl"],
+      // Aceita GPU "fraca"/emulada por software (Chrome com driver na lista de
+      // bloqueio, VMs, celulares de entrada): senão o navegador nega o contexto.
+      failIfMajorPerformanceCaveat: false,
+      powerPreference: lite ? "low-power" : "high-performance",
       background: CANVAS_PALETTE.background,
-      antialias: true,
+      antialias: !lite,
       resolution: targetResolution,
       autoDensity: true,
       resizeTo: host,
@@ -240,6 +291,9 @@ export class DiagramStage {
     this.app.canvas.style.display = "block";
     this.app.canvas.style.width = "100%";
     this.app.canvas.style.height = "100%";
+    this.app.canvas.setAttribute("data-renderer", this.rendererName);
+    // Gestos de toque são do canvas (arrastar, pinça), não da página.
+    this.app.canvas.style.touchAction = "none";
     host.appendChild(this.app.canvas);
 
     this.viewport = new Viewport({
@@ -258,8 +312,13 @@ export class DiagramStage {
     this.app.stage.addChild(this.viewport);
     this.viewport.addChild(this.edgesLayer);
     this.viewport.addChild(this.junctionsLayer);
+    this.viewport.addChild(this.flowLayer);
     this.viewport.addChild(this.nodesLayer);
     this.viewport.addChild(this.overlayLayer);
+    this.flowLayer.eventMode = "none";
+    this.reducedMotion = prefersReducedMotion();
+    this.flowTicker = (t: Ticker) => this.drawFlow(t.lastTime);
+    this.app.ticker.add(this.flowTicker);
 
     this.drawGrid();
 
@@ -310,7 +369,7 @@ export class DiagramStage {
   private onContextLost = (ev: Event) => {
     ev.preventDefault();
     if (this.destroyed) return;
-    console.warn("[canvas] contexto WebGL perdido — ativando modo de compatibilidade");
+    console.warn("[canvas] contexto WebGL perdido — recriando em WebGL leve");
     this.events.onRenderFailure?.("contextlost");
   };
 
@@ -365,6 +424,54 @@ export class DiagramStage {
     }
     this.nodes.clear();
     this.edges.clear();
+    this.flowPaths.clear();
+    this.tripPulses.clear();
+  }
+
+  /**
+   * Corrente "correndo" nos condutores energizados, falta piscando e pulso
+   * ao abrir um dispositivo. ~30 quadros/s; parado quando não há simulação.
+   */
+  private drawFlow(nowMs: number) {
+    if (this.destroyed || !this.initialized) return;
+    const hasWork = this.flowPaths.size > 0 || this.tripPulses.size > 0;
+    if (!hasWork) {
+      if (this.lastFlowDraw !== 0) {
+        this.flowLayer.clear();
+        this.lastFlowDraw = 0;
+      }
+      return;
+    }
+    if (nowMs - this.lastFlowDraw < 33) return;
+    this.lastFlowDraw = nowMs;
+    const g = this.flowLayer;
+    g.clear();
+    const time = this.reducedMotion ? 0 : nowMs;
+    for (const path of this.flowPaths.values()) {
+      if (path.state === "fault") {
+        const alpha = this.reducedMotion ? 1 : faultBlinkAlpha(nowMs);
+        g.moveTo(path.points[0].x, path.points[0].y);
+        for (let i = 1; i < path.points.length; i++) g.lineTo(path.points[i].x, path.points[i].y);
+        g.stroke({ width: 4, color: CANVAS_PALETTE.wireFault, alpha });
+        continue;
+      }
+      for (const p of flowParticles(path.points, time)) {
+        g.circle(p.x, p.y, 2.6);
+      }
+    }
+    if (this.flowPaths.size) g.fill({ color: CANVAS_PALETTE.flowParticle, alpha: 0.95 });
+    for (const [id, pulse] of this.tripPulses) {
+      const state = tripPulse(Date.now() - pulse.at);
+      if (!state) {
+        this.tripPulses.delete(id);
+        continue;
+      }
+      g.circle(pulse.x, pulse.y, state.radius).stroke({
+        width: 3,
+        color: CANVAS_PALETTE.wireFault,
+        alpha: state.alpha,
+      });
+    }
   }
 
   /**
@@ -634,6 +741,19 @@ export class DiagramStage {
       }
     }
 
+    // "Derrubar" um disjuntor/contator na simulação: pulso visual no dispositivo.
+    const open =
+      energization && energization.status !== "stopped" ? energization.openDeviceIds : null;
+    if (open) {
+      for (const id of open) {
+        const node = doc.nodes[id];
+        if (!this.lastOpenDevices.has(id) && node && node.sheet === sheet && !this.reducedMotion) {
+          this.tripPulses.set(id, { x: node.position.x, y: node.position.y, at: Date.now() });
+        }
+      }
+    }
+    this.lastOpenDevices = new Set(open ?? []);
+
     for (const n of wantNodes) this.upsertNode(n, energization);
     this.renderSheetEdges(wantNodes, wantEdges, doc, energization);
 
@@ -896,6 +1016,19 @@ export class DiagramStage {
         .circle(j.x, j.y, 4)
         .fill({ color: defaultDotColor })
         .stroke({ width: 1, color: CANVAS_PALETTE.background });
+    }
+
+    // Caminhos animados: só condutores de potência energizados (ou em falta).
+    this.flowPaths.clear();
+    if (isSimRunning && energization) {
+      for (const plan of edgePlans) {
+        if (plan.edge.kind === "signal" || plan.points.length < 2) continue;
+        if (energization.faultEdgeIds.has(plan.edge.id)) {
+          this.flowPaths.set(plan.edge.id, { points: plan.points, state: "fault" });
+        } else if (energization.energizedEdgeIds.has(plan.edge.id)) {
+          this.flowPaths.set(plan.edge.id, { points: plan.points, state: "on" });
+        }
+      }
     }
 
     for (const plan of edgePlans) {

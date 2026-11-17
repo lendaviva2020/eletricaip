@@ -18,6 +18,8 @@ export const CANVAS_PALETTE = {
 
   wire: 0x94a3b8,
   wireEnergized: 0x22c55e,
+  /** Partículas de corrente (contraste sobre o verde energizado). */
+  flowParticle: 0xfacc15,
   wireDeenergized: 0x475569,
   wireFault: 0xef4444,
   selection: 0x22d3ee,
