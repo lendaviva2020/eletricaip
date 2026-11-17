@@ -5,6 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { ScadaLayout } from "@/components/scada/scada-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { useScadaProjectSync } from "@/hooks/use-scada-project-sync";
 
 const SearchSchema = z.object({
   projectId: z.guid().optional(),
@@ -27,6 +28,8 @@ export const Route = createFileRoute("/scada")({
 
 function ScadaRoute() {
   const { projectId } = Route.useSearch();
+  // Alarmes, auditoria e histórico persistentes + CCM como fonte de tags.
+  useScadaProjectSync();
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full w-full overflow-hidden">
       <ErrorBoundary key={projectId || "scada-root"}>

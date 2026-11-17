@@ -17,9 +17,10 @@ import {
   ToggleRight,
 } from "@phosphor-icons/react";
 import { useScadaStore } from "@/lib/scada/scada-store";
-import { isRotatingEquipment } from "@/lib/scada/types";
+import { isRotatingEquipment, type ScadaTagDefinition } from "@/lib/scada/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ForceTagDialog } from "@/components/scada/force-tag-dialog";
 
 /** Valor de placa ou "—" quando o projeto não informou (nunca um padrão presumido). */
 function fmtOrDash(v: number | undefined, unit: string, digits: number): string {
@@ -32,12 +33,10 @@ export function EquipmentInspectorDrawer() {
   const equipments = useScadaStore((s) => s.equipments);
   const tags = useScadaStore((s) => s.tags);
   const commandEquipment = useScadaStore((s) => s.commandEquipment);
-  const forceTagValue = useScadaStore((s) => s.forceTagValue);
   const unforceTag = useScadaStore((s) => s.unforceTag);
   const alarms = useScadaStore((s) => s.alarms);
 
-  const [forceVal, setForceVal] = useState<string>("");
-  const [selectedTagToForce, setSelectedTagToForce] = useState<string | null>(null);
+  const [forceTarget, setForceTarget] = useState<ScadaTagDefinition | null>(null);
 
   if (!selectedId) return null;
   const eq = equipments[selectedId];
@@ -50,16 +49,6 @@ export function EquipmentInspectorDrawer() {
   const handleCommand = (cmd: "START" | "STOP" | "OPEN" | "CLOSE" | "AUTO" | "MANUAL") => {
     commandEquipment(selectedId, cmd);
     toast.success(`Comando ${cmd} executado em ${eq.tag}`);
-  };
-
-  const handleApplyForce = (tagId: string) => {
-    if (!forceVal) return;
-    const num = Number(forceVal);
-    const val = isNaN(num) ? forceVal : num;
-    forceTagValue(tagId, val);
-    toast.warning(`Tag ${tagId} forçada para: ${val}`);
-    setSelectedTagToForce(null);
-    setForceVal("");
   };
 
   const handleRemoveForce = (tagId: string) => {
@@ -290,8 +279,6 @@ export function EquipmentInspectorDrawer() {
                 );
               }
 
-              const isBeingForced = selectedTagToForce === tagName;
-
               return (
                 <div
                   key={tagName}
@@ -327,31 +314,13 @@ export function EquipmentInspectorDrawer() {
                       </button>
                     ) : (
                       <button
-                        onClick={() => setSelectedTagToForce(isBeingForced ? null : tagName)}
+                        onClick={() => setForceTarget(tag)}
                         className="text-blue-400 hover:underline"
                       >
-                        {isBeingForced ? "Cancelar" : "Forçar Valor"}
+                        Forçar Valor
                       </button>
                     )}
                   </div>
-
-                  {isBeingForced && (
-                    <div className="pt-2 flex items-center gap-2 border-t border-zinc-800 mt-1">
-                      <input
-                        type="text"
-                        value={forceVal}
-                        onChange={(e) => setForceVal(e.target.value)}
-                        placeholder={`Novo valor (${tag.unit})`}
-                        className="bg-zinc-900 border border-zinc-700 px-2 py-1 rounded text-white flex-1 text-xs"
-                      />
-                      <button
-                        onClick={() => handleApplyForce(tag.name)}
-                        className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-semibold"
-                      >
-                        Aplicar
-                      </button>
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -374,6 +343,7 @@ export function EquipmentInspectorDrawer() {
           </div>
         </div>
       </div>
+      <ForceTagDialog tag={forceTarget} onClose={() => setForceTarget(null)} />
     </div>
   );
 }

@@ -19,16 +19,15 @@ import {
 } from "@/lib/scada/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ForceTagDialog } from "@/components/scada/force-tag-dialog";
 
 export function ScadaTagsView() {
   const tags = useScadaStore((s) => s.tags);
-  const forceTagValue = useScadaStore((s) => s.forceTagValue);
   const unforceTag = useScadaStore((s) => s.unforceTag);
 
   const [search, setSearch] = useState("");
   const [driverFilter, setDriverFilter] = useState("ALL");
-  const [forcingTagId, setForcingTagId] = useState<string | null>(null);
-  const [newVal, setNewVal] = useState("");
+  const [forceTarget, setForceTarget] = useState<ScadaTagDefinition | null>(null);
 
   const tagList = Object.values(tags)
     .filter((t): t is ScadaTagDefinition => Boolean(t && t.name))
@@ -51,16 +50,6 @@ export function ScadaTagsView() {
       }
       return true;
     });
-
-  const handleApplyForce = (id: string) => {
-    if (!newVal) return;
-    const num = Number(newVal);
-    const parsed = isNaN(num) ? newVal : num;
-    forceTagValue(id, parsed);
-    toast.warning(`TAG ${id} forçada para o valor: ${parsed}`);
-    setForcingTagId(null);
-    setNewVal("");
-  };
 
   const handleReleaseForce = (id: string) => {
     unforceTag(id);
@@ -220,10 +209,7 @@ export function ScadaTagsView() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => {
-                            setForcingTagId(t.name);
-                            setNewVal(String(t.value));
-                          }}
+                          onClick={() => setForceTarget(t)}
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 text-[10px] font-semibold transition-colors"
                         >
                           <PencilSimple className="w-3 h-3" />
@@ -239,43 +225,7 @@ export function ScadaTagsView() {
         </div>
       </div>
 
-      {/* Force Value Dialog */}
-      {forcingTagId && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-[#0f172a] border border-zinc-700 rounded-lg p-5 max-w-sm w-full space-y-4 shadow-2xl font-mono text-xs">
-            <h3 className="text-sm font-bold text-amber-400 uppercase flex items-center gap-2">
-              <ShieldWarning className="w-4 h-4" />
-              <span>Forçamento de TAG</span>
-            </h3>
-            <p className="text-zinc-300 text-[11px]">
-              Insira o valor simulado para forçar a tag{" "}
-              <strong className="text-white">{forcingTagId}</strong>. Essa operação será registrada
-              na trilha de auditoria.
-            </p>
-            <input
-              type="text"
-              value={newVal}
-              onChange={(e) => setNewVal(e.target.value)}
-              placeholder="Novo valor..."
-              className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-white"
-            />
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setForcingTagId(null)}
-                className="px-3 py-1.5 bg-zinc-800 text-zinc-300 rounded hover:bg-zinc-700"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => handleApplyForce(forcingTagId)}
-                className="px-3 py-1.5 bg-amber-600 text-white rounded font-bold hover:bg-amber-500"
-              >
-                Confirmar Forçamento
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ForceTagDialog tag={forceTarget} onClose={() => setForceTarget(null)} />
     </div>
   );
 }

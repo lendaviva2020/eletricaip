@@ -98,7 +98,11 @@ describe("SCADA SUPERVISÓRIO — Core Architecture & State Engine", () => {
   it("5. Tag Registry: Forcing tag values and quality status updates", () => {
     const state = useScadaStore.getState();
 
-    state.forceTagValue("ETE.TK101.LEVEL", 99.8, "ENG_AUT");
+    const before = state.tags["ETE.TK101.LEVEL"].value;
+    state.forceTagValue("ETE.TK101.LEVEL", 99.8, {
+      operator: "ENG_AUT",
+      reason: "Transmissor em calibração",
+    });
     const forcedState = useScadaStore.getState();
     const tag = forcedState.tags["ETE.TK101.LEVEL"];
 
@@ -112,7 +116,10 @@ describe("SCADA SUPERVISÓRIO — Core Architecture & State Engine", () => {
     const releasedTag = releasedState.tags["ETE.TK101.LEVEL"];
 
     expect(releasedTag.forced).toBe(false);
-    expect(releasedTag.quality).toBe("GOOD");
+    // Volta ao valor real com qualidade INCERTA até a próxima leitura (antes o
+    // valor forçado ficava na tela marcado como GOOD).
+    expect(releasedTag.quality).toBe("UNCERTAIN");
+    expect(releasedTag.value).toBe(before);
   });
 
   it("6. View Navigation: Supports all 11 mandatory supervisory views", () => {

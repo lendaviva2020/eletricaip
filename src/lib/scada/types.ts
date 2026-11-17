@@ -36,7 +36,19 @@ export type TagQuality = "GOOD" | "BAD" | "UNCERTAIN" | "STALE" | "NOT_CONNECTED
 export type TagDataType = "BOOL" | "INT" | "REAL" | "STRING" | "TIME";
 
 export type ProtocolDriver =
-  "SIMULATION" | "INTERNAL_RUNTIME" | "OPC_UA" | "MODBUS_TCP" | "MQTT" | "IMPORTED";
+  | "SIMULATION"
+  | "INTERNAL_RUNTIME"
+  | "OPC_UA"
+  | "MODBUS_TCP"
+  | "MQTT"
+  /** Dispositivo físico pela nuvem ou pela bancada (Web Serial). */
+  | "IOT"
+  | "IMPORTED";
+
+/** Fonte simulada não é leitura de campo (ISA-101: distinguir na tela). */
+export function isSimulatedSource(source: ProtocolDriver): boolean {
+  return source === "SIMULATION" || source === "INTERNAL_RUNTIME";
+}
 
 // ── GATE 3.4 / 3.6: Provenance Classification (ISA-101 Visual Truth Model) ──
 export type DataSourceProvenance =
@@ -117,6 +129,13 @@ export interface ScadaAlarmItem {
   acknowledgedAt?: number | null;
   acknowledgedBy?: string | null;
   clearedAt?: number | null;
+  /**
+   * ENGINE = gerado pelo motor de alarmes (some quando o motor o encerra);
+   * EXTERNAL = levantado por uma fonte (script HMI, E-STOP); RESTORED = lido
+   * do banco após recarregar a página.
+   */
+  origin?: "ENGINE" | "EXTERNAL" | "RESTORED";
+  source?: ProtocolDriver;
 }
 
 export interface EquipmentTelemetry {
@@ -172,6 +191,8 @@ export interface ScadaAuditLog {
   tag?: string;
   details: string;
   severity: "INFO" | "WARNING" | "CRITICAL";
+  /** Já gravado no banco (veio do servidor ou foi confirmado). */
+  persisted?: boolean;
 }
 
 export interface CommunicationGatewayStatus {

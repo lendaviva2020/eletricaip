@@ -349,7 +349,7 @@ export const loadProject = createServerFn({ method: "POST" })
     const { supabase } = authCtx;
     const { data: project, error: pErr } = await supabase
       .from("projects")
-      .select("id, name, description, metadata, updated_at")
+      .select("id, name, description, metadata, updated_at, tenant_id")
       .eq("id", data.projectId)
       .maybeSingle();
     if (pErr) throw new Error(pErr.message);
@@ -371,6 +371,7 @@ export const loadProject = createServerFn({ method: "POST" })
         name: project.name,
         description: project.description,
         client: (metadata?.client as string | null) ?? null,
+        tenantId: project.tenant_id as string,
       },
       diagramId: diagram?.id ?? null,
       version: diagram?.version ?? 1,

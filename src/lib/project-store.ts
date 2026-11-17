@@ -1,5 +1,7 @@
 // Industrial project store — manages nodes, edges, tags, logs, and runtime state
 import { create } from "zustand";
+import type { ProtocolDriver } from "@/lib/scada/types";
+import { publishTags, registerHmiMirror } from "@/lib/scada/tag-hub";
 
 export type NodeCategory = "power" | "mech" | "inst" | "logic";
 
@@ -350,6 +352,11 @@ export interface TickPayload {
   energized?: Record<string, boolean>;
   params?: Record<string, Record<string, string | number>>;
   logs?: RuntimeLog[];
+  /**
+   * Origem dos valores (base única de tags). Sem informar = runtime interno
+   * (simulação de CLP), nunca leitura de campo.
+   */
+  source?: ProtocolDriver;
 }
 
 let counter = 1;
@@ -406,7 +413,11 @@ export const useProjectStore = create<ProjectState>((set) => {
     tags: {},
     logs: [],
     runtime: { connected: false, source: "off" },
-    applyTick: (payload) =>
+    applyTick: (payload) => {
+      if (payload.tags && Object.keys(payload.tags).length) {
+        // Base única: o SCADA e os alarmes recebem os mesmos valores com origem.
+        publishTags(payload.source ?? "INTERNAL_RUNTIME", payload.tags, { mirrorToHmi: false });
+      }
       set((s) => {
         const nextTags = { ...s.tags, ...(payload.tags ?? {}) };
         let nextNodes = s.nodes;
@@ -433,7 +444,8 @@ export const useProjectStore = create<ProjectState>((set) => {
             cycleMs: payload.cycleMs ?? s.runtime.cycleMs,
           },
         };
-      }),
+      });
+    },
     pushLog: (log) => set((s) => ({ logs: [log, ...s.logs].slice(0, 200) })),
     setRuntime: (status) => set((s) => ({ runtime: { ...s.runtime, ...status } })),
     reset: () =>
@@ -518,3 +530,9 @@ export const KIND_GLYPH: Record<NodeKind, string> = {
   alarm_table: "🖿",
   label: "🖹",
 };
+
+// Espelho da base única no editor HMI (valores publicados por outras fontes:
+// CCM, bancada, IoT). Só valores — origem e qualidade ficam no SCADA.
+registerHmiMirror((values) =>
+  useProjectStore.setState((s) => ({ tags: { ...s.tags, ...values } })),
+);

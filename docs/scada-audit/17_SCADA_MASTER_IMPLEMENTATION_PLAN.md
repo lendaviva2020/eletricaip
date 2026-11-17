@@ -2,7 +2,7 @@
 
 Aguardando autorização. Cada fase em patches pequenos, com testes antes e depois, sem deploy nem migration remota sem aprovação expressa.
 
-## Fase 0 — Honestidade e estabilidade (pré-requisito de tudo)
+## Fase 0 — Honestidade e estabilidade (pré-requisito de tudo) — ✅ concluída em 2026-11-17
 
 - **Resolver:** SR-01, SR-02, SR-03, SR-04, SR-06, SR-09, SR-10; SEC-2, SEC-3, SEC-7.
 - **Modificar:** `scada-store.ts` (remover fabricação por nome e limites 30/40 A; envio periódico do buffer com teto), `canonical-bridge.ts` (categoria correta, qualidade `NOT_CONNECTED`, sem data inventada, sem 380 V/FP presumidos exibidos como telemetria), `scada-overview-view.tsx`/`scada-sidebar.tsx`/`scada-os-status-bar.tsx`/`scada-communication-view.tsx` (sem números fixos), `scada-layout.tsx` (usar `canvasData`; demo CCM mostra o CCM), `scada.functions.ts`/`edge-ingest.functions.ts` (lote máximo, mensagens genéricas).
@@ -10,7 +10,7 @@ Aguardando autorização. Cada fase em patches pequenos, com testes antes e depo
 - **Testes:** estender `real-data-integrity.test.ts` ao SCADA; teste de que projeto de cliente sem fonte mostra "sem fonte"; teste do teto do buffer.
 - **Aceite:** nenhum número na interface do SCADA de cliente sem origem identificável.
 
-## Fase 1 — Fundação (fonte única e persistência)
+## Fase 1 — Fundação (fonte única e persistência) — ✅ concluída em 2026-11-17 (ver AGENTS.md, 15ª rodada)
 
 - **Criar:** base única de tags com origem por projeto; ligação da bancada Arduino/IoT e do CCM como fontes.
 - **Modificar:** alarmes e auditoria passam a persistir nas tabelas existentes; forçar tag exige papel e motivo.

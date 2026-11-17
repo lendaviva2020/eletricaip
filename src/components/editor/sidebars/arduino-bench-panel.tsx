@@ -7,7 +7,7 @@
  * confirmação antes de energizar e o guarda NBR 5410/intertravamento
  * (regra 21 do AGENTS.md). Desligar é sempre permitido.
  */
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   CaretDown,
   CaretRight,
@@ -28,6 +28,9 @@ import { generateUnoFirmware } from "@/lib/hardware/firmware/uno-firmware";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useBenchCloudSync } from "@/hooks/use-bench-cloud-sync";
+import { publishTags } from "@/lib/scada/tag-hub";
+import { benchSnapshotToPublished } from "@/lib/scada/source-bridges";
+import { useScadaStore } from "@/lib/scada/scada-store";
 import { benchDeviceExternalId, type BenchSnapshot } from "@/lib/hardware/bench-telemetry";
 import { staleLimitMs } from "@/lib/hardware/command-guard";
 import { isDemoProject } from "@/lib/use-project-persistence";
@@ -44,6 +47,9 @@ function downloadText(name: string, text: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Ritmo de publicação da bancada na base única (a telemetria chega a 4 Hz). */
+const BENCH_HUB_PUBLISH_MS = 1_000;
 
 export function ArduinoBenchPanel() {
   const { t } = useI18n();
@@ -92,6 +98,24 @@ export function ArduinoBenchPanel() {
           estop: bench.live.estop,
         }
       : null;
+  // Base única de tags: leituras REAIS da bancada aparecem no SCADA, no editor
+  // HMI e nos alarmes com origem "Dispositivo físico". Perder a telemetria
+  // marca os tags como STALE (vira alarme de comunicação), nunca congela valor.
+  const benchPublish = useRef<{ at: number; names: string[] }>({ at: 0, names: [] });
+  useEffect(() => {
+    const now = Date.now();
+    if (snapshot) {
+      if (now - benchPublish.current.at < BENCH_HUB_PUBLISH_MS) return;
+      const values = benchSnapshotToPublished(config, snapshot);
+      publishTags("IOT", values);
+      benchPublish.current = { at: now, names: values.map((v) => v.name) };
+    } else if (benchPublish.current.names.length) {
+      const store = useScadaStore.getState();
+      for (const name of benchPublish.current.names) store.setTagQuality(name, "STALE");
+      benchPublish.current = { at: 0, names: [] };
+    }
+  });
+
   const cloud = useBenchCloudSync({
     enabled: cloudOn && cloudAvailable,
     config,

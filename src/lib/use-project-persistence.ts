@@ -1,3 +1,5 @@
+import { syncUnifiedDocToScada } from "@/lib/scada/canonical-bridge";
+import { useScadaStore } from "@/lib/scada/scada-store";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useProjectStore } from "@/lib/project-store";
@@ -39,6 +41,7 @@ interface LoadProjectResponse {
     name: string;
     description: string | null;
     client: string | null;
+    tenantId?: string;
   };
 }
 
@@ -165,7 +168,7 @@ export function useProjectPersistence(projectId: string | null) {
         usePlcStore.getState().setProject(snap.plc as PlcProject);
       }
 
-      useUnifiedProjectStore.getState().hydrateFromV2Snapshot(
+      const unifiedDoc = useUnifiedProjectStore.getState().hydrateFromV2Snapshot(
         snap,
         {
           id: res.project.id,
@@ -175,6 +178,13 @@ export function useProjectPersistence(projectId: string | null) {
         },
         { syncLegacy: false },
       );
+      // Base única de tags/alarmes: o SCADA, o editor HMI e o modo Alarmes
+      // passam a operar no MESMO contexto do projeto aberto.
+      if (res.project.tenantId) {
+        syncUnifiedDocToScada(unifiedDoc, res.project.tenantId);
+        // Projetos salvos: tags do editor HMI viram tags da base única.
+        if (snap.project.tags) useScadaStore.getState().registerSavedTags(snap.project.tags);
+      }
 
       // Clean dirty flags across stores
       useProjectStore.getState().markSaved();

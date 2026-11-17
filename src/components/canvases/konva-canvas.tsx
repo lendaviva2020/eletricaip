@@ -11,7 +11,8 @@ type Variant = "scada" | "sim";
 // Helper to sync flat tags to EditorStore
 const syncTag = (name: string, value: any) => {
   const store = useProjectStore.getState();
-  store.applyTick({ tags: { [name]: value } });
+  // Escrita manual na tela HMI durante o projeto: simulação, não campo.
+  store.applyTick({ tags: { [name]: value }, source: "SIMULATION" });
 
   const editorState = useEditorStore.getState();
   const existing = Object.values(editorState.editorTags).find((t) => t.name === name);

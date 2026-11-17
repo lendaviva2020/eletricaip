@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { ScriptSandbox, type SandboxResult } from "@/lib/simulation/script-sandbox";
 import { BindTagDialog } from "@/components/scada/bind-tag-dialog";
 import { pushNotification } from "@/lib/notification-service";
-import { useAlarmStore } from "@/lib/alarm-store";
+import { useScadaStore } from "@/lib/scada/scada-store";
 import {
   Play,
   Pause,
@@ -219,6 +219,9 @@ const ScriptConsole = memo(function ScriptConsole({
   );
 });
 
+/** Chave do alarme levantado pelo script HMI (tag ALARM_ACTIVE). */
+const HMI_SCRIPT_ALARM_KEY = "hmi-script";
+
 export function ScadaCanvas() {
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [running, setRunning] = useState(false);
@@ -266,11 +269,16 @@ export function ScadaCanvas() {
   const applyTick = useProjectStore((s) => s.applyTick);
   const pushLog = useProjectStore((s) => s.pushLog);
 
-  const addAlarm = useAlarmStore((s) => s.addAlarm);
-  const clearAlarm = useAlarmStore((s) => s.clearAlarm);
+  const raiseExternalAlarm = useScadaStore((s) => s.raiseExternalAlarm);
+  const clearExternalAlarm = useScadaStore((s) => s.clearExternalAlarm);
+  const acknowledgeScadaAlarm = useScadaStore((s) => s.acknowledgeAlarm);
+  // Lista única de alarmes: o banner mostra o alarme do script enquanto não reconhecido.
+  const scriptAlarm = useScadaStore((s) =>
+    s.alarms.find((a) => a.id === `ext:${HMI_SCRIPT_ALARM_KEY}` && a.state === "UNACK"),
+  );
 
-  const isAlarmActive = tags["ALARM_ACTIVE"] === true;
-  const alarmMsg = String(tags["ALARM_MSG"] || "Alta Temperatura no Motor Principal!");
+  const isAlarmActive = Boolean(scriptAlarm);
+  const alarmMsg = scriptAlarm?.description ?? String(tags["ALARM_MSG"] || "Alarme do script HMI");
 
   // Register Monaco autocomplete provider
   const handleEditorBeforeMount = useCallback<BeforeMount>((monaco) => {
@@ -391,7 +399,7 @@ export function ScadaCanvas() {
       }
       setError(null);
       const nextTags = result.tags as Record<string, string | number | boolean>;
-      applyTick({ tags: nextTags });
+      applyTick({ tags: nextTags, source: "SIMULATION" });
 
       // Fire alarm log/notification on rising edge
       const wasAlarmActive = tags["ALARM_ACTIVE"] === true;
@@ -407,21 +415,18 @@ export function ScadaCanvas() {
           channel: "Alarmes",
         });
         void pushNotification("alarm", "Alarme SCADA", msg, { source: "scada-script" });
-        addAlarm({
-          id: `scada-${Date.now()}`,
-          tagName: "ALARME SCADA",
-          priority: "high",
-          message: msg,
-          triggeredAt: Date.now(),
-          acknowledgedAt: null,
-          isActive: true,
-          state: "unacknowledged",
-          category: "process",
+        raiseExternalAlarm({
+          key: HMI_SCRIPT_ALARM_KEY,
+          tag: "ALARM_ACTIVE",
+          description: msg,
+          priority: "HIGH",
+          source: "SIMULATION",
+          value: true,
         });
       }
       if (!isNowActive && wasAlarmActive) {
         lastAlarmRef.current = null;
-        clearAlarm("ALARME SCADA");
+        clearExternalAlarm(HMI_SCRIPT_ALARM_KEY);
       }
 
       // Mirror to editor tags (Watch table cross-module)
@@ -448,7 +453,7 @@ export function ScadaCanvas() {
         }
       });
     },
-    [applyTick, pushLog, tags, addAlarm, clearAlarm],
+    [applyTick, pushLog, tags, raiseExternalAlarm, clearExternalAlarm],
   );
 
   // Live preview: debounced execute on script change
@@ -481,8 +486,9 @@ export function ScadaCanvas() {
     return () => clearInterval(interval);
   }, [running, script, applyResult]);
 
+  // ISA-18.2: reconhecer NÃO apaga a condição (antes zerava ALARM_ACTIVE).
   const acknowledgeAlarm = () => {
-    applyTick({ tags: { ...tags, ALARM_ACTIVE: false } });
+    acknowledgeScadaAlarm(`ext:${HMI_SCRIPT_ALARM_KEY}`, "OPERADOR");
     pushLog({
       t: new Date().toLocaleTimeString(),
       tag: "ALARME SCADA",

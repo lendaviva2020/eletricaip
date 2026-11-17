@@ -45,6 +45,7 @@ import type {
 } from "@/lib/scada/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ForceTagDialog } from "@/components/scada/force-tag-dialog";
 
 type DockTabId = "tags" | "events" | "alarms" | "logs" | "opcua" | "modbus" | "mqtt";
 
@@ -62,7 +63,6 @@ export function ScadaOverviewView() {
   const tags = useScadaStore((s) => s.tags);
   const auditLogs = useScadaStore((s) => s.auditLogs);
   const gatewayStatus = useScadaStore((s) => s.gatewayStatus);
-  const forceTagValue = useScadaStore((s) => s.forceTagValue);
   const unforceTag = useScadaStore((s) => s.unforceTag);
 
   const selectedSector = useScadaStore((s) => s.selectedSector);
@@ -73,6 +73,7 @@ export function ScadaOverviewView() {
     "tags" | "events" | "alarms" | "logs" | "opcua" | "modbus" | "mqtt"
   >("tags");
   const [isDockCollapsed, setIsDockCollapsed] = useState(false);
+  const [forceTarget, setForceTarget] = useState<ScadaTagDefinition | null>(null);
 
   // Sector tabs definitions
   const sectors: { id: ScadaSynopticSector; label: string }[] = isDemoProject
@@ -113,19 +114,14 @@ export function ScadaOverviewView() {
     toast.success("Todos os alarmes foram reconhecidos.");
   };
 
-  const handleForceToggle = (
-    tagId: string,
-    currentForced: boolean,
-    currentValue: number | boolean | string,
-  ) => {
-    if (currentForced) {
-      unforceTag(tagId);
-      toast.info(`Forçamento do TAG ${tagId} removido.`);
+  // Forçar sempre pelo diálogo (papel + motivo + prazo); antes forçava +5 %
+  // do valor atual com um clique, sem motivo — valor inventado na tela.
+  const handleForceToggle = (tag: ScadaTagDefinition) => {
+    if (tag.forced) {
+      unforceTag(tag.id);
+      toast.info(`Forçamento do TAG ${tag.name} removido.`);
     } else {
-      const nextVal =
-        typeof currentValue === "number" ? +(currentValue * 1.05).toFixed(1) : currentValue;
-      forceTagValue(tagId, nextVal);
-      toast.warning(`TAG ${tagId} forçado para ${nextVal}.`);
+      setForceTarget(tag);
     }
   };
 
@@ -628,7 +624,7 @@ export function ScadaOverviewView() {
                             <td className="py-1 px-2 text-zinc-500">{t.sourceAddress}</td>
                             <td className="py-1 px-2.5 text-right whitespace-nowrap">
                               <button
-                                onClick={() => handleForceToggle(t.id, t.forced, t.value)}
+                                onClick={() => handleForceToggle(t)}
                                 className={cn(
                                   "px-2 py-0.5 rounded text-[9.5px] font-semibold transition-colors",
                                   t.forced
@@ -898,6 +894,7 @@ export function ScadaOverviewView() {
           </div>
         )}
       </div>
+      <ForceTagDialog tag={forceTarget} onClose={() => setForceTarget(null)} />
     </div>
   );
 }

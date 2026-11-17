@@ -227,6 +227,8 @@ export const en: TranslationCatalog = {
       colTag: "Tag",
       colMessage: "Message",
       colTrigger: "Triggered",
+      colSource: "Source",
+      returnedUnacked: "Returned",
       colCategory: "Cat.",
       colStatus: "Status",
       totalToday: "Total today",

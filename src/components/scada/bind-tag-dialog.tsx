@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Tag as TagIcon, Plus } from "@phosphor-icons/react";
 import { useEditorStore } from "@/lib/editor/store";
 import { useProjectStore } from "@/lib/project-store";
+import { useScadaStore } from "@/lib/scada/scada-store";
+import { sourceLabel } from "@/lib/scada/tag-hub";
 
 interface Props {
   open: boolean;
@@ -36,6 +38,9 @@ export function BindTagDialog({ open, onOpenChange, currentTag, onConfirm, title
 
   const editorTags = useEditorStore((s) => s.editorTags);
   const projectTags = useProjectStore((s) => s.tags);
+  // Base única: tags publicados por outras fontes (CCM, bancada, IoT) também
+  // aparecem, com a origem e a qualidade reais.
+  const scadaTags = useScadaStore((s) => s.tags);
 
   const options = useMemo<TagOption[]>(() => {
     const map = new Map<string, TagOption>();
@@ -56,11 +61,20 @@ export function BindTagDialog({ open, onOpenChange, currentTag, onConfirm, title
         preview: String(value),
       });
     });
+    Object.values(scadaTags).forEach((t) => {
+      if (!t?.name || map.has(t.name)) return;
+      map.set(t.name, {
+        name: t.name,
+        source: "project",
+        type: t.dataType,
+        preview: `${String(t.value)}${t.unit ? ` ${t.unit}` : ""}`,
+      });
+    });
     const q = query.trim().toLowerCase();
     const all = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
     if (!q) return all;
     return all.filter((o) => o.name.toLowerCase().includes(q));
-  }, [editorTags, projectTags, query]);
+  }, [scadaTags, editorTags, projectTags, query]);
 
   const exact = options.some((o) => o.name === query.trim());
 
@@ -139,6 +153,13 @@ export function BindTagDialog({ open, onOpenChange, currentTag, onConfirm, title
                   />
                   <span className="font-mono truncate">{opt.name}</span>
                   <span className="text-[9px] uppercase text-muted-foreground">{opt.type}</span>
+                  <span
+                    className="text-[9px] text-muted-foreground"
+                    data-testid="tag-origin"
+                    title={scadaTags[opt.name]?.quality ?? "Sem fonte"}
+                  >
+                    · {sourceLabel(scadaTags[opt.name]?.driver)}
+                  </span>
                 </div>
                 <span className="font-mono text-muted-foreground truncate max-w-[120px]">
                   {opt.preview}

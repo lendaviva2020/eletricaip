@@ -1,3 +1,4 @@
+import { useScadaProjectSync } from "@/hooks/use-scada-project-sync";
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { ClientOnly, useRouter } from "@tanstack/react-router";
 import { ModeTabs } from "@/components/mode-tabs";
@@ -107,6 +108,8 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
   }, [setPanelsCollapsed]);
 
   const { loading, saveState, conflict, resolveConflict } = useProjectPersistence(projectId);
+  // Alarmes, auditoria e histórico persistentes + CCM como fonte de tags.
+  useScadaProjectSync();
   const [dossierOpen, setDossierOpen] = useState(false);
   const [importerOpen, setImporterOpen] = useState(false);
   const [importerPayload, setImporterPayload] = useState<string>("");

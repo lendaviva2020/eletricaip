@@ -19,8 +19,9 @@ import type {
   TagQuality,
   ProtocolDriver,
   HistoricalSample,
+  ExtendedAlarmInstance,
 } from "./types";
-import { NO_FIELD_DRIVERS, isRotatingEquipment } from "./types";
+import { NO_FIELD_DRIVERS, isRotatingEquipment, isSimulatedSource } from "./types";
 import type { GatewayHealthTelemetry } from "../edge/types";
 import {
   DEMO_ETE_PROJECT_ID,
@@ -41,6 +42,8 @@ export const scadaTagRuntime = new IndustrialTagRuntime();
 export const MAX_BUFFERED_SAMPLES = 2000;
 /** Igual ao `MAX_HISTORIAN_BATCH` do servidor. */
 export const MAX_FLUSH_BATCH = 500;
+/** Eventos de auditoria mantidos na tela (os já gravados podem sair). */
+export const MAX_AUDIT_IN_MEMORY = 1000;
 
 /** Mantém as amostras mais recentes; as mais antigas são descartadas e registradas. */
 export function capHistoricalBuffer(samples: HistoricalSample[]): HistoricalSample[] {
@@ -51,6 +54,95 @@ export function capHistoricalBuffer(samples: HistoricalSample[]): HistoricalSamp
   return samples.slice(-MAX_BUFFERED_SAMPLES);
 }
 export const scadaAlarmEngine = new DeterministicAlarmEngine();
+
+/** Instâncias ativas do motor ISA-18.2 → itens da lista de alarmes. */
+export function mapEngineAlarms(instances: ExtendedAlarmInstance[]): ScadaAlarmItem[] {
+  return instances.map((inst) => ({
+    id: inst.id,
+    tag: inst.tagName,
+    description: inst.description,
+    priority: inst.severity,
+    category:
+      inst.alarmClass === "COMMUNICATION"
+        ? "COMMUNICATION"
+        : inst.alarmClass === "ELECTRICAL"
+          ? "ELECTRICAL"
+          : inst.alarmClass === "SAFETY_INDICATION"
+            ? "SAFETY"
+            : "PROCESS",
+    currentValue: inst.triggerValue,
+    setpointLimit: inst.setpointLimit,
+    state: inst.ackState === "ACKNOWLEDGED" ? "ACK" : "UNACK",
+    timestamp: inst.triggeredAt,
+    acknowledgedAt: inst.acknowledgedAt,
+    acknowledgedBy: inst.acknowledgedBy,
+    clearedAt: inst.clearedAt,
+    origin: "ENGINE",
+  }));
+}
+
+/**
+ * Lista única de alarmes: os do motor substituem os do motor; os demais
+ * (fontes externas, E-STOP, restaurados do banco) são preservados. Antes, a
+ * saída do motor SUBSTITUÍA a lista inteira (apagava o alarme de E-STOP) e,
+ * quando o motor ficava sem alarmes, o último alarme ficava na tela para sempre.
+ */
+export function mergeAlarmLists(
+  engine: ScadaAlarmItem[],
+  current: ScadaAlarmItem[],
+): ScadaAlarmItem[] {
+  const engineIds = new Set(engine.map((a) => a.id));
+  const kept = current.filter((a) => a.origin !== "ENGINE" && !engineIds.has(a.id));
+  return [...engine, ...kept];
+}
+
+/** Papel mínimo para forçar tag (e motivo obrigatório). */
+export const FORCE_REASON_MIN = 5;
+export const FORCE_REASON_MAX = 500;
+
+export interface ForceRequest {
+  operator: string;
+  reason: string;
+  ttlMs?: number;
+}
+
+export interface PublishedTagValue {
+  name: string;
+  value: number | boolean | string;
+  unit?: string;
+  equipmentId?: string;
+  quality?: TagQuality;
+}
+
+/** Definições novas do projeto + estado de runtime já publicado. */
+export function mergeTagDefinitions(
+  definitions: Record<string, ScadaTagDefinition>,
+  current: Record<string, ScadaTagDefinition>,
+): Record<string, ScadaTagDefinition> {
+  const out: Record<string, ScadaTagDefinition> = { ...current };
+  for (const [key, def] of Object.entries(definitions)) {
+    const live = current[key] ?? current[def.name];
+    out[key] =
+      live && live.quality !== "NOT_CONNECTED"
+        ? {
+            ...def,
+            value: live.value,
+            quality: live.quality,
+            driver: live.driver,
+            isSimulated: live.isSimulated,
+            lastUpdated: live.lastUpdated,
+            forced: live.forced,
+          }
+        : def;
+  }
+  return out;
+}
+
+function inferDataType(value: number | boolean | string): ScadaTagDefinition["dataType"] {
+  if (typeof value === "boolean") return "BOOL";
+  if (typeof value === "number") return "REAL";
+  return "STRING";
+}
 
 interface ScadaState {
   // Navigation & View
@@ -118,8 +210,39 @@ interface ScadaState {
   acknowledgeAlarm: (alarmId: string, operator?: string) => void;
   acknowledgeAllAlarms: (operator?: string) => void;
   clearAlarm: (alarmId: string) => void;
-  forceTagValue: (tagId: string, value: number | boolean | string, operator?: string) => void;
+  /**
+   * Força o valor (operador + motivo obrigatórios; o servidor já conferiu o
+   * papel). Lança se o motivo for curto ou o tag for crítico de segurança.
+   */
+  forceTagValue: (tagId: string, value: number | boolean | string, request: ForceRequest) => void;
   unforceTag: (tagId: string, operator?: string) => void;
+  /** Base única de tags: qualquer fonte publica aqui (cria o tag se faltar). */
+  publishTags: (source: ProtocolDriver, values: PublishedTagValue[]) => void;
+  /** Alarme levantado por uma fonte externa ao motor (ex.: script HMI). */
+  raiseExternalAlarm: (alarm: {
+    key: string;
+    tag: string;
+    description: string;
+    priority: ScadaAlarmItem["priority"];
+    category?: ScadaAlarmItem["category"];
+    source: ProtocolDriver;
+    value?: number | boolean | string;
+  }) => void;
+  clearExternalAlarm: (key: string) => void;
+  /** Alarmes e auditoria lidos do banco ao abrir o projeto. */
+  hydratePersisted: (params: {
+    projectId: string;
+    alarms: ScadaAlarmItem[];
+    auditLogs: ScadaAuditLog[];
+  }) => void;
+  markAuditPersisted: (ids: string[]) => void;
+  /** Remove da lista alarmes reconhecidos e normalizados (já gravados, se houver banco). */
+  pruneSettledAlarms: (persistedOccurrenceIds?: ReadonlySet<string>) => void;
+  /**
+   * Tags salvos no projeto (formato antigo do editor HMI) entram na base única
+   * como "Importado / sem conexão" — o valor é o último salvo, não leitura atual.
+   */
+  registerSavedTags: (values: Record<string, number | boolean | string>) => void;
   updateSettings: (newSettings: Partial<ScadaSystemSettings>) => void;
   tickSimulation: () => void;
   resetToInitialState: () => void;
@@ -226,9 +349,12 @@ export const useScadaStore = create<ScadaState>()(
         // If same project already active and matching, avoid wiping active simulation
         if (state.currentProjectId === projectId && state.currentTenantId === tenantId && !isDemo) {
           if (equipments || tags) {
+            if (tags) scadaTagRuntime.registerTags(Object.values(tags));
             set((s) => ({
               equipments: equipments ?? s.equipments,
-              tags: tags ?? s.tags,
+              // Reabrir/salvar o projeto não pode apagar o que as fontes já
+              // publicaram: preserva valor, qualidade e origem do runtime.
+              tags: tags ? mergeTagDefinitions(tags, s.tags) : s.tags,
             }));
           }
           return;
@@ -296,8 +422,9 @@ export const useScadaStore = create<ScadaState>()(
             safetyLevel: "SIMULATION_HALT",
             totalFlowM3h: 0,
             totalPowerKw: 0,
-            powerFactor: 0.92,
-            systemEfficiencyPct: 100,
+            // Sem medição: nada de FP 0,92 / eficiência 100 % presumidos.
+            powerFactor: 0,
+            systemEfficiencyPct: 0,
             criticalAlarmsCount: 0,
             warningAlarmsCount: 0,
             equipments: equipments || {},
@@ -569,6 +696,7 @@ export const useScadaStore = create<ScadaState>()(
 
       acknowledgeAllAlarms: (operator = "OPERADOR") => {
         const timestamp = Date.now();
+        scadaAlarmEngine.acknowledgeAll("all", operator, timestamp);
         set((state) => ({
           alarms: state.alarms.map((a) =>
             a.state === "UNACK"
@@ -603,69 +731,283 @@ export const useScadaStore = create<ScadaState>()(
         }));
       },
 
-      forceTagValue: (tagId, value, operator = "OPERADOR") => {
+      forceTagValue: (tagId, value, request) => {
+        const reason = request.reason.trim();
+        if (reason.length < FORCE_REASON_MIN || reason.length > FORCE_REASON_MAX) {
+          throw new Error("FORCE_REASON_REQUIRED: informe o motivo do forçamento.");
+        }
+        const state = get();
+        const tag =
+          state.tags[tagId] ||
+          Object.values(state.tags).find((t) => t.name === tagId || t.id === tagId);
+        if (!tag) return;
+        if (!scadaTagRuntime.getTag(tag.id)) scadaTagRuntime.registerTag(tag);
+        // O runtime guarda o valor real por baixo e recusa tag crítico de segurança.
+        const forced = scadaTagRuntime.forceTagValue(tag.id, value, {
+          operator: request.operator,
+          reason,
+          ttlMs: request.ttlMs,
+        });
+        if (!forced) return;
         const timestamp = Date.now();
-        set((state) => {
-          const tag = state.tags[tagId];
-          if (!tag) return state;
-
-          return {
-            tags: {
-              ...state.tags,
-              [tagId]: {
-                ...tag,
-                value,
-                forced: true,
-                quality: "FORCED",
-                lastUpdated: timestamp,
-              },
+        const next = { ...forced };
+        set((s) => ({
+          tags: { ...s.tags, [next.name]: next, [next.id]: next },
+          auditLogs: [
+            {
+              id: `log-force-${timestamp}-${next.id}`,
+              timestamp,
+              category: "SECURITY",
+              operator: request.operator,
+              action: "TAG_FORCE",
+              tag: next.name,
+              details: `Tag ${next.name} forçado para ${String(value)}. Motivo: ${reason}`,
+              severity: "WARNING",
             },
+            ...s.auditLogs,
+          ],
+        }));
+      },
+
+      unforceTag: (tagId, operator = "OPERADOR") => {
+        const state = get();
+        const tag =
+          state.tags[tagId] ||
+          Object.values(state.tags).find((t) => t.name === tagId || t.id === tagId);
+        if (!tag) return;
+        if (!scadaTagRuntime.getTag(tag.id)) scadaTagRuntime.registerTag(tag);
+        // Volta ao último valor real com qualidade INCERTA até a próxima leitura
+        // (antes o valor forçado ficava na tela como "GOOD").
+        const released = scadaTagRuntime.unforceTag(tag.id);
+        if (!released) return;
+        const timestamp = Date.now();
+        const next = { ...released };
+        set((s) => ({
+          tags: { ...s.tags, [next.name]: next, [next.id]: next },
+          auditLogs: [
+            {
+              id: `log-unforce-${timestamp}-${next.id}`,
+              timestamp,
+              category: "SECURITY",
+              operator,
+              action: "TAG_UNFORCE",
+              tag: next.name,
+              details: `Forçamento do tag ${next.name} removido.`,
+              severity: "INFO",
+            },
+            ...s.auditLogs,
+          ],
+        }));
+      },
+
+      publishTags: (source, values) => {
+        const state = get();
+        if (!state.currentProjectId || values.length === 0) return;
+        const now = Date.now();
+        const projectId = state.currentProjectId;
+        const updated: Record<string, ScadaTagDefinition> = {};
+        const samples: HistoricalSample[] = [];
+        const logs: ScadaAuditLog[] = [];
+        for (const v of values) {
+          if (!v.name || typeof v.name !== "string" || v.name.length > 128) continue;
+          if (typeof v.value === "number" && !Number.isFinite(v.value)) continue;
+          const existing =
+            updated[v.name] ??
+            state.tags[v.name] ??
+            Object.values(state.tags).find((t) => t.name === v.name);
+          if (existing && !scadaTagRuntime.getTag(existing.id)) {
+            scadaTagRuntime.registerTag(existing);
+          }
+          const res = scadaTagRuntime.processUpdate({
+            tagId: existing?.id ?? v.name,
+            tagName: existing?.name ?? v.name,
+            projectId,
+            equipmentId: v.equipmentId ?? existing?.linkedEquipmentId,
+            rawValue: v.value,
+            dataType: existing?.dataType ?? inferDataType(v.value),
+            unit: v.unit ?? existing?.unit,
+            source,
+            sourceTimestamp: now,
+            receivedAt: now,
+            quality: v.quality ?? "GOOD",
+          });
+          const tag: ScadaTagDefinition = {
+            ...res.tag,
+            driver: source,
+            isSimulated: isSimulatedSource(source),
+            unit: v.unit ?? res.tag.unit,
+          };
+          updated[tag.name] = tag;
+          if (tag.id !== tag.name) updated[tag.id] = tag;
+          if (res.historicalSample) samples.push(res.historicalSample);
+          for (const e of scadaAlarmEngine.evaluateTag(tag, now)) {
+            logs.push({
+              id: e.id,
+              timestamp: e.timestamp,
+              category: e.transition === "TRIGGER" ? "ALARM" : "SYSTEM",
+              operator: "SISTEMA",
+              action: `ALARM_${e.transition}`,
+              tag: e.tagName,
+              details: `Transição ISA-18.2 [${e.transition}]: ${e.tagName} = ${String(e.value)}`,
+              severity: e.transition === "TRIGGER" ? "WARNING" : "INFO",
+            });
+          }
+        }
+        if (Object.keys(updated).length === 0) return;
+        const engineAlarms = mapEngineAlarms(scadaAlarmEngine.getActiveInstances());
+        set((s) =>
+          s.currentProjectId !== projectId
+            ? {}
+            : {
+                tags: { ...s.tags, ...updated },
+                alarms: mergeAlarmLists(engineAlarms, s.alarms),
+                auditLogs: logs.length ? [...logs, ...s.auditLogs] : s.auditLogs,
+                bufferedHistoricalSamples: samples.length
+                  ? capHistoricalBuffer([...s.bufferedHistoricalSamples, ...samples])
+                  : s.bufferedHistoricalSamples,
+              },
+        );
+      },
+
+      raiseExternalAlarm: (alarm) => {
+        const now = Date.now();
+        const id = `ext:${alarm.key}`;
+        set((s) => {
+          const current = s.alarms.find((a) => a.id === id && a.clearedAt == null);
+          if (current) {
+            if (current.description === alarm.description) return {};
+            return {
+              alarms: s.alarms.map((a) =>
+                a === current ? { ...a, description: alarm.description } : a,
+              ),
+            };
+          }
+          const item: ScadaAlarmItem = {
+            id,
+            tag: alarm.tag,
+            description: alarm.description,
+            priority: alarm.priority,
+            category: alarm.category ?? "PROCESS",
+            currentValue: alarm.value ?? true,
+            setpointLimit: "—",
+            state: "UNACK",
+            timestamp: now,
+            acknowledgedAt: null,
+            acknowledgedBy: null,
+            clearedAt: null,
+            origin: "EXTERNAL",
+            source: alarm.source,
+          };
+          return {
+            alarms: [item, ...s.alarms],
             auditLogs: [
               {
-                id: `log-force-${timestamp}`,
-                timestamp,
-                category: "SECURITY",
-                operator,
-                action: "TAG_FORCE",
-                tag: tagId,
-                details: `Tag ${tag.name} forçada para o valor ${String(value)}`,
+                id: `log-ext-alarm-${now}-${alarm.key}`,
+                timestamp: now,
+                category: "ALARM",
+                operator: "SISTEMA",
+                action: "ALARM_TRIGGER",
+                tag: alarm.tag,
+                details: `Alarme (${alarm.source}): ${alarm.description}`,
                 severity: "WARNING",
               },
-              ...state.auditLogs,
+              ...s.auditLogs,
             ],
           };
         });
       },
 
-      unforceTag: (tagId, operator = "OPERADOR") => {
-        const timestamp = Date.now();
-        set((state) => {
-          const tag = state.tags[tagId];
-          if (!tag) return state;
-
+      clearExternalAlarm: (key) => {
+        const id = `ext:${key}`;
+        const now = Date.now();
+        set((s) => {
+          if (!s.alarms.some((a) => a.id === id && a.clearedAt == null)) return {};
+          // ISA-18.2: alarme reconhecido sai da lista ao normalizar; não
+          // reconhecido fica (retornou ao normal, aguardando reconhecimento).
           return {
-            tags: {
-              ...state.tags,
-              [tagId]: {
-                ...tag,
-                forced: false,
-                quality: "GOOD",
-                lastUpdated: timestamp,
-              },
-            },
-            auditLogs: [
-              {
-                id: `log-unforce-${timestamp}`,
-                timestamp,
-                category: "SECURITY",
-                operator,
-                action: "TAG_UNFORCE",
-                tag: tagId,
-                details: `Forçamento da tag ${tag.name} removido.`,
-                severity: "INFO",
-              },
-              ...state.auditLogs,
-            ],
+            alarms: s.alarms.flatMap((a) => {
+              if (a.id !== id || a.clearedAt != null) return [a];
+              // Normalizado: fica na lista com clearedAt. Reconhecido + normalizado
+              // só sai depois de gravado (`pruneSettledAlarms`), para o banco
+              // receber o reconhecimento.
+              return [{ ...a, clearedAt: now }];
+            }),
+          };
+        });
+      },
+
+      hydratePersisted: ({ projectId, alarms, auditLogs }) => {
+        set((s) => {
+          if (s.currentProjectId !== projectId) return {};
+          const known = new Set(s.alarms.map((a) => a.id));
+          const restored = alarms
+            .filter((a) => !known.has(a.id))
+            .map((a) => ({ ...a, origin: "RESTORED" as const }));
+          const knownLogs = new Set(s.auditLogs.map((l) => l.id));
+          const logs = auditLogs
+            .filter((l) => !knownLogs.has(l.id))
+            .map((l) => ({ ...l, persisted: true }));
+          return {
+            alarms: [...s.alarms, ...restored],
+            auditLogs: [...s.auditLogs, ...logs].sort((x, y) => y.timestamp - x.timestamp),
+          };
+        });
+      },
+
+      registerSavedTags: (values) => {
+        const now = Date.now();
+        set((s) => {
+          if (!s.currentProjectId) return {};
+          const next = { ...s.tags };
+          let added = 0;
+          for (const [name, value] of Object.entries(values)) {
+            if (!name || name.length > 128 || next[name]) continue;
+            if (typeof value === "number" && !Number.isFinite(value)) continue;
+            const def: ScadaTagDefinition = {
+              id: name,
+              name,
+              description: `Tag salvo no projeto: ${name}`,
+              dataType: inferDataType(value),
+              unit: "",
+              scaleMin: 0,
+              scaleMax: 100,
+              value,
+              quality: "NOT_CONNECTED",
+              driver: "IMPORTED",
+              scanRateMs: 1000,
+              lastUpdated: now,
+              forced: false,
+              sourceAddress: "projeto",
+              isSimulated: false,
+            };
+            scadaTagRuntime.registerTag(def);
+            next[name] = def;
+            added++;
+          }
+          return added ? { tags: next } : {};
+        });
+      },
+
+      pruneSettledAlarms: (persisted) => {
+        set((s) => {
+          const keep = s.alarms.filter((a) => {
+            if (!(a.state === "ACK" && a.clearedAt != null)) return true;
+            return persisted ? !persisted.has(`${a.id}@${a.timestamp}`) : false;
+          });
+          return keep.length === s.alarms.length ? {} : { alarms: keep };
+        });
+      },
+
+      markAuditPersisted: (ids) => {
+        if (ids.length === 0) return;
+        const set_ = new Set(ids);
+        set((s) => {
+          const marked = s.auditLogs.map((l) => (set_.has(l.id) ? { ...l, persisted: true } : l));
+          // Memória da aba limitada: o que já está no banco pode sair da lista.
+          if (marked.length <= MAX_AUDIT_IN_MEMORY) return { auditLogs: marked };
+          let keepPersisted = MAX_AUDIT_IN_MEMORY;
+          return {
+            auditLogs: marked.filter((l) => !l.persisted || keepPersisted-- > 0),
           };
         });
       },
@@ -712,27 +1054,7 @@ export const useScadaStore = create<ScadaState>()(
           }
 
           const activeInstances = scadaAlarmEngine.getActiveInstances();
-          const mappedAlarms: ScadaAlarmItem[] = activeInstances.map((inst) => ({
-            id: inst.id,
-            tag: inst.tagName,
-            description: inst.description,
-            priority: inst.severity,
-            category:
-              inst.alarmClass === "COMMUNICATION"
-                ? "COMMUNICATION"
-                : inst.alarmClass === "ELECTRICAL"
-                  ? "ELECTRICAL"
-                  : inst.alarmClass === "SAFETY_INDICATION"
-                    ? "SAFETY"
-                    : "PROCESS",
-            currentValue: inst.triggerValue,
-            setpointLimit: inst.setpointLimit,
-            state: inst.ackState === "ACKNOWLEDGED" ? "ACK" : "UNACK",
-            timestamp: inst.triggeredAt,
-            acknowledgedAt: inst.acknowledgedAt,
-            acknowledgedBy: inst.acknowledgedBy,
-            clearedAt: inst.clearedAt,
-          }));
+          const mappedAlarms = mapEngineAlarms(activeInstances);
 
           const customerPoint: ScadaTrendPoint = {
             timestamp: now,
@@ -752,7 +1074,7 @@ export const useScadaStore = create<ScadaState>()(
             totalPowerKw: +activePower.toFixed(1),
             trendHistory: [...s.trendHistory.slice(-119), customerPoint],
             tags: updatedTags,
-            alarms: mappedAlarms.length > 0 ? mappedAlarms : s.alarms,
+            alarms: mergeAlarmLists(mappedAlarms, s.alarms),
             bufferedHistoricalSamples: capHistoricalBuffer([
               ...s.bufferedHistoricalSamples,
               ...newSamples,
@@ -865,27 +1187,7 @@ export const useScadaStore = create<ScadaState>()(
 
         const events = scadaAlarmEngine.evaluateTag(updatedTag, now);
         const activeInstances = scadaAlarmEngine.getActiveInstances();
-        const activeMapped: ScadaAlarmItem[] = activeInstances.map((inst) => ({
-          id: inst.id,
-          tag: inst.tagName,
-          description: inst.description,
-          priority: inst.severity,
-          category:
-            inst.alarmClass === "COMMUNICATION"
-              ? "COMMUNICATION"
-              : inst.alarmClass === "ELECTRICAL"
-                ? "ELECTRICAL"
-                : inst.alarmClass === "SAFETY_INDICATION"
-                  ? "SAFETY"
-                  : "PROCESS",
-          currentValue: inst.triggerValue,
-          setpointLimit: inst.setpointLimit,
-          state: inst.ackState === "ACKNOWLEDGED" ? "ACK" : "UNACK",
-          timestamp: inst.triggeredAt,
-          acknowledgedAt: inst.acknowledgedAt,
-          acknowledgedBy: inst.acknowledgedBy,
-          clearedAt: inst.clearedAt,
-        }));
+        const activeMapped = mapEngineAlarms(activeInstances);
 
         const newLogs: ScadaAuditLog[] = events.map((e) => ({
           id: e.id,
@@ -904,7 +1206,7 @@ export const useScadaStore = create<ScadaState>()(
             [updatedTag.name]: updatedTag,
             [updatedTag.id]: updatedTag,
           },
-          alarms: activeMapped.length > 0 ? activeMapped : s.alarms,
+          alarms: mergeAlarmLists(activeMapped, s.alarms),
           auditLogs: [...newLogs, ...s.auditLogs],
         }));
       },
@@ -933,27 +1235,7 @@ export const useScadaStore = create<ScadaState>()(
 
         const events = scadaAlarmEngine.evaluateTag(res.tag, now);
         const activeInstances = scadaAlarmEngine.getActiveInstances();
-        const activeMapped: ScadaAlarmItem[] = activeInstances.map((inst) => ({
-          id: inst.id,
-          tag: inst.tagName,
-          description: inst.description,
-          priority: inst.severity,
-          category:
-            inst.alarmClass === "COMMUNICATION"
-              ? "COMMUNICATION"
-              : inst.alarmClass === "ELECTRICAL"
-                ? "ELECTRICAL"
-                : inst.alarmClass === "SAFETY_INDICATION"
-                  ? "SAFETY"
-                  : "PROCESS",
-          currentValue: inst.triggerValue,
-          setpointLimit: inst.setpointLimit,
-          state: inst.ackState === "ACKNOWLEDGED" ? "ACK" : "UNACK",
-          timestamp: inst.triggeredAt,
-          acknowledgedAt: inst.acknowledgedAt,
-          acknowledgedBy: inst.acknowledgedBy,
-          clearedAt: inst.clearedAt,
-        }));
+        const activeMapped = mapEngineAlarms(activeInstances);
 
         const newLogs: ScadaAuditLog[] = events.map((e) => ({
           id: e.id,
@@ -976,7 +1258,7 @@ export const useScadaStore = create<ScadaState>()(
             [res.tag.name]: res.tag,
             [res.tag.id]: res.tag,
           },
-          alarms: activeMapped.length > 0 ? activeMapped : s.alarms,
+          alarms: mergeAlarmLists(activeMapped, s.alarms),
           auditLogs: [...newLogs, ...s.auditLogs],
           bufferedHistoricalSamples: newSamples,
         }));

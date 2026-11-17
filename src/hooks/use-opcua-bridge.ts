@@ -57,19 +57,34 @@ export function useOpcuaBridge() {
     const modbus = modbusStatus.data;
     if (!opcua?.ok && !modbus?.ok) return;
 
-    const tags: Record<string, number | boolean | string> = {};
-
+    // Origem honesta por fonte: o simulador interno NÃO é leitura de campo.
+    const opcuaTags: Record<string, number | boolean | string> = {};
     for (const t of opcua?.tags ?? []) {
       const key = t.nodeId.replace(/[^a-zA-Z0-9_.-]/g, "_");
-      tags[key] = t.value;
+      opcuaTags[key] = t.value;
     }
+    const modbusPhysical: Record<string, number | boolean | string> = {};
+    const modbusSimulated: Record<string, number | boolean | string> = {};
     for (const r of modbus?.values ?? []) {
       const key = `MB_${r.type}_${r.address}`;
-      tags[key] = r.value;
+      if (r.provenance === "PHYSICAL_READ_ONLY") modbusPhysical[key] = r.value;
+      else modbusSimulated[key] = r.value;
     }
 
-    if (Object.keys(tags).length > 0) {
-      applyTick({ ts: Date.now(), cycleMs: POLL_INTERVAL, tags });
+    const now = Date.now();
+    if (Object.keys(opcuaTags).length > 0) {
+      applyTick({
+        ts: now,
+        cycleMs: POLL_INTERVAL,
+        tags: opcuaTags,
+        source: opcua?.mode === "EDGE_READ_ONLY" ? "OPC_UA" : "SIMULATION",
+      });
+    }
+    if (Object.keys(modbusPhysical).length > 0) {
+      applyTick({ ts: now, cycleMs: POLL_INTERVAL, tags: modbusPhysical, source: "MODBUS_TCP" });
+    }
+    if (Object.keys(modbusSimulated).length > 0) {
+      applyTick({ ts: now, cycleMs: POLL_INTERVAL, tags: modbusSimulated, source: "SIMULATION" });
     }
 
     // Log connection errors once per transition.

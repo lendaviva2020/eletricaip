@@ -19,7 +19,6 @@ import type {
   ExtendedAlarmDefinition,
 } from "./types";
 import {
-  computeAuditChainHash,
   verifyAuditChainIntegrity,
   AUDIT_TRAIL_GENESIS_HASH,
   type AuditChainRecord,
@@ -63,18 +62,18 @@ const demoHistoricalSamples: HistoricalSample[] = [];
  * Validates whether the authenticated user has access to the specified project.
  * Enforces multi-tenant isolation and rejects read-only `viewer` mutations when requireWrite is set.
  */
-async function authorizeProjectAccess(
+export async function authorizeProjectAccess(
   authCtx: AuthContext,
   projectId: string,
   options?: { requireWrite?: boolean },
-): Promise<{ tenantId: string; projectName: string }> {
+): Promise<{ tenantId: string; projectName: string; role: string | null }> {
   const { supabase, userId } = authCtx;
   if (!userId) {
     throw new Error("UNAUTHORIZED: Autenticação obrigatória para acessar o SCADA.");
   }
 
   if (projectId === DEMO_ETE_PROJECT_ID) {
-    return { tenantId: DEMO_ETE_TENANT_ID, projectName: DEMO_ETE_PROJECT_NAME };
+    return { tenantId: DEMO_ETE_TENANT_ID, projectName: DEMO_ETE_PROJECT_NAME, role: "owner" };
   }
 
   const { data: project, error: pErr } = await supabase
@@ -121,7 +120,11 @@ async function authorizeProjectAccess(
     );
   }
 
-  return { tenantId: project.tenant_id, projectName: project.name };
+  return {
+    tenantId: project.tenant_id,
+    projectName: project.name,
+    role: membership?.role ?? (isOwner ? "owner" : null),
+  };
 }
 
 function parseSafeIsoTimestamp(input: string | number): string {
@@ -603,96 +606,6 @@ export const saveProjectAlarmConfigs = createServerFn({ method: "POST" })
   });
 
 /**
- * Inserts alarm occurrences into alarm_history.
- */
-export const recordAlarmHistoryBatch = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d: unknown) =>
-    z
-      .object({
-        projectId: z.guid(),
-        alarms: z.array(
-          z.object({
-            id: z.string().optional(),
-            tagName: z.string(),
-            description: z.string(),
-            severity: z.string(),
-            state: z.string(),
-            value: z.number().nullable().optional(),
-            setpoint: z.number().nullable().optional(),
-            triggeredAt: z.string(),
-            acknowledgedAt: z.string().nullable().optional(),
-            acknowledgedBy: z.string().nullable().optional(),
-            clearedAt: z.string().nullable().optional(),
-            clearedBy: z.string().nullable().optional(),
-            operatorNote: z.string().nullable().optional(),
-          }),
-        ),
-      })
-      .parse(d),
-  )
-  .handler(async ({ data, context }): Promise<{ success: boolean; inserted: number }> => {
-    const authCtx = context as unknown as AuthContext;
-    await authorizeProjectAccess(authCtx, data.projectId, { requireWrite: true });
-
-    if (data.projectId === DEMO_ETE_PROJECT_ID) {
-      return { success: true, inserted: data.alarms.length };
-    }
-
-    const { supabase } = authCtx;
-    const rows = data.alarms.map((a) => {
-      const sev = a.severity.toLowerCase();
-      const validSeverity: "critical" | "high" | "medium" | "low" | "info" =
-        sev === "critical"
-          ? "critical"
-          : sev === "high" || sev === "warning"
-            ? "high"
-            : sev === "medium"
-              ? "medium"
-              : sev === "low"
-                ? "low"
-                : "info";
-
-      const st = a.state.toLowerCase();
-      const validState: "active" | "acknowledged" | "cleared" | "suppressed" =
-        st.includes("ack") && !st.includes("unack")
-          ? "acknowledged"
-          : st.includes("clear")
-            ? "cleared"
-            : st.includes("shelv") || st.includes("suppress")
-              ? "suppressed"
-              : "active";
-
-      return {
-        project_id: data.projectId,
-        tag_name: a.tagName,
-        description: a.description,
-        category: "process" as const,
-        severity: validSeverity,
-        state: validState,
-        equipment_type: "CANONICAL",
-        area: "GERAL",
-        location: "PLANTA",
-        value: a.value ?? null,
-        setpoint: a.setpoint ?? null,
-        triggered_at: a.triggeredAt,
-        acknowledged_at: a.acknowledgedAt ?? null,
-        acknowledged_by: a.acknowledgedBy ?? null,
-        cleared_at: a.clearedAt ?? null,
-        cleared_by: a.clearedBy ?? null,
-        operator_note: a.operatorNote ?? null,
-      };
-    });
-
-    const { error } = await supabase.from("alarm_history").insert(rows);
-    if (error) {
-      throw scadaDbError("ALARM_HISTORY_INSERT_ERROR", error);
-    }
-
-    return { success: true, inserted: rows.length };
-  });
-
-/**
  * Records an immutable audit log entry with cryptographically linked hash chain (SHA-256).
  */
 export const recordScadaAuditEvent = createServerFn({ method: "POST" })
@@ -720,44 +633,16 @@ export const recordScadaAuditEvent = createServerFn({ method: "POST" })
       return { success: true, chainHash: mockHash };
     }
 
-    const { supabase, userId } = authCtx;
-
-    // Fetch previous log entry to maintain the hash chain
-    const { data: lastLog } = await supabase
-      .from("audit_logs")
-      .select("chain_hash")
-      .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const previousHash = lastLog?.chain_hash || AUDIT_TRAIL_GENESIS_HASH;
-    const timestamp = new Date().toISOString();
-    const chainHash = computeAuditChainHash({
-      previousHash,
-      tenantId,
-      userId,
-      action: data.action,
-      details: data.details,
-      createdAt: timestamp,
-    });
-
-    const { error } = await supabase.from("audit_logs").insert({
-      tenant_id: tenantId,
-      user_id: userId,
-      action: data.action,
-      resource_id: data.resourceId ?? data.projectId,
-      resource_type: data.resourceType,
-      details: data.details as Json,
-      previous_hash: previousHash,
-      chain_hash: chainHash,
-      created_at: timestamp,
-    });
-
-    if (error) {
-      throw scadaDbError("AUDIT_LOG_ERROR", error);
-    }
-
+    // audit_logs não aceita INSERT do cliente: o servidor grava (service role).
+    const { appendAuditEntries } = await import("./audit-append.server");
+    const { lastHash: chainHash } = await appendAuditEntries(tenantId, authCtx.userId, [
+      {
+        action: data.action,
+        resourceId: data.resourceId ?? data.projectId,
+        resourceType: data.resourceType,
+        details: { ...data.details, category: data.category, projectId: data.projectId },
+      },
+    ]);
     return { success: true, chainHash };
   });
 

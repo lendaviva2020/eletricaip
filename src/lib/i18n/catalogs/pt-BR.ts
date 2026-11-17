@@ -226,6 +226,8 @@ export const ptBR = {
       colTag: "Tag",
       colMessage: "Mensagem",
       colTrigger: "Disparo",
+      colSource: "Origem",
+      returnedUnacked: "Normalizado",
       colCategory: "Cat.",
       colStatus: "Status",
       totalToday: "Total hoje",

@@ -84,6 +84,11 @@ export function computeAuditChainHash(params: {
   return crypto.createHash("sha256").update(payload).digest("hex");
 }
 
+function normalizeIso(value: string): string {
+  const t = Date.parse(value);
+  return Number.isFinite(t) ? new Date(t).toISOString() : value;
+}
+
 /**
  * Verifies the complete cryptographic integrity of an audit log chain.
  * Re-computes SHA-256 hashes for all records and checks link validity (previous_hash == previous chain_hash).
@@ -142,7 +147,8 @@ export function verifyAuditChainIntegrity(
       userId: record.user_id,
       action: record.action,
       details: record.details,
-      createdAt: record.created_at,
+      // O banco devolve "…+00:00"; o hash foi feito sobre toISOString().
+      createdAt: normalizeIso(record.created_at),
     });
 
     if (computedChainHash !== record.chain_hash) {
