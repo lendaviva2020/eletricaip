@@ -18,6 +18,7 @@ import { toast } from "sonner";
 export function ScadaHeader() {
   const {
     currentProjectName,
+    isDemoProject,
     isSimulationMode,
     audioAlertMuted,
     estopActive,
@@ -104,7 +105,7 @@ export function ScadaHeader() {
         {/* Left: Plant & Process Identity */}
         <div className="flex items-center gap-2.5 min-w-0 shrink-0">
           <div className="w-9 h-9 rounded-md bg-blue-950/60 border border-blue-500/40 flex items-center justify-center text-blue-400 shadow-inner shrink-0">
-            <Broadcast className="w-5 h-5 animate-pulse" />
+            <Broadcast className="w-5 h-5" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
@@ -116,100 +117,45 @@ export function ScadaHeader() {
                   "hidden sm:flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-medium shrink-0",
                   estopActive
                     ? "bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse"
-                    : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30",
+                    : "bg-amber-500/10 text-amber-300 border border-amber-500/30",
                 )}
               >
                 <span
                   className={cn(
                     "w-1.5 h-1.5 rounded-full",
-                    estopActive ? "bg-red-500 animate-ping" : "bg-emerald-400",
+                    estopActive ? "bg-red-500 motion-safe:animate-ping" : "bg-amber-300",
                   )}
                 />
                 {estopActive ? "PARADA VIRTUAL" : "SIMULAÇÃO ATIVA"}
               </div>
             </div>
             <p className="text-[10px] text-zinc-400 font-mono truncate">
-              ElétricAi SCADA • Sinótico Geral
+              ElétricAi SCADA • Supervisão
             </p>
           </div>
         </div>
 
-        {/* Center: 4 KPI Cards (Matching Industrial Reference) */}
-        <div className="hidden lg:flex items-center gap-1.5 xl:gap-2 flex-1 justify-center max-w-3xl xl:max-w-4xl min-w-0">
-          {/* KPI 1: Vazão Total */}
-          <div className="flex-1 bg-[#151C24] border border-[#1E293B] rounded-md px-2 py-1 xl:px-3 xl:py-1.5 min-w-[110px] shadow-sm">
-            <div className="text-[9px] xl:text-[10px] font-mono uppercase text-[#A7B0BB] font-semibold tracking-wider truncate">
-              Vazão Total
+        {/* Centro: KPIs só no projeto de demonstração (rotulados). Em projeto de
+            cliente não há KPI sem fonte calculável — os alarmes ficam no rodapé. */}
+        <div className="hidden lg:flex items-center gap-2 flex-1 justify-center min-w-0">
+          {isDemoProject ? (
+            <div
+              className="flex items-center gap-3 px-3 py-1 rounded-md border border-[#1E293B] bg-[#151C24] text-[11px] font-mono text-zinc-300"
+              data-testid="scada-demo-kpis"
+            >
+              <span className="text-[9px] uppercase text-amber-300">Demonstração</span>
+              <span>Vazão {totalFlowM3h.toFixed(1)} m³/h</span>
+              <span>Potência {totalPowerKw.toFixed(1)} kW</span>
+              <span>FP {powerFactor.toFixed(2)}</span>
+              <span>Efic. {systemEfficiencyPct.toFixed(1)} %</span>
             </div>
-            <div className="flex items-baseline justify-between mt-0.5">
-              <span className="text-sm xl:text-base font-bold font-mono text-cyan-400">
-                {totalFlowM3h.toFixed(1)}{" "}
-                <span className="text-[10px] text-zinc-400 font-normal">m³/h</span>
-              </span>
-              <span className="text-[9px] font-mono font-semibold px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                +4.2%
-              </span>
-            </div>
-          </div>
-
-          {/* KPI 2: Energia */}
-          <div className="flex-1 bg-[#151C24] border border-[#1E293B] rounded-md px-2 py-1 xl:px-3 xl:py-1.5 min-w-[110px] shadow-sm">
-            <div className="text-[9px] xl:text-[10px] font-mono uppercase text-[#A7B0BB] font-semibold tracking-wider truncate">
-              Energia
-            </div>
-            <div className="flex items-baseline justify-between mt-0.5">
-              <span className="text-sm xl:text-base font-bold font-mono text-amber-400">
-                {totalPowerKw.toFixed(1)}{" "}
-                <span className="text-[10px] text-zinc-400 font-normal">kW</span>
-              </span>
-              <span className="text-[9px] font-mono text-[#A7B0BB]">
-                FP: {powerFactor.toFixed(2)}
-              </span>
-            </div>
-          </div>
-
-          {/* KPI 3: Eficiência */}
-          <div className="flex-1 bg-[#151C24] border border-[#1E293B] rounded-md px-2 py-1 xl:px-3 xl:py-1.5 min-w-[110px] shadow-sm">
-            <div className="text-[9px] xl:text-[10px] font-mono uppercase text-[#A7B0BB] font-semibold tracking-wider truncate">
-              Eficiência
-            </div>
-            <div className="flex items-baseline justify-between mt-0.5">
-              <span className="text-sm xl:text-base font-bold font-mono text-emerald-400">
-                {systemEfficiencyPct.toFixed(1)}%
-              </span>
-              <span className="text-[9px] font-mono text-[#A7B0BB]">Set: 95%</span>
-            </div>
-          </div>
-
-          {/* KPI 4: Alarmes Ativos */}
-          <div
-            className={cn(
-              "flex-1 border rounded-md px-2 py-1 xl:px-3 xl:py-1.5 min-w-[120px] shadow-sm transition-colors",
-              criticalAlarmsCount > 0
-                ? "bg-red-950/40 border-red-500/50"
-                : warningAlarmsCount > 0
-                  ? "bg-amber-950/30 border-amber-500/40"
-                  : "bg-[#151C24] border-[#1E293B]",
-            )}
-          >
-            <div className="text-[9px] xl:text-[10px] font-mono uppercase text-[#A7B0BB] font-semibold tracking-wider truncate">
-              Alarmes Ativos
-            </div>
-            <div className="flex items-baseline justify-between mt-0.5">
-              <span
-                className={cn(
-                  "text-[11px] xl:text-xs font-bold font-mono",
-                  criticalAlarmsCount > 0
-                    ? "text-red-400"
-                    : warningAlarmsCount > 0
-                      ? "text-amber-400"
-                      : "text-zinc-300",
-                )}
-              >
-                {criticalAlarmsCount} CRÍT • {warningAlarmsCount} ADV
-              </span>
-            </div>
-          </div>
+          ) : (
+            <span className="text-[10px] font-mono text-zinc-500">
+              {criticalAlarmsCount + warningAlarmsCount > 0
+                ? `${criticalAlarmsCount} crítico(s) · ${warningAlarmsCount} advertência(s)`
+                : "Sem alarmes críticos"}
+            </span>
+          )}
         </div>
 
         {/* Right Controls & E-STOP */}

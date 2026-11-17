@@ -1,7 +1,7 @@
 // SCADA SUPERVISÓRIO — View 3: Gestão de Alarmes (ISA-18.2)
 // Comprehensive industrial alarm console with filtering, shelving, and audit export
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bell,
   WarningOctagon,
@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import { useScadaStore } from "@/lib/scada/scada-store";
 import type { AlarmSeverity, AlarmState, ScadaAlarmItem } from "@/lib/scada/types";
+import { buildTagOwnerIndex, equipmentIdForAlarm } from "@/lib/scada/asset-hierarchy";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -23,6 +24,10 @@ export function ScadaAlarmsView() {
   const acknowledgeAlarm = useScadaStore((s) => s.acknowledgeAlarm);
   const acknowledgeAllAlarms = useScadaStore((s) => s.acknowledgeAllAlarms);
   const clearAlarm = useScadaStore((s) => s.clearAlarm);
+  const equipments = useScadaStore((s) => s.equipments);
+  const tags = useScadaStore((s) => s.tags);
+  const selectEquipment = useScadaStore((s) => s.selectEquipment);
+  const ownerIndex = useMemo(() => buildTagOwnerIndex(equipments, tags), [equipments, tags]);
 
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
@@ -212,6 +217,7 @@ export function ScadaAlarmsView() {
               ) : (
                 filteredAlarms.map((a) => {
                   const d = new Date(a.timestamp);
+                  const owner = equipmentIdForAlarm(a, equipments, ownerIndex);
                   const timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 
                   return (
@@ -240,7 +246,20 @@ export function ScadaAlarmsView() {
                           {a.priority}
                         </span>
                       </td>
-                      <td className="py-2 px-3 font-bold text-white whitespace-nowrap">{a.tag}</td>
+                      <td className="py-2 px-3 font-bold text-white whitespace-nowrap">
+                        {owner ? (
+                          <button
+                            onClick={() => selectEquipment(owner)}
+                            className="hover:underline underline-offset-2"
+                            title="Abrir faceplate do equipamento"
+                            data-testid={`alarm-open-faceplate-${a.id}`}
+                          >
+                            {a.tag}
+                          </button>
+                        ) : (
+                          a.tag
+                        )}
+                      </td>
                       <td className="py-2 px-3 text-zinc-400 whitespace-nowrap">{a.category}</td>
                       <td className="py-2 px-3 text-zinc-300 max-w-sm">{a.description}</td>
                       <td className="py-2 px-3 text-cyan-400 whitespace-nowrap">

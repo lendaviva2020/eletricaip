@@ -1,92 +1,126 @@
-// SCADA SUPERVISÓRIO — Industrial OS Status Bar
-// Anchored at the bottom of the viewport: displays system version, runtime mode, sync, and execution state
+// SCADA SUPERVISÓRIO — Barra inferior com banner fixo de alarmes (ISA-101 / ISA-18.2)
+// Sempre visível: contador de não reconhecidos e o alarme mais importante.
+// Um clique abre o faceplate do equipamento dono do alarme (ou a lista).
 
-import {
-  ShieldCheck,
-  Pulse,
-  Play,
-  Monitor,
-  CheckCircle,
-  ShieldWarning,
-} from "@phosphor-icons/react";
+import { useMemo } from "react";
+import { Bell, BellSimpleSlash, CheckCircle, ShieldWarning } from "@phosphor-icons/react";
 import { useScadaStore } from "@/lib/scada/scada-store";
-import { summarizeDrivers } from "@/lib/scada/types";
-import { toast } from "sonner";
+import { summarizeDrivers, type ScadaAlarmItem } from "@/lib/scada/types";
+import {
+  buildTagOwnerIndex,
+  equipmentIdForAlarm,
+  isActiveAlarm,
+} from "@/lib/scada/asset-hierarchy";
+import { cn } from "@/lib/utils";
+
+const RANK: Record<ScadaAlarmItem["priority"], number> = {
+  CRITICAL: 0,
+  HIGH: 1,
+  MEDIUM: 2,
+  LOW: 3,
+  INFO: 4,
+};
+
+/** Alarme do banner: não reconhecido primeiro, depois prioridade, depois o mais recente. */
+export function pickBannerAlarm(alarms: readonly ScadaAlarmItem[]): ScadaAlarmItem | null {
+  let best: ScadaAlarmItem | null = null;
+  for (const a of alarms) {
+    if (!isActiveAlarm(a)) continue;
+    if (!best) {
+      best = a;
+      continue;
+    }
+    const ua = a.state === "UNACK" ? 0 : 1;
+    const ub = best.state === "UNACK" ? 0 : 1;
+    if (ua !== ub) {
+      if (ua < ub) best = a;
+      continue;
+    }
+    const r = RANK[a.priority] - RANK[best.priority];
+    if (r < 0 || (r === 0 && a.timestamp > best.timestamp)) best = a;
+  }
+  return best;
+}
 
 export function ScadaOsStatusBar() {
   const isPhysicalControlAllowed = useScadaStore((s) => s.isPhysicalControlAllowed);
   const gatewayStatus = useScadaStore((s) => s.gatewayStatus);
   const isDemoProject = useScadaStore((s) => s.isDemoProject);
+  const alarms = useScadaStore((s) => s.alarms);
+  const equipments = useScadaStore((s) => s.equipments);
+  const tags = useScadaStore((s) => s.tags);
+  const selectEquipment = useScadaStore((s) => s.selectEquipment);
+  const setActiveView = useScadaStore((s) => s.setActiveView);
   const drivers = summarizeDrivers(gatewayStatus, isDemoProject);
 
-  const handleRuntimeClick = () => {
-    toast.info("Modo Runtime em Execução Contínua (Virtual)", {
-      description: "Supervisório conectado ao barramento determinístico industrial de simulação.",
-    });
+  const active = alarms.filter(isActiveAlarm);
+  const unack = active.filter((a) => a.state === "UNACK").length;
+  const top = pickBannerAlarm(alarms);
+  const ownerIndex = useMemo(() => buildTagOwnerIndex(equipments, tags), [equipments, tags]);
+  const owner = top ? equipmentIdForAlarm(top, equipments, ownerIndex) : null;
+
+  const openTop = () => {
+    if (owner) selectEquipment(owner);
+    else setActiveView("alarms");
   };
 
   return (
     <footer
-      className="h-7 shrink-0 bg-[#070A0E] border-t border-[#1E293B] px-3 flex items-center justify-between text-[11px] font-mono text-[#A7B0BB] select-none z-30"
+      className="h-8 shrink-0 bg-[#070A0E] border-t border-[#1E293B] px-2 sm:px-3 flex items-center gap-2 text-[11px] font-mono text-[#A7B0BB] select-none z-30"
       data-testid="scada-os-status-bar"
     >
-      {/* Left: Industrial OS Identification */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 text-white font-semibold tracking-wide">
-          <Monitor className="w-3.5 h-3.5 text-[#FF8A00]" />
-          <span>ElétricAi SCADA</span>
-        </div>
+      <button
+        onClick={() => setActiveView("alarms")}
+        className={cn(
+          "flex items-center gap-1.5 px-2 py-0.5 rounded border shrink-0",
+          unack > 0
+            ? "border-red-500/60 bg-red-500/15 text-red-200 font-bold"
+            : active.length > 0
+              ? "border-zinc-600 text-zinc-200"
+              : "border-zinc-800 text-zinc-500",
+        )}
+        aria-label={`${unack} alarmes não reconhecidos, ${active.length} ativos`}
+        data-testid="scada-alarm-counter"
+      >
+        {active.length > 0 ? (
+          <Bell className="w-3.5 h-3.5" />
+        ) : (
+          <BellSimpleSlash className="w-3.5 h-3.5" />
+        )}
+        <span>
+          {unack}/{active.length}
+        </span>
+      </button>
 
-        <span className="text-zinc-600">•</span>
-
-        <div className="flex items-center gap-1 text-zinc-300">
-          <span className="text-[10px] uppercase text-zinc-500">Modo:</span>
-          <span className="text-[#38BDF8] font-medium">Supervisão ISA-101</span>
-        </div>
-      </div>
-
-      {/* Center: Deterministic Bus & Security */}
-      <div className="hidden lg:flex items-center gap-2 xl:gap-3 text-xs">
-        <div className="flex items-center gap-1.5 text-zinc-400" data-testid="scada-driver-summary">
-          <CheckCircle
-            className={`w-3.5 h-3.5 ${
-              drivers.tone === "ok"
-                ? "text-emerald-400"
-                : drivers.tone === "warn"
-                  ? "text-amber-400"
-                  : "text-zinc-500"
-            }`}
-          />
-          <span>Drivers: {drivers.label}</span>
-        </div>
-
-        <span className="text-zinc-600 hidden xl:inline">•</span>
-
-        <div className="hidden xl:flex items-center gap-1.5 text-amber-400">
-          <ShieldWarning className="w-3.5 h-3.5" />
-          <span className="text-[10px] uppercase font-bold tracking-wider">
-            {isPhysicalControlAllowed ? "FÍSICO HABILITADO" : "CONTROLE FÍSICO BLOQUEADO"}
+      <button
+        onClick={openTop}
+        disabled={!top}
+        className={cn(
+          "flex-1 min-w-0 text-left truncate px-1 rounded",
+          top ? "hover:bg-zinc-900 text-zinc-200" : "text-zinc-500",
+          top?.state === "UNACK" && "text-red-200",
+        )}
+        data-testid="scada-alarm-banner"
+        title={top ? "Abrir faceplate do equipamento" : undefined}
+      >
+        {top ? (
+          <>
+            <span className="font-bold">{top.priority}</span> · {top.tag} · {top.description}
+          </>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <CheckCircle className="w-3.5 h-3.5" /> Sem alarmes ativos
           </span>
-        </div>
-      </div>
+        )}
+      </button>
 
-      {/* Right: Station ID & Runtime Button */}
-      <div className="flex items-center gap-2 xl:gap-3 shrink-0">
-        <div className="flex items-center gap-1 text-zinc-400 shrink-0">
-          <span className="text-[10px] text-zinc-500">ESTAÇÃO:</span>
-          <span className="text-zinc-300 font-semibold">ENG-OP-01</span>
-        </div>
-
-        <span className="text-zinc-600">•</span>
-
-        <button
-          onClick={handleRuntimeClick}
-          className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FF8A00]/15 hover:bg-[#FF8A00]/25 text-[#FF8A00] border border-[#FF8A00]/40 text-[10px] font-bold uppercase tracking-wider transition-colors shrink-0"
-        >
-          <Play className="w-3 h-3 fill-current" />
-          <span>Entrar no Runtime</span>
-        </button>
-      </div>
+      <span className="hidden lg:inline text-zinc-500 shrink-0" data-testid="scada-driver-summary">
+        Drivers: {drivers.label}
+      </span>
+      <span className="hidden md:flex items-center gap-1 text-amber-300 shrink-0 text-[10px] uppercase font-bold">
+        <ShieldWarning className="w-3.5 h-3.5" />
+        {isPhysicalControlAllowed ? "Físico habilitado" : "Controle físico bloqueado"}
+      </span>
     </footer>
   );
 }

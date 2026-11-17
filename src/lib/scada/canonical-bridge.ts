@@ -10,6 +10,17 @@ import type {
 import { canonicalIndustrialDataService } from "@/lib/industrial/canonical-data-service";
 import type { EquipmentTelemetry, ScadaTagDefinition } from "./types";
 import { useScadaStore } from "./scada-store";
+import { formatDesignation, isValidDeviceTag } from "@/lib/documentation/device-designation";
+
+function customSegment(eq: CanonicalEquipment, key: "plant" | "location"): string | undefined {
+  const v = eq.specs?.custom?.[key];
+  if (typeof v !== "string") return undefined;
+  const clean = v
+    .trim()
+    .replace(/[^A-Za-z0-9_.]/g, "")
+    .slice(0, 24);
+  return clean.length ? clean : undefined;
+}
 
 /**
  * Maps a CanonicalEquipment from the unified engineering schema (v3) to SCADA telemetry.
@@ -38,9 +49,15 @@ export function canonicalToScadaTelemetry(
   const nominalVoltage = specs.voltageV ?? 0;
   const nominalCurrent = specs.nominalCurrentA ?? 0;
 
+  const plant = customSegment(eq, "plant");
+  const location = customSegment(eq, "location");
+  const tag = eq.tagCode || eq.id;
   return {
     id: eq.id,
-    tag: eq.tagCode || eq.id,
+    tag,
+    plant,
+    location,
+    designation: isValidDeviceTag(tag) ? formatDesignation({ plant, location, tag }) : undefined,
     name: eq.displayName || `${eq.catalogType || "Equipamento"} ${eq.tagCode || eq.id}`,
     category: scadaCategoryOf(eq),
     status: "STANDBY",

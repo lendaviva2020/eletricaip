@@ -207,9 +207,6 @@ export function ScadaCommunicationView() {
             <span className="text-xs font-mono font-bold text-white uppercase">
               ElétricAi Master Edge Gateway — Sincronização & Buffer SQLite WAL
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
-              v1.0.0-bench
-            </span>
           </div>
 
           <div className="flex items-center gap-2 font-mono text-[10px]">

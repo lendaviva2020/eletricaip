@@ -263,7 +263,7 @@ export function EteSynopticPAndId() {
             strokeDasharray="3 2"
           />
 
-          {/* PLC-01: CLP S7-1500 com Racks I/O */}
+          {/* PLC-01: CLP com racks de E/S */}
           <g
             className="cursor-pointer group"
             onClick={() => selectEquipment("PLC-01")}

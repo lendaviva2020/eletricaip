@@ -18,7 +18,7 @@ Aguardando autorização. Cada fase em patches pequenos, com testes antes e depo
 - **Migration (sob aprovação):** `tag_samples` + `source`, `unit`, `equipment_id`, `sequence`.
 - **Aceite:** recarregar a página não perde alarmes nem auditoria; um tag aparece com o mesmo valor e origem no SCADA, no editor HMI e no modo Alarmes.
 
-## Fase 2 — Supervisão e HMI
+## Fase 2 — Supervisão e HMI — ✅ concluída em 2026-11-17 (ver AGENTS.md, 18ª rodada)
 
 - Hierarquia ISA-101: visão geral só com desvios; áreas da designação `=planta+local`; faceplate por equipamento canônico; árvore de ativos; paleta neutra; remover versões inventadas; P&ID da ETE só na demo.
 - **Aceite:** operador chega de qualquer alarme ao faceplate e à tendência em até 2 cliques.

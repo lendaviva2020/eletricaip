@@ -123,7 +123,7 @@ export function ScadaSidebar() {
             className={cn(
               "flex items-center gap-1",
               drivers.tone === "ok"
-                ? "text-emerald-400"
+                ? "text-zinc-300"
                 : drivers.tone === "warn"
                   ? "text-amber-400"
                   : "text-zinc-500",
@@ -139,7 +139,11 @@ export function ScadaSidebar() {
             <span
               className={cn(
                 "w-1.5 h-1.5 rounded-full shrink-0",
-                gatewayStatus.opcua.status === "CONNECTED" ? "bg-emerald-400" : "bg-red-500",
+                gatewayStatus.opcua.status === "CONNECTED"
+                  ? "bg-zinc-300"
+                  : gatewayStatus.opcua.status === "ERROR"
+                    ? "bg-red-500"
+                    : "border border-zinc-500",
               )}
             />
             <span className="truncate">OPC UA</span>
@@ -149,7 +153,11 @@ export function ScadaSidebar() {
             <span
               className={cn(
                 "w-1.5 h-1.5 rounded-full shrink-0",
-                gatewayStatus.modbus.status === "CONNECTED" ? "bg-emerald-400" : "bg-red-500",
+                gatewayStatus.modbus.status === "CONNECTED"
+                  ? "bg-zinc-300"
+                  : gatewayStatus.modbus.status === "ERROR"
+                    ? "bg-red-500"
+                    : "border border-zinc-500",
               )}
             />
             <span className="truncate">Modbus</span>
@@ -159,7 +167,11 @@ export function ScadaSidebar() {
             <span
               className={cn(
                 "w-1.5 h-1.5 rounded-full shrink-0",
-                gatewayStatus.mqtt.status === "CONNECTED" ? "bg-emerald-400" : "bg-red-500",
+                gatewayStatus.mqtt.status === "CONNECTED"
+                  ? "bg-zinc-300"
+                  : gatewayStatus.mqtt.status === "ERROR"
+                    ? "bg-red-500"
+                    : "border border-zinc-500",
               )}
             />
             <span className="truncate">MQTT</span>

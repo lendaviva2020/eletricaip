@@ -168,6 +168,14 @@ export interface EquipmentTelemetry {
   alarmsCount: number;
   // Linked canonical tags
   linkedTags: string[];
+  /**
+   * Hierarquia de ativos (IEC 81346): aspecto de função (`=planta`) e de local
+   * (`+local`) vindos do projeto. Ausente = o engenheiro ainda não definiu a área.
+   */
+  plant?: string;
+  location?: string;
+  /** Designação completa `=planta+local-tag` (Documentação EletricAI). */
+  designation?: string;
   /** Dados de PLACA/projeto (não medidos). Exibir sempre rotulados como nominais. */
   nominal?: {
     voltageV?: number;

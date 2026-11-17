@@ -1490,3 +1490,13 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - **Persistência**: `snapshot.hmiProcess` (`HmiDocSchema`, inválido abre vazio), autosave pelo `useHmiStore`.
 - **SCADA no celular**: barra lateral some abaixo de 768 px e vira seletor (`ScadaMobileNav`).
 - Testes: `hmi-process.test.ts`; E2E com CSP de produção (desktop e Pixel 7): código → desenho → operar, sem erros.
+
+### SCADA Fase 2 — hierarquia ISA-101 (2026-11-17, 18ª rodada)
+
+- **Modelo de ativos** (`lib/scada/asset-hierarchy.ts`, puro): áreas pela designação `=planta+local` (IEC 81346) lida de `specs.custom.plant/location` do equipamento canônico (`EquipmentTelemetry.plant/location/designation`, preenchidos em `canonical-bridge.ts`); sem local → "Área não definida" (nunca inventada). Árvore planta → local → equipamento com busca sem acento. Desvios: alarme não reconhecido/reconhecido, falha (TRIPPED), manutenção, qualidade ruim, sem atualização, forçado. Estado da área: ALARME/DESVIO/NORMAL/SEM DADOS (sem tag conectado = sem dados, não "normal"). O store guarda o mesmo tag por nome e por id — use `uniqueTags`.
+- **Dono do alarme** (`equipmentIdForAlarm`): pelo tag vinculado (`linkedEquipmentId`/`linkedTags`) ou prefixo `TAG.`/`TAG_` com separador (M1 não casa M10). Sem dono → lista à parte; nunca por palpite no texto.
+- **Visão Geral = nível 1**: só áreas e desvios; KPIs sem fonte removidos (cliente). O P&ID da ETE e os KPIs ficam só na demonstração (rotulados). O dock antigo (tags/eventos/OPC) saiu — cada coisa tem sua aba.
+- **Faceplate único** (`equipment-inspector-drawer.tsx`): designação/área, alarmes do equipamento (com reconhecer), desvios, **tendência já aberta** (`tag-trend-buffer.ts`: só valores publicados desde a abertura, ≤ 600 pontos/tag, trecho de qualidade não boa tracejado, troca de projeto zera), comando (simulação), dados de placa/medidos (sem "25 °C"/"CLP-01" inventados), tags com origem e forçamento, documentos (unifilar e dossiê). Antes os alarmes do equipamento eram calculados por substring e nem exibidos.
+- **Banner fixo de alarmes** no rodapé (`scada-os-status-bar.tsx`): contador não reconhecidos/ativos e o alarme mais importante (`pickBannerAlarm`); 1 clique abre o faceplate do dono. Removidos "ESTAÇÃO ENG-OP-01", "Entrar no Runtime", "v1.0.0-bench", "+4,2 %", "Set: 95 %" e a marca de CLP no seed/sinótico.
+- **Aceite**: alarme (banner, lista de alarmes ou visão geral) → faceplate em 1 clique, tendência visível sem outro clique. Testes: `scada-phase2-hierarchy.test.tsx`; E2E com CSP de produção em desktop e Pixel 7 sem erros.
+- **Paleta**: cor forte só para alarme/falha (vermelho) e desvio/simulação (âmbar); estados normais em cinza.

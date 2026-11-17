@@ -16,6 +16,8 @@ export const DEMO_ETE_TENANT_ID = "00000000-0000-4000-a000-000000000001";
 export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   "TR-01": {
     id: "TR-01",
+    plant: "ETE",
+    location: "ELETRICA",
     tag: "ETE.TR01",
     name: "Transformador Principal TR-01",
     category: "TRANSFORMER",
@@ -35,6 +37,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "QM-01": {
     id: "QM-01",
+    plant: "ETE",
+    location: "ELETRICA",
     tag: "ETE.QM01",
     name: "Quadro Geral de Baixa Tensão QM-01",
     category: "PANEL",
@@ -54,6 +58,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "PLC-01": {
     id: "PLC-01",
+    plant: "ETE",
+    location: "ELETRICA",
     tag: "ETE.PLC01",
     name: "Controlador Lógico Programável CLP-01",
     category: "PLC",
@@ -73,6 +79,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "T-101": {
     id: "T-101",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.TK101",
     name: "Tanque de Sedimentação T-101",
     category: "TANK",
@@ -94,6 +102,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "P-01": {
     id: "P-01",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.P01",
     name: "Bomba Centrífuga P-01 (M-01)",
     category: "PUMP",
@@ -116,6 +126,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "T-102": {
     id: "T-102",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.TK102",
     name: "Tanque de Aeração / Biológico T-102",
     category: "TANK",
@@ -137,6 +149,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "P-02": {
     id: "P-02",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.P02",
     name: "Bomba Centrífuga P-02 (M-02)",
     category: "PUMP",
@@ -159,6 +173,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "F-01": {
     id: "F-01",
+    plant: "ETE",
+    location: "FILTRACAO",
     tag: "ETE.FILTRO",
     name: "Filtro Multimídia de Areia F-01",
     category: "FILTER",
@@ -180,6 +196,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "T-105": {
     id: "T-105",
+    plant: "ETE",
+    location: "RESERVACAO",
     tag: "ETE.TK105",
     name: "Tanque de Despejo Tratado T-105",
     category: "TANK",
@@ -202,6 +220,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "V-01": {
     id: "V-01",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.V01",
     name: "Válvula Entrada Bruta V-01",
     category: "VALVE",
@@ -220,6 +240,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "V-02": {
     id: "V-02",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.V02",
     name: "Válvula Descarga P-01 (V-02)",
     category: "VALVE",
@@ -238,6 +260,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "V-04": {
     id: "V-04",
+    plant: "ETE",
+    location: "FILTRACAO",
     tag: "ETE.V04",
     name: "Válvula Descarga P-02 (V-04)",
     category: "VALVE",
@@ -256,6 +280,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "V-08": {
     id: "V-08",
+    plant: "ETE",
+    location: "RESERVACAO",
     tag: "ETE.V08",
     name: "Válvula Descarte Efluente Final V-08",
     category: "VALVE",
@@ -274,6 +300,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "CCM-01": {
     id: "CCM-01",
+    plant: "ETE",
+    location: "ELETRICA",
     tag: "ETE.CCM01",
     name: "Centro de Controle de Motores Inteligente CCM-01",
     category: "PANEL",
@@ -293,6 +321,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "P-03": {
     id: "P-03",
+    plant: "ETE",
+    location: "DOSAGEM",
     tag: "ETE.P03",
     name: "Bomba Dosadora Química P-03 (M-03)",
     category: "PUMP",
@@ -315,6 +345,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "P-04": {
     id: "P-04",
+    plant: "ETE",
+    location: "DOSAGEM",
     tag: "ETE.P04",
     name: "Bomba Dosadora Polímero P-04 (M-04)",
     category: "PUMP",
@@ -337,6 +369,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "P-05": {
     id: "P-05",
+    plant: "ETE",
+    location: "LODO",
     tag: "ETE.P05",
     name: "Bomba Retorno de Lodo Ativado P-05 (M-05)",
     category: "PUMP",
@@ -359,6 +393,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "P-06": {
     id: "P-06",
+    plant: "ETE",
+    location: "LODO",
     tag: "ETE.P06",
     name: "Bomba Reserva de Lodo P-06 (M-06)",
     category: "PUMP",
@@ -381,6 +417,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "P-07": {
     id: "P-07",
+    plant: "ETE",
+    location: "AERACAO",
     tag: "ETE.P07",
     name: "Soprador de Aeração T-102 P-07 (M-07)",
     category: "PUMP",
@@ -403,6 +441,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "P-08": {
     id: "P-08",
+    plant: "ETE",
+    location: "AERACAO",
     tag: "ETE.P08",
     name: "Soprador de Aeração Reserva P-08 (M-08)",
     category: "PUMP",
@@ -425,6 +465,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "V-03": {
     id: "V-03",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.V03",
     name: "Válvula Bypass Sedimentador V-03",
     category: "VALVE",
@@ -443,6 +485,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "V-05": {
     id: "V-05",
+    plant: "ETE",
+    location: "FILTRACAO",
     tag: "ETE.V05",
     name: "Válvula Retrolavagem Filtro F-01 V-05",
     category: "VALVE",
@@ -461,6 +505,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "V-06": {
     id: "V-06",
+    plant: "ETE",
+    location: "AERACAO",
     tag: "ETE.V06",
     name: "Válvula Entrada Ar Aeração V-06",
     category: "VALVE",
@@ -479,6 +525,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "V-07": {
     id: "V-07",
+    plant: "ETE",
+    location: "DOSAGEM",
     tag: "ETE.V07",
     name: "Válvula Dosagem Coagulante V-07",
     category: "VALVE",
@@ -497,6 +545,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "LT-01": {
     id: "LT-01",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.LT01",
     name: "Transmissor de Nível Radar T-101 (LT-01)",
     category: "SENSOR",
@@ -516,6 +566,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "LT-02": {
     id: "LT-02",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.LT02",
     name: "Transmissor de Nível Ultrassônico T-102 (LT-02)",
     category: "SENSOR",
@@ -535,6 +587,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "LT-05": {
     id: "LT-05",
+    plant: "ETE",
+    location: "RESERVACAO",
     tag: "ETE.LT05",
     name: "Transmissor de Nível Hidrostático T-105 (LT-05)",
     category: "SENSOR",
@@ -554,6 +608,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "PT-01": {
     id: "PT-01",
+    plant: "ETE",
+    location: "FILTRACAO",
     tag: "ETE.PT01",
     name: "Transmissor de Pressão Diferencial F-01 (PT-01)",
     category: "SENSOR",
@@ -573,6 +629,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "FT-01": {
     id: "FT-01",
+    plant: "ETE",
+    location: "BOMBEAMENTO",
     tag: "ETE.FT01",
     name: "Medidor Eletromagnético de Vazão Efluente (FT-01)",
     category: "SENSOR",
@@ -592,6 +650,8 @@ export const DEMO_ETE_EQUIPMENTS: Record<string, EquipmentTelemetry> = {
   },
   "AIT-01": {
     id: "AIT-01",
+    plant: "ETE",
+    location: "RESERVACAO",
     tag: "ETE.AIT01",
     name: "Analisador Multiparâmetro pH / Turbidez (AIT-01)",
     category: "SENSOR",
@@ -813,7 +873,7 @@ export const DEMO_ETE_TAGS: Record<string, ScadaTagDefinition> = {
   "ETE.PLC01.STATUS": {
     id: "tag-plc01-status",
     name: "ETE.PLC01.STATUS",
-    description: "Status de Execução CPU S7-1500",
+    description: "Status de execução da CPU",
     dataType: "STRING",
     unit: "",
     scaleMin: 0,
