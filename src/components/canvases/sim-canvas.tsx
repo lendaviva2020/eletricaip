@@ -23,6 +23,7 @@ import { usePlantStore } from "@/lib/simulation/plant-store";
 import { plantTags } from "@/lib/simulation/plant-engine";
 import { useRuntimeStore, useUnifiedProjectStore } from "@/lib/model";
 import { cn } from "@/lib/utils";
+import { isDocumentHidden } from "@/lib/utils/visibility";
 import { pushNotification } from "@/lib/notification-service";
 import { useI18n } from "@/lib/i18n";
 
@@ -120,6 +121,7 @@ export function SimCanvas() {
     if (paused) return;
 
     const interval = setInterval(() => {
+      if (isDocumentHidden()) return; // aba oculta: não amostrar para exibição
       const unifiedDoc = useUnifiedProjectStore.getState().doc;
       const runtimeTagValues = useRuntimeStore.getState().tagValuesById;
 

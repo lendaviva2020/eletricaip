@@ -8,10 +8,12 @@
  */
 import { useEffect } from "react";
 import { useScadaStore } from "@/lib/scada/scada-store";
+import { isDocumentHidden } from "@/lib/utils/visibility";
 
 export function useScadaSimTick(): void {
   useEffect(() => {
     const id = setInterval(() => {
+      if (isDocumentHidden()) return; // não simular com a aba oculta
       useScadaStore.getState().tickSimulation();
     }, 1000);
     return () => clearInterval(id);
