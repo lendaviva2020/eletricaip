@@ -10,7 +10,6 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { checkRateLimit } from "@/lib/security/rate-limiter.server";
@@ -54,7 +53,7 @@ export const ingestBenchTelemetry = createServerFn({ method: "POST" })
     }
 
     // RPC nova ainda fora dos tipos gerados: chamada sem genérico; a resposta é validada.
-    const admin = supabaseAdmin as unknown as SupabaseClient;
+    const admin = supabaseAdmin;
     const { data: result, error } = await admin.rpc("ingest_bench_telemetry", {
       p_user_id: context.userId,
       p_device_external_id: data.deviceExternalId,

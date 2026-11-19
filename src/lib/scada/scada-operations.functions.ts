@@ -11,7 +11,6 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth, type AuthContext } from "@/integrations/supabase/auth-middleware";
 import { DEMO_ETE_PROJECT_ID } from "./demo-ete-seed";
 import { authorizeProjectAccess } from "./scada.functions";
@@ -139,7 +138,7 @@ export const persistScadaBatch = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
       }));
       // Colunas novas (occurrence_id/source) ainda fora dos tipos gerados.
-      const { error } = await (ctx.supabase as unknown as SupabaseClient)
+      const { error } = await ctx.supabase
         .from("alarm_history")
         .upsert(rows, { onConflict: "project_id,occurrence_id" });
       if (error) {
@@ -233,7 +232,7 @@ export const loadScadaPersistedState = createServerFn({ method: "POST" })
       if (isDemo(data.projectId)) return { alarms: [], auditLogs: [] };
       const { tenantId, role } = await authorizeProjectAccess(ctx, data.projectId);
 
-      const db = ctx.supabase as unknown as SupabaseClient;
+      const db = ctx.supabase;
       const [openRes, recentRes] = await Promise.all([
         // Ainda exigem atenção, qualquer idade.
         db

@@ -3,7 +3,6 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { AuthContext } from "@/integrations/supabase/auth-middleware";
@@ -351,9 +350,7 @@ export const ingestTagSamplesBatch = createServerFn({ method: "POST" })
     }));
 
     // Colunas novas (origem/unidade) ainda fora dos tipos gerados.
-    const { error } = await (supabase as unknown as SupabaseClient)
-      .from("tag_samples")
-      .insert(rows);
+    const { error } = await supabase.from("tag_samples").insert(rows);
 
     if (error) {
       console.error("[scada.historian] insert falhou:", error.code, error.message);

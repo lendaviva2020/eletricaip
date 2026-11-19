@@ -5,6 +5,9 @@ import { requireSupabaseAuth, requireActiveSession } from "@/integrations/supaba
 import type { Database } from "@/integrations/supabase/types";
 import { getPlan } from "@/lib/plans";
 
+/** Validade do convite de equipe (7 dias). */
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export type TenantSummary = {
   id: string;
   name: string;
@@ -211,6 +214,12 @@ export const createInvite = createServerFn({ method: "POST" })
     const tenantId = await requireTenantAdmin(supabase, userId);
     await assertSeatAvailable(supabase, tenantId);
 
+    // token e expires_at são NOT NULL sem default no banco (a tipagem estrita
+    // revelou a ausência): sem gerá-los aqui, o convite falhava no INSERT.
+    // Token aleatório (64 hex), lido de volta para montar o link do convite.
+    const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+    const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
+
     const { data: invite, error } = await supabase
       .from("invites")
       .insert({
@@ -219,6 +228,8 @@ export const createInvite = createServerFn({ method: "POST" })
         role: data.role,
         invited_name: data.invitedName ?? null,
         invited_sector: data.invitedSector ?? null,
+        token,
+        expires_at: expiresAt,
       })
       .select("id, token, expires_at")
       .single();

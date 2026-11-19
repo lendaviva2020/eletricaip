@@ -97,7 +97,7 @@ export const loadAlarmPointSettings = createServerFn({ method: "POST" })
       if (data.projectId === DEMO_ETE_PROJECT_ID)
         return { available: true, settings: [], role: "owner" };
       const { role } = await authorizeProjectAccess(ctx, data.projectId);
-      const { data: rows, error } = await (ctx.supabase as unknown as SupabaseClient)
+      const { data: rows, error } = await ctx.supabase
         .from("alarm_point_settings")
         .select(SETTING_COLUMNS)
         .eq("project_id", data.projectId)
@@ -257,6 +257,8 @@ export const updateAlarmPoint = createServerFn({ method: "POST" })
     ]);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // `patch` é montado dinamicamente (campos variam por tipo de mudança);
+    // o cast permite o upsert parcial. As chaves/valores já batem com a tabela.
     const { data: row, error } = await (supabaseAdmin as unknown as SupabaseClient)
       .from("alarm_point_settings")
       .upsert(patch, { onConflict: "project_id,point_key" })
@@ -289,7 +291,7 @@ export const loadAlarmKpis = createServerFn({ method: "POST" })
     await authorizeProjectAccess(ctx, data.projectId);
     const now = Date.now();
     const from = now - data.hours * 3_600_000;
-    const db = ctx.supabase as unknown as SupabaseClient;
+    const db = ctx.supabase;
     const cols =
       "occurrence_id, tag_name, description, severity, state, category, value, setpoint, triggered_at, acknowledged_at, acknowledged_by, cleared_at, source";
     const [rangeRes, standingRes] = await Promise.all([

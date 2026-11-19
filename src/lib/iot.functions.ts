@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { IS_PHYSICAL_CONTROL_ALLOWED } from "@/lib/edge/protocol-classification";
@@ -46,7 +45,7 @@ export const getLatestReadings = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     // metric/unit ainda fora dos tipos gerados: consulta sem genérico, saída validada.
-    const db = context.supabase as unknown as SupabaseClient;
+    const db = context.supabase;
     const run = (withMetric: boolean) => {
       let q = db
         .from("iot_readings")
@@ -194,6 +193,10 @@ export const enqueueIotCommand = createServerFn({ method: "POST" })
         watchdog_timeout_ms: data.watchdogMs,
         fail_safe_on_timeout: true,
         expires_at: expiresAt,
+        // Colunas NOT NULL sem default (a tipagem estrita revelou a ausência):
+        // sem elas o INSERT falhava com violação de NOT NULL.
+        requested_at: new Date().toISOString(),
+        state: "PENDING",
       })
       .select("id")
       .single();
