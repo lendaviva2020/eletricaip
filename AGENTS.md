@@ -18,7 +18,7 @@
 | Público-alvo                     | Engenheiros elétricos, automatistas, integradores e plantas industriais — mercado brasileiro (preços em BRL, Mercado Pago, normas NBR/ABNT e IEC)                                                                                                                                  |
 | Arquitetura                      | SPA/SSR **TanStack Start** (React 19) na Vercel; camada de API por **server functions** (`createServerFn`); **Supabase** (Postgres + RLS, Auth, Storage, Realtime, Edge Functions); IA via **DeepSeek** somente no servidor                                                        |
 | Hospedagem                       | Vercel (preset `nitro: vercel`) + projeto Supabase cloud (`project_id = "rvaaxvdimggztjxoktvy"` em `supabase/config.toml`) + Upstash (rate limiting, quando configurado)                                                                                                           |
-| Integrações externas confirmadas | DeepSeek (`api.deepseek.com`), Stripe, Mercado Pago, Supabase (Auth/DB/Storage/Realtime), Google OAuth, Upstash Redis REST, Modbus TCP (socket no servidor, com guarda SSRF). **Lovable removido do projeto em 2026-11-19** (servidor MCP + broker de preview; resta apenas `@lovable.dev/vite-tanstack-config` no build)                                                   |
+| Integrações externas confirmadas | DeepSeek (`api.deepseek.com`), Stripe, Mercado Pago, Supabase (Auth/DB/Storage/Realtime), Google OAuth, Upstash Redis REST, Modbus TCP (socket no servidor, com guarda SSRF). **Lovable removido integralmente do projeto em 2026-11-19** — servidor MCP, broker de preview E o config de build `@lovable.dev/vite-tanstack-config`; o `vite.config.ts` agora compõe o stack TanStack Start diretamente (Tailwind + tsconfig-paths + tanstackStart + Nitro/Vercel + React). Nenhum `@lovable.dev/*` resta no código ou no `package.json`. A IA do chat chama-se **EletricAI** (antes "NexusMind") |
 | Estado real                      | Substancialmente implementado nos editores e persistência; várias telas exibem dados sintéticos/demo; alguns módulos do briefing não têm UI (documentos, relatórios dedicados, tela de cálculos, admin dedicado)                                                                   |
 
 ---
@@ -608,7 +608,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 - **Controles ausentes ou insuficientes:** Falha explícita quando env vars públicas faltam
 - **Recomendação:** Remover os fallbacks, lançando erro de configuração em build sem env vars; avaliar rotação da anon key se o projeto for público
 - **Prioridade de tratamento:** Normal
-- **Dependências:** `env.ts`, `client.ts`, deploy Lovable/Vercel
+- **Dependências:** `env.ts`, `client.ts`, deploy Vercel
 - **Risco da correção:** Baixo
 - **Validação necessária:** Build sem env vars falha com mensagem clara; build com env vars funciona
 - **Referências:** `src/integrations/supabase/env.ts:7-9,24-34`
