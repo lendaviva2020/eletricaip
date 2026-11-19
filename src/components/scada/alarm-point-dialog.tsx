@@ -26,18 +26,23 @@ import {
 import { updateAlarmPoint } from "@/lib/scada/alarm-management.functions";
 import { applyLocalChange, useAlarmMgmtStore } from "@/lib/scada/alarm-management-store";
 import { useScadaStore } from "@/lib/scada/scada-store";
+import { useI18n } from "@/lib/i18n";
 import type { ScadaAlarmItem } from "@/lib/scada/types";
 
 export type AlarmPointAction = "shelve" | "outOfService" | "rationalize";
 
-const TITLE: Record<AlarmPointAction, string> = {
-  shelve: "Pôr na prateleira",
-  outOfService: "Tirar de serviço",
-  rationalize: "Racionalizar alarme",
+type Tr = (key: string, params?: Record<string, string | number>) => string;
+
+const TITLE_KEY: Record<AlarmPointAction, string> = {
+  shelve: "scada2.pointDlg.titleShelve",
+  outOfService: "scada2.pointDlg.titleOos",
+  rationalize: "scada2.pointDlg.titleRationalize",
 };
 
-function durationLabel(min: number): string {
-  return min < 60 ? `${min} minutos` : `${min / 60} hora${min === 60 ? "" : "s"}`;
+function durationLabel(min: number, t: Tr): string {
+  if (min < 60) return t("scada2.pointDlg.durMin", { n: min });
+  const h = min / 60;
+  return h === 1 ? t("scada2.pointDlg.durHour", { n: h }) : t("scada2.pointDlg.durHours", { n: h });
 }
 
 type Change = Parameters<typeof applyLocalChange>[3];
@@ -47,6 +52,7 @@ export function useAlarmPointChange() {
   const projectId = useScadaStore((s) => s.currentProjectId);
   const isDemo = useScadaStore((s) => s.isDemoProject);
   const update = useServerFn(updateAlarmPoint);
+  const { t } = useI18n();
   return async (pointKey: string, tagName: string, change: Change): Promise<boolean> => {
     const mgmt = useAlarmMgmtStore.getState();
     if (!projectId) return false;
@@ -61,7 +67,7 @@ export function useAlarmPointChange() {
       }
       return true;
     } catch (err) {
-      let msg = "Não foi possível concluir a ação.";
+      let msg = t("scada2.pointDlg.errGeneric");
       if (err instanceof Response) {
         const text = await err.text().catch(() => "");
         if (text && text.length < 200) msg = text;
@@ -81,6 +87,7 @@ export function AlarmPointDialog({
   action: AlarmPointAction | null;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const settings = useAlarmMgmtStore((s) => s.settings);
   const available = useAlarmMgmtStore((s) => s.available);
   const run = useAlarmPointChange();
@@ -114,7 +121,7 @@ export function AlarmPointDialog({
     responseNum === null ||
     (Number.isInteger(responseNum) && responseNum >= 1 && responseNum <= 1440);
   const rationaleOk =
-    [cause, consequence, corrective].every((t) => t.trim().length >= 3) && responseOk;
+    [cause, consequence, corrective].every((v) => v.trim().length >= 3) && responseOk;
   const blocked = !available || (isSafety && action !== "rationalize");
   const canSubmit = !busy && !blocked && (action === "rationalize" ? rationaleOk : reasonOk);
 
@@ -138,10 +145,13 @@ export function AlarmPointDialog({
     if (ok) {
       toast.success(
         action === "shelve"
-          ? `${alarm.tag} na prateleira por ${durationLabel(minutes)}.`
+          ? t("scada2.pointDlg.toastShelved", {
+              tag: alarm.tag,
+              dur: durationLabel(minutes, t),
+            })
           : action === "outOfService"
-            ? `${alarm.tag} fora de serviço.`
-            : `Racionalização de ${alarm.tag} gravada.`,
+            ? t("scada2.pointDlg.toastOos", { tag: alarm.tag })
+            : t("scada2.pointDlg.toastRationalized", { tag: alarm.tag }),
       );
       onClose();
     }
@@ -151,7 +161,7 @@ export function AlarmPointDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{TITLE[action]}</DialogTitle>
+          <DialogTitle>{t(TITLE_KEY[action])}</DialogTitle>
           <DialogDescription>
             <span className="font-mono">{alarm.tag}</span> — {alarm.description}
           </DialogDescription>
@@ -159,19 +169,19 @@ export function AlarmPointDialog({
 
         {!available && (
           <p className="text-sm text-amber-600 dark:text-amber-300">
-            A gestão de alarmes ainda não foi ativada no banco deste ambiente.
+            {t("scada2.pointDlg.notActivated")}
           </p>
         )}
         {isSafety && action !== "rationalize" && (
           <p className="text-sm text-destructive" data-testid="alarm-safety-block">
-            Alarme de segurança não pode ir para a prateleira nem sair de serviço pelo supervisório.
+            {t("scada2.pointDlg.safetyBlock")}
           </p>
         )}
 
         {action === "shelve" && !blocked && (
           <div className="space-y-3">
             <div>
-              <Label htmlFor="shelve-duration">Por quanto tempo</Label>
+              <Label htmlFor="shelve-duration">{t("scada2.pointDlg.howLong")}</Label>
               <select
                 id="shelve-duration"
                 value={minutes}
@@ -180,12 +190,12 @@ export function AlarmPointDialog({
               >
                 {SHELVE_DURATIONS_MIN.map((m) => (
                   <option key={m} value={m}>
-                    {durationLabel(m)}
+                    {durationLabel(m, t)}
                   </option>
                 ))}
               </select>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Volta sozinho ao vencer o prazo. Continua sendo registrado no histórico.
+                {t("scada2.pointDlg.shelveHint")}
               </p>
             </div>
             <ReasonField value={reason} onChange={setReason} />
@@ -194,31 +204,33 @@ export function AlarmPointDialog({
 
         {action === "outOfService" && !blocked && (
           <div className="space-y-3">
-            <p className="text-[12px] text-muted-foreground">
-              Para manutenção ou instrumento com defeito. Fica fora até alguém da engenharia
-              devolvê-lo ao serviço.
-            </p>
+            <p className="text-[12px] text-muted-foreground">{t("scada2.pointDlg.oosHint")}</p>
             <ReasonField value={reason} onChange={setReason} />
           </div>
         )}
 
         {action === "rationalize" && (
           <div className="space-y-3">
-            <TextBlock id="rat-cause" label="Causa provável" value={cause} onChange={setCause} />
+            <TextBlock
+              id="rat-cause"
+              label={t("scada2.pointDlg.causeLabel")}
+              value={cause}
+              onChange={setCause}
+            />
             <TextBlock
               id="rat-consequence"
-              label="Consequência se ninguém agir"
+              label={t("scada2.pointDlg.consequenceLabel")}
               value={consequence}
               onChange={setConsequence}
             />
             <TextBlock
               id="rat-action"
-              label="Ação do operador"
+              label={t("scada2.pointDlg.actionLabel")}
               value={corrective}
               onChange={setCorrective}
             />
             <div>
-              <Label htmlFor="rat-response">Tempo para agir (minutos, opcional)</Label>
+              <Label htmlFor="rat-response">{t("scada2.pointDlg.responseLabel")}</Label>
               <Input
                 id="rat-response"
                 inputMode="numeric"
@@ -233,14 +245,14 @@ export function AlarmPointDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={busy}>
-            Cancelar
+            {t("scada2.pointDlg.cancel")}
           </Button>
           <Button
             onClick={() => void submit()}
             disabled={!canSubmit}
             data-testid="alarm-point-submit"
           >
-            {busy ? "Gravando…" : "Confirmar"}
+            {busy ? t("scada2.pointDlg.saving") : t("scada2.pointDlg.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -249,16 +261,17 @@ export function AlarmPointDialog({
 }
 
 function ReasonField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n();
   return (
     <div>
-      <Label htmlFor="alarm-reason">Motivo</Label>
+      <Label htmlFor="alarm-reason">{t("scada2.pointDlg.reason")}</Label>
       <Textarea
         id="alarm-reason"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={REASON_MAX}
         rows={3}
-        placeholder="Ex.: sensor em calibração, OS 1234"
+        placeholder={t("scada2.pointDlg.reasonPlaceholder")}
         className="mt-1.5"
       />
     </div>

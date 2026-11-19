@@ -14,6 +14,12 @@ describe("i18n scada2 (telas SCADA Fases 2/3)", () => {
       "scada2.alarms.noRationale",
       "scada2.faceplate.command",
       "scada2.faceplate.noFieldWrite",
+      "scada2.pointDlg.titleShelve",
+      "scada2.pointDlg.safetyBlock",
+      "scada2.pointDlg.confirm",
+      "scada2.kpi.perHour",
+      "scada2.kpi.refsNote",
+      "scada2.kpi.days7",
     ]) {
       expect(translate(key, undefined, "pt-BR")).not.toBe(key);
       expect(translate(key, undefined, "en")).not.toBe(key);
@@ -25,5 +31,10 @@ describe("i18n scada2 (telas SCADA Fases 2/3)", () => {
     expect(translate("scada2.statusBar.drivers", { label: "Simulação" }, "en")).toContain(
       "Simulação",
     );
+    expect(translate("scada2.pointDlg.durHours", { n: 8 }, "pt-BR")).toContain("8");
+    expect(
+      translate("scada2.pointDlg.toastShelved", { tag: "M1", dur: "8 horas" }, "pt-BR"),
+    ).toContain("M1");
+    expect(translate("scada2.kpi.perHourHint", { ok: 1, warn: 10 }, "en")).toContain("10");
   });
 });

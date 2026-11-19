@@ -12,12 +12,13 @@ import {
   type AlarmKpis,
 } from "@/lib/scada/alarm-management";
 import { loadAlarmKpis } from "@/lib/scada/alarm-management.functions";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const WINDOWS = [
   { hours: 24, label: "24 h" },
-  { hours: 168, label: "7 dias" },
-  { hours: 720, label: "30 dias" },
+  { hours: 168, labelKey: "scada2.kpi.days7" },
+  { hours: 720, labelKey: "scada2.kpi.days30" },
 ] as const;
 
 type Level = "ok" | "warn" | "bad";
@@ -43,6 +44,7 @@ function minutes(ms: number | null): string {
 }
 
 export function AlarmKpiPanel() {
+  const { t } = useI18n();
   const projectId = useScadaStore((s) => s.currentProjectId);
   const isDemo = useScadaStore((s) => s.isDemoProject);
   const alarms = useScadaStore((s) => s.alarms);
@@ -87,91 +89,99 @@ export function AlarmKpiPanel() {
               hours === w.hours ? "border-zinc-300 text-white" : "border-zinc-800 text-zinc-400",
             )}
           >
-            {w.label}
+            {"labelKey" in w ? t(w.labelKey) : w.label}
           </button>
         ))}
         <span className="text-[11px] text-zinc-500">
-          {isDemo
-            ? "Demonstração: só os alarmes desta sessão (nada é gravado)."
-            : "Calculado do histórico de alarmes gravado do projeto."}
+          {isDemo ? t("scada2.kpi.demoNote") : t("scada2.kpi.projNote")}
         </span>
       </div>
 
-      {!isDemo && q.isLoading && <p className="text-sm text-zinc-500">Calculando…</p>}
-      {!isDemo && q.isError && (
-        <p className="text-sm text-red-300">Não foi possível calcular os indicadores.</p>
+      {!isDemo && q.isLoading && (
+        <p className="text-sm text-zinc-500">{t("scada2.kpi.calculating")}</p>
       )}
+      {!isDemo && q.isError && <p className="text-sm text-red-300">{t("scada2.kpi.calcError")}</p>}
       {q.data?.truncated && (
-        <p className="text-[11px] text-amber-300">
-          Histórico muito grande: considerados os 20 mil alarmes mais recentes.
-        </p>
+        <p className="text-[11px] text-amber-300">{t("scada2.kpi.truncated")}</p>
       )}
 
       {k && (
         <>
           {k.total === 0 && (
             <p className="text-sm text-zinc-500" data-testid="alarm-kpi-empty">
-              Nenhum alarme registrado no período.
+              {t("scada2.kpi.emptyPeriod")}
             </p>
           )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2" data-testid="alarm-kpi-cards">
             <Kpi
-              label="Alarmes por hora"
+              label={t("scada2.kpi.perHour")}
               value={fmt(k.perHour)}
               lvl={level(k.perHour, ISA_TARGETS.perHourAcceptable, ISA_TARGETS.perHourManageable)}
-              hint={`ref. ≤ ${ISA_TARGETS.perHourAcceptable} aceitável · ≤ ${ISA_TARGETS.perHourManageable} máximo`}
+              hint={t("scada2.kpi.perHourHint", {
+                ok: ISA_TARGETS.perHourAcceptable,
+                warn: ISA_TARGETS.perHourManageable,
+              })}
             />
             <Kpi
-              label="Pico em 10 min"
+              label={t("scada2.kpi.peak10")}
               value={String(k.peak10Min)}
               lvl={level(k.peak10Min, ISA_TARGETS.per10MinManageable, ISA_TARGETS.floodPer10Min)}
-              hint={`média ${fmt(k.per10MinAvg, 2)} · inundação > ${ISA_TARGETS.floodPer10Min}`}
+              hint={t("scada2.kpi.peak10Hint", {
+                avg: fmt(k.per10MinAvg, 2),
+                flood: ISA_TARGETS.floodPer10Min,
+              })}
             />
             <Kpi
-              label="Tempo em inundação"
+              label={t("scada2.kpi.floodTime")}
               value={`${fmt(k.floodTimePct)} %`}
               lvl={level(
                 k.floodTimePct,
                 ISA_TARGETS.floodTimePctMax,
                 ISA_TARGETS.floodTimePctMax * 5,
               )}
-              hint={`${k.floodIntervals} intervalo(s) de 10 min · ref. < ${ISA_TARGETS.floodTimePctMax} %`}
+              hint={t("scada2.kpi.floodTimeHint", {
+                n: k.floodIntervals,
+                max: ISA_TARGETS.floodTimePctMax,
+              })}
             />
             <Kpi
-              label="10 mais frequentes"
+              label={t("scada2.kpi.top10")}
               value={`${fmt(k.top10Pct)} %`}
               lvl={k.total < 20 ? "ok" : level(k.top10Pct, ISA_TARGETS.top10ContributionPctMax, 20)}
-              hint={`do total (${k.total}) · ref. < ${ISA_TARGETS.top10ContributionPctMax} %`}
+              hint={t("scada2.kpi.top10Hint", {
+                total: k.total,
+                max: ISA_TARGETS.top10ContributionPctMax,
+              })}
             />
             <Kpi
-              label="Em oscilação"
+              label={t("scada2.kpi.chattering")}
               value={String(k.chatteringPoints.length)}
               lvl={k.chatteringPoints.length ? "warn" : "ok"}
-              hint={`≥ ${ISA_TARGETS.chatterActivations} disparos em 60 s`}
+              hint={t("scada2.kpi.chatteringHint", { n: ISA_TARGETS.chatterActivations })}
             />
             <Kpi
-              label="Parados > 24 h"
+              label={t("scada2.kpi.standing")}
               value={String(k.standing.length)}
               lvl={k.standing.length ? "warn" : "ok"}
-              hint="ativos sem normalizar"
+              hint={t("scada2.kpi.standingHint")}
             />
             <Kpi
-              label="Tempo até reconhecer"
+              label={t("scada2.kpi.ackTime")}
               value={minutes(k.medianAckMs)}
               lvl="ok"
-              hint="mediana"
+              hint={t("scada2.kpi.ackTimeHint")}
             />
             <Kpi
-              label="Prioridades"
+              label={t("scada2.kpi.priorities")}
               value={`${k.priorityMix.CRITICAL}/${k.priorityMix.HIGH}/${k.priorityMix.MEDIUM}/${k.priorityMix.LOW}`}
               lvl="ok"
-              hint="crítica/alta/média/baixa"
+              hint={t("scada2.kpi.prioritiesHint")}
             />
           </div>
 
           <div className="grid gap-3 lg:grid-cols-3">
             <ListBox
-              title="Mais frequentes"
+              title={t("scada2.kpi.listTop")}
               empty="—"
               items={k.topBadActors.map((a) => ({
                 key: a.pointKey,
@@ -180,17 +190,17 @@ export function AlarmKpiPanel() {
               }))}
             />
             <ListBox
-              title="Em oscilação (chattering)"
-              empty="Nenhum."
+              title={t("scada2.kpi.listChattering")}
+              empty={t("scada2.kpi.listEmpty")}
               items={k.chatteringPoints.map((c) => ({
                 key: c.pointKey,
                 left: c.tag,
-                right: `${c.maxIn60s} em 60 s`,
+                right: t("scada2.kpi.in60s", { n: c.maxIn60s }),
               }))}
             />
             <ListBox
-              title="Parados há mais de 24 h"
-              empty="Nenhum."
+              title={t("scada2.kpi.listStanding")}
+              empty={t("scada2.kpi.listEmpty")}
               items={k.standing.map((s) => ({
                 key: s.pointKey,
                 left: s.tag,
@@ -198,10 +208,7 @@ export function AlarmKpiPanel() {
               }))}
             />
           </div>
-          <p className="text-[10px] text-zinc-600">
-            Referências usuais de gestão de alarmes por console de operação (ISA-18.2 / EEMUA 191).
-            Servem para orientar a racionalização, não como certificação.
-          </p>
+          <p className="text-[10px] text-zinc-600">{t("scada2.kpi.refsNote")}</p>
         </>
       )}
     </div>
