@@ -68,10 +68,8 @@ describe("RISK-023 — redirect do consentimento OAuth", () => {
     expect(isSafeOAuthRedirect(raw)).toBe(false);
   });
 
-  it("rota de consentimento valida antes de redirecionar (loader e decisão)", () => {
-    const src = readFileSync(resolve(__dirname, "../routes/[.]lovable.oauth.consent.tsx"), "utf8");
-    expect(src.match(/isSafeOAuthRedirect\(/g)?.length).toBeGreaterThanOrEqual(2);
-  });
+  // A rota de consentimento OAuth do MCP (Lovable) foi removida do projeto;
+  // `isSafeOAuthRedirect` permanece coberto pelos casos acima.
 });
 
 describe("RISK-024 — política única de senha (espelha o painel do Supabase)", () => {
