@@ -80,28 +80,6 @@ jobs:
           bunx playwright test tests/e2e/05-security-barrier-and-fleet.spec.ts
           kill $SERVER_PID || true
 
-  deploy-supabase:
-    needs: [quality, e2e-browser]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-      - name: Deploy Supabase Edge Functions
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          supabase functions deploy ai-industrial-architect \
-            --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy stripe-webhook \
-            --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} \
-            --no-verify-jwt
-
   deploy-vercel:
     needs: [quality, e2e-browser]
     if: github.ref == 'refs/heads/main'
