@@ -379,7 +379,7 @@ export const en: TranslationCatalog = {
     sendAria: "Send question",
   },
   aiChat: {
-    title: "NEXUSMIND AI CO-PILOT",
+    title: "EletricAI",
     creditsRemaining: "{remaining}/{max} credits",
     creditsUnlimited: "∞ credits",
     creditsPlaceholder: "-- credits",
@@ -388,11 +388,11 @@ export const en: TranslationCatalog = {
     demoFaulty: "Faulty Demo",
     ocrActive: "Active OCR Module",
     ocrExtracting: "Extracting and validating engineering specifications...",
-    normAlertsTitle: "NexusMind Normative Alerts",
+    normAlertsTitle: "EletricAI Normative Alerts",
     allCompliant:
       "✅ All canvases comply with IEC 60364, NFPA 70E, ISO 13849, and ISA-18.2 standards!",
     initialGreeting:
-      "Hello, I am **NexusMind**, your AI specialist in industrial automation and electrical standards (IEC/IEEE).\n\nHow can I assist you with your project today? You can type commands or upload a briefing CSV/TXT/PDF file!",
+      "Hello, I am **EletricAI**, your AI specialist in industrial automation and electrical standards (IEC/IEEE).\n\nHow can I assist you with your project today? You can type commands or upload a briefing CSV/TXT/PDF file!",
     generatingPatch: "Generating validated patch (Zod + IEC 60364)...",
     processingPrompt: "Processing prompt...",
     patchAppliedTitle: "Patch applied to WebGL canvas.",
@@ -405,7 +405,7 @@ export const en: TranslationCatalog = {
       "Unsupported format ({fileName}). Upload a briefing file in **.csv**, **.txt**, **.json**, or **.pdf**.",
     pdfNoText:
       "📄 PDF **{fileName}** does not contain selectable text (likely a scanned image).\n\nPlease provide a load list in **.csv**, **.txt**, or a selectable **.pdf**.",
-    aiRole: "🤖 NexusMind",
+    aiRole: "🤖 EletricAI",
     userRole: "👤 You",
     quickDirectOnline: "+ DOL Motor Start",
     quickSocketRcd: "+ Socket w/ RCD",

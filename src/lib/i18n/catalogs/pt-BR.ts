@@ -377,7 +377,7 @@ export const ptBR = {
     sendAria: "Enviar pergunta",
   },
   aiChat: {
-    title: "NEXUSMIND AI CO-PILOT",
+    title: "EletricAI",
     creditsRemaining: "{remaining}/{max} créditos",
     creditsUnlimited: "∞ créditos",
     creditsPlaceholder: "-- créditos",
@@ -386,11 +386,11 @@ export const ptBR = {
     demoFaulty: "Demo c/ falhas",
     ocrActive: "Módulo OCR Ativo",
     ocrExtracting: "Extraindo e validando especificações de engenharia...",
-    normAlertsTitle: "Alertas Normativos NexusMind",
+    normAlertsTitle: "Alertas Normativos EletricAI",
     allCompliant:
       "✅ Todos os canvas em conformidade com as normas ABNT NBR 5410, NR-10, NR-12 e ISA-18.2!",
     initialGreeting:
-      "Olá, sou o **NexusMind**, sua IA especialista em automação e normas elétricas (ABNT/IEC).\n\nComo posso ajudar você no projeto hoje? Você pode digitar comandos ou enviar um arquivo CSV/TXT/PDF de briefing!",
+      "Olá, sou o **EletricAI**, sua IA especialista em automação e normas elétricas (ABNT/IEC).\n\nComo posso ajudar você no projeto hoje? Você pode digitar comandos ou enviar um arquivo CSV/TXT/PDF de briefing!",
     generatingPatch: "Gerando patch validado (Zod + NBR 5410)...",
     processingPrompt: "Processando prompt...",
     patchAppliedTitle: "Patch aplicado ao canvas WebGL.",
@@ -403,7 +403,7 @@ export const ptBR = {
       "Formato não suportado ({fileName}). Envie um arquivo de briefing em **.csv**, **.txt**, **.json** ou **.pdf**.",
     pdfNoText:
       "📄 O PDF **{fileName}** não possui camada de texto selecionável (provável imagem escaneada).\n\nEnvie uma lista de cargas em **.csv**, **.txt** ou um **.pdf** com texto selecionável.",
-    aiRole: "🤖 NexusMind",
+    aiRole: "🤖 EletricAI",
     userRole: "👤 Você",
     quickDirectOnline: "+ Partida Direta",
     quickSocketRcd: "+ Tomada c/ DR",

@@ -39,7 +39,10 @@ describe("ELÉTRICAI INDUSTRIAL OS — GATE 3.8.2 FULL SECURITY REMEDIATION SUIT
         typeof createDOMPurify.sanitize === "function"
           ? createDOMPurify
           : createDOMPurify(window as unknown as Parameters<typeof createDOMPurify>[0]);
-      expect(purifier.version).toBe("3.4.17");
+      // >= 3.4.17 (patches mais novos herdam as correções de CVE exigidas).
+      const [maj, min, pat] = purifier.version.split(".").map((n) => Number.parseInt(n, 10));
+      const atLeast = maj > 3 || (maj === 3 && (min > 4 || (min === 4 && pat >= 17)));
+      expect(atLeast, `DOMPurify ${purifier.version} < 3.4.17`).toBe(true);
     });
 
     it("rejects unsafe DOMPurify configurations (IN_PLACE, RETURN_DOM, application/xhtml+xml)", () => {

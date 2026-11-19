@@ -366,12 +366,15 @@ describe("Gate 4.3 — Red Team Exploit Prevention & Blue Team Regression Suite"
     expect(vercelCfg).not.toContain("*.lovable.app");
     expect(vercelCfg).toContain("Strict-Transport-Security");
 
-    // Servidor MCP (Lovable) removido do projeto: as rotas /mcp e
-    // /.well-known/oauth-protected-resource e a lib @lovable.dev/mcp-js não existem mais.
+    // Dependência de terceiros (Lovable) totalmente removida: rotas /mcp e
+    // /.well-known/oauth-protected-resource, lib MCP, broker de preview e o
+    // config de build @lovable.dev/* não existem mais em lugar nenhum.
     expect(fs.existsSync(path.join(REPO_ROOT, "src/routes/mcp.ts"))).toBe(false);
     expect(fs.existsSync(path.join(REPO_ROOT, "src/lib/mcp"))).toBe(false);
     const pkg = fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf8");
-    expect(pkg).not.toContain("@lovable.dev/mcp-js");
+    expect(pkg).not.toContain("@lovable.dev");
+    const viteCfg = fs.readFileSync(path.join(REPO_ROOT, "vite.config.ts"), "utf8");
+    expect(viteCfg).not.toContain("@lovable.dev");
 
     // Audit redaction never leaks Bearer JWTs or API tokens
     const sanitized = redactSensitiveString(

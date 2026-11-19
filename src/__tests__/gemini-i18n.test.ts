@@ -135,8 +135,8 @@ describe("Fase G — Integração de Idioma com a IA Google Gemini", () => {
       const enChat = en.aiChat;
       expect(Object.keys(ptChat)).toEqual(Object.keys(enChat));
 
-      expect(ptChat.title).toBe("NEXUSMIND AI CO-PILOT");
-      expect(enChat.title).toBe("NEXUSMIND AI CO-PILOT");
+      expect(ptChat.title).toBe("EletricAI");
+      expect(enChat.title).toBe("EletricAI");
 
       expect(ptChat.modePatch).toBe("Patch IA");
       expect(enChat.modePatch).toBe("AI Patch");
