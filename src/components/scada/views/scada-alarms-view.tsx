@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 
 type Tab = "active" | "shelved" | "oos" | "kpis";
@@ -58,6 +59,7 @@ const time = (ms: number) => new Date(ms).toLocaleTimeString("pt-BR");
 const dateTime = (ms: number) => new Date(ms).toLocaleString("pt-BR");
 
 export function ScadaAlarmsView() {
+  const { t } = useI18n();
   const acknowledgeAlarm = useScadaStore((s) => s.acknowledgeAlarm);
   const acknowledgeAllAlarms = useScadaStore((s) => s.acknowledgeAllAlarms);
   const clearAlarm = useScadaStore((s) => s.clearAlarm);
@@ -140,10 +142,15 @@ export function ScadaAlarmsView() {
   const oosPoints = [...settings.values()].filter((s) => s.outOfService);
 
   const tabs: { id: Tab; label: string; icon: typeof Bell; count?: number }[] = [
-    { id: "active", label: "Ativos", icon: Bell, count: active.length },
-    { id: "shelved", label: "Prateleira", icon: Archive, count: shelvedPoints.length },
-    { id: "oos", label: "Fora de serviço", icon: Wrench, count: oosPoints.length },
-    { id: "kpis", label: "Indicadores", icon: ChartBar },
+    { id: "active", label: t("scada2.alarms.tabActive"), icon: Bell, count: active.length },
+    {
+      id: "shelved",
+      label: t("scada2.alarms.tabShelved"),
+      icon: Archive,
+      count: shelvedPoints.length,
+    },
+    { id: "oos", label: t("scada2.alarms.tabOos"), icon: Wrench, count: oosPoints.length },
+    { id: "kpis", label: t("scada2.alarms.tabKpis"), icon: ChartBar },
   ];
 
   return (
@@ -191,58 +198,61 @@ export function ScadaAlarmsView() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value.slice(0, 80))}
-                placeholder="Buscar por tag ou descrição"
+                placeholder={t("scada2.alarms.searchPlaceholder")}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-md pl-8 pr-3 py-1 text-xs text-white placeholder-zinc-500 font-mono"
-                aria-label="Buscar alarmes"
+                aria-label={t("scada2.alarms.searchAria")}
               />
             </div>
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
               className="bg-zinc-900 border border-zinc-800 rounded-md px-2 py-1 text-xs text-zinc-300 font-mono"
-              aria-label="Prioridade"
+              aria-label={t("scada2.alarms.priorityAria")}
             >
-              <option value="ALL">Todas as prioridades</option>
-              <option value="CRITICAL">Crítica</option>
-              <option value="HIGH">Alta</option>
-              <option value="MEDIUM">Média</option>
-              <option value="LOW">Baixa</option>
+              <option value="ALL">{t("scada2.alarms.priorityAll")}</option>
+              <option value="CRITICAL">{t("scada2.alarms.prioCritical")}</option>
+              <option value="HIGH">{t("scada2.alarms.prioHigh")}</option>
+              <option value="MEDIUM">{t("scada2.alarms.prioMedium")}</option>
+              <option value="LOW">{t("scada2.alarms.prioLow")}</option>
             </select>
             <select
               value={stateFilter}
               onChange={(e) => setStateFilter(e.target.value)}
               className="bg-zinc-900 border border-zinc-800 rounded-md px-2 py-1 text-xs text-zinc-300 font-mono"
-              aria-label="Estado"
+              aria-label={t("scada2.alarms.stateAria")}
             >
-              <option value="ALL">Todos os estados</option>
-              <option value="UNACK">Não reconhecidos</option>
-              <option value="ACK">Reconhecidos</option>
-              <option value="CLEARED">Normalizados</option>
+              <option value="ALL">{t("scada2.alarms.stateAll")}</option>
+              <option value="UNACK">{t("scada2.alarms.stUnack")}</option>
+              <option value="ACK">{t("scada2.alarms.stAck")}</option>
+              <option value="CLEARED">{t("scada2.alarms.stCleared")}</option>
             </select>
             <div className="flex items-center gap-2 ml-auto">
               <button
                 onClick={() => {
                   acknowledgeAllAlarms();
-                  toast.success("Alarmes reconhecidos.");
+                  toast.success(t("scada2.alarms.ackedToast"));
                 }}
                 disabled={unackCount === 0}
                 className="px-3 py-1.5 rounded-md border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white font-mono text-xs"
               >
-                Reconhecer todos ({unackCount})
+                {t("scada2.alarms.ackAll", { n: unackCount })}
               </button>
               <button
                 onClick={handleExportCsv}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-zinc-800 hover:bg-zinc-800 text-zinc-300 font-mono text-xs"
               >
-                <DownloadSimple className="w-3.5 h-3.5" /> CSV
+                <DownloadSimple className="w-3.5 h-3.5" /> {t("scada2.alarms.csv")}
               </button>
             </div>
           </div>
 
           {filtered.length === 0 ? (
             <p className="text-sm text-zinc-500 py-8 text-center" data-testid="alarms-empty">
-              Nenhum alarme ativo
-              {q || priorityFilter !== "ALL" || stateFilter !== "ALL" ? " com esses filtros" : ""}.
+              {t("scada2.alarms.empty")}
+              {q || priorityFilter !== "ALL" || stateFilter !== "ALL"
+                ? t("scada2.alarms.emptyFilters")
+                : ""}
+              .
             </p>
           ) : (
             <ul className="space-y-1.5" data-testid="alarms-active-list">
@@ -273,7 +283,7 @@ export function ScadaAlarmsView() {
                       {firstOut.has(a.id) && (
                         <span
                           className="px-1.5 rounded text-[10px] font-bold font-mono border border-zinc-300 text-zinc-100"
-                          title="Primeiro alarme da rajada: provável causa inicial"
+                          title={t("scada2.alarms.firstOutTitle")}
                           data-testid={`alarm-first-out-${a.id}`}
                         >
                           1º
@@ -283,7 +293,7 @@ export function ScadaAlarmsView() {
                         <button
                           onClick={() => selectEquipment(owner)}
                           className="font-mono font-bold text-white hover:underline underline-offset-2"
-                          title="Abrir faceplate do equipamento"
+                          title={t("scada2.alarms.faceplateTitle")}
                           data-testid={`alarm-open-faceplate-${a.id}`}
                         >
                           {a.tag}
@@ -301,8 +311,8 @@ export function ScadaAlarmsView() {
                           a.state === "UNACK" ? "text-red-300 font-bold" : "text-zinc-500",
                         )}
                       >
-                        {a.state === "UNACK" ? "NÃO RECONHECIDO" : "RECONHECIDO"}
-                        {a.clearedAt != null ? " · NORMALIZADO" : ""}
+                        {a.state === "UNACK" ? t("scada2.alarms.unack") : t("scada2.alarms.ack")}
+                        {a.clearedAt != null ? t("scada2.alarms.normalized") : ""}
                       </span>
                       <div className="flex items-center gap-1 ml-auto">
                         {a.state === "UNACK" ? (
@@ -310,7 +320,7 @@ export function ScadaAlarmsView() {
                             onClick={() => acknowledgeAlarm(a.id)}
                             className="px-2 py-0.5 rounded border border-zinc-600 hover:bg-zinc-800 text-[10px]"
                           >
-                            Reconhecer
+                            {t("scada2.alarms.btnAck")}
                           </button>
                         ) : (
                           a.clearedAt != null && (
@@ -318,14 +328,14 @@ export function ScadaAlarmsView() {
                               onClick={() => clearAlarm(a.id)}
                               className="px-2 py-0.5 rounded border border-zinc-700 hover:bg-zinc-800 text-[10px] text-zinc-400"
                             >
-                              Arquivar
+                              {t("scada2.alarms.btnArchive")}
                             </button>
                           )
                         )}
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             className="p-1 rounded hover:bg-zinc-800"
-                            aria-label={`Ações do alarme ${a.tag}`}
+                            aria-label={t("scada2.alarms.menuAria", { tag: a.tag })}
                             data-testid={`alarm-menu-${a.id}`}
                           >
                             <DotsThreeVertical className="w-4 h-4" />
@@ -335,18 +345,20 @@ export function ScadaAlarmsView() {
                               disabled={a.category === "SAFETY"}
                               onSelect={() => setDialog({ alarm: a, action: "shelve" })}
                             >
-                              Pôr na prateleira…
+                              {t("scada2.alarms.shelve")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               disabled={a.category === "SAFETY"}
                               onSelect={() => setDialog({ alarm: a, action: "outOfService" })}
                             >
-                              Tirar de serviço…
+                              {t("scada2.alarms.oos")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onSelect={() => setDialog({ alarm: a, action: "rationalize" })}
                             >
-                              {rationalized ? "Editar racionalização…" : "Racionalizar…"}
+                              {rationalized
+                                ? t("scada2.alarms.editRationalize")
+                                : t("scada2.alarms.rationalize")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -357,17 +369,18 @@ export function ScadaAlarmsView() {
                         className="mt-1 text-[11px] text-zinc-300"
                         data-testid={`alarm-action-${a.id}`}
                       >
-                        <span className="text-zinc-500">Ação:</span> {s.correctiveAction}
+                        <span className="text-zinc-500">{t("scada2.alarms.actionLabel")}</span>{" "}
+                        {s.correctiveAction}
                         {s.responseTimeMin ? (
                           <span className="text-zinc-500">
                             {" "}
-                            · agir em até {s.responseTimeMin} min
+                            {t("scada2.alarms.actUpTo", { n: s.responseTimeMin })}
                           </span>
                         ) : null}
                       </p>
                     ) : (
                       <p className="mt-1 text-[10px] text-zinc-600">
-                        Sem racionalização (causa, consequência e ação não definidas).
+                        {t("scada2.alarms.noRationale")}
                       </p>
                     )}
                   </li>
@@ -381,10 +394,10 @@ export function ScadaAlarmsView() {
       {tab === "shelved" && (
         <PointList
           testId="alarms-shelved-list"
-          empty="Nenhum alarme na prateleira."
+          empty={t("scada2.alarms.emptyShelved")}
           points={shelvedPoints}
           describe={(s) => `Até ${dateTime(s.shelvedUntil ?? 0)} · ${s.shelveReason ?? ""}`}
-          actionLabel="Devolver agora"
+          actionLabel={t("scada2.alarms.returnNow")}
           onAction={(s) => void runChange(s.pointKey, s.tagName, { kind: "unshelve" })}
           activeCount={(s) => part.shelved.filter((a) => alarmPointKey(a) === s.pointKey).length}
         />
@@ -393,10 +406,10 @@ export function ScadaAlarmsView() {
       {tab === "oos" && (
         <PointList
           testId="alarms-oos-list"
-          empty="Nenhum alarme fora de serviço."
+          empty={t("scada2.alarms.emptyOos")}
           points={oosPoints}
           describe={(s) => `Desde ${dateTime(s.oosAt ?? 0)} · ${s.oosReason ?? ""}`}
-          actionLabel="Devolver ao serviço"
+          actionLabel={t("scada2.alarms.returnService")}
           onAction={(s) => void runChange(s.pointKey, s.tagName, { kind: "returnToService" })}
           activeCount={(s) =>
             part.outOfService.filter((a) => alarmPointKey(a) === s.pointKey).length
@@ -432,6 +445,7 @@ function PointList({
   onAction: (s: AlarmPointSetting) => void;
   activeCount: (s: AlarmPointSetting) => number;
 }) {
+  const { t } = useI18n();
   if (points.length === 0) return <p className="text-sm text-zinc-500 py-8 text-center">{empty}</p>;
   return (
     <ul className="space-y-1.5" data-testid={testId}>
@@ -447,7 +461,7 @@ function PointList({
             <span className="text-zinc-300 flex-1 min-w-[160px]">{describe(s)}</span>
             {n > 0 && (
               <span className="text-[10px] font-mono text-amber-300">
-                {n} ocorrência(s) ativa(s) oculta(s)
+                {t("scada2.alarms.hiddenActive", { n })}
               </span>
             )}
             <button

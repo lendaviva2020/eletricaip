@@ -34,6 +34,7 @@ import {
 } from "@/lib/scada/tag-trend-buffer";
 import { sourceLabel } from "@/lib/scada/tag-hub";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { useAlarmMgmtStore, useAlarmPartition } from "@/lib/scada/alarm-management-store";
 import { alarmPointKey, isRationalized } from "@/lib/scada/alarm-management";
 import { toast } from "sonner";
@@ -48,23 +49,23 @@ function fmtOrDash(v: number | undefined, unit: string, digits: number): string 
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  RUNNING: "Ligado",
-  STOPPED: "Parado",
-  TRIPPED: "Em falha",
-  STANDBY: "Em espera",
-  OPEN: "Aberta",
-  CLOSED: "Fechada",
-  MAINTENANCE: "Manutenção",
+  RUNNING: "scada2.faceplate.statusRunning",
+  STOPPED: "scada2.faceplate.statusStopped",
+  TRIPPED: "scada2.faceplate.statusTripped",
+  STANDBY: "scada2.faceplate.statusStandby",
+  OPEN: "scada2.faceplate.statusOpen",
+  CLOSED: "scada2.faceplate.statusClosed",
+  MAINTENANCE: "scada2.faceplate.statusMaintenance",
 };
 
 const DEVIATION_LABEL: Record<Deviation["kind"], string> = {
-  ALARM_UNACK: "Alarme não reconhecido",
-  ALARM_ACK: "Alarme reconhecido",
-  TRIPPED: "Falha",
-  MAINTENANCE: "Manutenção",
-  BAD_QUALITY: "Qualidade ruim",
-  STALE: "Sem atualização",
-  FORCED: "Forçado",
+  ALARM_UNACK: "scada2.faceplate.devAlarmUnack",
+  ALARM_ACK: "scada2.faceplate.devAlarmAck",
+  TRIPPED: "scada2.faceplate.devTripped",
+  MAINTENANCE: "scada2.faceplate.devMaintenance",
+  BAD_QUALITY: "scada2.faceplate.devBadQuality",
+  STALE: "scada2.faceplate.devStale",
+  FORCED: "scada2.faceplate.devForced",
 };
 
 /** Qualidade com cor só quando anormal (ISA-101). */
@@ -76,6 +77,7 @@ function qualityClass(t: ScadaTagDefinition): string {
 }
 
 export function EquipmentInspectorDrawer() {
+  const { t: tr } = useI18n();
   const navigate = useNavigate();
   const selectedId = useScadaStore((s) => s.selectedEquipmentId);
   const selectEquipment = useScadaStore((s) => s.selectEquipment);
@@ -140,7 +142,7 @@ export function EquipmentInspectorDrawer() {
 
   const handleCommand = (cmd: "START" | "STOP" | "OPEN" | "CLOSE" | "AUTO" | "MANUAL") => {
     commandEquipment(eq.id, cmd);
-    toast.success(`Comando ${cmd} (simulação) enviado a ${eq.tag}`);
+    toast.success(tr("scada2.faceplate.cmdToast", { cmd, tag: eq.tag }));
   };
 
   return (
@@ -148,7 +150,7 @@ export function EquipmentInspectorDrawer() {
       className="absolute inset-y-0 right-0 w-full sm:w-[440px] bg-[#0c1018] border-l border-zinc-800 shadow-2xl z-30 flex flex-col select-none text-zinc-200 animate-in slide-in-from-right duration-200"
       data-testid="scada-equipment-drawer"
       role="dialog"
-      aria-label={`Faceplate ${eq.tag}`}
+      aria-label={tr("scada2.faceplate.ariaFaceplate", { tag: eq.tag })}
     >
       <div className="p-4 border-b border-zinc-800 flex items-start justify-between gap-2 bg-zinc-950/80">
         <div className="flex items-start gap-3 min-w-0">
@@ -169,7 +171,7 @@ export function EquipmentInspectorDrawer() {
                 )}
                 data-testid="faceplate-status"
               >
-                {STATUS_LABEL[eq.status] ?? eq.status}
+                {STATUS_LABEL[eq.status] ? tr(STATUS_LABEL[eq.status]) : eq.status}
               </span>
               <span className="text-[10px] font-mono text-zinc-500">{eq.mode}</span>
             </div>
@@ -185,7 +187,7 @@ export function EquipmentInspectorDrawer() {
         <button
           onClick={() => selectEquipment(null)}
           className="p-1.5 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-          aria-label="Fechar faceplate"
+          aria-label={tr("scada2.faceplate.close")}
         >
           <X className="w-5 h-5" />
         </button>
@@ -199,11 +201,11 @@ export function EquipmentInspectorDrawer() {
           </h3>
           {hiddenAlarms > 0 && (
             <p className="text-[10px] text-amber-300" data-testid="faceplate-hidden-alarms">
-              {hiddenAlarms} alarme(s) na prateleira ou fora de serviço — veja em Alarmes.
+              {tr("scada2.faceplate.hiddenAlarms", { n: hiddenAlarms })}
             </p>
           )}
           {eqAlarms.length === 0 ? (
-            <p className="text-[11px] text-zinc-500">Nenhum alarme ativo neste equipamento.</p>
+            <p className="text-[11px] text-zinc-500">{tr("scada2.faceplate.noAlarms")}</p>
           ) : (
             <ul className="space-y-1.5" data-testid="faceplate-alarms">
               {eqAlarms.map((a) => (
@@ -228,7 +230,10 @@ export function EquipmentInspectorDrawer() {
                           className="text-[11px] text-zinc-300 mt-0.5"
                           data-testid="faceplate-alarm-action"
                         >
-                          <span className="text-zinc-500">Ação:</span> {r.correctiveAction}
+                          <span className="text-zinc-500">
+                            {tr("scada2.faceplate.actionLabel")}
+                          </span>{" "}
+                          {r.correctiveAction}
                         </div>
                       ) : null;
                     })()}
@@ -238,7 +243,7 @@ export function EquipmentInspectorDrawer() {
                       onClick={() => acknowledgeAlarm(a.id)}
                       className="shrink-0 px-2 py-0.5 rounded border border-zinc-600 text-[10px] hover:bg-zinc-800"
                     >
-                      Reconhecer
+                      {tr("scada2.faceplate.ack")}
                     </button>
                   )}
                 </li>
@@ -253,7 +258,7 @@ export function EquipmentInspectorDrawer() {
               {deviations.map((d) => (
                 <li key={`${d.kind}:${d.ref}`} className="text-[11px] text-zinc-300">
                   <span className="font-mono text-[10px] text-amber-300">
-                    {DEVIATION_LABEL[d.kind]}
+                    {tr(DEVIATION_LABEL[d.kind])}
                   </span>{" "}
                   — {d.message}
                 </li>
@@ -266,14 +271,14 @@ export function EquipmentInspectorDrawer() {
         <section className="bg-zinc-900/80 border border-zinc-800 rounded-lg p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-[11px] font-mono font-semibold uppercase text-zinc-400 flex items-center gap-1.5">
-              <ChartLine className="w-3.5 h-3.5" /> Tendência
+              <ChartLine className="w-3.5 h-3.5" /> {tr("scada2.faceplate.trend")}
             </h3>
             {plottable.length > 0 && (
               <select
                 value={activeTrendTag ?? ""}
                 onChange={(e) => setTrendTag(e.target.value)}
                 className="max-w-[230px] bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono"
-                aria-label="Tag da tendência"
+                aria-label={tr("scada2.faceplate.trendSelectAria")}
                 data-testid="faceplate-trend-select"
               >
                 {plottable.map((t) => (
@@ -290,15 +295,13 @@ export function EquipmentInspectorDrawer() {
               unit={activeTrendDef?.unit ?? ""}
             />
           ) : (
-            <p className="text-[11px] text-zinc-500">
-              Equipamento sem tag numérico vinculado — vincule um tag para ver a tendência.
-            </p>
+            <p className="text-[11px] text-zinc-500">{tr("scada2.faceplate.noNumericTag")}</p>
           )}
           <button
             onClick={() => setActiveView("trends")}
             className="text-[11px] text-zinc-400 hover:text-zinc-100 underline underline-offset-2"
           >
-            Abrir no historiador de tendências
+            {tr("scada2.faceplate.openHistorian")}
           </button>
         </section>
 
@@ -306,7 +309,7 @@ export function EquipmentInspectorDrawer() {
         <section className="bg-zinc-900/80 border border-zinc-800 rounded-lg p-3 space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="text-[11px] font-mono font-semibold uppercase text-zinc-400">
-              Comando (simulação)
+              {tr("scada2.faceplate.command")}
             </h3>
             <div className="flex items-center gap-1 bg-zinc-950 p-0.5 rounded border border-zinc-800">
               {(["AUTO", "MANUAL"] as const).map((m) => (
@@ -334,14 +337,14 @@ export function EquipmentInspectorDrawer() {
                   disabled={eq.status === "RUNNING"}
                   className="flex items-center justify-center gap-1.5 py-1.5 rounded border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white text-xs"
                 >
-                  <Power className="w-3.5 h-3.5" /> Ligar
+                  <Power className="w-3.5 h-3.5" /> {tr("scada2.faceplate.ligar")}
                 </button>
                 <button
                   onClick={() => handleCommand("STOP")}
                   disabled={eq.status === "STOPPED"}
                   className="flex items-center justify-center gap-1.5 py-1.5 rounded border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white text-xs"
                 >
-                  <Power className="w-3.5 h-3.5" /> Desligar
+                  <Power className="w-3.5 h-3.5" /> {tr("scada2.faceplate.desligar")}
                 </button>
               </>
             ) : eq.category === "VALVE" ? (
@@ -351,47 +354,47 @@ export function EquipmentInspectorDrawer() {
                   disabled={eq.status === "OPEN"}
                   className="py-1.5 rounded border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white text-xs"
                 >
-                  Abrir
+                  {tr("scada2.faceplate.abrir")}
                 </button>
                 <button
                   onClick={() => handleCommand("CLOSE")}
                   disabled={eq.status === "CLOSED"}
                   className="py-1.5 rounded border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white text-xs"
                 >
-                  Fechar
+                  {tr("scada2.faceplate.fechar")}
                 </button>
               </>
             ) : (
               <p className="col-span-2 text-center text-[11px] text-zinc-500 py-1">
-                Equipamento sem comando — somente monitoração.
+                {tr("scada2.faceplate.onlyMonitor")}
               </p>
             )}
           </div>
-          <p className="text-[10px] text-zinc-500">
-            Nenhum comando sai para o campo: a escrita em equipamento real está bloqueada.
-          </p>
+          <p className="text-[10px] text-zinc-500">{tr("scada2.faceplate.noFieldWrite")}</p>
         </section>
 
         {/* Dados de placa e medidos */}
         <section className="bg-zinc-900/80 border border-zinc-800 rounded-lg p-3 space-y-2">
           <h3 className="text-[11px] font-mono font-semibold uppercase text-zinc-400 flex items-center gap-1.5">
-            <Lightning className="w-3.5 h-3.5" /> Dados de placa e medidos
+            <Lightning className="w-3.5 h-3.5" /> {tr("scada2.faceplate.dataTitle")}
           </h3>
           <dl className="grid grid-cols-2 gap-2 font-mono">
             <Cell
-              label="Tensão nominal"
+              label={tr("scada2.faceplate.voltage")}
               value={fmtOrDash(eq.nominal?.voltageV ?? (isDemo ? eq.voltageV : undefined), " V", 0)}
             />
             <Cell
-              label="Corrente medida"
-              value={eq.currentA > 0 ? `${eq.currentA.toFixed(1)} A` : "sem leitura"}
+              label={tr("scada2.faceplate.current")}
+              value={
+                eq.currentA > 0 ? `${eq.currentA.toFixed(1)} A` : tr("scada2.faceplate.noReading")
+              }
             />
             <Cell
-              label="Potência nominal"
+              label={tr("scada2.faceplate.power")}
               value={fmtOrDash(eq.powerKw > 0 ? eq.powerKw : undefined, " kW", 1)}
             />
             <Cell
-              label="FP nominal"
+              label={tr("scada2.faceplate.pf")}
               value={fmtOrDash(
                 eq.nominal?.powerFactor ?? (isDemo ? eq.powerFactor : undefined),
                 "",
@@ -399,24 +402,33 @@ export function EquipmentInspectorDrawer() {
               )}
             />
             {typeof eq.flowRateM3h === "number" && (
-              <Cell label="Vazão" value={`${eq.flowRateM3h.toFixed(1)} m³/h`} />
+              <Cell
+                label={tr("scada2.faceplate.flow")}
+                value={`${eq.flowRateM3h.toFixed(1)} m³/h`}
+              />
             )}
             {typeof eq.levelPct === "number" && (
-              <Cell label="Nível" value={`${eq.levelPct.toFixed(1)} %`} />
+              <Cell label={tr("scada2.faceplate.level")} value={`${eq.levelPct.toFixed(1)} %`} />
             )}
             {typeof eq.pressureBar === "number" && (
-              <Cell label="Pressão" value={`${eq.pressureBar.toFixed(1)} bar`} />
+              <Cell
+                label={tr("scada2.faceplate.pressure")}
+                value={`${eq.pressureBar.toFixed(1)} bar`}
+              />
             )}
             {typeof eq.temperatureC === "number" && (
-              <Cell label="Temperatura" value={`${eq.temperatureC.toFixed(1)} °C`} />
+              <Cell
+                label={tr("scada2.faceplate.temperature")}
+                value={`${eq.temperatureC.toFixed(1)} °C`}
+              />
             )}
             <Cell
-              label="Horas de operação"
-              value={eq.runningHours > 0 ? `${eq.runningHours} h` : "sem registro"}
+              label={tr("scada2.faceplate.hours")}
+              value={eq.runningHours > 0 ? `${eq.runningHours} h` : tr("scada2.faceplate.noRecord")}
             />
             <Cell
-              label="Partidas"
-              value={eq.startsCount > 0 ? String(eq.startsCount) : "sem registro"}
+              label={tr("scada2.faceplate.starts")}
+              value={eq.startsCount > 0 ? String(eq.startsCount) : tr("scada2.faceplate.noRecord")}
             />
           </dl>
         </section>
@@ -424,10 +436,10 @@ export function EquipmentInspectorDrawer() {
         {/* Tags */}
         <section className="bg-zinc-900/80 border border-zinc-800 rounded-lg p-3 space-y-2">
           <h3 className="text-[11px] font-mono font-semibold uppercase text-zinc-400 flex items-center gap-1.5">
-            <Tag className="w-3.5 h-3.5" /> Tags ({linked.length})
+            <Tag className="w-3.5 h-3.5" /> {tr("scada2.faceplate.tagsTitle", { n: linked.length })}
           </h3>
           {linked.length === 0 && missingTags.length === 0 && (
-            <p className="text-[11px] text-zinc-500">Nenhum tag vinculado a este equipamento.</p>
+            <p className="text-[11px] text-zinc-500">{tr("scada2.faceplate.noTags")}</p>
           )}
           <ul className="space-y-1.5" data-testid="faceplate-tags">
             {linked.map((tag) => (
@@ -439,7 +451,7 @@ export function EquipmentInspectorDrawer() {
                   <button
                     className="font-bold text-white truncate text-left hover:underline"
                     onClick={() => plotValue(tag.value) !== null && setTrendTag(tag.name)}
-                    title="Ver na tendência"
+                    title={tr("scada2.faceplate.trendTagTitle")}
                   >
                     {tag.name}
                   </button>
@@ -466,14 +478,14 @@ export function EquipmentInspectorDrawer() {
                       onClick={() => unforceTag(tag.id)}
                       className="text-amber-300 hover:underline shrink-0"
                     >
-                      Liberar
+                      {tr("scada2.faceplate.release")}
                     </button>
                   ) : (
                     <button
                       onClick={() => setForceTarget(tag)}
                       className="text-zinc-300 hover:underline shrink-0"
                     >
-                      Forçar…
+                      {tr("scada2.faceplate.force")}
                     </button>
                   )}
                 </div>
@@ -485,7 +497,7 @@ export function EquipmentInspectorDrawer() {
                 className="p-2 rounded bg-zinc-950/50 border border-zinc-800 flex justify-between font-mono text-[11px]"
               >
                 <span className="text-zinc-400">{n}</span>
-                <span className="text-zinc-600">não cadastrado</span>
+                <span className="text-zinc-600">{tr("scada2.faceplate.notRegistered")}</span>
               </li>
             ))}
           </ul>
@@ -494,23 +506,24 @@ export function EquipmentInspectorDrawer() {
         {/* Documentos */}
         <section className="bg-zinc-900/80 border border-zinc-800 rounded-lg p-3 space-y-2">
           <h3 className="text-[11px] font-mono font-semibold uppercase text-zinc-400 flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" /> Documentos
+            <FileText className="w-3.5 h-3.5" /> {tr("scada2.faceplate.docsTitle")}
           </h3>
           <p className="text-[11px] text-zinc-400">
-            Designação{" "}
-            <span className="font-mono text-zinc-200">{eq.designation ?? "não definida"}</span>
-            {!eq.location &&
-              " — defina o local (+local) do equipamento no unifilar para agrupá-lo numa área."}
+            {tr("scada2.faceplate.designation")}{" "}
+            <span className="font-mono text-zinc-200">
+              {eq.designation ?? tr("scada2.faceplate.designationNone")}
+            </span>
+            {!eq.location && tr("scada2.faceplate.designationHint")}
           </p>
           {isDemo || !projectId ? (
-            <p className="text-[11px] text-zinc-500">Projeto de demonstração: sem dossiê.</p>
+            <p className="text-[11px] text-zinc-500">{tr("scada2.faceplate.demoNoDossier")}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               <button
                 className="px-2 py-1 rounded border border-zinc-700 text-[11px] hover:bg-zinc-800"
                 onClick={() => void navigate({ to: "/workspace", search: { projectId } })}
               >
-                Abrir no unifilar
+                {tr("scada2.faceplate.openUnifilar")}
               </button>
               <button
                 className="px-2 py-1 rounded border border-zinc-700 text-[11px] hover:bg-zinc-800"
@@ -518,7 +531,7 @@ export function EquipmentInspectorDrawer() {
                   void navigate({ to: "/projects/$projectId/export", params: { projectId } })
                 }
               >
-                Dossiê do projeto
+                {tr("scada2.faceplate.projectDossier")}
               </button>
             </div>
           )}
@@ -526,7 +539,7 @@ export function EquipmentInspectorDrawer() {
 
         {eqAlarms.length === 0 && deviations.length === 0 && (
           <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
-            <CheckCircle className="w-3.5 h-3.5" /> Sem desvios neste equipamento.
+            <CheckCircle className="w-3.5 h-3.5" /> {tr("scada2.faceplate.noDeviations")}
           </p>
         )}
       </div>

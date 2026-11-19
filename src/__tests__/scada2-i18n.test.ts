@@ -10,6 +10,10 @@ describe("i18n scada2 (telas SCADA Fases 2/3)", () => {
       "scada2.statusBar.physicalOff",
       "scada2.overview.assets",
       "scada2.overview.noDeviation",
+      "scada2.alarms.tabActive",
+      "scada2.alarms.noRationale",
+      "scada2.faceplate.command",
+      "scada2.faceplate.noFieldWrite",
     ]) {
       expect(translate(key, undefined, "pt-BR")).not.toBe(key);
       expect(translate(key, undefined, "en")).not.toBe(key);
