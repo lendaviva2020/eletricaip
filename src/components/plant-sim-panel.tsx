@@ -15,6 +15,7 @@ import {
 import { usePlantStore, PLANT_TICK_MS } from "@/lib/simulation/plant-store";
 import { useSafetyStore } from "@/lib/simulation/safety-core";
 import { cn } from "@/lib/utils";
+import { isDocumentHidden } from "@/lib/utils/visibility";
 import { useI18n } from "@/lib/i18n";
 
 const MOTOR_IDS = ["M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08"];
@@ -71,7 +72,11 @@ export function PlantSimPanel() {
 
   useEffect(() => {
     if (!ticking) return;
-    const id = setInterval(() => usePlantStore.getState().tick(), PLANT_TICK_MS);
+    // dt fixo (PLANT_DT_S): pausar com a aba oculta não causa deriva.
+    const id = setInterval(() => {
+      if (isDocumentHidden()) return;
+      usePlantStore.getState().tick();
+    }, PLANT_TICK_MS);
     return () => clearInterval(id);
   }, [ticking]);
 

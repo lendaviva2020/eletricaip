@@ -64,6 +64,7 @@ import { runtimeTags } from "@/lib/hmi/hmi-runtime";
 import { useHmiStore } from "@/lib/hmi/hmi-store";
 import { generateHmiCode } from "@/lib/hmi/hmi-ai.functions";
 import { publishTags } from "@/lib/scada/tag-hub";
+import { isDocumentHidden } from "@/lib/utils/visibility";
 import { IDLE_STATE, ProcessSymbol } from "./process-symbols";
 
 // ── Geometria de portas com rotação ───────────────────────────────────
@@ -826,7 +827,16 @@ export function HmiProcessStudio() {
     let lastPub = 0;
     const t = setInterval(() => {
       const now = performance.now();
-      useHmiStore.getState().tick((now - last) / 1000);
+      // Aba oculta: não simular. Reancora `last` para não dar salto de dt ao
+      // voltar (o HMI integra sobre dt real, ao contrário de planta/CCM).
+      if (isDocumentHidden()) {
+        last = now;
+        return;
+      }
+      // Limita o dt (aba que ficou em segundo plano, GC, breakpoint): um passo
+      // de cada vez em vez de um salto que esvaziaria/encheria tanques de uma vez.
+      const dt = Math.min((now - last) / 1000, 0.5);
+      useHmiStore.getState().tick(dt);
       last = now;
       if (now - lastPub >= PUBLISH_MS) {
         lastPub = now;

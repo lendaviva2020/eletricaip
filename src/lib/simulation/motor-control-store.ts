@@ -10,6 +10,7 @@
 // todos os comandos aqui são SIMULATION_HALT/simulação. Nenhuma escrita em
 // campo é feita por este store — `fieldWriteEnabled` é constante `false`.
 import { create } from "zustand";
+import { isDocumentHidden } from "@/lib/utils/visibility";
 import type { DiagramDoc } from "@/lib/diagram/schema";
 import { computeCircuitEnergization } from "@/lib/diagram/electrical-simulation";
 import { useEditorStore } from "@/lib/editor/store";
@@ -142,7 +143,11 @@ let unsubscribeDiagram: (() => void) | null = null;
 
 function startLoop(): void {
   if (tickTimer === null) {
-    tickTimer = setInterval(() => useMotorControlStore.getState().tick(), MCC_TICK_MS);
+    tickTimer = setInterval(() => {
+      // dt fixo (MCC_TICK_MS): pausar com a aba oculta não causa deriva.
+      if (isDocumentHidden()) return;
+      useMotorControlStore.getState().tick();
+    }, MCC_TICK_MS);
   }
   if (unsubscribeDiagram === null) {
     // Edição ao vivo do unifilar (novo motor, disjuntor trocado) reflete no CCM.
