@@ -339,21 +339,26 @@ describe("Gate 4.3 — Red Team Exploit Prevention & Blue Team Regression Suite"
     expect(catImport).toContain("is_platform_admin");
     expect(catImport).not.toContain("requireTenantAdmin");
 
-    const aiGen = fs.readFileSync(
-      path.join(REPO_ROOT, "supabase/functions/ai-electrical-generator/index.ts"),
+    // Pentest 2026-11-19: Edge Functions de IA órfãs removidas (não deployadas);
+    // a IA roda só via server providers. A chave nunca vai em query string.
+    expect(fs.existsSync(path.join(REPO_ROOT, "supabase/functions/ai-electrical-generator"))).toBe(
+      false,
+    );
+    expect(fs.existsSync(path.join(REPO_ROOT, "supabase/functions/ai-industrial-architect"))).toBe(
+      false,
+    );
+    const aiProvider = fs.readFileSync(
+      path.join(REPO_ROOT, "src/lib/ai/ai-provider.server.ts"),
       "utf8",
     );
-    expect(aiGen).toContain("getUser(");
-    expect(aiGen).toContain("x-goog-api-key");
-    expect(aiGen).not.toContain("?key=");
-    expect(aiGen).not.toContain("apikee");
-
-    const aiArch = fs.readFileSync(
-      path.join(REPO_ROOT, "supabase/functions/ai-industrial-architect/index.ts"),
+    expect(aiProvider).toContain("Authorization: `Bearer ");
+    expect(aiProvider).not.toContain("?key=");
+    const geminiClient = fs.readFileSync(
+      path.join(REPO_ROOT, "src/lib/ai/gemini-client.server.ts"),
       "utf8",
     );
-    expect(aiArch).toContain("x-goog-api-key");
-    expect(aiArch).not.toContain("?key=");
+    expect(geminiClient).toContain("GoogleGenAI");
+    expect(geminiClient).not.toContain("?key=");
 
     const vercelCfg = fs.readFileSync(path.join(REPO_ROOT, "vercel.json"), "utf8");
     expect(vercelCfg).not.toContain("unsafe-eval");

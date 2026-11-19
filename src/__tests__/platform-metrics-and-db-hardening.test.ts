@@ -158,8 +158,7 @@ describe("banco — correções da auditoria 2026-11-16", () => {
       "../lib/diagram/ai.functions.ts",
       "../lib/ai-architect.functions.ts",
       "../lib/diagnostics/ai-fix.functions.ts",
-      "../../supabase/functions/ai-fix-diagnostics/index.ts",
-      "../../supabase/functions/ai-electrical-generator/index.ts",
+      // Edge Functions de IA removidas no pentest 2026-11-19 (operações agora via server).
     ];
     for (const f of files) {
       const src = readFileSync(resolve(__dirname, f), "utf8");

@@ -422,15 +422,24 @@ describe("Gate 4.3.1 — Multi-Tenant Gateway AuthZ (Zero Client Fallback) & Tra
     store.close();
   });
 
-  it("Supabase Edge stripe-webhook throws on DB write errors and never swallows failures", () => {
-    const edgeWebhookPath = path.resolve(
-      __dirname,
-      "../../supabase/functions/stripe-webhook/index.ts",
+  it("Server stripe webhook is the single hardened path (Edge consolidada/removida)", () => {
+    // Pentest 2026-11-19: a Edge Function duplicada (sem idempotência) foi removida;
+    // resta apenas a rota de servidor (idempotente + ledger transacional fail-closed).
+    const edgePath = path.resolve(__dirname, "../../supabase/functions/stripe-webhook/index.ts");
+    expect(fs.existsSync(edgePath)).toBe(false);
+
+    const routeSrc = fs.readFileSync(
+      path.resolve(__dirname, "../routes/api/public/stripe.webhook.ts"),
+      "utf8",
     );
-    const src = fs.readFileSync(edgeWebhookPath, "utf8");
-    expect(src).toContain("throw new Error(`stripe_checkout_update_failed:");
-    expect(src).toContain("throw new Error(`stripe_subscription_update_failed:");
-    expect(src).toContain("throw new Error(`stripe_invoice_upsert_failed:");
-    expect(src).toContain("stripe_webhook_events");
+    expect(routeSrc).toContain("assertSupabaseWriteOk");
+    expect(routeSrc).toContain("stripe_webhook_events");
+    expect(routeSrc).toContain("runTransactionalWebhookHandler");
+
+    const ledgerSrc = fs.readFileSync(
+      path.resolve(__dirname, "../lib/security/webhook-ledger.server.ts"),
+      "utf8",
+    );
+    expect(ledgerSrc).toContain("WEBHOOK_DB_WRITE_FAILED");
   });
 });

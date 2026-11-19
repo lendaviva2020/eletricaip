@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthShell, Input, Divider, GoogleIcon } from "./login";
 import { passwordPolicyError } from "@/lib/security/password-policy";
+import { checkAuthRateLimit } from "@/lib/auth-rate-limit.functions";
 import { PRIVACY_VERSION, TERMS_VERSION, termsAcceptanceRecord } from "@/lib/legal";
 import {
   ACCOUNT_TYPES,
@@ -72,6 +73,12 @@ function SignupPage() {
       return;
     }
     setLoading(true);
+    const rl = await checkAuthRateLimit({ data: { action: "signup" } }).catch(() => null);
+    if (rl && !rl.allowed) {
+      setLoading(false);
+      setError(`Muitas tentativas. Tente novamente em ${rl.retryAfterSeconds}s.`);
+      return;
+    }
     const { error } = await supabase.auth.signUp({
       email,
       password,

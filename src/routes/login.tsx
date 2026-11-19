@@ -5,6 +5,7 @@ import { BrandBolt } from "@/components/brand-bolt";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { isSafeRedirect } from "@/lib/safe-redirect";
+import { checkAuthRateLimit } from "@/lib/auth-rate-limit.functions";
 
 export const DEFAULT_REDIRECT = "/dashboard";
 
@@ -55,6 +56,12 @@ function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    const rl = await checkAuthRateLimit({ data: { action: "login" } }).catch(() => null);
+    if (rl && !rl.allowed) {
+      setLoading(false);
+      setError(`Muitas tentativas. Tente novamente em ${rl.retryAfterSeconds}s.`);
+      return;
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) setError(error.message);

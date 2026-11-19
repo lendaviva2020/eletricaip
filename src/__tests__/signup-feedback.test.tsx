@@ -18,6 +18,11 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({ user: null, session: null, loading: false, signOut: vi.fn() }),
 }));
 
+// Rate-limit de auth (server fn) — no jsdom não há servidor; sempre permite.
+vi.mock("@/lib/auth-rate-limit.functions", () => ({
+  checkAuthRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
+}));
+
 const signUpMock = vi.fn(async (..._args: unknown[]) => ({ error: null }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -78,8 +83,10 @@ describe("signup · feedback entre checkbox e botão", () => {
     fillFields();
     fireEvent.click(screen.getByLabelText(/Confirmo que tenho 18 anos/i));
     fireEvent.submit(container.querySelector("form")!);
-    expect(signUpMock).toHaveBeenCalledTimes(1);
+    // O rate-limit de auth (server fn mockada) roda antes do signUp, então
+    // aguardamos o resultado assíncrono antes de checar a chamada.
     const p = await screen.findByRole("status");
+    expect(signUpMock).toHaveBeenCalledTimes(1);
     expect(p.className).toContain("text-success");
     expect(p.textContent).toBe("Confirme seu email para ativar a conta.");
     expect(container.querySelector("p.text-destructive")).toBeNull();

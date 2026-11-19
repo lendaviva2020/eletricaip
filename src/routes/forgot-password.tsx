@@ -3,6 +3,7 @@ import { useState } from "react";
 import { CircleNotch } from "@phosphor-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthShell, Input } from "./login";
+import { checkAuthRateLimit } from "@/lib/auth-rate-limit.functions";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({ meta: [{ title: "Recuperar senha - EletricAI" }] }),
@@ -19,6 +20,12 @@ function ForgotPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    const rl = await checkAuthRateLimit({ data: { action: "forgot-password" } }).catch(() => null);
+    if (rl && !rl.allowed) {
+      setLoading(false);
+      setError(`Muitas tentativas. Tente novamente em ${rl.retryAfterSeconds}s.`);
+      return;
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
