@@ -319,7 +319,7 @@ export function CanvasAiChat() {
         : p;
 
       if (usePatch) {
-        const res: any = await genPatch({
+        let res: any = await genPatch({
           data: {
             prompt: contextualPrompt,
             doc: diagramDoc,
@@ -327,6 +327,14 @@ export function CanvasAiChat() {
             ...(briefingDocument ? { briefingDocument } : {}),
           },
         });
+        // Bloqueio do middleware (limite, cota, sessão) chega como Response:
+        // ler o corpo para mostrar o motivo real em vez de "[UNKNOWN]".
+        if (typeof Response !== "undefined" && res instanceof Response) {
+          const status = res.status;
+          res = await res.json().catch(() => null);
+          if (res && !res.error && status >= 400)
+            res = { ok: false, error: { code: `HTTP_${status}`, message: undefined } };
+        }
         if (!res || res.ok !== true) {
           const code = res?.error?.code ?? "UNKNOWN";
           const message =

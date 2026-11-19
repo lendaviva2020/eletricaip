@@ -17,6 +17,8 @@ import { loadScadaPersistedState, persistScadaBatch } from "@/lib/scada/scada-op
 import { publishTags } from "@/lib/scada/tag-hub";
 import { useMotorControlStore, mccProcessTags } from "@/lib/simulation/motor-control-store";
 import { mccTagsToPublished } from "@/lib/scada/source-bridges";
+import { loadAlarmPointSettings } from "@/lib/scada/alarm-management.functions";
+import { useAlarmMgmtStore } from "@/lib/scada/alarm-management-store";
 
 const FLUSH_MS = 5_000;
 
@@ -29,6 +31,7 @@ export function useScadaProjectSync(): void {
   const isDemo = useScadaStore((s) => s.isDemoProject);
   const loadFn = useServerFn(loadScadaPersistedState);
   const persistFn = useServerFn(persistScadaBatch);
+  const loadSettingsFn = useServerFn(loadAlarmPointSettings);
   const tracker = useRef(new ScadaPersistenceTracker());
   const ready = useRef(false);
   const inFlight = useRef(false);
@@ -42,6 +45,27 @@ export function useScadaProjectSync(): void {
       owner.current = false;
     };
   }, []);
+
+  // Gestão de alarmes ISA-18.2: racionalização, prateleira e fora de serviço.
+  useEffect(() => {
+    if (!projectId || !owner.current) return;
+    const mgmt = useAlarmMgmtStore.getState();
+    if (isDemo) {
+      if (mgmt.projectId !== projectId)
+        mgmt.load({ projectId, available: true, role: "owner", settings: [] });
+      return;
+    }
+    mgmt.reset();
+    let cancelled = false;
+    void loadSettingsFn({ data: { projectId } })
+      .then((res) => {
+        if (!cancelled) useAlarmMgmtStore.getState().load({ projectId, ...res });
+      })
+      .catch((err: unknown) => console.error("[scada.sync] gestão de alarmes:", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, isDemo, loadSettingsFn]);
 
   // 1 + 2: restaurar e gravar.
   useEffect(() => {

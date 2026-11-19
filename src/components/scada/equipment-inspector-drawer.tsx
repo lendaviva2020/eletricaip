@@ -19,7 +19,13 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { useScadaStore } from "@/lib/scada/scada-store";
 import { isRotatingEquipment, type ScadaTagDefinition } from "@/lib/scada/types";
-import { areaLabelOf, buildAssetHierarchy, type Deviation } from "@/lib/scada/asset-hierarchy";
+import {
+  areaLabelOf,
+  buildAssetHierarchy,
+  buildTagOwnerIndex,
+  equipmentIdForAlarm,
+  type Deviation,
+} from "@/lib/scada/asset-hierarchy";
 import {
   ensureTagTrendRecorder,
   plotValue,
@@ -28,6 +34,8 @@ import {
 } from "@/lib/scada/tag-trend-buffer";
 import { sourceLabel } from "@/lib/scada/tag-hub";
 import { cn } from "@/lib/utils";
+import { useAlarmMgmtStore, useAlarmPartition } from "@/lib/scada/alarm-management-store";
+import { alarmPointKey, isRationalized } from "@/lib/scada/alarm-management";
 import { toast } from "sonner";
 import { ForceTagDialog } from "@/components/scada/force-tag-dialog";
 import { TagSparkline } from "@/components/scada/tag-sparkline";
@@ -74,7 +82,9 @@ export function EquipmentInspectorDrawer() {
   const setActiveView = useScadaStore((s) => s.setActiveView);
   const equipments = useScadaStore((s) => s.equipments);
   const tags = useScadaStore((s) => s.tags);
-  const alarms = useScadaStore((s) => s.alarms);
+  const part = useAlarmPartition();
+  const alarms = part.visible;
+  const mgmtSettings = useAlarmMgmtStore((s) => s.settings);
   const isDemo = useScadaStore((s) => s.isDemoProject);
   const projectId = useScadaStore((s) => s.currentProjectId);
   const commandEquipment = useScadaStore((s) => s.commandEquipment);
@@ -97,6 +107,10 @@ export function EquipmentInspectorDrawer() {
     [equipments, tags, alarms],
   );
 
+  const hierarchyOwnerIndex = useMemo(
+    () => buildTagOwnerIndex(equipments, tags),
+    [equipments, tags],
+  );
   const eq = selectedId ? equipments[selectedId] : undefined;
 
   const linked = useMemo(() => {
@@ -116,6 +130,9 @@ export function EquipmentInspectorDrawer() {
   const activeTrendTag = trendTag ?? plottable[0]?.name ?? null;
   const activeTrendDef = linked.find((t) => t.name === activeTrendTag);
   const eqAlarms = alarms.filter((a) => hierarchy.alarmOwner.get(a.id) === eq.id);
+  const hiddenAlarms = [...part.shelved, ...part.outOfService].filter(
+    (al) => equipmentIdForAlarm(al, equipments, hierarchyOwnerIndex) === eq.id,
+  ).length;
   const deviations = (hierarchy.byEquipment.get(eq.id) ?? []).filter(
     (d) => d.kind !== "ALARM_UNACK" && d.kind !== "ALARM_ACK",
   );
@@ -180,6 +197,11 @@ export function EquipmentInspectorDrawer() {
           <h3 className="text-[11px] font-mono font-semibold uppercase text-zinc-400 flex items-center gap-1.5">
             <WarningCircle className="w-3.5 h-3.5" /> Alarmes ({eqAlarms.length})
           </h3>
+          {hiddenAlarms > 0 && (
+            <p className="text-[10px] text-amber-300" data-testid="faceplate-hidden-alarms">
+              {hiddenAlarms} alarme(s) na prateleira ou fora de serviço — veja em Alarmes.
+            </p>
+          )}
           {eqAlarms.length === 0 ? (
             <p className="text-[11px] text-zinc-500">Nenhum alarme ativo neste equipamento.</p>
           ) : (
@@ -199,6 +221,17 @@ export function EquipmentInspectorDrawer() {
                       {a.priority} · {a.tag} · {new Date(a.timestamp).toLocaleTimeString("pt-BR")}
                     </div>
                     <div className="text-zinc-200">{a.description}</div>
+                    {(() => {
+                      const r = mgmtSettings.get(alarmPointKey(a));
+                      return isRationalized(r) && r ? (
+                        <div
+                          className="text-[11px] text-zinc-300 mt-0.5"
+                          data-testid="faceplate-alarm-action"
+                        >
+                          <span className="text-zinc-500">Ação:</span> {r.correctiveAction}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                   {a.state === "UNACK" && (
                     <button

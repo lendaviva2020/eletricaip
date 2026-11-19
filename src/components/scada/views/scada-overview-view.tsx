@@ -14,6 +14,7 @@ import {
 } from "@/lib/scada/asset-hierarchy";
 import { AssetTree, HEALTH_LABEL, healthDotClass } from "@/components/scada/asset-tree";
 import { cn } from "@/lib/utils";
+import { useVisibleAlarms } from "@/lib/scada/alarm-management-store";
 
 const KIND_LABEL: Record<Deviation["kind"], string> = {
   ALARM_UNACK: "Alarme",
@@ -38,7 +39,7 @@ export function ScadaOverviewView() {
   const projectName = useScadaStore((s) => s.currentProjectName);
   const equipments = useScadaStore((s) => s.equipments);
   const tags = useScadaStore((s) => s.tags);
-  const alarms = useScadaStore((s) => s.alarms);
+  const alarms = useVisibleAlarms();
   const selectedEquipmentId = useScadaStore((s) => s.selectedEquipmentId);
   const selectEquipment = useScadaStore((s) => s.selectEquipment);
   const setActiveView = useScadaStore((s) => s.setActiveView);

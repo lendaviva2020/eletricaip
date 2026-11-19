@@ -32,10 +32,41 @@ describe("rate limiter sem Upstash configurado (deploy sem Redis)", () => {
     expect(last.allowed).toBe(false); // 10 em 10 s
   });
 
-  it("Upstash CONFIGURADO com falha continua fail-closed para IA/IoT (RISK-007)", () => {
-    const src = readFileSync(resolve(__dirname, "../lib/security/rate-limiter.server.ts"), "utf8");
-    const breaker = src.slice(src.indexOf("// Circuit breaker aberto"));
-    expect(breaker).toMatch(/if \(cfg\.critical\)[\s\S]*failClosed: true/);
+  it("Upstash CONFIGURADO com falha: limite local, nunca derruba a IA/IoT inteira", async () => {
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://exemplo-teste.upstash.io");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "token-de-teste");
+    vi.doMock("@upstash/ratelimit", () => {
+      class Ratelimit {
+        static slidingWindow() {
+          return {};
+        }
+        async limit(): Promise<never> {
+          throw new SyntaxError("Unexpected end of JSON input");
+        }
+      }
+      return { Ratelimit };
+    });
+    const { checkRateLimit } = await import("@/lib/security/rate-limiter.server");
+    const r = await checkRateLimit("ai", "user-x");
+    expect(r.allowed).toBe(true);
+    expect(r.failClosed).toBeFalsy();
+    let last = r;
+    for (let i = 0; i < 12; i++) last = await checkRateLimit("ai", "user-x");
+    expect(last.allowed).toBe(false); // continua limitado (10 em 10 s)
+    const iot = await checkRateLimit("iot", "key:1");
+    expect(iot.allowed).toBe(true);
+    vi.doUnmock("@upstash/ratelimit");
+  });
+
+  it("limpa espaços/aspas das variáveis e recusa URL que não é a REST URL", async () => {
+    const { cleanEnv, isValidUpstashRestUrl } = await import("@/lib/security/rate-limiter.server");
+    expect(cleanEnv(' "https://a-b.upstash.io"\n')).toBe("https://a-b.upstash.io");
+    expect(cleanEnv("   ")).toBeUndefined();
+    expect(isValidUpstashRestUrl("https://a-b.upstash.io")).toBe(true);
+    expect(isValidUpstashRestUrl("redis://default:x@a-b.upstash.io:6379")).toBe(false);
+    expect(isValidUpstashRestUrl("https://console.upstash.com/redis/abc")).toBe(false);
+    expect(isValidUpstashRestUrl("http://a-b.upstash.io")).toBe(false);
+    expect(isValidUpstashRestUrl("https://evil.example.com")).toBe(false);
   });
 
   it("middleware da IA: opt-in de fallback local é avaliado (antes era inalcançável)", () => {

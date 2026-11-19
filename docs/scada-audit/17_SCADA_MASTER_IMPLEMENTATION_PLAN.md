@@ -23,7 +23,7 @@ Aguardando autorização. Cada fase em patches pequenos, com testes antes e depo
 - Hierarquia ISA-101: visão geral só com desvios; áreas da designação `=planta+local`; faceplate por equipamento canônico; árvore de ativos; paleta neutra; remover versões inventadas; P&ID da ETE só na demo.
 - **Aceite:** operador chega de qualquer alarme ao faceplate e à tendência em até 2 cliques.
 
-## Fase 3 — Alarmes e eventos (ISA-18.2)
+## Fase 3 — Alarmes e eventos (ISA-18.2) — ✅ concluída em 2026-11-19 (ver AGENTS.md, 19ª rodada)
 
 - Configuração racionalizada (causa, consequência, ação), shelving com prazo, fora de serviço, alarme de comunicação, primeiro alarme, indicadores (alarmes/hora, inundação, chattering, parados).
 - **Aceite:** lista de shelving e de fora de serviço; indicadores calculados do `alarm_history`.

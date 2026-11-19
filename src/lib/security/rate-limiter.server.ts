@@ -6,11 +6,54 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
 let _redis: Redis | null = null;
+
+const _warned = new Set<string>();
+function warnOnce(key: string, msg: string): void {
+  if (_warned.has(key)) return;
+  _warned.add(key);
+  console.warn(msg);
+}
+
+export function cleanEnv(v: string | undefined): string | undefined {
+  if (!v) return undefined;
+  const out = v
+    .trim()
+    .replace(/^["']+|["']+$/g, "")
+    .trim();
+  return out || undefined;
+}
+
+/** REST URL do Upstash: https, host próprio, sem caminho, usuário ou senha. */
+export function isValidUpstashRestUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw.trim());
+    return (
+      u.protocol === "https:" &&
+      !u.username &&
+      !u.password &&
+      (u.pathname === "/" || u.pathname === "") &&
+      /\.upstash\.io$/i.test(u.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
 function getRedis(): Redis | null {
   if (_redis) return _redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Espaços, quebras de linha e aspas coladas ao copiar do painel geravam
+  // requisições inválidas (corpo vazio → "Unable to parse response body").
+  const url = cleanEnv(process.env.UPSTASH_REDIS_REST_URL)?.replace(/\/+$/, "");
+  const token = cleanEnv(process.env.UPSTASH_REDIS_REST_TOKEN);
   if (!url || !token) return null;
+  if (!isValidUpstashRestUrl(url)) {
+    // URL errada (ex.: endereço redis:// ou do painel) fazia cada chamada
+    // devolver corpo vazio e a IA ficava "indisponível" para todos.
+    warnOnce(
+      "upstash-url",
+      "[rate-limiter] UPSTASH_REDIS_REST_URL inválida: use a REST URL https://<nome>.upstash.io (aba REST API do banco). Usando limite local.",
+    );
+    return null;
+  }
   _redis = new Redis({ url, token });
   return _redis;
 }
@@ -264,19 +307,10 @@ export async function checkRateLimit(
   }
 
   // Circuit breaker aberto
+  // Upstash indisponível: limite LOCAL por instância para todos (antes IA e
+  // IoT negavam tudo — uma URL errada derrubava a IA da plataforma inteira).
+  // O custo da IA continua limitado pela cota mensal de créditos no banco.
   if (breakerIsOpen()) {
-    if (cfg.critical) {
-      recordBypass(key, "breaker-open");
-      return {
-        allowed: false,
-        retryAfterSeconds: Math.ceil(getRateLimiterBreaker().msUntilRetry / 1000),
-        remaining: 0,
-        limit: -1,
-        bypassed: true,
-        source: "breaker-open",
-        failClosed: true,
-      };
-    }
     recordBypass(key, "breaker-open");
     const fallback = cfg.fallback ?? { windowMs: 60_000, max: 60 };
     const local = localFallbackAllow(key, identifier, fallback.windowMs, fallback.max);
@@ -304,20 +338,10 @@ export async function checkRateLimit(
     };
   } catch (err) {
     breakerOnFailure();
-    console.error("[rate-limiter] Upstash error (breaker tripping):", err);
-
-    if (cfg.critical) {
-      recordBypass(key, "upstash-error");
-      return {
-        allowed: false,
-        retryAfterSeconds: 30,
-        remaining: 0,
-        limit: -1,
-        bypassed: true,
-        source: "upstash-error",
-        failClosed: true,
-      };
-    }
+    console.error(
+      "[rate-limiter] Upstash error (breaker tripping):",
+      err instanceof Error ? err.name : "erro",
+    );
 
     recordBypass(key, "upstash-error");
     const fallback = cfg.fallback ?? { windowMs: 60_000, max: 60 };

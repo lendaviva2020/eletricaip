@@ -12,6 +12,7 @@ import {
   isActiveAlarm,
 } from "@/lib/scada/asset-hierarchy";
 import { cn } from "@/lib/utils";
+import { useVisibleAlarms } from "@/lib/scada/alarm-management-store";
 
 const RANK: Record<ScadaAlarmItem["priority"], number> = {
   CRITICAL: 0,
@@ -46,7 +47,7 @@ export function ScadaOsStatusBar() {
   const isPhysicalControlAllowed = useScadaStore((s) => s.isPhysicalControlAllowed);
   const gatewayStatus = useScadaStore((s) => s.gatewayStatus);
   const isDemoProject = useScadaStore((s) => s.isDemoProject);
-  const alarms = useScadaStore((s) => s.alarms);
+  const alarms = useVisibleAlarms();
   const equipments = useScadaStore((s) => s.equipments);
   const tags = useScadaStore((s) => s.tags);
   const selectEquipment = useScadaStore((s) => s.selectEquipment);

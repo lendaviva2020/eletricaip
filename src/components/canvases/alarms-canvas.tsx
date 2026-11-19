@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useVisibleAlarms } from "@/lib/scada/alarm-management-store";
 import { Warning, WarningCircle, Info, CheckCircle, BellRinging } from "@phosphor-icons/react";
 import { BottomStrip, FloatingLegend } from "./canvas-chrome";
 import { useScadaStore } from "@/lib/scada/scada-store";
@@ -59,7 +60,8 @@ function sevKey(p: ScadaAlarmItem["priority"]): keyof typeof SEV_CONF {
  */
 export function AlarmsCanvas() {
   const { t, locale } = useI18n();
-  const alarms = useScadaStore((s) => s.alarms);
+  // Prateleira e fora de serviço ficam fora da lista (gestão no SCADA → Alarmes).
+  const alarms = useVisibleAlarms();
   const acknowledgeAlarm = useScadaStore((s) => s.acknowledgeAlarm);
   const acknowledgeAll = useScadaStore((s) => s.acknowledgeAllAlarms);
   const pushNotification = useNotificationStore((s) => s.addNotification);
