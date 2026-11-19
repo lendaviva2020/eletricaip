@@ -18,7 +18,7 @@
 | Público-alvo                     | Engenheiros elétricos, automatistas, integradores e plantas industriais — mercado brasileiro (preços em BRL, Mercado Pago, normas NBR/ABNT e IEC)                                                                                                                                  |
 | Arquitetura                      | SPA/SSR **TanStack Start** (React 19) na Vercel; camada de API por **server functions** (`createServerFn`); **Supabase** (Postgres + RLS, Auth, Storage, Realtime, Edge Functions); IA via **DeepSeek** somente no servidor                                                        |
 | Hospedagem                       | Vercel (preset `nitro: vercel`) + projeto Supabase cloud (`project_id = "rvaaxvdimggztjxoktvy"` em `supabase/config.toml`) + Upstash (rate limiting, quando configurado)                                                                                                           |
-| Integrações externas confirmadas | DeepSeek (`api.deepseek.com`), Stripe, Mercado Pago, Supabase (Auth/DB/Storage/Realtime), Google OAuth, Upstash Redis REST, Lovable (`@lovable.dev/mcp-js`, broker de preview), Modbus TCP (socket no servidor, com guarda SSRF)                                                   |
+| Integrações externas confirmadas | DeepSeek (`api.deepseek.com`), Stripe, Mercado Pago, Supabase (Auth/DB/Storage/Realtime), Google OAuth, Upstash Redis REST, Modbus TCP (socket no servidor, com guarda SSRF). **Lovable removido do projeto em 2026-11-19** (servidor MCP + broker de preview; resta apenas `@lovable.dev/vite-tanstack-config` no build)                                                   |
 | Estado real                      | Substancialmente implementado nos editores e persistência; várias telas exibem dados sintéticos/demo; alguns módulos do briefing não têm UI (documentos, relatórios dedicados, tela de cálculos, admin dedicado)                                                                   |
 
 ---
@@ -61,7 +61,7 @@ O ElétricAi permite a um engenheiro criar e gerir **projetos de automação ind
 | Assinaturas/billing (Stripe + Mercado Pago)                         | ✅                     | Checkout, webhooks assinados idempotentes (rota do servidor); **UI com fallback demo**                                                                                                                                                                                                                    |
 | Equipe/convites/roles                                               | ✅                     | `settings.team.tsx` + RPC `accept_invite`; **fallback demo** quando backend indisponível                                                                                                                                                                                                                  |
 | Administração de plataforma                                         | 🟡                     | Sem rota `/admin`; gating por `is_platform_admin()` em billing, rate limits, catálogo, blog                                                                                                                                                                                                               |
-| MCP server para agentes (OAuth 2.1)                                 | ✅/❓                  | `/mcp` + consent screen; enforcement interno da lib `@lovable.dev/mcp-js` não verificado                                                                                                                                                                                                                  |
+| MCP server para agentes (OAuth 2.1)                                 | ❌ (removido)          | Removido em 2026-11-19 junto com o Lovable (`@lovable.dev/mcp-js`, rotas `/mcp`, consent e well-known)                                                                                                                                                                                                      |
 | Termos de uso / privacidade                                         | ❌                     | Links no footer da landing apontam para `#`                                                                                                                                                                                                                                                               |
 
 ---
@@ -164,7 +164,7 @@ eletricaip/
     │   ├── digital-twin.tsx   ← twin 3D standalone
     │   ├── settings.tsx + settings.*.tsx (14 subrotas)
     │   ├── mcp.ts             ← endpoint MCP (server handler)
-    │   ├── [.]lovable.oauth.consent.tsx, [.well-known]/oauth-protected-resource.ts
+    │   │   (servidor MCP/Lovable removido em 2026-11-19: mcp.ts, [.]lovable.oauth.consent.tsx, [.well-known]/)
     │   └── api/public/        ← iot.ingest.ts, stripe.webhook.ts, mp.webhook.ts
     ├── components/
     │   ├── ui/                ← primitivas shadcn/Radix
@@ -419,11 +419,11 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 | RISK-016 | P2         | N/A            | RLS                  | Bucket `twin-models`                    | Normal     | Módulo digital-twin removido (`drop_digital_twin_module`); bucket/fluxo não existem mais                                 |
 | RISK-017 | P2         | Mitigado (parcial) | Autenticação         | MFA/sessões                             | Normal     | TOTP opcional + gate no AuthGate + recusa aal1 no `requireSupabaseAuth` (2026-11-16); falta política RLS aal2 (MCP/PostgREST) e lista de sessões |
 | RISK-018 | P2         | Não verificado | Backup               | Continuidade (Supabase/Vercel)          | Alta       | Confirmar plano/retention e executar restore de teste                                                                   |
-| RISK-019 | P2         | Não verificado | API                  | Servidor MCP                            | Normal     | Testar chamada MCP sem consentimento/token válido                                                                       |
+| RISK-019 | P2         | N/A            | API                  | Servidor MCP                            | Normal     | Servidor MCP (Lovable) removido em 2026-11-19 — rotas `/mcp`, consent e well-known e `@lovable.dev/mcp-js` eliminados    |
 | RISK-020 | P3         | Mitigado       | Frontend             | `svg-sanitizer.ts`, `chart.tsx`         | Baixa      | `svg-sanitizer.ts` e `chart.tsx` removidos; único `dangerouslySetInnerHTML` restante (`__root.tsx:154`) é script estático de tema, sem dado de usuário/servidor |
 | RISK-021 | P3         | Mitigado       | Upload               | Uploads GLB/CSV                         | Baixa      | Upload GLB removido com o twin; CSV com limite de tamanho/linhas e saneamento (2026-11-16) |
 | RISK-022 | P3         | Confirmado (bloqueado) | Frontend       | Proteção de rotas                       | Baixa      | `beforeLoad` no servidor exige a sessão em cookie; hoje está em localStorage (RISK-004) — depende do workstream de cookie httpOnly (P-03) |
-| RISK-023 | P3         | Mitigado       | Frontend             | Consent OAuth MCP                       | Baixa      | `isSafeOAuthRedirect` (https/loopback, sem credenciais) no loader e na decisão (2026-11-16) |
+| RISK-023 | P3         | N/A            | Frontend             | Consent OAuth MCP                       | Baixa      | Rota de consentimento removida com o servidor MCP/Lovable (2026-11-19); `isSafeOAuthRedirect` permanece em `url-safety.ts` |
 | RISK-024 | P3         | Mitigado       | Autenticação         | Política de senha                       | Baixa      | `password-policy.ts` única em cadastro/reset/troca (2026-11-16) |
 | RISK-025 | P3         | Confirmado     | Infraestrutura       | CI/CD, scripts, `.env.example`          | Normal     | Restaurar workflow versionado e script typecheck; conferir nomes de env                                                 |
 | RISK-026 | P3         | Não verificado | Autenticação         | Supabase Auth (e-mail/OAuth)            | Normal     | Conferir dashboard: exigência de confirmação e URIs de redirect                                                         |
@@ -520,7 +520,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 - **Controles ausentes ou insuficientes:** Sessão em cookie httpOnly (Supabase SSR), CSP sem `unsafe-eval`
 - **Recomendação:** Migrar a sessão para cookies httpOnly com detecção no servidor, ou endurecer CSP removendo `unsafe-eval` via configuração dos workers (Monaco); manter plano de remoção de sinks de HTML
 - **Prioridade de tratamento:** Alta
-- **Dependências:** `previewAuthStorage`, telas de preview Lovable, Monaco, Web Workers
+- **Dependências:** `previewAuthStorage` (agora só `localStorage` — broker Lovable removido em 2026-11-19), Monaco, Web Workers
 - **Risco da correção:** Alto (quebra preview/SSR se mal implementado — exige testes em todos os fluxos de auth)
 - **Validação necessária:** Após mudança, XSS sintético não consegue ler token; login/logout/OAuth/refresh funcionam
 - **Referências:** `client.ts:17-23`, `previewAuthStorage.ts`, `vercel.json:5-34`
@@ -894,7 +894,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 - **Status:** Confirmado
 - **Categoria:** Frontend
 - **Ativo afetado:** Rotas privadas
-- **Localização:** `src/routes/__root.tsx:24-30,120-194` (`AuthGate`); único `beforeLoad` de auth em `[.]lovable.oauth.consent.tsx:55-62`
+- **Localização:** `src/routes/__root.tsx:24-30,120-194` (`AuthGate`); não há mais `beforeLoad` de auth (a rota de consentimento MCP que o usava foi removida em 2026-11-19)
 - **Evidência:** O gate é um componente React; loaders só fazem prefetch e curto-circuitam no servidor
 - **Cenário de risco:** Rota futura que busque dados com cliente sem RLS/loader exporia conteúdo antes do gate; hoje os dados vêm de server functions autenticadas (91/91 com middleware)
 - **Impacto potencial:** Vazamento pontual de conteúdo não autenticado
