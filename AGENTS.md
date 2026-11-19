@@ -43,7 +43,7 @@ O ElétricAi permite a um engenheiro criar e gerir **projetos de automação ind
 | Editor unifilar/multifilar (Pixi.js + viewport)                     | ✅                     | `lib/diagram/*`, `render/stage.ts`, testes `multifilar`                                                                                                                                                                                                                                                   |
 | Multifilar gerado do unifilar                                       | ✅                     | `lib/diagram/multifilar.ts` (inferência F/N/3F/N, memorial de condutores)                                                                                                                                                                                                                                 |
 | Editor Ladder + runtime de scan (TON/TOF/TP/CTU)                    | ✅                     | `lib/ladder/scan-core.ts` (puro), compilador IL/ST, importador, validador, verificação de E-STOP por simulação                                                                                                                                                                                            |
-| Editor FBD + motor IEC (AST→IR, EN/ENO, runtime, simulação)         | ✅                     | `lib/fbd/engine/*`; paleta além dos blocos IEC é limitada; **sem blocos customizados no motor**                                                                                                                                                                                                           |
+| FB Electric Studio (FBD/LAD por páginas, motor IEC AST→IR, EN/ENO, simulação, ST) | ✅ | `src/components/compact-studio/`, `src/lib/compact-studio/`, motor em `lib/fbd/engine/*`; o editor FBD legado foi unificado no Studio (2026-11-16) |
 | PLC (rack, variáveis, blocos, PLCopen XML)                          | ✅ (camada de projeto) | `lib/plc/*`, `plcopen-export.ts`; **sem download/execução em PLC real**                                                                                                                                                                                                                                   |
 | Comunicação Modbus                                                  | ✅ (Gate 3 Edge)       | Driver Modbus TCP Read-Only em `lib/edge/drivers/modbus-driver.ts`; MBAP/PDU, FC1/2/3/4, 4 endianness (ABCD/DCBA/CDAB/BADC), escala e zero/one-based                                                                                                                                                       |
 | Comunicação OPC-UA                                                  | ✅ (Gate 3 Edge)       | Driver OPC UA Read-Only em `lib/edge/drivers/opcua-driver.ts`; SignAndEncrypt, Trust List, Browse, Read, Subscriptions, mapeamento de StatusCodes para qualidade                                                                                                                                          |
@@ -52,7 +52,7 @@ O ElétricAi permite a um engenheiro criar e gerir **projetos de automação ind
 | SCADA/HMI (telas, tags, alarmes ISA-18.2, trends)                   | ✅                     | `scada-canvas.tsx`, `scada-engine.ts`, sandbox de scripts em Web Worker                                                                                                                                                                                                                                   |
 | Simulação                                                           | 🟡                     | Ladder/FBD simulam lógica real; planta 8M+2EX com motor determinístico; **circuitos de potência e PLC real não são simulados**; painel "Simulação" reúne planta, cenários, ponte e estudos                                                                                                                |
 | CCM supervisório (comando de motores)                              | ✅ (simulação)         | Aba **SCADA → CCM — Motores**: frota derivada do unifilar (`lib/simulation/motor-fleet.ts`), motor de proteção puro (`motor-protection-engine.ts`: I²t IEC 60947-4-1 por classe, magnético B/C/D, falta de fase, falha de rotação, falha de sensor PT100/encoder, subtensão sem religamento), store efêmero com espelho de contatores/disjuntores no unifilar (`motor-control-store.ts`), I/O de CLP simulado; **escrita em campo bloqueada** |
-| Digital twin 3D + telemetria + what-if                              | ✅                     | `/digital-twin`, upload GLB (bucket privado, signed URLs), flush de telemetria, Realtime                                                                                                                                                                                                                  |
+| Digital twin 3D | ❌ (removido) | Módulo removido (`drop_digital_twin_module`); rota, stores, bucket `twin-models` e hotspots não existem mais |
 | Cálculos elétricos                                                  | ✅                     | `electrical-calc.ts`: motor, demanda, queda de tensão, dimensionamento de cabo/corrente. `electrical-sim.ts` (novo): curto-circuito IEC 60909, seletividade IEC 60947, ruptura, arco elétrico IEEE 1584, esforço térmico de partida, com painel em Simulação. Harmônicas (`power-quality.ts`) e aterramento (`grounding.ts`) na tela `/calculations` |
 | IA (architect, chat, patches, RAG normativo, créditos, rate limits) | ✅                     | `ai-architect.functions.ts`, `ai-chat.functions.ts`, `diagram/ai.functions.ts`; **upload/OCR de PDF na IA é mock**                                                                                                                                                                                        |
 | Catálogo de componentes + importação CSV/XLSX                       | ✅                     | `/catalog`, `/settings/catalog-import` (tenant-admin)                                                                                                                                                                                                                                                     |
@@ -62,7 +62,7 @@ O ElétricAi permite a um engenheiro criar e gerir **projetos de automação ind
 | Equipe/convites/roles                                               | ✅                     | `settings.team.tsx` + RPC `accept_invite`; **fallback demo** quando backend indisponível                                                                                                                                                                                                                  |
 | Administração de plataforma                                         | 🟡                     | Sem rota `/admin`; gating por `is_platform_admin()` em billing, rate limits, catálogo, blog                                                                                                                                                                                                               |
 | MCP server para agentes (OAuth 2.1)                                 | ❌ (removido)          | Removido em 2026-11-19 junto com o Lovable (`@lovable.dev/mcp-js`, rotas `/mcp`, consent e well-known)                                                                                                                                                                                                      |
-| Termos de uso / privacidade                                         | ❌                     | Links no footer da landing apontam para `#`                                                                                                                                                                                                                                                               |
+| Termos de uso / privacidade | ✅ | `/termos` e `/privacidade` (`public/legal/*.md`), aceite versionado no cadastro; falta revisão jurídica final |
 
 ---
 
@@ -135,7 +135,7 @@ eletricaip/
 ├── README.md                  ← onboarding de secrets do CI/CD
 ├── roadmap.md                 ← roadmap de features
 ├── package.json / bun.lock    ← scripts e dependências (Bun)
-├── vite.config.ts             ← TanStack Start + Nitro (Vercel) + chunks manuais + plugin MCP
+├── vite.config.ts             ← TanStack Start + Nitro (Vercel) + vendor-chunks por rota (sem dependências Lovable)
 ├── vitest.config.ts           ← configuração dos testes
 ├── tsconfig.json              ← TypeScript strict, alias @/* → ./src/*
 ├── eslint.config.js           ← ESLint 9
@@ -151,8 +151,7 @@ eletricaip/
 │   ├── config.toml            ← project_id + verify_jwt da Edge Function de IA
 │   ├── migrations/            ← 54 arquivos SQL (11 são placeholders de histórico remoto)
 │   └── functions/
-│       ├── ai-industrial-architect/  ← Edge Function de IA (órfã do frontend — ver RISK-009)
-│       └── stripe-webhook/           ← Edge Function de webhook Stripe (sem idempotência — RISK-013)
+│       (vazio — Edge Functions órfãs removidas em 2026-11-19; webhooks e IA rodam como rotas/server functions)
 └── src/
     ├── routes/                ← roteamento file-based (42 rotas + __root)
     │   ├── __root.tsx         ← shell, AuthGate, chrome (sidebar/topbar), 404/erro
@@ -161,32 +160,30 @@ eletricaip/
     │   ├── dashboard.tsx, projects.tsx, projects.$projectId.{bom,export}.tsx
     │   ├── workspace.tsx      ← shell dos editores (?projectId=)
     │   ├── ai.tsx, chat.tsx, analytics.tsx, catalog.tsx, clients*.tsx, realtime.tsx
-    │   ├── digital-twin.tsx   ← twin 3D standalone
     │   ├── settings.tsx + settings.*.tsx (14 subrotas)
-    │   ├── mcp.ts             ← endpoint MCP (server handler)
     │   │   (servidor MCP/Lovable removido em 2026-11-19: mcp.ts, [.]lovable.oauth.consent.tsx, [.well-known]/)
     │   └── api/public/        ← iot.ingest.ts, stripe.webhook.ts, mp.webhook.ts
     ├── components/
     │   ├── ui/                ← primitivas shadcn/Radix
-    │   ├── canvases/          ← webgl-canvas, ladder-canvas, fbd-canvas, plc-canvas,
-    │   │                        scada-canvas, sim-canvas, twin-canvas, konva-canvas (legado),
-    │   │                        twin-3d-viewer, ladder/{rung-grid,ladder-cell}
-    │   ├── scada/, fbd/       ← bind-tag-dialog, fbd-engine-panel
+    │   ├── canvases/          ← webgl-canvas (unifilar/multifilar), ladder-canvas, plc-canvas,
+    │   │                        scada-canvas, sim-canvas, konva-canvas (editor HMI), ladder/{rung-grid,ladder-cell}
+    │   ├── compact-studio/    ← FB Electric Studio (FBD/LAD, páginas, ST)
+    │   ├── scada/, hmi/       ← faceplate, alarmes ISA-18.2, editor HMI de processo
     │   ├── industrial-workspace.tsx, mode-tabs, sidebars, right-panel, bottom-panel
     │   └── canvas-ai-chat.tsx, ai-patch-preview.tsx, onboarding-tour.tsx …
-    ├── hooks/                 ← use-auth, use-active-tenant, use-collab, use-fbd-engine,
-    │                            use-tenant-setting, use-twin-telemetry-persistence, use-notifications …
+    ├── hooks/                 ← use-auth, use-active-tenant, use-collab, use-tenant-setting,
+    │                            use-arduino-serial, use-notifications …
     ├── lib/                   ← domínio + server functions
     │   ├── diagram/           ← schema (Zod), store (comandos/undo), render/{stage,symbols,ports},
     │   │                        multifilar, export-dxf, ai.functions
     │   ├── ladder/            ← types, scan-core (runtime puro), compiler (IL/ST), importer,
     │   │                        validator, verify-estop, definitions, from-ai-spec
-    │   ├── fbd/               ← types/compiler/runtime legados + engine/ (model, datatypes,
+    │   ├── fbd/               ← engine/ (motor IEC usado pelo FB Electric Studio: model, datatypes,
     │   │                        registry, iec-library, compiler, runtime, simulation)
     │   ├── plc/               ← types, store, rack-validation, plcopen-export
     │   ├── simulation/        ← scada-engine, scada-worker (sandbox), script-sandbox, worker-guards
-    │   ├── security/          ← rate-limiter.server, ai-rate-limit-*, ai-metrics, svg-sanitizer
-    │   ├── mcp/               ← index (defineMcp), supabase, tools/*
+    │   ├── security/          ← rate-limiter.server, ai-rate-limit-*, url-safety, password-policy, safe-xlsx
+    │   ├── ai/knowledge/      ← mapa de conhecimento da IA por editor (docs/IA_EDITORES.md)
     │   ├── *.functions.ts     ← server functions (projetos, BOM, catálogo, clientes, IA, billing,
     │   │                        IoT, digital twin, diagnósticos, Modbus/OPC-UA, tenant settings…)
     │   └── electrical-calc.ts, norm-validator.ts, pdf-export.ts, dxf-export.ts,
@@ -195,7 +192,7 @@ eletricaip/
     │                            types.ts (tipos gerados), env.ts, auth-attacher.ts,
     │                            auth-middleware.ts, tenant-admin-middleware.ts,
     │                            ai-rate-limit-middleware.ts, previewAuthStorage.ts
-    ├── __tests__/             ← 31 arquivos de teste / 260 testes (Vitest)
+    ├── __tests__/             ← ~195 arquivos / ~1 750 testes (Vitest) — `bun run test`
     ├── router.tsx / routeTree.gen.ts (gerado) / start.ts / server.ts / styles.css
 ```
 
@@ -237,11 +234,11 @@ CRUD, duplicar, arquivar, excluir (server functions com limite por plano via `pl
 
 - **Unifilar/Multifilar** — `webgl-canvas.tsx` + `lib/diagram/render/stage.ts` (Pixi.js 8 + viewport): símbolos IEC, portas, conexões, marquee, snap, undo/redo (padrão de comandos), paleta (`lib/palette/component-catalog.ts`), geração de multifilar, BOM, export DXF/PDF. Persistência no snapshot `diagrams.canvas_data` (Zod `SnapshotSchema`). ✅
 - **Ladder** — `ladder-canvas.tsx` → `rung-grid.tsx`: matriz de células (XIC/XIO/OTE/OTL/OTU/TON/TOF/TP/CTU), runtime de scan puro (`scan-core.ts`, orçamento 50 ms/2000 rungs), compilação IL/ST, importação IL/ST, validador estático, verificação de E-STOP por simulação. Elementos de paleta além dos 9 executáveis (comparadores/mat/lógica) são **decorativos** (sem suporte no engine). ✅ (paleta parcial)
-- **FBD** — `fbd-canvas.tsx` (React Flow) + `lib/fbd/engine`: compilação com grafo de dependências → AST → IR tipado, EN/ENO IEC, runtime determinístico, simulação de passo fixo, forçamento de saídas, diagnósticos; ponte para SCADA (`scada-bridge.ts`). Caminho legado (`lib/fbd/{types,compiler,runtime}.ts`) ainda usado para FBD→ST no PLC. **Sem blocos customizados/fabricante no motor.** ✅
+- **FB Electric Studio** (substitui o editor FBD legado) — `compact-studio/*` + `lib/fbd/engine`: páginas FBD/LAD, biblioteca IEC completa, compilação com grafo de dependências → AST → IR tipado, EN/ENO, simulação de passo fixo, geração de ST, "Gerar do unifilar". ✅
 - **PLC** — `plc-canvas.tsx` (839 linhas): hardware (catálogo S7-like), rack com validação, variáveis (I/Q/M/DB), blocos (OB/FC/FB/DB) com Monaco, compilação de Ladder/FBD → ST, export PLCopen XML. **Sem download/execução em PLC físico.** ✅ (camada de projeto)
 - **SCADA/HMI** — `scada-canvas.tsx` (Konva): widgets HMI, dialog de bind de tags, banner de alarmes, editor de scripts Monaco executados em **Web Worker sandbox** (`scada-worker.ts`, com testes). Alarmes com estados ISA-18.2 e persistência (`alarm_configs`, `alarm_history`). ✅
 - **Simulação** — `sim-canvas.tsx` + `lib/simulation/scada-engine.ts` (alarmes ISA-18.2 por regras sobre tags) + **planta simulada 8M+2EX** (`lib/simulation/plant-engine.ts` puro/determinístico com rampa, térmica, proteções, histerese e E-STOP + `plant-store.ts` efêmero + `plant-sim-panel.tsx` com selo SIMULAÇÃO; tags derivadas alimentam alarmes e gráficos do Sim). Motores derivam In/Istart de `electrical-calc.ts`; **não atesta operação (Termos §10)**. O modo reúne quatro painéis: planta, **cenários de teste** (`test-scenarios.functions.ts` — engine headless determinístico, presets por tipo, histórico persistido em `test_scenario_runs`), **ponte Unifilar→Ladder** (`unifilar-ladder-bridge.ts` — análise pura, geração de ST/IL importável, mapeamentos em `unifilar_ladder_mapping`) e **estudos elétricos** (`electrical-sim.functions.ts` — resultados em `electrical_simulation_results`). ✅ (lógica da planta; potência elétrica via estudos dedicados)
-- **Twin (no workspace e rota dedicada `/digital-twin`)** — visual 3D (Three.js/R3F), hotspots persistidos (`twin_hotspots`), upload de modelo GLB/GLTF (bucket privado `twin-models`, signed URLs), telemetria com flush em lote (`tag_samples`), painel What-If com gate de persistência, saúde da telemetria. ✅
+- **Twin** — ❌ removido do produto (módulo, rota, bucket e tabelas de hotspots).
 - **Alarmes** — `alarms-canvas.tsx` + server functions de config/histórico. ✅
 
 ### 5.6 Inteligência artificial ✅ (com lacunas)
@@ -249,7 +246,7 @@ CRUD, duplicar, arquivar, excluir (server functions com limite por plano via `pl
 - **Arquiteto** `/ai` — `ai-architect.functions.ts`: gera projeto elétrico completo a partir de prompt (Zod, ≤ 32 000 chars), RAG sobre `normative_chunks`, tool-call forçada com `AiDiagramPatchSchema`, loop de verificação (máx. 2 correções, inclui verificação de E-STOP), consumo de créditos (`consume_ai_credits`) e rate limits (`requireAiQuota` + `requireBurstLimit`). Aplica resultado nos stores e navega ao workspace.
 - **Chat** `/chat` — `ai-chat.functions.ts`: streaming SSE, conversas/mensagens persistidas (`ai_conversations`, `ai_messages`), histórico até 40 mensagens enviado sem sanitização de prompt injection (RISK-010).
 - **Canvas** — `canvas-ai-chat.tsx` + `diagram/ai.functions.ts` (`generateDiagramPatch`): patch validado por Zod e aplicado via comandos, com preview (`ai-patch-preview.tsx`). Timeout 60 s e retries. **Upload de PDF/CSV na IA é simulação** (mock com progresso falso).
-- **Governança**: créditos por operação (`ai_credit_costs`), quota mensal, burst limit (Upstash ou memória), painel `/settings/ai-status`, métricas `/settings/rate-limits` (admin), eventos `ai_status_events`/`ai_usage_events`.
+- **Governança**: créditos por operação (`ai_credit_costs`), quota mensal, burst limit (Upstash ou memória), eventos `ai_status_events`/`ai_usage_events`.
 - Chave DeepSeek **somente** no servidor. A Edge Function `ai-industrial-architect` **não é chamada pelo frontend** (RISK-009).
 
 ### 5.7 Cálculos elétricos ✅
@@ -272,11 +269,11 @@ Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdo
 
 ### 5.10 Gestão, billing e administração
 
-- `/clients` (CRM por tenant), `/settings/team` (membros, convites, roles, matriz de permissões — RPC `accept_invite`), `/settings/notifications` (persistido em `tenant_settings`), `/settings/integrations` (credenciais padrão Modbus/OPC-UA/MQTT em `tenant_settings`), `/settings/protocols` (teste Modbus TCP real com SSRF guard; OPC-UA simulada), `/settings/diagnostics`, `/settings/security-monitor`, `/settings/autosave`, `/settings/appearance` (tema real; densidade/idioma sem consumidores).
+- `/clients` (CRM por tenant), `/settings/team` (membros, convites, roles, matriz de permissões — RPC `accept_invite`), `/settings/notifications` (persistido em `tenant_settings`), `/settings/integrations` (credenciais padrão Modbus/OPC-UA/MQTT em `tenant_settings`), `/settings/protocols` (teste Modbus TCP real com SSRF guard; OPC-UA simulada), `/settings/appearance` (tema real; densidade/idioma sem consumidores).
 - `/settings/billing` (admin de plataforma): `getBillingOverview`, `createStripeCheckout`, `createMpPreference`, `cancelSubscription`, `changePlanManual` + audit log; **fallback demo** quando backend indisponível.
 - `/analytics`: uso de IA real; métricas industriais são **placeholder** (`Math.random()`).
 - Webhooks: `/api/public/stripe/webhook` (HMAC timing-safe + idempotência via `stripe_webhook_events`), `/api/public/mp/webhook` (segredo compartilhado timing-safe + idempotência + reconsulta no MP).
-- `/mcp`: servidor MCP com OAuth 2.1 (issuer Supabase) e tools que atuam **como o usuário autenticado** (token encaminhado, sem fallback anônimo).
+- Servidor MCP (`/mcp`): ❌ removido junto com o Lovable em 2026-11-19.
 
 ---
 
@@ -305,7 +302,7 @@ Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdo
 - **Alarmes:** `alarm_configs`, `alarm_history` (RPC `batch_insert_alarm_history`).
 - **Telemetria/trends:** `tag_samples` com partições mensais (`tag_samples_2026_04`, `_05`; RPCs `batch_insert_tag_samples`, `create_monthly_tag_samples_partition`).
 - **IoT:** `iot_devices`, `iot_readings` (escritas de cliente bloqueadas por policies RESTRICTIVE), `iot_alerts`, `iot_command_log`, `api_keys`.
-- **Gêmeo digital:** `twin_hotspots` (**sem evidência de RLS no repo — RISK-001**), `projects.twin_model_path`, bucket `twin-models`.
+- **Gêmeo digital:** ❌ removido (`drop_digital_twin_module`).
 - **IA:** `ai_conversations`, `ai_messages`, `ai_credit_costs`, `ai_usage_events`, `ai_status_events`, `ai_rate_limit_configs`, `normative_documents`/`normative_chunks` (base normativa compartilhada, SELECT para autenticados).
 - **Billing:** `tenants`, `subscriptions`, `invoices`, `billing_events`, `stripe_webhook_events` (deny-all a clientes), `mp_webhook_processed` (deny-all), `usage_records`, `subscription_audit_log`, `plan_limits`.
 - **Gestão:** `profiles`, `tenant_memberships`, `invites` (token oculto a clientes), `tenant_settings`, `notifications`, `clients`, `audit_logs` (leitura só para admin do tenant; escrita via service role), `catalog_*`, `files`/`file_versions`, `comments`.
@@ -336,7 +333,7 @@ Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdo
 - **Estado:** Zustand + Immer para stores locais (diagrama com padrão de comandos reversíveis e undo/redo); TanStack Query para dados do servidor; zustand `persist` para preferências.
 - **Erros:** códigos de erro padronizados nas Edge/API (ex.: `AUTH_REQUIRED`, `QUOTA_EXCEEDED`), SSR com página 500 marcada (`src/server.ts`), contadores de erro 500/503 em `/settings/diagnostics`.
 - **Design system:** shadcn/ui + Radix + Tailwind v4, tema claro/escuro, tokens em CSS, componentes em `src/components/ui`.
-- **Testes:** Vitest (31 arquivos / 260 testes) cobrindo domínio puro (Ladder/FBD/cálculos/multifilar/SSRF/sandbox/redirect/rate limit IoT/twin/planta/elétrica de potência/ponte Unifilar→Ladder).
+- **Testes:** Vitest (~195 arquivos / ~1 750 testes) cobrindo domínio puro (Ladder/FBD/cálculos/multifilar/cabos NBR 5410/reparo/SSRF/sandbox/SCADA/IA) + firmware (`bun run test:firmware`).
 - **Segurança:** autorização no servidor + RLS; assinatura de webhooks com comparação constant-time; SSRF guard em Modbus (RFC1918 + defesa contra DNS rebinding); sandbox de scripts SCADA em Web Worker; tokens de API armazenados como hash.
 
 ### Padrões a não quebrar (recomendações para mudanças futuras)
@@ -381,7 +378,7 @@ Devices, leituras, alertas, ack, fila de comandos (`iot_command_log` com watchdo
 10. Validar dados externos em runtime (Zod) — inclusive saídas de IA.
 11. Não remover funcionalidades existentes sem autorização.
 12. Criar migrations apenas quando explicitamente solicitado; nunca editar migration já aplicada.
-13. Executar `bun run lint`, `bun run test` e `bun run build` após alterações autorizadas (não há script de typecheck — rodar `npx tsc --noEmit` se disponível).
+13. Executar `bun run lint`, `bun run test` e `bun run build` após alterações autorizadas (e `bun run typecheck`).
 14. Não declarar testes aprovados sem executá-los.
 15. Não declarar funcionalidades prontas sem evidência de implementação.
 16. Preservar acessibilidade e responsividade existentes.
@@ -425,14 +422,14 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 | RISK-022 | P3         | Confirmado (bloqueado) | Frontend       | Proteção de rotas                       | Baixa      | `beforeLoad` no servidor exige a sessão em cookie; hoje está em localStorage (RISK-004) — depende do workstream de cookie httpOnly (P-03) |
 | RISK-023 | P3         | N/A            | Frontend             | Consent OAuth MCP                       | Baixa      | Rota de consentimento removida com o servidor MCP/Lovable (2026-11-19); `isSafeOAuthRedirect` permanece em `url-safety.ts` |
 | RISK-024 | P3         | Mitigado       | Autenticação         | Política de senha                       | Baixa      | `password-policy.ts` única em cadastro/reset/troca (2026-11-16) |
-| RISK-025 | P3         | Confirmado     | Infraestrutura       | CI/CD, scripts, `.env.example`          | Normal     | Restaurar workflow versionado e script typecheck; conferir nomes de env                                                 |
+| RISK-025 | P3         | Mitigado       | Infraestrutura       | CI/CD, scripts, `.env.example`          | Normal     | `.github/workflows/ci.yml` versionado, `bun run typecheck` existe e `.env.example` reconciliado com os nomes reais (verificado 2026-11-19) |
 | RISK-026 | P3         | Não verificado | Autenticação         | Supabase Auth (e-mail/OAuth)            | Normal     | Conferir dashboard: exigência de confirmação e URIs de redirect                                                         |
 | RISK-027 | P3         | Mitigado       | Outro                | Landing (termos/privacidade)            | Normal     | Publicadas em `/privacidade` e `/termos`; pendente revisão jurídica + aceite versionado                                 |
 | RISK-028 | P3         | Confirmado     | Outro                | Dashboard/analytics/billing/team        | Baixa      | Isolar modo demo; sinalizar dados sintéticos na UI                                                                      |
 | RISK-029 | P3         | Confirmado     | Frontend             | localStorage                            | Baixa      | Reduzir espelhos operacionais; validar URLs/keys coladas                                                                |
 | RISK-030 | P3         | Mitigado       | API                  | CORS dos endpoints públicos             | Baixa      | `/api/public/iot/ingest` usa allowlist de origem (`PUBLIC_APP_URL`); Edge Functions com CORS `*` removidas (pentest 2026-11-19) |
 | RISK-031 | P3         | Confirmado     | RLS                  | `tenant_memberships` (SELECT)           | Baixa      | Restringir colunas/visibilidade; teste com membro comum                                                                 |
-| RISK-032 | P3         | Confirmado     | Auditoria            | Observabilidade                         | Normal     | Integrar error tracking e alertas de custo de IA                                                                        |
+| RISK-032 | P3         | Mitigado (parcial) | Auditoria        | Observabilidade                         | Normal     | `lib/error-capture.ts` envia erros ao Sentry (dados sensíveis mascarados) quando `SENTRY_DSN` está configurado; falta alerta de custo de IA |
 | RISK-033 | P3         | N/A (hoje)     | Upload               | Antivírus/quarentena                    | Baixa      | Upload GLB removido com o twin; só resta parse client-side de CSV/XLSX (saneado). Reavaliar quando houver upload de documentos |
 | RISK-034 | P3         | Mitigado       | Outro                | Código morto/legado                     | Baixa      | `bun run lint && bun run test && bun run build` após remoções (lint+test+typecheck executados e verdes)                 |
 | RISK-035 | P2         | Mitigado       | Exclusão/LGPD        | `ai_messages` órfãs no delete           | Alta       | Migration 20261012110000 (policy DELETE) + erro checado; 9 testes em `deletion.test.ts`                                 |
@@ -528,7 +525,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-005 — Policies de `invoices`/`subscriptions` permitem leitura a qualquer membro do tenant
 
 - **Severidade:** P2
-- **Status:** Confirmado
+- **Status:** Mitigado — Pentest 2026-11-19: policies SELECT vivas de `invoices`/`subscriptions` exigem `role IN (admin,owner)` — verificado em `pg_policies` *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** RLS
 - **Ativo afetado:** Dados de faturamento/assinatura do tenant
 - **Localização:** `baseline_rls_consolidation.sql:448-449` (invoices), `:730-731` (subscriptions)
@@ -549,7 +546,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-006 — Sem rate limiting de aplicação em login, cadastro e recuperação de senha
 
 - **Severidade:** P2
-- **Status:** Confirmado
+- **Status:** Mitigado — 2026-11-19: `checkAuthRateLimit` (server fn, bucket `auth` 5/15min por IP) chamado antes de login/signup/forgot; fail-open com fallback local. Falta reset-password e confirmar limites nativos do Supabase *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Autenticação
 - **Ativo afetado:** Fluxos de autenticação (`/login`, `/signup`, `/forgot-password`, `/reset-password`)
 - **Localização:** `src/lib/security/rate-limiter.server.ts:32` (bucket `auth` definido, sem chamadores); `src/routes/login.tsx:58`, `signup.tsx:32`, `forgot-password.tsx:22`, `reset-password.tsx:33` (chamam Supabase Auth direto do navegador)
@@ -616,7 +613,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-009 — Edge Function de IA órfã, com limites mais fracos que o caminho real
 
 - **Severidade:** P2
-- **Status:** Confirmado
+- **Status:** Mitigado — Pentest 2026-11-19: `list_edge_functions`=[] (não deployada); diretório órfão e deploy no CI removidos *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** API
 - **Ativo afetado:** Endpoint de IA `ai-industrial-architect`
 - **Localização:** `supabase/functions/ai-industrial-architect/index.ts` (399 linhas); `supabase/config.toml:3-4`
@@ -681,7 +678,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-012 — `datasheet_url` do catálogo é renderizado como `href` sem validação de esquema
 
 - **Severidade:** P2
-- **Status:** Confirmado
+- **Status:** Mitigado — `toSafeExternalHref` na importação e na exibição (2026-11-16) *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Frontend
 - **Ativo afetado:** Link de datasheet em `/catalog`
 - **Localização:** `src/routes/catalog.tsx:85-89` (`href={c.datasheet_url}`); origem do valor: importação admin `src/lib/catalog-import.functions.ts:47,167`
@@ -702,7 +699,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-013 — Duas implementações de webhook Stripe divergentes (uma sem idempotência)
 
 - **Severidade:** P2
-- **Status:** Confirmado
+- **Status:** Mitigado — Pentest 2026-11-19: edge órfã não deployada; diretório + job de CI `--no-verify-jwt` removidos; só a rota de servidor (idempotente) permanece *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Pagamentos
 - **Ativo afetado:** Sincronização de assinaturas/planos
 - **Localização:** `supabase/functions/stripe-webhook/index.ts` (sem idempotência; `getPlanFromPrice` deriva nome de env var do price id cru, :78-81) vs `src/routes/api/public/stripe.webhook.ts` (idempotência via `stripe_webhook_events`, :27-37)
@@ -744,7 +741,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-015 — Funções `SECURITY DEFINER` executáveis por clientes sem definição no repositório
 
 - **Severidade:** P2
-- **Status:** Não verificado
+- **Status:** Mitigado — Pentest 2026-11-19: os 11 corpos lidos de `pg_proc` derivam tenant de `auth.uid()`/conferem `tenant_memberships.role`; `search_path` fixado; sem alvo do cliente (ver `docs/SECURITY_PENTEST_2026-11-19.md`) *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Banco de dados
 - **Ativo afetado:** RPCs `increment_usage`, `bootstrap_personal_tenant_if_missing`, `get_user_role`, `get_user_tenant_id`, `batch_insert_alarm_history`, `batch_insert_tag_samples`, `batch_update_simulation_tags`, `search_*`
 - **Localização:** Grants restaurados em `supabase/migrations/20260601000000_fix_authenticated_function_grants.sql:5-16`; corpos fora do repo
@@ -765,7 +762,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-016 — Bucket `twin-models` aceita escrita de qualquer papel do tenant
 
 - **Severidade:** P2
-- **Status:** Confirmado
+- **Status:** N/A — Módulo digital-twin removido (`drop_digital_twin_module`); bucket/fluxo não existem mais *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** RLS
 - **Ativo afetado:** Modelos 3D dos gêmeos digitais
 - **Localização:** `supabase/migrations/20260626082857…:10-33` (policies `*_own_tenant` sem predicado de papel); criação do bucket fora do repo
@@ -786,7 +783,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-017 — Sem MFA e sem gestão de sessões/dispositivos
 
 - **Severidade:** P2
-- **Status:** Confirmado
+- **Status:** Mitigado (parcial) — TOTP opcional + gate no AuthGate + recusa aal1 no `requireSupabaseAuth` (2026-11-16); falta política RLS aal2 (MCP/PostgREST) e lista de sessões *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Autenticação
 - **Ativo afetado:** Contas administrativas e empresariais
 - **Localização:** `src/routes/settings.security.tsx:25-36` (apenas troca de senha e `signOut` global)
@@ -828,7 +825,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-019 — Autorização do servidor MCP depende de biblioteca de terceiros não auditada aqui
 
 - **Severidade:** P2
-- **Status:** Não verificado
+- **Status:** N/A — Servidor MCP (Lovable) removido em 2026-11-19 — rotas `/mcp`, consent e well-known e `@lovable.dev/mcp-js` eliminados *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** API
 - **Ativo afetado:** Servidor MCP em `/mcp` e consent screen OAuth 2.1
 - **Localização:** `src/routes/mcp.ts:12-23`, `src/lib/mcp/index.ts:22-25`, `src/routes/[.]lovable.oauth.consent.tsx`
@@ -849,7 +846,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-020 — Sanitizador SVG (DOMPurify) é código morto; único `dangerouslySetInnerHTML` sem sanitização
 
 - **Severidade:** P3
-- **Status:** Confirmado
+- **Status:** Mitigado — `svg-sanitizer.ts` e `chart.tsx` removidos; único `dangerouslySetInnerHTML` restante (`__root.tsx:154`) é script estático de tema, sem dado de usuário/servidor *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Frontend
 - **Ativo afetado:** `src/components/ui/chart.tsx`, `src/lib/security/svg-sanitizer.ts`
 - **Localização:** `chart.tsx:73-88` (injeta `<style>` gerado); `svg-sanitizer.ts` sem importadores
@@ -870,7 +867,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-021 — Uploads sem validação de magic bytes e sem limite de taxa; importação de catálogo sem cap de tamanho no cliente
 
 - **Severidade:** P3
-- **Status:** Confirmado
+- **Status:** Mitigado — Upload GLB removido com o twin; CSV com limite de tamanho/linhas e saneamento (2026-11-16) *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Upload
 - **Ativo afetado:** Modelos GLB/GLTF (`twin-models`) e importação CSV/XLSX do catálogo
 - **Localização:** `src/lib/digital-twin.functions.ts:69-110` (regex de nome, 75 MB, sem magic bytes); `src/routes/settings.catalog-import.tsx:179-188` (parse no cliente, sem limite de bytes)
@@ -912,7 +909,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-023 — Consent OAuth do MCP redireciona sem `isSafeRedirect`
 
 - **Severidade:** P3
-- **Status:** Confirmado
+- **Status:** N/A — Rota de consentimento removida com o servidor MCP/Lovable (2026-11-19); `isSafeOAuthRedirect` permanece em `url-safety.ts` *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Frontend
 - **Ativo afetado:** Fluxo de consentimento `/.lovable/oauth/consent`
 - **Localização:** `src/routes/[.]lovable.oauth.consent.tsx:68-69,113`
@@ -933,7 +930,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-024 — Política de senha inconsistente (cadastro aceita 6 caracteres; reset exige 8)
 
 - **Severidade:** P3
-- **Status:** Confirmado
+- **Status:** Mitigado — `password-policy.ts` única em cadastro/reset/troca (2026-11-16) *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Autenticação
 - **Ativo afetado:** Qualidade de senha das contas
 - **Localização:** `src/routes/signup.tsx:66-72` (mínimo 6) vs `src/routes/reset-password.tsx:29` (mínimo 8)
@@ -954,7 +951,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-025 — CI/CD referenciado não está versionado; sem script de typecheck; drift no `.env.example`
 
 - **Severidade:** P3
-- **Status:** Confirmado
+- **Status:** Mitigado — `.github/workflows/ci.yml` versionado, `bun run typecheck` existe e `.env.example` reconciliado com os nomes reais (verificado 2026-11-19) *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Infraestrutura
 - **Ativo afetado:** Pipeline de qualidade/deploy e configuração de ambientes
 - **Localização:** `README.md:8-71` (descreve `.github/workflows/ci.yml`); pasta `.github/` inexistente; `package.json:13-22` (sem script typecheck); `.env.example` (nomes divergentes: `MERCADO_PAGO_WEBHOOK_SECRET` vs código `MP_WEBHOOK_SECRET`; sem `UPSTASH_REDIS_REST_URL/TOKEN` nem `SUPABASE_JWT_SECRET`)
@@ -1059,7 +1056,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-030 — CORS `*` nos endpoints públicos
 
 - **Severidade:** P3
-- **Status:** Confirmado
+- **Status:** Mitigado — `/api/public/iot/ingest` usa allowlist de origem (`PUBLIC_APP_URL`); Edge Functions com CORS `*` removidas (pentest 2026-11-19) *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** API
 - **Ativo afetado:** `/api/public/iot/ingest`, Edge Functions
 - **Localização:** `src/routes/api/public/iot.ingest.ts:15-22`; `supabase/functions/*/index.ts` (CORS `*`)
@@ -1101,7 +1098,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-032 — Sem error tracking externo nem alertas de custo de IA
 
 - **Severidade:** P3
-- **Status:** Confirmado
+- **Status:** Mitigado (parcial) — `lib/error-capture.ts` envia erros ao Sentry (dados sensíveis mascarados) quando `SENTRY_DSN` está configurado; falta alerta de custo de IA *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Auditoria
 - **Ativo afetado:** Observabilidade da aplicação
 - **Localização:** `src/lib/error-capture.ts`, `diagnostics.functions.ts`, `/settings/diagnostics`, `/settings/ai-status` (busca de eventos por Sentry/Datadog/Logtail não encontrada)
@@ -1122,7 +1119,7 @@ Auditoria estática somente de leitura realizada sobre código, migrations e con
 ## RISK-033 — Sem antivírus/quarentena; superfície de upload limitada mas crescente
 
 - **Severidade:** P3
-- **Status:** Confirmado
+- **Status:** N/A (hoje) — Upload GLB removido com o twin; só resta parse client-side de CSV/XLSX (saneado). Reavaliar quando houver upload de documentos *(sincronizado com a matriz §10.1; texto abaixo descreve o achado original)*
 - **Categoria:** Upload
 - **Ativo afetado:** Bucket `twin-models` e futuros uploads de documentos
 - **Localização:** `src/lib/digital-twin.functions.ts` (fluxo de upload atual)
@@ -1509,3 +1506,14 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - **IA travada em produção (corrigido)**: o Upstash respondia corpo vazio e o limitador NEGAVA a IA para todos ("[UNKNOWN] A IA não retornou um patch válido") — o DeepSeek nem era chamado. Agora Upstash com falha usa o limite local por instância em todos os limitadores (o custo da IA continua limitado pelos créditos mensais no banco); URL/token passam por `cleanEnv` (espaço, quebra de linha, aspas); URL que não seja `https://<nome>.upstash.io` é ignorada com aviso; o chat mostra o código real do erro em vez de `[UNKNOWN]`. Mudou variável na Vercel → precisa de novo deploy.
 - **Histórico nunca gravava (corrigido)**: `tag_samples.id` sem valor automático (23502 nos logs). Migration `20261119090000_tag_samples_id_identity` (aplicada).
 - Testes: `scada-phase3-alarms.test.tsx`, `rate-limiter-unconfigured.test.ts`.
+
+### IA por editor, cabos NBR 5410 e documentação (2026-11-19, 20ª rodada)
+
+- **Mapa de conhecimento da IA** (`src/lib/ai/knowledge/engineering-rules.ts`, doc `docs/IA_EDITORES.md`): fonte única das regras por editor (unifilar, multifilar, ladder, FB Electric Studio, SCADA/HMI). Patch do canvas recebe unifilar+multifilar; Arquiteto recebe unifilar+ladder+Studio; chat recebe todos. Teste-guarda `ai-knowledge-map.test.ts`. Regra nova → muda lá, nos dois idiomas.
+- **Cabos — por que a IA não conseguia corrigir**: `updateEdges` do patch não aceitava `cable` (a IA inventava um nó "CABO ALIM 25mm² 15m"), o `ApplyAiPatch` ignorava cabo e o servidor descartava o `updateEdges` da IA. Agora `updateEdges[].cable` (`CableSpecSchema`) é aplicado, desfeito por Ctrl+Z e mesclado no servidor.
+- **Dimensionamento NBR 5410** (`lib/diagram/connection/cable-sizing.ts`, puro): Ib = soma das cargas a jusante, In = 1º relé térmico/disjuntor a montante, seção por `sizeConductorNBR5410` (Ib ≤ In ≤ I'z; motor I'z ≥ 1,25·In). Roda em toda geração/correção e no botão **Dimensionar cabos (NBR 5410)** do painel Documentação EletricAI (sem crédito, Ctrl+Z). Nunca preenche comprimento; método não informado = B1 declarado como premissa; seção do usuário só muda se subdimensionada.
+- **Diagnóstico de cabos**: comprimento só é cobrado do cabo de campo (painel → carga) e do alimentador (fonte externa → painel), com nomes ("F1 → M1"). Fiação interna sem seção vira aviso separado `cond_section_missing`, resolvível pelo dimensionamento.
+- **Reparo — dispositivos em série** (`connection-repair-engine.ts`, passo 0): seccionadora/DR/fusível encadeados (TR → Q0 → QS → DR → barramento; Q → DR → tomada); o disjuntor geral é achado subindo pela cadeia série (`mainBreakerAbove`) — antes o QS ficava "sem alimentação" e o Q0 podia ser realimentado pelo barramento.
+- **E-STOP — convenção única fail-safe**: contato NF físico, entrada 1 = íntegra, lido com **XIC** em série (`S0_OK`). O prompt do Arquiteto mandava XIO (exigiria botoeira NA: fio rompido não para). `verifyEstopInterlock` detecta a polaridade do rung; XIO ainda interlocka mas gera aviso `logic-estop-polarity`.
+- **Documentação**: 15 registros de risco contradiziam a matriz (sincronizados); RISK-025 (CI/typecheck/.env) e RISK-032 (Sentry) atualizados; 33 docs com caminhos inexistentes — docs vivos corrigidos para os sucessores, relatórios datados marcados como **históricos** (conteúdo preservado); `docs/testing/CROSS_CANVAS_AND_I18N_TEST_PLAN.md` ganhou o estado real de cobertura (T3 e scanner de textos fixos seguem pendentes).
+- Testes: `cable-sizing.test.ts`, `repair-series-devices.test.ts`, `ai-knowledge-map.test.ts`, `ladder-estop-verify.test.ts`.

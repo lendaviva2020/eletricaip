@@ -1,5 +1,10 @@
 # GATE 4.3.1 — REMEDIATION CHANGELOG
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Branch:** `gate-4.3.1-security-remediation` (baseada em `3dac4b9f28f26d11d80e0cc8fb50a6b159b9b8eb`)
 
 ---

@@ -1,5 +1,11 @@
 # Plano de Testes Obrigatórios: Integração Cross-Canvas e Internacionalização (`pt-BR` / `en`)
 
+> **Atualização 2026-11-19:** caminhos revisados contra o código atual. O editor FBD
+> legado foi unificado no **FB Electric Studio** (`src/components/compact-studio/`,
+> `src/lib/compact-studio/`); o módulo **Digital Twin** e as Edge Functions
+> (`supabase/functions/*`) foram removidos; alarmes vivem em
+> `src/lib/scada/scada-store.ts`. Itens marcados *(removido)* não existem mais.
+
 > **Status:** Especificação de Testes e Homologação (Parte 7 / Fase H)  
 > **Diretriz:** Inclui testes determinísticos de integração real entre módulos e testes ponta a ponta (E2E). Testes com mocks não substituem a verificação de integração real com o Supabase e a IA Gemini.
 
@@ -9,21 +15,40 @@
 
 | # | Requisito Auditado | Arquivo de Teste Alvo | Tipo | Critério Objetivo de Aprovação |
 | :--- | :--- | :--- | :--- | :--- |
-| **T1** | Consistência de IDs ao navegar entre canvases | `src/__tests__/cross-canvas-identity.test.ts` | Integração | O mesmo equipamento (`M1`, `KM1`, `QF1`) preserva exatamente o mesmo `equipmentId` canônico em Unifilar, Multifilar, Ponte de Controle, SCADA, Simulação e Digital Twin. |
-| **T2** | Propagação de alterações aos módulos dependentes | `src/__tests__/cross-canvas-propagation.test.ts` | Integração | Alterar `powerKw` de `7.5 kW` para `15 kW` no Unifilar atualiza imediatamente Multifilar, Nameplate do Digital Twin, corrente nominal na Simulação e marca Estudos dependentes como `stale`. |
-| **T3** | Integridade referencial de conexões, terminais e tags | `src/__tests__/connections-and-tags-integrity.test.ts` | Integração | Renomear uma tag (`KM1_CMD` → `BOMBA1_CMD`) propaga para células Ladder, pinos FBD, tabela PLC, widgets SCADA e vínculos Digital Twin sem quebrar referências (`tagId` imutável). |
-| **T4** | Conversões válidas e rejeição de conversões ambíguas | `src/__tests__/canvas-conversion-contracts.test.ts` | Integração | (a) Ramo completo `QF1 → KM1 → F1 → M1` gera Multifilar 3F+PE e Rung Ladder válidos; (b) Motor DOL sem contator ou carga 3F em disjuntor 1F é **rejeitado** com `ModelDiagnostic` (`requiresUserIntervention: true`) sem inventar nós ou tags. |
+| **T1** | Consistência de IDs ao navegar entre canvases | `src/__tests__/cross-canvas-identity.test.ts *(removido)*` | Integração | O mesmo equipamento (`M1`, `KM1`, `QF1`) preserva exatamente o mesmo `equipmentId` canônico em Unifilar, Multifilar, Ponte de Controle, SCADA, Simulação e Digital Twin. |
+| **T2** | Propagação de alterações aos módulos dependentes | `src/__tests__/cross-canvas-propagation.test.ts *(removido)*` | Integração | Alterar `powerKw` de `7.5 kW` para `15 kW` no Unifilar atualiza imediatamente Multifilar, Nameplate do Digital Twin, corrente nominal na Simulação e marca Estudos dependentes como `stale`. |
+| **T3** | Integridade referencial de conexões, terminais e tags | `src/__tests__/connections-and-tags-integrity.test.ts *(removido)*` | Integração | Renomear uma tag (`KM1_CMD` → `BOMBA1_CMD`) propaga para células Ladder, pinos FBD, tabela PLC, widgets SCADA e vínculos Digital Twin sem quebrar referências (`tagId` imutável). |
+| **T4** | Conversões válidas e rejeição de conversões ambíguas | `src/__tests__/canvas-conversion-contracts.test.ts *(removido)*` | Integração | (a) Ramo completo `QF1 → KM1 → F1 → M1` gera Multifilar 3F+PE e Rung Ladder válidos; (b) Motor DOL sem contator ou carga 3F em disjuntor 1F é **rejeitado** com `ModelDiagnostic` (`requiresUserIntervention: true`) sem inventar nós ou tags. |
 | **T5** | Salvamento e recuperação do estado completo (Round-Trip) | `src/__tests__/persistence-full-roundtrip.test.ts` | Integração + Supabase | `loadProject(saveProject(doc))` restaura 100% de equipamentos, terminais, conexões, Unifilar, Multifilar, Ladder, FBD, rack PLC, SCADA, Digital Twin, Estudos e Diagnósticos (`expect(restored).toEqual(original)`). |
 | **T6** | Controle de concorrência e detecção de conflitos | `src/__tests__/persistence-concurrency-conflict.test.ts` | Integração + Supabase | Dois clientes editando a mesma versão `v` do projeto: o segundo `saveProject` com `expectedVersion: v` recebe erro tipado `VERSION_CONFLICT` sem sobrescrever silenciosamente a versão `v+1`. |
 | **T7** | Ausência de loops de renderização e autosaves em simulação | `src/__tests__/no-render-loops-or-sim-autosave.test.ts` | Integração | (a) Carregar um projeto dispara `0` chamadas a `saveProject`; (b) Rodar simulação Ladder/FBD/Planta por 50 ciclos de scan (60 Hz) mantém `dirty === false` e dispara `0` autosaves; (c) Alternar entre abas `Ladder ↔ PLC ↔ FBD` não perde rungs nem causa loop de `useEffect`. |
-| **T8** | Consistência em malha fechada: Simulação ↔ Ladder/FBD ↔ SCADA ↔ Twin | `src/__tests__/closed-loop-simulation-scada-twin.test.ts` | Integração | Acionar botão de partida no SCADA (`boundTagId`) fecha contato no Ladder (`OB1`), energiza bobina `KM1` (`%Q0.0`), fecha circuito elétrico, acelera motor `M1` na Planta e atualiza RPM/Corrente no SCADA e Digital Twin. |
-| **T9** | Funcionamento integral e paridade de catálogos `pt-BR` e `en` | `src/__tests__/i18n-catalog-parity.test.ts` | Unitário + Tipo | (a) Conjunto de chaves de `pt-BR` e `en` é 100% idêntico; (b) Nenhum valor vazio ou igual a placeholder quebrado; (c) Interpolação de parâmetros `{name}`, `{count}` idêntica nos dois idiomas. |
-| **T10** | Ausência de textos visíveis não traduzidos na UI | `src/__tests__/i18n-ui-rendering.test.tsx` | Integração UI | Renderizar rotas críticas, barra lateral, topbar, paletas, propriedades, modais e estados vazios com `locale = "en"` não aciona o detector de chaves faltantes nem exibe rótulos fixos em português. |
-| **T11** | Persistência da preferência de idioma (Visitante vs Autenticado) | `src/__tests__/i18n-persistence.test.ts` | Integração + Supabase | (a) Padrão inicial é `pt-BR`; (b) Visitante salva em `localStorage`; (c) Usuário autenticado persiste e recupera de `profiles.locale` no Supabase; (d) Trocar idioma com projeto aberto preserva 100% do estado dos canvases sem reload destrutivo. |
-| **T12** | Preservação de identificadores técnicos, cálculos e normas ao mudar idioma | `src/__tests__/i18n-engineering-invariance.test.ts` | Integração | Executar dimensionamento NBR 5410, curto-circuito IEC 60909, compilação FBD→ST e validação NR-12 em `pt-BR` e em `en` produz **exatamente os mesmos valores numéricos**, códigos de equipamentos (`QF1`, `KM1`, `M1`), endereços (`%I0.0`, `%Q0.0`) e normas aplicadas. |
-| **T13** | Exportação de relatórios PDF/DXF e respostas da IA no idioma escolhido | `src/__tests__/i18n-exports-and-ai.test.ts` | Integração + E2E | (a) `exportProjectPdf` e `exportDiagramDxf` geram títulos, seções e legendas em `pt-BR` quando `locale="pt-BR"` e em `en` quando `locale="en"`; (b) Gemini responde explicações no idioma solicitado mantendo `AiDiagramPatch` estruturalmente válido. |
+| **T8** | Consistência em malha fechada: Simulação ↔ Ladder/FBD ↔ SCADA ↔ Twin | `src/__tests__/closed-loop-simulation-scada-twin.test.ts *(removido)*` | Integração | Acionar botão de partida no SCADA (`boundTagId`) fecha contato no Ladder (`OB1`), energiza bobina `KM1` (`%Q0.0`), fecha circuito elétrico, acelera motor `M1` na Planta e atualiza RPM/Corrente no SCADA e Digital Twin. |
+| **T9** | Funcionamento integral e paridade de catálogos `pt-BR` e `en` | `src/__tests__/i18n-catalog-parity.test.ts *(removido)*` | Unitário + Tipo | (a) Conjunto de chaves de `pt-BR` e `en` é 100% idêntico; (b) Nenhum valor vazio ou igual a placeholder quebrado; (c) Interpolação de parâmetros `{name}`, `{count}` idêntica nos dois idiomas. |
+| **T10** | Ausência de textos visíveis não traduzidos na UI | `src/__tests__/i18n-ui-rendering.test.tsx *(removido)*` | Integração UI | Renderizar rotas críticas, barra lateral, topbar, paletas, propriedades, modais e estados vazios com `locale = "en"` não aciona o detector de chaves faltantes nem exibe rótulos fixos em português. |
+| **T11** | Persistência da preferência de idioma (Visitante vs Autenticado) | `src/__tests__/i18n-persistence.test.ts *(removido)*` | Integração + Supabase | (a) Padrão inicial é `pt-BR`; (b) Visitante salva em `localStorage`; (c) Usuário autenticado persiste e recupera de `profiles.locale` no Supabase; (d) Trocar idioma com projeto aberto preserva 100% do estado dos canvases sem reload destrutivo. |
+| **T12** | Preservação de identificadores técnicos, cálculos e normas ao mudar idioma | `src/__tests__/i18n-engineering-invariance.test.ts *(removido)*` | Integração | Executar dimensionamento NBR 5410, curto-circuito IEC 60909, compilação FBD→ST e validação NR-12 em `pt-BR` e em `en` produz **exatamente os mesmos valores numéricos**, códigos de equipamentos (`QF1`, `KM1`, `M1`), endereços (`%I0.0`, `%Q0.0`) e normas aplicadas. |
+| **T13** | Exportação de relatórios PDF/DXF e respostas da IA no idioma escolhido | `src/__tests__/i18n-exports-and-ai.test.ts *(removido)*` | Integração + E2E | (a) `exportProjectPdf` e `exportDiagramDxf` geram títulos, seções e legendas em `pt-BR` quando `locale="pt-BR"` e em `en` quando `locale="en"`; (b) Gemini responde explicações no idioma solicitado mantendo `AiDiagramPatch` estruturalmente válido. |
 
 ---
+
+## 1.1 Estado de execução (verificado em 2026-11-19)
+
+| # | Situação | Onde está coberto |
+| :--- | :--- | :--- |
+| T1 | Parcial | `canvas-integration-phase-c.test.ts` (Contrato 1: preserva `ui.equipmentId`), `unified-model-v3.test.ts` |
+| T2 | Parcial | `canvas-integration-phase-c.test.ts` (sincronização incremental unifilar → multifilar) |
+| T3 | **Pendente** | Renomear tag com propagação a Ladder/Studio/PLC/SCADA ainda sem suíte |
+| T4 | Coberto | `canvas-integration-phase-c.test.ts` (Contratos 1 e 2: `MULTIFILAR_PHASE_MISMATCH`, ramal ambíguo) |
+| T5 | Coberto | `canvas-complete-persistence-roundtrip.test.ts`, `persistence-full-roundtrip.test.ts` |
+| T6 | Coberto | `persistence-concurrency-conflict.test.ts` |
+| T7 | Coberto | `no-render-loops-or-sim-autosave.test.ts`, `sim-canvas-stability.test.tsx` |
+| T8 | N/A parcial | Digital Twin removido; malha SCADA ↔ simulação em `sim-canvas-stability.test.tsx` e `scada-phase*` |
+| T9 | Coberto | `i18n-store-and-catalogs.test.ts` (simetria 100 % pt-BR/en; o tipo `TranslationCatalog` também obriga paridade) |
+| T10 | Parcial | `i18n-store-and-catalogs.test.ts` (detector de chave ausente), `scada2-i18n.test.ts` |
+| T11 | Parcial | Preferência de idioma no perfil (`lib/profile.ts`); sem suíte dedicada |
+| T12 | Coberto | `i18n-ui-and-exports.test.ts` (identificadores e mnemônicos invariantes entre idiomas) |
+| T13 | Coberto | `i18n-ui-and-exports.test.ts` (PDF/DXF por idioma), `gemini-i18n.test.ts`, `ai-knowledge-map.test.ts` |
+| Scanner de textos fixos | **Pendente** | `i18n-hardcoded-scan.test.ts` ainda não existe |
 
 ## 2. Especificação Detalhada dos Cenários de Teste
 
@@ -65,7 +90,7 @@
 
 #### Verificação Estática e Automatizada de Traduções (`T9` & `T10`)
 - **Typecheck (`tsc --noEmit`)**: O catálogo `en` implementa a interface literal exata derivada de `pt-BR` (`satisfies TranslationCatalog`). Qualquer chave adicionada em `pt-BR` sem correspondente em `en` (ou vice-versa) quebra a compilação.
-- **Scanner de Textos Fixos (`src/__tests__/i18n-hardcoded-scan.test.ts`)**:
+- **Scanner de Textos Fixos (`src/__tests__/i18n-hardcoded-scan.test.ts *(removido)*`)**:
   - Varre a AST/JSX dos componentes de UI garantindo que não restem strings visíveis em português hardcoded fora dos catálogos `src/lib/i18n/catalogs/`.
   - Garante que o detector `missingKeyDetector` registre `0` ocorrências ao renderizar todas as telas com `locale = "pt-BR"` e `locale = "en"`.
 

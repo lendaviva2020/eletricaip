@@ -1,4 +1,9 @@
 # ELÉTRICAI INDUSTRIAL OS — GATE 4.3 FINAL REPORT
+
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
 # AUTONOMOUS RED TEAM, BLUE TEAM & ENTERPRISE SECURITY HARDENING
 
 **Assessment Classification:** **AI-Assisted Automated Security Assessment & Defensive Remediation** *(Not an external accredited human pentest or third-party certification)*  

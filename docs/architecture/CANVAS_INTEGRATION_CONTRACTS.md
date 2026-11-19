@@ -1,5 +1,11 @@
 # Contratos de Integração Entre Canvases (Canvas Integration Contracts)
 
+> **Atualização 2026-11-19:** caminhos revisados contra o código atual. O editor FBD
+> legado foi unificado no **FB Electric Studio** (`src/components/compact-studio/`,
+> `src/lib/compact-studio/`); o módulo **Digital Twin** e as Edge Functions
+> (`supabase/functions/*`) foram removidos; alarmes vivem em
+> `src/lib/scada/scada-store.ts`. Itens marcados *(removido)* não existem mais.
+
 > **Status:** Especificação de Contratos de Transformação e Propagação (Fase B / Fase C)  
 > **Escopo:** Regras formais, pré-condições, pós-condições, diagnósticos de ambiguidade e prevenção de loops de renderização para as 8 pontes entre representações do ElétricAi.
 
@@ -36,7 +42,7 @@
 ## Contrato 2 — Equipamentos Elétricos ↔ Associações de Controle Ladder / FBD
 
 ### Situação Atual no Código
-- [`analyzeUnifilarForLadder`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/unifilar-ladder-bridge.ts#L156-L270) lê apenas `useProjectStore.nodes` (ignorando `useDiagramStore.doc` do WebGL) e faz pareamento heurístico BFS de contatores/relés/disjuntores; quando não acha um contator para um motor DOL, sintetiza tags como `KM_M_01` sem criar nem vincular um equipamento real no diagrama elétrico.
+- [`analyzeUnifilarForLadder`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/simulation/unifilar-ladder-bridge.ts#L156-L270) lê apenas `useProjectStore.nodes` (ignorando `useDiagramStore.doc` do WebGL) e faz pareamento heurístico BFS de contatores/relés/disjuntores; quando não acha um contator para um motor DOL, sintetiza tags como `KM_M_01` sem criar nem vincular um equipamento real no diagrama elétrico.
 
 ### Contrato Canônico (`ElectricalToControlContract`)
 - **Fonte:** `engineering.equipments` e `engineering.connections` (extraídos da camada canônica alimentada pelo `WebglCanvas`).
@@ -59,7 +65,7 @@
 ## Contrato 3 — Ladder / FBD ↔ Tags e Interfaces PLC
 
 ### Situação Atual no Código
-- [`PlcCanvas`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/plc-canvas.tsx#L155-L196) sobrescreve `useEditorStore` ao trocar de bloco (`hydrateEditor`), e existem dois compiladores FBD→ST diferentes ([`fbd-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/fbd-canvas.tsx#L204-L231) vs [`editor-bridge.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/fbd/editor-bridge.ts#L204-L215)).
+- [`PlcCanvas`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/plc-canvas.tsx#L155-L196) sobrescreve `useEditorStore` ao trocar de bloco (`hydrateEditor`), e existem dois compiladores FBD→ST diferentes ([`fbd-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/compact-studio/ (FB Electric Studio)#L204-L231) vs [`editor-bridge.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/fbd/editor-bridge.ts *(removido)*#L204-L215)).
 
 ### Contrato Canônico (`ControlToPlcHardwareContract`)
 - **Fonte/Destino:** `plc.programs` (Ladder e FBD), `engineering.tags` e `plc.rack` (`PlcChannelBinding`).
@@ -67,7 +73,7 @@
   1. **Blocos de Programa como Contêineres Canônicos**:
      - Os editores `LadderCanvas` e `FbdCanvas` editam diretamente o bloco ativo em `plc.programs[activeBlockId]` (por padrão `OB1` para Ladder e `FC1`/`OB1` para FBD), eliminando a cópia desconectada e impedindo perda de rungs ao alternar para a aba `PLC`.
   2. **Compilador Único FBD → ST**:
-     - O preview ST em `FbdCanvas` e a compilação em `PlcCanvas` utilizam exclusivamente [`compileFbdNodesToSt`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/fbd/editor-bridge.ts) (`generateStructuredText`), removendo o gerador inline duplicado de `fbd-canvas.tsx`.
+     - O preview ST em `FbdCanvas` e a compilação em `PlcCanvas` utilizam exclusivamente [`compileFbdNodesToSt`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/fbd/editor-bridge.ts *(removido)*) (`generateStructuredText`), removendo o gerador inline duplicado de `fbd-canvas.tsx`.
   3. **Alocação e Validação de Endereços I/O no Rack PLC**:
      - Toda `CanonicalTag` com `area === "I"` ou `area === "Q"` vinculada a um canal físico (`plcChannelId`) valida:
        - Compatibilidade de direção (`DI`/`AI` $\leftrightarrow$ `%I` / `%IW`; `DO`/`AO` $\leftrightarrow$ `%Q` / `%QW`).
@@ -112,7 +118,7 @@
 ## Contrato 6 — Equipamentos e Tags ↔ Digital Twin
 
 ### Situação Atual no Código
-- [`useDigitalTwinStore`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/digital-twin-store.ts) vive isolado em `localStorage` (`eletricai-digital-twin`), não é salvo no Supabase com o projeto, e [`TwinCanvas`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/twin-canvas.tsx#L55-L71) faz fallback para nomes de tags hardcoded (`TEMP_M01`, `PRESSAO_PT01`, `VIBRACAO_M03`).
+- [`useDigitalTwinStore`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/digital-twin-store.ts *(removido)*) vive isolado em `localStorage` (`eletricai-digital-twin`), não é salvo no Supabase com o projeto, e [`TwinCanvas`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/twin-canvas.tsx *(removido)*#L55-L71) faz fallback para nomes de tags hardcoded (`TEMP_M01`, `PRESSAO_PT01`, `VIBRACAO_M03`).
 
 ### Contrato Canônico (`EquipmentAndTagsToTwinContract`)
 - **Persistência no Projeto:** As configurações do Digital Twin (`mappings`, `alarmRules`, `nameplates`) migram de `localStorage` avulso para `views.twin` dentro do `UnifiedProjectDoc` persistido no Supabase.
@@ -127,7 +133,7 @@
 - [`ElectricalStudyPanel`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/simulation/electrical-study-panel.tsx) opera como uma calculadora avulsa com valores iniciais estáticos (`750 kVA`, `45 m`).
 
 ### Contrato Canônico (`ParameterChangeToStudiesContract`)
-1. **Extração Direta do Modelo:** Os estudos (Dimensionamento NBR 5410, Queda de Tensão, Curto-Circuito IEC 60909, Seletividade e Coordenação, Energia Incidente / Arco Elétrico e Validador Normativo [`validateNormative`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/normative-validator.ts)) recebem seus parâmetros diretamente de `engineering.equipments`, `engineering.connections` e `engineering.circuits`.
+1. **Extração Direta do Modelo:** Os estudos (Dimensionamento NBR 5410, Queda de Tensão, Curto-Circuito IEC 60909, Seletividade e Coordenação, Energia Incidente / Arco Elétrico e Validador Normativo [`validateNormative`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/norm-validator.ts)) recebem seus parâmetros diretamente de `engineering.equipments`, `engineering.connections` e `engineering.circuits`.
 2. **Grafo de Dependências e Invalidação Automática (`stale`)**:
    - Toda mutação em `engineering.equipments[id].specs`, `engineering.connections[id].conductor` ou `project.nominalSystem` recalcula imediatamente o hash de entrada dos estudos vinculados.
    - Estudos rápidos (Validação Normativa NBR 5410 / NR-10 / NR-12, Queda de Tensão de Circuito e Resumo de Condutores) são recalculados de forma síncrona/reativa.
@@ -178,6 +184,6 @@ sequenceDiagram
 ### Regras Anti-Loop Obrigatórias
 1. **Proibição de `loadDoc({ ...cur })` em `queueMicrotask` pós-load**: A hidratação inicial em [`useProjectPersistence`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/use-project-persistence.ts#L85-L96) define `dirty = false` e registra `lastLoadedRevision = doc.revision`. O listener de autosave ignora qualquer transição onde `designRevision === lastLoadedRevision`.
 2. **Separação de `setRungs` (Edição) vs `setRungEnergization` (Runtime)**:
-   - [`RungGrid`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/ladder/rung-grid.tsx#L100-L105) e [`useFbdEngine`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/fbd/use-fbd-engine.ts) passam a gravar resultados de avaliação de scan exclusivamente em `useRuntimeStore` (`ladderScanState`, `fbdSimSnapshot`), **jamais** chamando mutadores de design (`setRungs`, `setFbdSim` com `dirty: true`).
+   - [`RungGrid`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/ladder/rung-grid.tsx#L100-L105) e [`useFbdEngine`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/fbd/use-fbd-engine.ts *(removido)*) passam a gravar resultados de avaliação de scan exclusivamente em `useRuntimeStore` (`ladderScanState`, `fbdSimSnapshot`), **jamais** chamando mutadores de design (`setRungs`, `setFbdSim` com `dirty: true`).
 3. **Proibição de `useEffect` Bidirecional Entre Stores**:
    - O padrão antigo em [`PlcCanvas`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/plc-canvas.tsx#L155-L215) (um `useEffect` copiando de `usePlcStore` para `useEditorStore` e outro `useEffect` copiando de `useEditorStore` de volta para `usePlcStore`) é eliminado: ambos leem e despacham ações sobre a mesma fatia canônica `plc.programs[activeBlockId]`.

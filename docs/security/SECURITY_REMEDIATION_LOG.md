@@ -1,5 +1,10 @@
 # SECURITY REMEDIATION LOG — ELÉTRICAI INDUSTRIAL OS (GATE 4.3)
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Audit Branch:** `gate-4.3-redteam-security-hardening` (isolated from `gate-4.1-functional-consolidation` / `229b03ebbc6647e4f5b94f50f97aeb7e6ac6f0df`)  
 **Loop Enforced:** `ATTACK → PROVE → FIX → TEST → ATTACK AGAIN → VERIFY → DOCUMENT`
 

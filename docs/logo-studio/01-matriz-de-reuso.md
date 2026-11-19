@@ -1,5 +1,10 @@
 # Fase 0 — Matriz de Reuso por Item de Backlog
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Data:** 2026-11-12  
 **Referência:** Backlog Funcional (Seção 7 da especificação) × Inventário da Auditoria (`00-auditoria.md`).  
 **Princípio D3/D4:** Nenhum segundo motor de execução, nenhuma cópia paralela de projeto, variáveis ou banco de I/O. Toda evolução deve estender os módulos canônicos existentes (`UnifiedProjectDoc`, `src/lib/fbd/engine/`, `src/lib/ladder/scan-core.ts`, `src/lib/workers/worker-manager.ts`, `src/lib/studio/`).

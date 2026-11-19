@@ -1,4 +1,9 @@
 # ELÉTRICAI — SCADA MASTER AUDIT REPORT
+
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
 ## Auditoria Técnica e Diagnóstico Arquitetural do Sistema Supervisório Industrial
 
 **Data da Auditoria:** 01/11/2026  

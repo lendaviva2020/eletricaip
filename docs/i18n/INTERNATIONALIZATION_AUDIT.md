@@ -1,5 +1,10 @@
 # Auditoria de Internacionalização e Especificação de Comportamento Bilíngue (`pt-BR` / `en`)
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 > **Status:** Inventário Completo do Código-Fonte e Arquitetura Bilíngue (Partes 4 e 5)  
 > **Escopo:** Auditoria de `src/routes/*`, `src/components/*`, `src/lib/*`, `public/legal/*` e definição do sistema unificado `pt-BR` (padrão) e `en`.
 

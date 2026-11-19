@@ -1,5 +1,10 @@
 # Fase 0 — Perguntas em Aberto e Pontos de Decisão Críticos
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Data:** 2026-11-12  
 **Objetivo:** Resolver ambiguidades técnicas, jurídicas e de segurança identificadas durante a auditoria antes de escrever código na **Fase 1**. Nenhuma suposição crítica será assumida silenciosamente.
 

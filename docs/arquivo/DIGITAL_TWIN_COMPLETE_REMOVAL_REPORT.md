@@ -1,5 +1,10 @@
 # DIGITAL TWIN COMPLETE REMOVAL REPORT
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Prioridade:** P0.7  
 **Data:** 2026-11-14  
 **Branch:** `feat/ai-continuity-unifilar-connectivity-fix`  

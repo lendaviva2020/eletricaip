@@ -1,5 +1,10 @@
 # EletricAI — Especificação Completa de Engenharia para Desenvolvimento no Lovable
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 > **Documento de referência para engenheiros de software.**
 > Siga as fases em ordem. Cada fase tem critérios de aceitação que devem ser atingidos antes de avançar.
 > Plataforma-alvo: **Lovable** (React 18 + TypeScript + Vite + Supabase + TailwindCSS + shadcn/ui)

@@ -1,4 +1,9 @@
 # ELÉTRICAI INDUSTRIAL OS — GATE 4.0
+
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
 ## CODESYS DEEP FUNCTIONAL INVENTORY & CLEAN ROOM SPECIFICATION
 **Referência:** CODESYS Development System V3.5, Visualization, Fieldbus & Automation Server  
 **Data:** 08/11/2026 | **Metodologia:** Clean Room Mode (Normas Abertas: IEC 61131-3, PLCopen, ISA-101, ISO 13849-1)

@@ -1,5 +1,10 @@
 # PLANO DE TESTES E QUALIDADE DE SOFTWARE — ELETRICAI
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Data:** 14 de Outubro de 2026  
 **Status Atual da Cobertura Automatizada:** 32 arquivos de teste / 263 testes unitários aprovados (Vitest 4 + Testing Library + jsdom).  
 **Objetivo:** Estruturar a estratégia abrangente de validação contínua e garantia de qualidade para levar o ElétricAi à produção sem regressões.

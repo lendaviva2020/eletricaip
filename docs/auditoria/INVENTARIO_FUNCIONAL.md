@@ -1,5 +1,10 @@
 # INVENTÁRIO FUNCIONAL DO ELETRICAI
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Data da Avaliação:** 14 de Outubro de 2026  
 **Critérios de Classificação:**
 - **Funcional e testado:** Código implementado, com integração de ponta a ponta e testes automatizados aprovados no repositório.

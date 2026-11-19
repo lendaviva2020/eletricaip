@@ -1,5 +1,10 @@
 # Fase 0 — Architecture Decision Records (ADRs)
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Projeto:** ElétricAi — Módulo `eletric Studio` (feature flag `logoStudio`, constante `PRODUCT_NAME`)  
 **Data:** 2026-11-12  
 **Status:** Proposto para aprovação antes da Fase 1.

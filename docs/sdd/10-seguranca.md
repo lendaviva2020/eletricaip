@@ -1,3 +1,8 @@
+> **Atualização 2026-11-19:** caminhos revisados contra o código atual. O editor FBD
+> legado foi unificado no **FB Electric Studio** (`src/components/compact-studio/`,
+> `src/lib/compact-studio/`); o módulo **Digital Twin** e as Edge Functions
+> (`supabase/functions/*`) foram removidos; alarmes vivem em
+> `src/lib/scada/scada-store.ts`. Itens marcados *(removido)* não existem mais.
 ---
 title: Segurança
 status: in-progress
@@ -24,7 +29,7 @@ last_review: 2026-05-27
 ## 10.3 Webhooks
 
 - **Stripe (TanStack)**: `src/routes/api/public/stripe.webhook.ts` — HMAC-SHA256 com `timingSafeEq()` + tolerância de 300s.
-- **Stripe (Edge legado)**: `supabase/functions/stripe-webhook/index.ts` — corrigido para usar `timingSafeEqual` e validar timestamp (#SEC-02).
+- **Stripe (Edge legado)**: `src/routes/api/public/stripe.webhook.ts` — corrigido para usar `timingSafeEqual` e validar timestamp (#SEC-02).
 - **Mercado Pago**: `src/routes/api/public/mp.webhook.ts` — assinatura HMAC com `MP_WEBHOOK_SECRET`.
 
 ## 10.4 Storage

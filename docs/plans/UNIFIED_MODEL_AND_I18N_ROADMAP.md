@@ -1,5 +1,11 @@
 # Plano de Implementação: Arquitetura Unificada de Engenharia e Internacionalização (`pt-BR` / `en`)
 
+> **Atualização 2026-11-19:** caminhos revisados contra o código atual. O editor FBD
+> legado foi unificado no **FB Electric Studio** (`src/components/compact-studio/`,
+> `src/lib/compact-studio/`); o módulo **Digital Twin** e as Edge Functions
+> (`supabase/functions/*`) foram removidos; alarmes vivem em
+> `src/lib/scada/scada-store.ts`. Itens marcados *(removido)* não existem mais.
+
 > **Status:** Roadmap Executivo (Fases A a H)  
 > **Estratégia:** Evolução incremental sobre a arquitetura existente do ElétricAi (sem reescrita destrutiva), ordenada por dependência técnica e minimização de risco de regressão.
 
@@ -53,7 +59,7 @@ flowchart LR
 - [`src/lib/project-store.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/project-store.ts)
 - [`src/lib/editor/store.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/editor/store.ts)
 - [`src/lib/plc/store.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/plc/store.ts)
-- [`src/lib/digital-twin-store.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/digital-twin-store.ts)
+- [`src/lib/digital-twin-store.ts *(removido)*`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/digital-twin-store.ts *(removido)*)
 
 ### Novos Módulos Propostos
 - `src/lib/model/unified-schema.ts`: Schemas Zod e tipos TypeScript para `UnifiedProjectDoc` (v3), `CanonicalEquipment`, `CanonicalTerminal`, `ElectricalConnection`, `CanonicalCircuit`, `CanonicalTag`, `ControlBinding`, `EngineeringStudyRecord` e `ModelDiagnostic`.
@@ -82,16 +88,16 @@ flowchart LR
   - Emitir diagnóstico `MULTIFILAR_PHASE_MISMATCH` quando houver incompatibilidade de fases.
 
 ### C.2 Unifilar ↔ Controle Ladder/FBD e Hardware PLC
-- **Arquivos:** [`src/lib/unifilar-ladder-bridge.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/unifilar-ladder-bridge.ts), [`src/components/simulation/unifilar-ladder-bridge-panel.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/simulation/unifilar-ladder-bridge-panel.tsx), [`src/components/canvases/plc-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/plc-canvas.tsx), [`src/components/canvases/fbd-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/fbd-canvas.tsx), [`src/components/canvases/ladder/rung-grid.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/ladder/rung-grid.tsx).
+- **Arquivos:** [`src/lib/simulation/unifilar-ladder-bridge.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/simulation/unifilar-ladder-bridge.ts), [`src/components/simulation/unifilar-ladder-bridge-panel.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/simulation/unifilar-ladder-bridge-panel.tsx), [`src/components/canvases/plc-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/plc-canvas.tsx), [`src/components/compact-studio/ (FB Electric Studio)`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/compact-studio/ (FB Electric Studio)), [`src/components/canvases/ladder/rung-grid.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/ladder/rung-grid.tsx).
 - **Alterações:**
   - Fazer `analyzeUnifilarForLadder` ler os equipamentos e conexões canônicos alimentados pelo `WebglCanvas` (`useDiagramStore` / `useUnifiedProjectStore`), resolvendo o bug de `"Diagrama unifilar vazio"`.
   - Exigir contator/acionamento explícito ou confirmação do usuário via diagnóstico (`CONTROL_BRIDGE_MISSING_CONTACTOR`), proibindo invenção silenciosa.
   - Unificar os blocos de programa (`OB1`, `FC1`, `FB1`) entre `LadderCanvas`, `FbdCanvas` e `PlcCanvas` para que alternar para a aba `PLC` nunca apague rungs ou blocos FBD.
-  - Remover o compilador ST duplicado em [`fbd-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/fbd-canvas.tsx#L204-L231), usando exclusivamente [`compileFbdNodesToSt`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/fbd/editor-bridge.ts).
+  - Remover o compilador ST duplicado em [`fbd-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/compact-studio/ (FB Electric Studio)#L204-L231), usando exclusivamente [`compileFbdNodesToSt`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/fbd/editor-bridge.ts *(removido)*).
   - Mover a energização de rungs (`RungGrid`) e snapshot de simulação FBD (`useFbdEngine`) para `useRuntimeStore`.
 
 ### C.3 Simulação, SCADA, Digital Twin e Estudos Dependentes
-- **Arquivos:** [`src/components/canvases/sim-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/sim-canvas.tsx), [`src/lib/simulation/plant-engine.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/simulation/plant-engine.ts), [`src/components/canvases/scada-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/scada-canvas.tsx), [`src/components/canvases/twin-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/twin-canvas.tsx), [`src/components/simulation/electrical-study-panel.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/simulation/electrical-study-panel.tsx).
+- **Arquivos:** [`src/components/canvases/sim-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/sim-canvas.tsx), [`src/lib/simulation/plant-engine.ts`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/lib/simulation/plant-engine.ts), [`src/components/canvases/scada-canvas.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/scada-canvas.tsx), [`src/components/canvases/twin-canvas.tsx *(removido)*`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/canvases/twin-canvas.tsx *(removido)*), [`src/components/simulation/electrical-study-panel.tsx`](file:///c:/Users/98911/Desktop/eletric/eletricaip/src/components/simulation/electrical-study-panel.tsx).
 - **Alterações:**
   - Substituir o matching de tags por substring (`uKey.includes("SPEED")`) em `SimCanvas` e `TwinCanvas` por vínculo canônico `tagId` e `ControlBinding`.
   - Alimentar `plant-engine.ts` e `ElectricalStudyPanel` com os equipamentos reais do projeto (`engineering.equipments`), marcando estudos como `stale` sempre que parâmetros de carga, cabo ou proteção mudarem.

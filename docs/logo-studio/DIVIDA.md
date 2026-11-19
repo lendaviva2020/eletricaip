@@ -1,5 +1,10 @@
 # Registro de Dívidas Técnicas Descobertas (`DIVIDA.md`)
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 Conforme regra de trabalho da Seção 9, dívidas técnicas pré-existentes descobertas durante a **Fase 0** (e nas fases seguintes) são registradas aqui em vez de serem agravadas ou corrigidas fora do escopo da fase atual.
 
 | ID | Descrição da Dívida Encontrada | Localização Principal | Impacto / Risco | Plano de Tratamento |

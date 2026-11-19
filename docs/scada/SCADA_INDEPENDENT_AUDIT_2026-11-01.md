@@ -1,4 +1,9 @@
 # ELÉTRICAI — LAUDO PERICIAL INDEPENDENTE DE ENGENHARIA DE SOFTWARE E AUTOMAÇÃO
+
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
 # GATE 0: AUDITORIA FORENSE, VALIDAÇÃO FUNCIONAL E LIBERAÇÃO PARA EVOLUÇÃO EMPRESARIAL
 
 - **Data da Auditoria:** 01 de Novembro de 2026

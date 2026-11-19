@@ -1,5 +1,10 @@
 # Fase 0 — Auditoria Técnica do Repositório ElétricAi (`eletricaip`)
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Data:** 2026-11-12  
 **Branch de Auditoria:** `feat/logo-studio-fase-0` (derivada de `main` @ `86d0863`)  
 **Escopo:** Mapeamento factual do estado atual do repositório `eletricaip/` antes da especificação e implementação do módulo **eletric Studio** (nome configurável via `PRODUCT_NAME`, atrás da feature flag `logoStudio`).  

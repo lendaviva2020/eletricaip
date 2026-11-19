@@ -1,5 +1,10 @@
 # GATE 4.3.2 — MULTI-TENANT AUTHORIZATION & SERVICE ROLE AUDIT
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Data:** 2026-11-12  
 **Branch:** `gate-4.3.2-production-readiness`  
 **Status:** `VERIFIED`

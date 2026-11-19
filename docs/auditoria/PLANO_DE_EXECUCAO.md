@@ -1,5 +1,10 @@
 # PLANO DE EXECUÇÃO TÉCNICA INCREMENTAL — ELETRICAI
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Data:** 14 de Outubro de 2026  
 **Estratégia:** Execução estritamente sequencial e incremental, em pequenas tarefas verificáveis, preservando a base de 263 testes automatizados já existentes e evitando reescritas desnecessárias.
 

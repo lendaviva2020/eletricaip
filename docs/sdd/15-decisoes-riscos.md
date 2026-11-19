@@ -1,3 +1,8 @@
+> **Atualização 2026-11-19:** caminhos revisados contra o código atual. O editor FBD
+> legado foi unificado no **FB Electric Studio** (`src/components/compact-studio/`,
+> `src/lib/compact-studio/`); o módulo **Digital Twin** e as Edge Functions
+> (`supabase/functions/*`) foram removidos; alarmes vivem em
+> `src/lib/scada/scada-store.ts`. Itens marcados *(removido)* não existem mais.
 ---
 status: living-document
 owner: equipe
@@ -33,7 +38,7 @@ Após a revogação, o warning "Signed-In Users Can Execute SECURITY DEFINER Fun
 | RISK-02 | Duas fontes de verdade no Unifilar (VoltaiStore + DiagramStore)  | VoltaiStore não existe mais no código — remoção confirmada via grep (#WGL-07)                                                                       | ✅ Resolvido |
 | RISK-03 | Telemetria do Twin só em memória — perde ao reload               | Persistir em `tag_samples` (#TWIN-02)                                                                                                               | 🟡 Médio     |
 | RISK-04 | Leaked Password Protection desabilitado                          | Ativar no dashboard (#SEC-04)                                                                                                                       | 🟡 Médio     |
-| RISK-05 | Webhook signature sem `timingSafeEqual` confirmado               | `timingSafeEqual` confirmado em `supabase/functions/stripe-webhook/index.ts`, `src/routes/api/public/stripe.webhook.ts` e `mp.webhook.ts` (#SEC-02) | ✅ Resolvido |
+| RISK-05 | Webhook signature sem `timingSafeEqual` confirmado               | `timingSafeEqual` confirmado em `src/routes/api/public/stripe.webhook.ts`, `src/routes/api/public/stripe.webhook.ts` e `mp.webhook.ts` (#SEC-02) | ✅ Resolvido |
 | RISK-06 | PLC blocos não conectados ao editor central                      | `hydrateEditor` + `prevBlockIdRef` confirmados em `src/components/canvases/plc-canvas.tsx` (#PLC-01)                                                | ✅ Resolvido |
 | RISK-07 | Ladder com 6 colunas fixas                                       | Configurável (#LAD-05)                                                                                                                              | 🟢 Baixo     |
 

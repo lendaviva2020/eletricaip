@@ -1,4 +1,9 @@
 # ELÉTRICAI INDUSTRIAL OS — GATE 3.6.1
+
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
 ## RUNTIME STABILIZATION, SERVER/CLIENT BOUNDARY & FBD PERFORMANCE
 ### RELATÓRIO TÉCNICO DE AUDITORIA, REMEDIAÇÃO E HOMOLOGAÇÃO DE EXECUÇÃO
 

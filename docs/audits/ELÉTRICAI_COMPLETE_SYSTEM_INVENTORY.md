@@ -1,4 +1,9 @@
 # ELÉTRICAI — COMPLETE SYSTEM INVENTORY & ENGINEERING AUDIT
+
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
 **Data da Auditoria:** 30 de Outubro de 2026  
 **Versão do Sistema:** 2.0.0-PROD  
 **Repositório:** `eletric/eletricaip`  

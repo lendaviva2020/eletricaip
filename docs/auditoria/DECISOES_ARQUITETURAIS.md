@@ -1,5 +1,10 @@
 # DECISÕES ARQUITETURAIS E DIRETRIZES TÉCNICAS — ELETRICAI
 
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
+
 **Data:** 14 de Outubro de 2026  
 **Princípio Norteador:** Aproveitar integralmente o código e as tecnologias que já funcionam no ElétricAi. Nenhuma reescrita integral ou substituição de stack é autorizada sem justificativa técnica comprovada.
 

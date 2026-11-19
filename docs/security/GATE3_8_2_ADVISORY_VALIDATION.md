@@ -1,4 +1,9 @@
 # ELÉTRICAI INDUSTRIAL OS — GATE 3.8.2
+
+> **Documento histórico.** Registra o código na data em que foi escrito. Arquivos
+> citados aqui podem ter sido removidos ou renomeados depois (Digital Twin, servidor
+> MCP, Edge Functions, editor FBD legado). Estado atual: `AGENTS.md`,
+> `docs/PLANO_EXECUCAO.md` e `docs/IA_EDITORES.md`.
 # VALIDAÇÃO TÉCNICA POR ADVISORY E DEFESA EM PROFUNDIDADE
 
 **Classificação:** EMERGENCY SECURITY REMEDIATION (P0 — CRITICAL / HIGH)  
