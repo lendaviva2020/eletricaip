@@ -51,6 +51,7 @@ import { SnapshotSchema } from "@/lib/projects.functions";
 import { upgradeSnapshotV2ToV3 } from "@/lib/model/migration-v2-to-v3";
 import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { Button } from "@/components/ui/button";
+import { ScadaSimTickDriver } from "@/hooks/use-scada-sim-tick";
 import { ScadaHeader } from "./scada-header";
 import { ScadaMobileNav, ScadaSidebar } from "./scada-sidebar";
 import { ScadaOsStatusBar } from "./scada-os-status-bar";
@@ -378,6 +379,9 @@ export function ScadaLayout({ projectId }: ScadaLayoutProps) {
       className="flex flex-col h-full w-full bg-[#080b11] overflow-hidden select-none"
       data-testid="scada-supervisory-system"
     >
+      {/* Ciclo da simulação — montado só quando a tela supervisória aparece */}
+      <ScadaSimTickDriver />
+
       {/* Top SCADA Header */}
       <ScadaHeader />
 

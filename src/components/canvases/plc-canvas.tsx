@@ -53,22 +53,22 @@ const LANG_LABELS: Record<ProgramLang, string> = { ladder: "LAD", fbd: "FBD", st
 
 export function PlcCanvas() {
   const { t } = useI18n();
-  const {
-    project,
-    activeTab,
-    activeBlockId,
-    setActiveTab,
-    setActiveBlock,
-    setProject,
-    addModule,
-    removeModule,
-    addVariable,
-    updateVariable,
-    removeVariable,
-    addBlock,
-    updateBlock,
-    removeBlock,
-  } = usePlcStore();
+  // Seletores por campo (zustand): sem isto o componente assina o store inteiro
+  // e re-renderiza a cada alteração de qualquer parte do projeto do CLP.
+  const project = usePlcStore((s) => s.project);
+  const activeTab = usePlcStore((s) => s.activeTab);
+  const activeBlockId = usePlcStore((s) => s.activeBlockId);
+  const setActiveTab = usePlcStore((s) => s.setActiveTab);
+  const setActiveBlock = usePlcStore((s) => s.setActiveBlock);
+  const setProject = usePlcStore((s) => s.setProject);
+  const addModule = usePlcStore((s) => s.addModule);
+  const removeModule = usePlcStore((s) => s.removeModule);
+  const addVariable = usePlcStore((s) => s.addVariable);
+  const updateVariable = usePlcStore((s) => s.updateVariable);
+  const removeVariable = usePlcStore((s) => s.removeVariable);
+  const addBlock = usePlcStore((s) => s.addBlock);
+  const updateBlock = usePlcStore((s) => s.updateBlock);
+  const removeBlock = usePlcStore((s) => s.removeBlock);
 
   const activeBlock = project.programBlocks.find((b) => b.id === activeBlockId);
 

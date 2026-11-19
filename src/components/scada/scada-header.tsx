@@ -1,7 +1,7 @@
 // SCADA SUPERVISÓRIO — Industrial Header Bar
 // Faithful to Visual Reference (media_1793565570167_72290aaf.jpg)
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   SpeakerHigh,
   SpeakerSlash,
@@ -15,58 +15,53 @@ import { useScadaStore } from "@/lib/scada/scada-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-export function ScadaHeader() {
-  const {
-    currentProjectName,
-    isDemoProject,
-    isSimulationMode,
-    audioAlertMuted,
-    estopActive,
-    totalFlowM3h,
-    totalPowerKw,
-    powerFactor,
-    systemEfficiencyPct,
-    criticalAlarmsCount,
-    warningAlarmsCount,
-    toggleAudioMute,
-    toggleSimulationMode,
-    triggerEstop,
-    rearmEstop,
-    tickSimulation,
-  } = useScadaStore();
+const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
 
+/**
+ * Relógio isolado: tem seu próprio tique de 1 s, então só ELE re-renderiza a
+ * cada segundo — não o cabeçalho inteiro. O ciclo da simulação foi movido para
+ * `useScadaSimTick` (nível de layout), desacoplado da UI.
+ */
+function ScadaClock() {
   const [timeStr, setTimeStr] = useState("");
-
-  // Live simulation tick & clock loop
   useEffect(() => {
-    const timer = setInterval(() => {
-      tickSimulation();
+    const render = () => {
       const now = new Date();
-      const hours = String(now.getHours()).padStart(2, "0");
-      const minutes = String(now.getMinutes()).padStart(2, "0");
-      const seconds = String(now.getSeconds()).padStart(2, "0");
-      const day = String(now.getDate()).padStart(2, "0");
-      const months = [
-        "JAN",
-        "FEV",
-        "MAR",
-        "ABR",
-        "MAI",
-        "JUN",
-        "JUL",
-        "AGO",
-        "SET",
-        "OUT",
-        "NOV",
-        "DEZ",
-      ];
-      const month = months[now.getMonth()];
-      const year = now.getFullYear();
-      setTimeStr(`${hours}:${minutes}:${seconds} ${day}/${month}/${year}`);
-    }, 1000);
+      const p = (n: number) => String(n).padStart(2, "0");
+      setTimeStr(
+        `${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())} ${p(now.getDate())}/${MONTHS[now.getMonth()]}/${now.getFullYear()}`,
+      );
+    };
+    render();
+    const id = setInterval(render, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="hidden 2xl:flex items-center gap-1.5 text-xs font-mono text-zinc-300 bg-zinc-900/90 border border-zinc-800 px-2.5 py-1 rounded-md shadow-inner shrink-0">
+      <Clock className="w-3.5 h-3.5 text-zinc-400" />
+      <span>{timeStr || "--:--:--"}</span>
+    </div>
+  );
+}
 
-    return () => clearInterval(timer);
-  }, [tickSimulation]);
+export function ScadaHeader() {
+  // Seletores por campo: o cabeçalho só re-renderiza quando ALGO que ele mostra
+  // muda, não a cada tique da simulação (que atualiza tags/alarmes/histórico).
+  const currentProjectName = useScadaStore((s) => s.currentProjectName);
+  const isDemoProject = useScadaStore((s) => s.isDemoProject);
+  const isSimulationMode = useScadaStore((s) => s.isSimulationMode);
+  const audioAlertMuted = useScadaStore((s) => s.audioAlertMuted);
+  const estopActive = useScadaStore((s) => s.estopActive);
+  const totalFlowM3h = useScadaStore((s) => s.totalFlowM3h);
+  const totalPowerKw = useScadaStore((s) => s.totalPowerKw);
+  const powerFactor = useScadaStore((s) => s.powerFactor);
+  const systemEfficiencyPct = useScadaStore((s) => s.systemEfficiencyPct);
+  const criticalAlarmsCount = useScadaStore((s) => s.criticalAlarmsCount);
+  const warningAlarmsCount = useScadaStore((s) => s.warningAlarmsCount);
+  const toggleAudioMute = useScadaStore((s) => s.toggleAudioMute);
+  const toggleSimulationMode = useScadaStore((s) => s.toggleSimulationMode);
+  const triggerEstop = useScadaStore((s) => s.triggerEstop);
+  const rearmEstop = useScadaStore((s) => s.rearmEstop);
 
   const handleEstopToggle = () => {
     if (estopActive) {
@@ -199,10 +194,7 @@ export function ScadaHeader() {
           </button>
 
           {/* Real-time Clock */}
-          <div className="hidden 2xl:flex items-center gap-1.5 text-xs font-mono text-zinc-300 bg-zinc-900/90 border border-zinc-800 px-2.5 py-1 rounded-md shadow-inner shrink-0">
-            <Clock className="w-3.5 h-3.5 text-zinc-400" />
-            <span>{timeStr || "14:28:45 15/JAN/2025"}</span>
-          </div>
+          <ScadaClock />
 
           {/* Virtual Simulation Halt Button (E-STOP) */}
           <button
