@@ -1,5 +1,6 @@
 // AI Chat with streaming via Google Gemini. Persists to ai_conversations + ai_messages.
 import { createServerFn } from "@tanstack/react-start";
+import { ALL_EDITORS, corePrinciples, editorRules } from "@/lib/ai/knowledge/engineering-rules";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -261,7 +262,7 @@ export const getProjectEngineeringMemory = createServerFn({ method: "GET" })
     },
   );
 
-export function getChatSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
+function baseChatSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
   if (locale === "en") {
     return `You are the EletricAI Copilot — a senior industrial electrical engineer.
 Respond in English in a technical, objective manner, citing IEC 60364, IEC 60909, NFPA 70E, ISO 13849, and IEC 61131-3 when relevant.
@@ -272,6 +273,15 @@ Keep technical identifiers (e.g., QF1, KM1, M1, %I0.0, %Q0.0, TON, TOF) strictly
 Responda em PT-BR de forma técnica, objetiva e citando NBR 5410, NBR 14039, NR-10, NR-12 e IEC 61131-3 quando relevante.
 Use markdown (listas, tabelas, **negrito**) para clareza.
 Mantenha identificadores técnicos (ex.: QF1, KM1, M1, %I0.0, %Q0.0, TON, TOF) estritamente invariantes.`;
+}
+
+/** Prompt do chat = base + mapa de conhecimento de TODOS os editores. */
+export function getChatSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
+  return [
+    baseChatSystemPrompt(locale),
+    corePrinciples(locale),
+    editorRules(ALL_EDITORS, locale),
+  ].join("\n\n");
 }
 
 export const SYSTEM_PROMPT = getChatSystemPrompt("pt-BR");

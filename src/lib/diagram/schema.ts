@@ -241,6 +241,14 @@ export const DiagramNodeSchema = z.object({
 });
 export type DiagramNode = z.infer<typeof DiagramNodeSchema>;
 
+/** Dados do condutor de uma ligação (regras NBR 5410). Comprimento é dado de obra. */
+export const CableSpecSchema = z.object({
+  section_mm2: z.number().positive().max(1000).optional(),
+  length_m: z.number().positive().max(100_000).optional(),
+  insulation: z.enum(["PVC", "EPR", "XLPE"]).default("PVC"),
+  installation: z.string().max(32).optional(), // método A1, B1 etc
+});
+
 export const DiagramEdgeSchema = z.object({
   id: z.string().min(1).max(128),
   sheet: SheetKindSchema,
@@ -252,14 +260,7 @@ export const DiagramEdgeSchema = z.object({
   // configuração de condutores do circuito (modo multifilar)
   circuitConfig: z.enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"]).optional(),
   // cabo (para regras NBR)
-  cable: z
-    .object({
-      section_mm2: z.number().positive().optional(),
-      length_m: z.number().positive().optional(),
-      insulation: z.enum(["PVC", "EPR", "XLPE"]).default("PVC"),
-      installation: z.string().max(32).optional(), // método A1, B1 etc
-    })
-    .optional(),
+  cable: CableSpecSchema.optional(),
   // pontos de roteamento orto (cache de layout, não-canônico)
   waypoints: z.array(PositionSchema).optional(),
 });
@@ -313,6 +314,9 @@ export const AiDiagramPatchSchema = z.object({
         sourcePort: z.string().max(128).optional(),
         targetPort: z.string().max(128).optional(),
         waypoints: z.array(PositionSchema).optional(),
+        // Dados do condutor (seção/comprimento/método). A IA só envia
+        // comprimento quando o USUÁRIO o informou — nunca estimado.
+        cable: CableSpecSchema.optional(),
       }),
     )
     .max(400)

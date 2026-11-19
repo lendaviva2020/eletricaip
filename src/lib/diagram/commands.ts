@@ -107,6 +107,7 @@ export function applyCommand(doc: DiagramDoc, cmd: Command): DiagramDoc {
           if (ue.sourcePort !== undefined) e.sourcePort = ue.sourcePort;
           if (ue.targetPort !== undefined) e.targetPort = ue.targetPort;
           if (ue.waypoints !== undefined) e.waypoints = ue.waypoints;
+          if (ue.cable !== undefined) e.cable = ue.cable;
         }
         for (const n of p.addNodes) d.nodes[n.id] = n;
         for (const e of p.addEdges) d.edges[e.id] = e;
@@ -208,6 +209,9 @@ export function buildAiPatchCommand(doc: DiagramDoc, patch: AiDiagramPatch): Com
         from: ue.waypoints,
         to: curE.waypoints,
       });
+    }
+    if (ue.cable !== undefined) {
+      inverse.push({ type: "UpdateEdgeCable", edgeId: ue.id, from: ue.cable, to: curE.cable });
     }
   }
   return { type: "ApplyAiPatch", patch, inverse };

@@ -10,6 +10,8 @@ import { useDiagramStore } from "@/lib/diagram/store";
 import { useEditorStore } from "@/lib/editor/store";
 import { documentationFromDiagram } from "@/lib/documentation/diagram-adapter";
 import { planDeviceNumbering, type NumberingMode } from "@/lib/documentation/diagram-numbering";
+import { sizeDiagramCables } from "@/lib/diagram/connection/cable-sizing";
+import type { Command } from "@/lib/diagram/commands";
 import { useI18n } from "@/lib/i18n";
 
 const MAX_LISTED = 6;
@@ -46,6 +48,39 @@ export function EletricaiDocPanel() {
     }
     useDiagramStore.getState().dispatch(plan.command);
     toast.success(t("docPanel.numbered", { n: plan.changes.length }));
+  };
+
+  // Dimensionamento NBR 5410 determinístico (sem IA, sem crédito): um único
+  // comando Batch reversível com Ctrl+Z. Comprimento nunca é preenchido.
+  const sizeCables = () => {
+    const current = useDiagramStore.getState().doc;
+    const report = sizeDiagramCables(current);
+    if (report.changes.length === 0) {
+      toast.info(t("docPanel.nothingToSize"));
+    } else {
+      const command: Command = {
+        type: "Batch",
+        commands: report.changes.map((c) => ({
+          type: "UpdateEdgeCable" as const,
+          edgeId: c.edgeId,
+          from: c.from,
+          to: c.to,
+        })),
+      };
+      useDiagramStore.getState().dispatch(command);
+      toast.success(t("docPanel.cablesSized", { n: report.changes.length }));
+    }
+    if (report.pendingLength.length > 0) {
+      toast.warning(
+        t("docPanel.cablesPendingLength", {
+          n: report.pendingLength.length,
+          names: report.pendingLength
+            .slice(0, 4)
+            .map((p) => p.name)
+            .join("; "),
+        }),
+      );
+    }
   };
 
   const errors = documentation?.issues.filter((i) => i.severity === "error") ?? [];
@@ -87,6 +122,13 @@ export function EletricaiDocPanel() {
               className="rounded border border-border px-2 py-1 hover:bg-muted"
             >
               {t("docPanel.renumberAll")}
+            </button>
+            <button
+              type="button"
+              onClick={sizeCables}
+              className="rounded border border-border px-2 py-1 hover:bg-muted"
+            >
+              {t("docPanel.sizeCables")}
             </button>
           </div>
 

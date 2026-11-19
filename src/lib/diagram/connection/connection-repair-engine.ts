@@ -33,6 +33,52 @@ const WRONG_DIRECTION_PENALTY = 600;
 
 const MAIN_BREAKER_PATTERN = /\b(geral|main|qgbt|qf0|dj0)\b|^-?q0\b/i;
 
+/** Dispositivos de manobra/proteção em série que só repassam a potência. */
+const SERIES_KINDS = new Set(["disconnector", "rcd", "fuse"]);
+/** Quem pode alimentar um dispositivo em série. */
+const SERIES_UPSTREAM_KINDS = new Set([
+  "transformer",
+  "generator",
+  "breaker",
+  "disconnector",
+  "rcd",
+  "fuse",
+]);
+/** O que um dispositivo em série pode alimentar. */
+const SERIES_DOWNSTREAM_KINDS = new Set([
+  "busbar",
+  "disconnector",
+  "rcd",
+  "fuse",
+  "contactor",
+  "vfd",
+  "softstarter",
+  "psu",
+  "motor",
+  "load",
+  "lamp",
+  "socket",
+]);
+
+/** Sobe do barramento pela cadeia série (QS/DR/fusível) até o disjuntor que a alimenta. */
+function mainBreakerAbove(doc: DiagramDoc, busbarId: string): string | undefined {
+  const seen = new Set<string>();
+  let cursor = busbarId;
+  while (!seen.has(cursor)) {
+    seen.add(cursor);
+    const feed = Object.values(doc.edges).find(
+      (e) => e.kind === "power" && e.sheet === "unifilar" && e.target === cursor,
+    );
+    if (!feed) return undefined;
+    const up = doc.nodes[feed.source];
+    if (!up) return undefined;
+    if (up.params.kind === "breaker") return up.id;
+    if (!SERIES_KINDS.has(up.params.kind)) return undefined;
+    cursor = up.id;
+  }
+  return undefined;
+}
+
 function numericParam(node: DiagramNode, key: string): number {
   const v = (node.params as Record<string, unknown>)[key];
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
@@ -134,16 +180,51 @@ export function repairDiagramConnections(doc: DiagramDoc): RepairResult {
     (n) => n.params.kind === "load" || n.params.kind === "lamp" || n.params.kind === "socket",
   );
 
-  // ── 1. Infeed: TR → Q0 → Barramento ─────────────────────────────────────────
+  // ── 0. Dispositivos em SÉRIE (seccionadora, DR, fusível) ────────────────────
+  // Entrada: TR → Q0 → QS → DR → Barramento; ramal: Q → DR → tomada. Antes
+  // ficavam soltos ("QS-01 sem alimentação") porque o reparo só conhecia
+  // Q0 → barramento. Processados de cima para baixo para encadear em ordem.
+  const seriesDevices = nodes
+    .filter((n) => SERIES_KINDS.has(n.params.kind))
+    .sort((a, b) => a.position.y - b.position.y || a.id.localeCompare(b.id));
+  if (seriesDevices.length > 0) {
+    const upstreamPool = nodes.filter((n) => SERIES_UPSTREAM_KINDS.has(n.params.kind));
+    const downstreamPool = nodes.filter((n) => SERIES_DOWNSTREAM_KINDS.has(n.params.kind));
+    for (const s of seriesDevices) {
+      if (!hasFeeder(s.id)) {
+        const up = nearest(
+          s,
+          upstreamPool,
+          "up",
+          (c) => !hasLoad(c.id) && c.position.y < s.position.y,
+        );
+        if (up) connect(up, s);
+        else pending.push(`${s.params.tag ?? s.label ?? s.id} sem alimentação a montante próxima`);
+      }
+      if (!hasLoad(s.id)) {
+        const down = nearest(
+          s,
+          downstreamPool,
+          "down",
+          (c) => !hasFeeder(c.id) && c.position.y > s.position.y,
+        );
+        if (down) connect(s, down);
+      }
+    }
+  }
+
+  // ── 1. Infeed: TR → Q0 → (série) → Barramento ──────────────────────────────
   let mainBreakerId: string | undefined;
   if (busbar) {
-    const fedBreakerIntoBus = Object.values(nextDoc.edges).find(
-      (e) =>
-        e.kind === "power" &&
-        e.target === busbar.id &&
-        nextDoc.nodes[e.source]?.params.kind === "breaker",
-    );
-    mainBreakerId = fedBreakerIntoBus?.source;
+    // O disjuntor geral pode alimentar o barramento através de seccionadora/DR:
+    // sobe pela cadeia série até achar o disjuntor (senão o Q0 virava "ramal"
+    // e o passo 2 o realimentava pelo próprio barramento, fechando um laço).
+    mainBreakerId = mainBreakerAbove(nextDoc, busbar.id);
+    if (mainBreakerId && !hasFeeder(mainBreakerId)) {
+      const main = nextDoc.nodes[mainBreakerId];
+      const trafo = transformers.find((t) => !hasLoad(t.id));
+      if (main && trafo) connect(trafo, main);
+    }
 
     if (!hasFeeder(busbar.id)) {
       // Disjuntor geral: por nome/tag; senão o de MAIOR corrente que ainda não alimenta ramal.

@@ -32,8 +32,9 @@ import {
 } from "@/lib/ai/ai-provider.server";
 import type { AiProviderId } from "@/lib/ai/provider-switch";
 import { loadUserAiProvider } from "@/lib/ai-preference.functions";
+import { corePrinciples, editorRules } from "@/lib/ai/knowledge/engineering-rules";
 
-export function getArchitectSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
+function baseArchitectSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
   const isEn = locale === "en";
 
   if (isEn) {
@@ -74,15 +75,14 @@ KINDS: breaker, contactor, relay, transformer, vfd, softstarter, psu, busbar, cc
 CATEGORIES: power | mech | inst | logic.
 POSITIONS: transformer at the top, busbar, MCC/CCM, motors in columns. x: 60..1200, y: 40..900, spacing >= 160 px.
 
-PLC LOGIC (plcLogic.rungs) — MANDATORY WHEN E-STOP IS PRESENT:
-- Whenever the drawing contains a node of kind "estop", emit in plcLogic.rungs the safety INTERLOCK rung:
-  NC contact (XIO) of the E-STOP operand in SERIES with the motor start command (XIC), energizing
-  the coil (OTE) of the corresponding contactor.
-- Use as operand the exact same id/label (UPPERCASE with _) of the E-STOP node and contactor.
-- Format for each rung: { id, label, output: { kind: "OTE", operand: "<contactor coil>" },
-  branches: [ [ { kind: "XIO", operand: "<E-STOP>" }, { kind: "XIC", operand: "<start>" } ] ] }
-- Each branch is a parallel line (OR); contacts within a branch are in series (AND).
-- One interlock rung per motor protected by the E-STOP.`;
+PLC LOGIC (plcLogic.rungs) — MANDATORY WHEN E-STOP IS PRESENT (fail-safe convention):
+- E-STOP, stop button and thermal overload are PHYSICAL NC contacts: the PLC input is 1 when healthy. Read them with XIC (never XIO) in SERIES. Operand of the E-STOP input = "<E-STOP tag>_OK" (e.g. "S0_OK"); thermal = "<relay tag>_OK"; stop = "<stop tag>_OK".
+- One rung per motor contactor with SEAL-IN. Each branch is a parallel line (OR); contacts inside a branch are in series (AND), so the safety contacts are repeated in every branch:
+  { id, label, output: { kind: "OTE", operand: "<contactor tag>" },
+    branches: [
+      [ {kind:"XIC",operand:"S0_OK"}, {kind:"XIC",operand:"<stop>_OK"}, {kind:"XIC",operand:"<thermal>_OK"}, {kind:"XIC",operand:"<start>"} ],
+      [ {kind:"XIC",operand:"S0_OK"}, {kind:"XIC",operand:"<stop>_OK"}, {kind:"XIC",operand:"<thermal>_OK"}, {kind:"XIC",operand:"<contactor tag>"} ] ] }
+- Use the same tags as the drawing (K1, F1, S0…). The hardwired E-STOP circuit stays mandatory; the rung is an additional interlock.`;
   }
 
   return `Você é o "EletricAI Architect", um engenheiro elétrico industrial sênior brasileiro especializado em conformidade normativa.
@@ -122,15 +122,23 @@ KINDS: breaker, contactor, relay, transformer, vfd, softstarter, psu, busbar, cc
 CATEGORIES: power | mech | inst | logic.
 POSIÇÕES: trafo no topo, barramento, CCM, motores em colunas. x: 60..1200, y: 40..900, espaçamento ≥ 160 px.
 
-LÓGICA PLC (plcLogic.rungs) — OBRIGATÓRIO QUANDO HOUVER E-STOP:
-- Sempre que o desenho tiver um nó kind "estop", emita em plcLogic.rungs o rung de INTERLOCK de segurança:
-  contato NF (XIO) do operand do E-STOP em SÉRIE com o comando de partida do motor (XIC), energizando
-  a bobina (OTE) do contator correspondente.
-- Use como operand o mesmo id/label (em MAIÚSCULAS com _) do nó de E-STOP e do contator.
-- Formato de cada rung: { id, label, output: { kind: "OTE", operand: "<bobina do contator>" },
-  branches: [ [ { kind: "XIO", operand: "<E-STOP>" }, { kind: "XIC", operand: "<partida>" } ] ] }
-- Cada branch é uma linha em paralelo (OR); os contatos dentro da branch são em série (AND).
-- Um rung de interlock por motor protegido pelo E-STOP.`;
+LÓGICA PLC (plcLogic.rungs) — OBRIGATÓRIO QUANDO HOUVER E-STOP (convenção fail-safe):
+- E-STOP, botão de parada e relé térmico são contatos NF FÍSICOS: a entrada do CLP fica em 1 quando está tudo OK. Leia-os com XIC (nunca XIO) em SÉRIE. Operando da entrada do E-STOP = "<tag do E-STOP>_OK" (ex.: "S0_OK"); térmico = "<tag do relé>_OK"; parada = "<tag da parada>_OK".
+- Um rung por contator de motor, com SELO. Cada branch é uma linha em paralelo (OU); os contatos dentro da branch são em série (E), por isso os contatos de segurança se repetem em todas as branches:
+  { id, label, output: { kind: "OTE", operand: "<tag do contator>" },
+    branches: [
+      [ {kind:"XIC",operand:"S0_OK"}, {kind:"XIC",operand:"<parada>_OK"}, {kind:"XIC",operand:"<térmico>_OK"}, {kind:"XIC",operand:"<partida>"} ],
+      [ {kind:"XIC",operand:"S0_OK"}, {kind:"XIC",operand:"<parada>_OK"}, {kind:"XIC",operand:"<térmico>_OK"}, {kind:"XIC",operand:"<tag do contator>"} ] ] }
+- Use as mesmas tags do desenho (K1, F1, S0…). O circuito físico de emergência continua obrigatório; o rung é intertravamento adicional.`;
+}
+
+/** Prompt do Arquiteto = base + mapa de conhecimento (unifilar, ladder, Studio). */
+export function getArchitectSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
+  return [
+    baseArchitectSystemPrompt(locale),
+    corePrinciples(locale),
+    editorRules(["unifilar", "ladder", "studio"], locale),
+  ].join("\n\n");
 }
 
 export const ARCHITECT_SYSTEM_PROMPT = getArchitectSystemPrompt("pt-BR");

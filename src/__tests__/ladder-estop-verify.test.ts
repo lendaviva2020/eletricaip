@@ -59,7 +59,23 @@ describe("verifyEstopInterlock", () => {
     expect(findings.some((f) => f.severity === "error")).toBe(true);
   });
 
-  it("aprova quando o contato NF do E-STOP está em série", () => {
+  it("aprova o E-STOP fail-safe: contato NF físico lido com XIC (1 = íntegra) em série", () => {
+    const rung = fromAiRungSpec({
+      id: "r1",
+      label: "Partida M1",
+      output: { kind: "OTE", operand: "K1" },
+      branches: [
+        [
+          { kind: "XIC", operand: "ES1" },
+          { kind: "XIC", operand: "START_M1" },
+        ],
+      ],
+    });
+    const findings = verifyEstopInterlock([rung], nodes, edges);
+    expect(findings).toHaveLength(0);
+  });
+
+  it("E-STOP lido com XIO (1 = acionado) interlocka, mas é avisado como não fail-safe", () => {
     const rung = fromAiRungSpec({
       id: "r1",
       label: "Partida M1",
@@ -72,7 +88,19 @@ describe("verifyEstopInterlock", () => {
       ],
     });
     const findings = verifyEstopInterlock([rung], nodes, edges);
-    expect(findings).toHaveLength(0);
+    expect(findings.some((f) => f.severity === "error")).toBe(false);
+    expect(findings.some((f) => f.id.startsWith("logic-estop-polarity"))).toBe(true);
+  });
+
+  it("E-STOP em paralelo (não em série) é erro em qualquer polaridade", () => {
+    const rung = fromAiRungSpec({
+      id: "r1",
+      label: "Partida M1",
+      output: { kind: "OTE", operand: "K1" },
+      branches: [[{ kind: "XIC", operand: "START_M1" }], [{ kind: "XIC", operand: "ES1" }]],
+    });
+    const findings = verifyEstopInterlock([rung], nodes, edges);
+    expect(findings.some((f) => f.id.startsWith("logic-estop-nointerlock"))).toBe(true);
   });
 
   it("acusa erro quando não existe rung para a bobina", () => {

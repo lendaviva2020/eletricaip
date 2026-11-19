@@ -97,7 +97,7 @@ export function verifyEstopInterlock(
           severity: "error",
           title: `Sem lógica de interlock para ${motor.label || motor.id}`,
           detail: `Não existe rung acionando a bobina de ${coilNode.label || coilNode.id} no plcLogic, portanto o E-STOP ${estop.label || estop.id} não pode ser verificado por simulação.`,
-          fixHint: `Emita em plcLogic.rungs um rung com o contato NF (XIO) do E-STOP ${estop.label || estop.id} em série com o comando de partida, energizando a bobina (OTE) de ${coilNode.label || coilNode.id}.`,
+          fixHint: `Emita em plcLogic.rungs um rung com a entrada do E-STOP ${estop.label || estop.id} (contato NF físico, lido com XIC: 1 = íntegra) em série com o comando de partida, energizando a bobina (OTE) de ${coilNode.label || coilNode.id}.`,
         });
         continue;
       }
@@ -118,8 +118,16 @@ export function verifyEstopInterlock(
           );
         }) ?? estopCandidates[0];
 
-      const energizedSafe = simulate(rung, coilOperand, estopOperand, false);
-      const energizedTripped = simulate(rung, coilOperand, estopOperand, true);
+      // Polaridade do E-STOP lida no próprio rung:
+      //  • XIC → convenção fail-safe (contato NF físico, 1 = cadeia íntegra).
+      //    Liberado = true; acionado ou fio rompido = false.
+      //  • XIO → sinal "1 = acionado" (exige contato NA na botoeira: fio
+      //    rompido NÃO para a máquina). Simulado coerentemente, mas avisado.
+      const estopCell = rung.cells.flat().find((c) => c.operand === estopOperand);
+      const failSafe = estopCell?.kind === "XIC";
+      const releasedValue = failSafe;
+      const energizedSafe = simulate(rung, coilOperand, estopOperand, releasedValue);
+      const energizedTripped = simulate(rung, coilOperand, estopOperand, !releasedValue);
 
       if (energizedTripped) {
         findings.push({
@@ -127,7 +135,7 @@ export function verifyEstopInterlock(
           severity: "error",
           title: `E-STOP não desliga ${motor.label || motor.id}`,
           detail: `Simulação do rung "${rung.label}": com o E-STOP ${estop.label || estop.id} acionado, a bobina ${coilOperand} de ${coilNode.label || coilNode.id} permaneceu energizada.`,
-          fixHint: `O contato NF (XIO) do E-STOP (${estopOperand}) precisa estar em SÉRIE com o comando de partida do motor, na mesma branch que energiza a bobina ${coilOperand}.`,
+          fixHint: `Coloque o E-STOP (${estopOperand}) em SÉRIE com o comando de partida, na mesma linha que energiza a bobina ${coilOperand}: entrada do contato NF físico lida com XIC (1 = cadeia íntegra).`,
         });
       } else if (!energizedSafe) {
         findings.push({
@@ -136,6 +144,14 @@ export function verifyEstopInterlock(
           title: `Partida de ${motor.label || motor.id} não energiza na simulação`,
           detail: `Simulação do rung "${rung.label}": com o E-STOP liberado e o comando de partida ativo, a bobina ${coilOperand} não energizou.`,
           fixHint: `Revise a lógica do rung: o comando de partida deve energizar a bobina ${coilOperand} quando o E-STOP está liberado.`,
+        });
+      } else if (!failSafe) {
+        findings.push({
+          id: `logic-estop-polarity-${estop.id}-${motor.id}`,
+          severity: "warn",
+          title: `E-STOP de ${motor.label || motor.id} não é à prova de falha`,
+          detail: `O rung "${rung.label}" lê o E-STOP com XIO (sinal 1 = acionado), o que exige botoeira NA: fio rompido ou borne solto NÃO param a máquina.`,
+          fixHint: `Use o contato NF físico da botoeira (1 = cadeia íntegra) e leia com XIC em série (NR-12 / IEC 60204-1 §9.4.2). A parada de emergência também precisa de circuito físico cabeado — o CLP não a substitui.`,
         });
       }
     }

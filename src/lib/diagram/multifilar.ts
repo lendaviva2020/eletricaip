@@ -5,6 +5,7 @@ import { makeEdge, makeNode } from "./model";
 import type { CircuitConfig, DiagramDoc, DiagramEdge, DiagramNode, NodeKind } from "./schema";
 import { classifyMargin, type Severity } from "../diagnostics/types";
 import { validateElectricalTopology } from "./connection/graph-validator";
+import { cableName, isFieldCable } from "./connection/cable-sizing";
 
 export const CONDUCTOR_LABELS: Record<CircuitConfig, string[]> = {
   F: ["L1"],
@@ -519,7 +520,7 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
     const max_allowed_pct = 4.0; // NBR 5410 Tabela 33 para circuitos terminais
     const compliant = drop_pct <= max_allowed_pct;
 
-    const cableName = (e as any).label || `W${results.length + 1}`;
+    const name = cableName(doc, e);
     results.push({
       edgeId: e.id,
       sourceLabel: src.label || src.id,
@@ -531,7 +532,7 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
       drop_pct,
       max_allowed_pct,
       compliant,
-      message: `Queda de tensão no cabo ${cableName}: ${drop_pct}% (Permitido < ${max_allowed_pct.toFixed(1)}% NBR 5410)`,
+      message: `Queda de tensão no cabo ${name}: ${drop_pct}% (Permitido < ${max_allowed_pct.toFixed(1)}% NBR 5410)`,
       assumptions: assumptions.length > 0 ? assumptions : undefined,
     });
   }
@@ -539,11 +540,26 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
   return results;
 }
 
-/** Ligações de potência (unifilar) sem comprimento ou seção do condutor. */
+/**
+ * Cabos de CAMPO (painel → carga) e ALIMENTADORES (fonte externa → painel) sem
+ * comprimento ou seção — só eles precisam de dado de obra para a queda de
+ * tensão. A fiação interna do painel (Q0 → QS → DR → barramento → Q → K → F)
+ * tem ~1 m e queda desprezível: não é cobrada aqui (antes 9 de 11 avisos eram
+ * pontes internas que nenhuma correção conseguia "resolver").
+ */
 export function listCablesMissingData(doc: DiagramDoc): string[] {
   return Object.values(doc.edges)
     .filter((e) => e.sheet === "unifilar" && e.kind === "power")
+    .filter((e) => isFieldCable(doc, e))
     .filter((e) => !e.cable?.length_m || !e.cable?.section_mm2)
+    .map((e) => e.id);
+}
+
+/** Ligações de potência ainda sem seção dimensionada (resolvível pela NBR 5410, sem dado de obra). */
+export function listConductorsWithoutSection(doc: DiagramDoc): string[] {
+  return Object.values(doc.edges)
+    .filter((e) => e.sheet === "unifilar" && e.kind === "power")
+    .filter((e) => !isFieldCable(doc, e) && !e.cable?.section_mm2)
     .map((e) => e.id);
 }
 
@@ -609,12 +625,24 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
   // 3. Cabos sem dados: queda de tensão não verificável (pendência, nunca valor presumido)
   const missing = listCablesMissingData(doc);
   if (missing.length > 0) {
+    const names = missing.slice(0, 4).map((id) => cableName(doc, doc.edges[id]));
+    const more = missing.length - names.length;
     alerts.push({
       id: "vd_missing_data",
       type: "AVISO",
       severity: "warning",
-      message: `${missing.length} cabo(s) sem comprimento ou seção: queda de tensão não verificável (NBR 5410). Informe os dados do condutor.`,
+      message: `${missing.length} cabo(s) de campo sem comprimento ou seção (${names.join("; ")}${more > 0 ? ` e mais ${more}` : ""}): queda de tensão não verificável (NBR 5410). Informe o comprimento real de cada cabo.`,
       edgeId: missing[0],
+    });
+  }
+  const noSection = listConductorsWithoutSection(doc);
+  if (noSection.length > 0) {
+    alerts.push({
+      id: "cond_section_missing",
+      type: "AVISO",
+      severity: "warning",
+      message: `${noSection.length} condutor(es) interno(s) do painel sem seção dimensionada: use "Corrigir com IA" para dimensionar pela NBR 5410 (Ib ≤ In ≤ I'z).`,
+      edgeId: noSection[0],
     });
   }
 

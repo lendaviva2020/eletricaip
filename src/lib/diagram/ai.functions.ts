@@ -27,6 +27,8 @@ import {
   routeDiagramEdges,
 } from "@/lib/diagram/connection/auto-layout-router";
 import { normalizeDeviceTags } from "@/lib/diagram/connection/renumber";
+import { sizeDiagramCables } from "@/lib/diagram/connection/cable-sizing";
+import { corePrinciples, editorRules } from "@/lib/ai/knowledge/engineering-rules";
 import { validateElectricalTopology } from "@/lib/diagram/connection/graph-validator";
 import type { ConnectivityReport } from "@/lib/diagram/connection/types";
 import { DiagramDocSchema, type DiagramDoc, type DiagramEdge } from "@/lib/diagram/schema";
@@ -47,7 +49,7 @@ type PatchOk = {
 };
 type PatchErr = { ok: false; error: { code: string; message: string } };
 
-export function buildDiagramSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
+function baseDiagramSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
   const isEn = locale === "en";
 
   if (isEn) {
@@ -105,11 +107,11 @@ EXAMPLE of complete, fully-connected patch:
   "rationale": "Main breaker Q0 feeding busbar with a 15 kW DOL motor branch (Q→K→F→M) per IEC 60364 and IEC 60947-4-1.",
   "addNodes": [
     { "id": "n_qf_main", "sheet": "unifilar", "position": {"x": 400, "y": 100}, "label": "Q0 GERAL 125A", "rotation": 0, "params": { "kind": "breaker", "tag": "Q0", "in_A": 125, "curve": "C", "poles": 3 } },
-    { "id": "n_bus01", "sheet": "unifilar", "position": {"x": 400, "y": 240}, "label": "BARRAMENTO 160A", "rotation": 0, "params": { "kind": "busbar", "current_A": 160, "voltage_V": 380 } },
-    { "id": "n_qf01", "sheet": "unifilar", "position": {"x": 400, "y": 380}, "label": "QF-01 32A", "rotation": 0, "params": { "kind": "breaker", "in_A": 32, "curve": "D", "poles": 3 } },
-    { "id": "n_km01", "sheet": "unifilar", "position": {"x": 400, "y": 520}, "label": "KM-01 32A", "rotation": 0, "params": { "kind": "contactor", "in_A": 32, "coil_V": 24 } },
-    { "id": "n_f01", "sheet": "unifilar", "position": {"x": 400, "y": 660}, "label": "F-01 25-32A", "rotation": 0, "params": { "kind": "thermal_relay", "in_A": 32, "trip_class": "10A" } },
-    { "id": "n_m01", "sheet": "unifilar", "position": {"x": 400, "y": 800}, "label": "M-01 15kW", "rotation": 0, "params": { "kind": "motor", "power_kW": 15, "voltage_V": 380, "startMethod": "DOL" } }
+    { "id": "n_bus01", "sheet": "unifilar", "position": {"x": 400, "y": 240}, "label": "W1 BARRAMENTO 160A", "rotation": 0, "params": { "kind": "busbar", "tag": "W1", "current_A": 160, "voltage_V": 380 } },
+    { "id": "n_qf01", "sheet": "unifilar", "position": {"x": 400, "y": 380}, "label": "Q1 32A", "rotation": 0, "params": { "kind": "breaker", "tag": "Q1", "in_A": 32, "curve": "D", "poles": 3 } },
+    { "id": "n_km01", "sheet": "unifilar", "position": {"x": 400, "y": 520}, "label": "K1 32A", "rotation": 0, "params": { "kind": "contactor", "tag": "K1", "in_A": 32, "coil_V": 24 } },
+    { "id": "n_f01", "sheet": "unifilar", "position": {"x": 400, "y": 660}, "label": "F1 25-32A", "rotation": 0, "params": { "kind": "thermal_relay", "tag": "F1", "in_A": 32, "trip_class": "10A" } },
+    { "id": "n_m01", "sheet": "unifilar", "position": {"x": 400, "y": 800}, "label": "M1 15kW", "rotation": 0, "params": { "kind": "motor", "tag": "M1", "power_kW": 15, "voltage_V": 380, "startMethod": "DOL" } }
   ],
   "addEdges": [
     { "id": "e_main_bus", "sheet": "unifilar", "source": "n_qf_main", "target": "n_bus01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
@@ -176,11 +178,11 @@ EXEMPLO de patch completo com conexões elétricas integradas:
   "rationale": "QGBT com disjuntor geral Q0, barramento e ramal de motor 15 kW em partida direta (Q→K→F→M) conforme NBR 5410 e IEC 60947-4-1.",
   "addNodes": [
     { "id": "n_qf_geral", "sheet": "unifilar", "position": {"x": 400, "y": 100}, "label": "Q0 GERAL 125A", "rotation": 0, "params": { "kind": "breaker", "tag": "Q0", "in_A": 125, "curve": "C", "poles": 3 } },
-    { "id": "n_bus01", "sheet": "unifilar", "position": {"x": 400, "y": 240}, "label": "BARRAMENTO 160A", "rotation": 0, "params": { "kind": "busbar", "current_A": 160, "voltage_V": 380 } },
-    { "id": "n_qf01", "sheet": "unifilar", "position": {"x": 400, "y": 380}, "label": "QF-01 32A", "rotation": 0, "params": { "kind": "breaker", "in_A": 32, "curve": "D", "poles": 3 } },
-    { "id": "n_km01", "sheet": "unifilar", "position": {"x": 400, "y": 520}, "label": "KM-01 32A", "rotation": 0, "params": { "kind": "contactor", "in_A": 32, "coil_V": 24 } },
-    { "id": "n_f01", "sheet": "unifilar", "position": {"x": 400, "y": 660}, "label": "F-01 25-32A", "rotation": 0, "params": { "kind": "thermal_relay", "in_A": 32, "trip_class": "10A" } },
-    { "id": "n_m01", "sheet": "unifilar", "position": {"x": 400, "y": 800}, "label": "M-01 15kW", "rotation": 0, "params": { "kind": "motor", "power_kW": 15, "voltage_V": 380, "startMethod": "DOL" } }
+    { "id": "n_bus01", "sheet": "unifilar", "position": {"x": 400, "y": 240}, "label": "W1 BARRAMENTO 160A", "rotation": 0, "params": { "kind": "busbar", "tag": "W1", "current_A": 160, "voltage_V": 380 } },
+    { "id": "n_qf01", "sheet": "unifilar", "position": {"x": 400, "y": 380}, "label": "Q1 32A", "rotation": 0, "params": { "kind": "breaker", "tag": "Q1", "in_A": 32, "curve": "D", "poles": 3 } },
+    { "id": "n_km01", "sheet": "unifilar", "position": {"x": 400, "y": 520}, "label": "K1 32A", "rotation": 0, "params": { "kind": "contactor", "tag": "K1", "in_A": 32, "coil_V": 24 } },
+    { "id": "n_f01", "sheet": "unifilar", "position": {"x": 400, "y": 660}, "label": "F1 25-32A", "rotation": 0, "params": { "kind": "thermal_relay", "tag": "F1", "in_A": 32, "trip_class": "10A" } },
+    { "id": "n_m01", "sheet": "unifilar", "position": {"x": 400, "y": 800}, "label": "M1 15kW", "rotation": 0, "params": { "kind": "motor", "tag": "M1", "power_kW": 15, "voltage_V": 380, "startMethod": "DOL" } }
   ],
   "addEdges": [
     { "id": "e_geral_bus", "sheet": "unifilar", "source": "n_qf_geral", "target": "n_bus01", "sourcePort": "B", "targetPort": "T", "kind": "power", "circuitConfig": "3F+N+PE" },
@@ -191,6 +193,18 @@ EXEMPLO de patch completo com conexões elétricas integradas:
   ],
   "removeNodeIds": [], "removeEdgeIds": [], "updateNodes": []
 }`;
+}
+
+/**
+ * Prompt do patch do canvas = base (formato do patch + exemplo) + mapa de
+ * conhecimento do unifilar/multifilar (lib/ai/knowledge, fonte única das regras).
+ */
+export function buildDiagramSystemPrompt(locale: "pt-BR" | "en" = "pt-BR"): string {
+  return [
+    baseDiagramSystemPrompt(locale),
+    corePrinciples(locale),
+    editorRules(["unifilar", "multifilar"], locale),
+  ].join("\n\n");
 }
 
 const SYSTEM = buildDiagramSystemPrompt("pt-BR");
@@ -212,7 +226,9 @@ CORRECTION MODE (the diagram ALREADY EXISTS — do NOT recreate it):
 - Use 'addNodes' ONLY for genuinely MISSING devices (e.g. a missing RCD, lockable disconnector or thermal relay). Never rebuild the whole circuit.
 - Use 'updateNodes' to adjust parameters of existing devices; 'removeNodeIds'/'removeEdgeIds' to delete.
 - Do NOT reposition existing equipment: never send 'position' for nodes that already exist unless the user explicitly asks to reorganize the layout.
-- Fix ONE problem per device at a time; if several devices need the same fix, patch each one individually.`;
+- Fix ONE problem per device at a time; if several devices need the same fix, patch each one individually.
+- CABLES: a node that represents a cable/conductor (e.g. "CABLE FEEDER 25mm²") is wrong — remove it (removeNodeIds) and reconnect its two neighbours directly. Cable data goes on the edge: updateEdges: [{ "id": "<edge id>", "cable": { "length_m": 35 } }] ONLY with a length the user stated. Section is sized by the system.
+- If the user did not state a cable length, do not invent one: say in the rationale which cables need a measured length.`;
   }
   return `
 
@@ -221,7 +237,9 @@ MODO CORREÇÃO (o diagrama JÁ EXISTE — NÃO o recrie):
 - Use 'addNodes' SOMENTE para dispositivos REALMENTE AUSENTES (ex.: DR, seccionadora bloqueável ou relé térmico faltante). Nunca reconstrua o circuito inteiro.
 - Use 'updateNodes' para ajustar parâmetros de equipamentos existentes; 'removeNodeIds'/'removeEdgeIds' para remover.
 - NÃO reposicione os equipamentos existentes: nunca envie 'position' para nós que já existem, a menos que o usuário peça explicitamente para reorganizar o layout.
-- Corrija UM problema por equipamento de cada vez; se vários equipamentos precisam da mesma correção, trate cada um individualmente.`;
+- Corrija UM problema por equipamento de cada vez; se vários equipamentos precisam da mesma correção, trate cada um individualmente.
+- CABOS: nó que represente cabo/condutor (ex.: "CABO ALIM 25mm²") está errado — remova-o (removeNodeIds) e religue os dois vizinhos diretamente. Dado de cabo vai na LIGAÇÃO: updateEdges: [{ "id": "<id da ligação>", "cable": { "length_m": 35 } }] SOMENTE com comprimento que o usuário informou. A seção é dimensionada pelo sistema.
+- Se o usuário não informou o comprimento, não invente: diga no rationale quais cabos precisam de comprimento medido.`;
 }
 
 async function callDiagramPatchModel(
@@ -410,6 +428,19 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
           }
           for (const n of finalPatch.addNodes) workingDoc.nodes[n.id] = n;
           for (const e of finalPatch.addEdges) workingDoc.edges[e.id] = e;
+          // updateEdges da IA (portas e, sobretudo, dados de cabo que o usuário
+          // informou no pedido). Antes era ignorado aqui e sobrescrito na
+          // sincronização — o comprimento dito pelo usuário nunca chegava ao cabo.
+          for (const ue of finalPatch.updateEdges ?? []) {
+            const cur = workingDoc.edges[ue.id];
+            if (!cur) continue;
+            workingDoc.edges[ue.id] = {
+              ...cur,
+              ...(ue.sourcePort !== undefined ? { sourcePort: ue.sourcePort } : {}),
+              ...(ue.targetPort !== undefined ? { targetPort: ue.targetPort } : {}),
+              ...(ue.cable !== undefined ? { cable: { ...(cur.cable ?? {}), ...ue.cable } } : {}),
+            };
+          }
 
           const addedNodeIds = new Set(finalPatch.addNodes.map((n) => n.id));
 
@@ -433,6 +464,12 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
           //     sem mover nem duplicar equipamento. Idempotente.
           const renumber = normalizeDeviceTags(workingDoc);
           workingDoc = renumber.doc;
+
+          // 2c. Dimensionamento dos condutores pela NBR 5410 (Ib ≤ In ≤ I'z),
+          //     determinístico. Nunca preenche comprimento: cabo de campo sem
+          //     comprimento vira pendência nominal no relatório.
+          const cableReport = sizeDiagramCables(workingDoc);
+          workingDoc = cableReport.doc;
 
           // 3. Run electrical topology validation
           const validation = validateElectricalTopology(workingDoc);
@@ -485,13 +522,30 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
             if (addedEdgeIds.has(eId)) continue;
             const origEdge = baseDoc.edges[eId];
             if (origEdge) {
+              const cableChanged =
+                JSON.stringify(origEdge.cable ?? null) !== JSON.stringify(docEdge.cable ?? null);
               synchronizedUpdateEdges.push({
                 id: eId,
                 sourcePort: docEdge.sourcePort,
                 targetPort: docEdge.targetPort,
                 waypoints: docEdge.waypoints,
+                ...(cableChanged && docEdge.cable ? { cable: docEdge.cable } : {}),
               });
             }
+          }
+
+          const cableLines: string[] = [];
+          if (cableReport.changes.length > 0) {
+            cableLines.push(
+              `Cabos: ${cableReport.changes.length} condutor(es) dimensionado(s) pela NBR 5410 (Ib ≤ In ≤ I'z).`,
+            );
+          }
+          if (cableReport.pendingLength.length > 0) {
+            const names = cableReport.pendingLength.slice(0, 8).map((p) => p.name);
+            const more = cableReport.pendingLength.length - names.length;
+            cableLines.push(
+              `Informe o comprimento (m) de: ${names.join("; ")}${more > 0 ? ` e mais ${more}` : ""} — queda de tensão só é verificada com o comprimento real.`,
+            );
           }
 
           finalPatch = {
@@ -504,7 +558,10 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
 
           const report: ConnectivityReport = {
             status: validation.status,
-            summary: `Circuito validado: ${validation.totalEquipments} equipamentos, ${validation.totalConnections} conexões elétricas, ${validation.paths.length} ramal(is) rastreado(s).`,
+            summary: [
+              `Circuito validado: ${validation.totalEquipments} equipamentos, ${validation.totalConnections} conexões elétricas, ${validation.paths.length} ramal(is) rastreado(s).`,
+              ...cableLines,
+            ].join("\n"),
             equipmentsCount: validation.totalEquipments,
             connectionsCount: validation.totalConnections,
             netsCount: validation.totalNets,
@@ -513,6 +570,7 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
             incompletePathsCount: validation.paths.filter((p) => !p.isComplete).length,
             warnings: [
               ...sanitized.warnings,
+              ...(cableReport.changes.length > 0 ? cableReport.premises : []),
               ...validation.diagnostics
                 .filter((d) => d.severity === "warning")
                 .map((d) => d.message),
