@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CaretDown, CaretRight, MagnifyingGlass } from "@phosphor-icons/react";
 import { filterAssetTree, type AreaHealth, type AssetTreeNode } from "@/lib/scada/asset-hierarchy";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function healthDotClass(h: AreaHealth): string {
@@ -12,11 +13,12 @@ export function healthDotClass(h: AreaHealth): string {
   return "border border-zinc-500 bg-transparent";
 }
 
+/** Chaves i18n do estado de saúde (traduzidas na renderização). */
 export const HEALTH_LABEL: Record<AreaHealth, string> = {
-  ALARM: "Alarme",
-  DEVIATION: "Desvio",
-  NORMAL: "Normal",
-  NO_DATA: "Sem dados",
+  ALARM: "scada2.health.alarm",
+  DEVIATION: "scada2.health.deviation",
+  NORMAL: "scada2.health.normal",
+  NO_DATA: "scada2.health.noData",
 };
 
 interface Props {
@@ -26,6 +28,7 @@ interface Props {
 }
 
 export function AssetTree({ nodes, selectedEquipmentId, onSelectEquipment }: Props) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const visible = filterAssetTree(nodes, query);
@@ -71,7 +74,7 @@ export function AssetTree({ nodes, selectedEquipmentId, onSelectEquipment }: Pro
               )}
               <span
                 className={cn("w-2 h-2 rounded-full shrink-0", healthDotClass(n.health))}
-                title={HEALTH_LABEL[n.health]}
+                title={t(HEALTH_LABEL[n.health])}
               />
               <span className={cn("truncate", !isLeaf && "font-mono font-semibold")}>
                 {n.label}
@@ -91,15 +94,15 @@ export function AssetTree({ nodes, selectedEquipmentId, onSelectEquipment }: Pro
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value.slice(0, 64))}
-          placeholder="Buscar tag ou nome"
+          placeholder={t("scada2.tree.searchPlaceholder")}
           className="w-full bg-zinc-950 border border-zinc-800 rounded pl-7 pr-2 py-1 text-[11px] text-zinc-200 placeholder:text-zinc-600"
-          aria-label="Buscar na árvore de ativos"
+          aria-label={t("scada2.tree.searchAria")}
         />
       </label>
       <div className="flex-1 overflow-y-auto pr-1">
         {visible.length === 0 ? (
           <p className="text-[11px] text-zinc-500 px-1">
-            {nodes.length === 0 ? "Projeto sem equipamentos." : "Nada encontrado."}
+            {nodes.length === 0 ? t("scada2.tree.emptyProject") : t("scada2.tree.emptyFound")}
           </p>
         ) : (
           render(visible, 0)

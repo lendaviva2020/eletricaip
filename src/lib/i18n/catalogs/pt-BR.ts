@@ -1205,6 +1205,52 @@ export const ptBR = {
     bridgeHint:
       "Analise o diagrama unifilar atual para gerar mapeamentos automáticos para o editor Ladder.",
   },
+  scada2: {
+    health: { alarm: "Alarme", deviation: "Desvio", normal: "Normal", noData: "Sem dados" },
+    kind: {
+      alarmUnack: "Alarme",
+      alarmAck: "Alarme (rec.)",
+      tripped: "Falha",
+      maintenance: "Manutenção",
+      badQuality: "Qualidade",
+      stale: "Sem atualização",
+      forced: "Forçado",
+    },
+    tree: {
+      searchPlaceholder: "Buscar tag ou nome",
+      searchAria: "Buscar na árvore de ativos",
+      emptyProject: "Projeto sem equipamentos.",
+      emptyFound: "Nada encontrado.",
+    },
+    statusBar: {
+      counterAria: "{unack} alarmes não reconhecidos, {active} ativos",
+      bannerTitle: "Abrir faceplate do equipamento",
+      noActive: "Sem alarmes ativos",
+      drivers: "Drivers: {label}",
+      physicalOn: "Físico habilitado",
+      physicalOff: "Controle físico bloqueado",
+    },
+    overview: {
+      projectFallback: "Projeto",
+      assets: "Ativos",
+      summary: "{n} equipamento(s) · {areas} área(s)",
+      unack: "{n} não reconhecido(s)",
+      deviations: "{n} desvio(s)",
+      demoSynoptic: "Sinótico da ETE (demonstração)",
+      emptyProject:
+        "Projeto sem equipamentos. Desenhe o unifilar para que os ativos apareçam aqui.",
+      areaEquip: "{n} equip.",
+      areaAlarms: "{n} alarme(s)",
+      areaTags: "{c}/{t} tags",
+      areaNoTags: "sem tags",
+      unassignedNote:
+        "Equipamentos sem local ficam em “Área não definida”. Defina o local (+local) no unifilar (Documentação EletricAI) para agrupá-los.",
+      deviationsTitle: "Desvios",
+      allAreas: "todas as áreas",
+      noDeviation: "Nenhum desvio. Tudo dentro do esperado.",
+      orphanAlarms: "{n} alarme(s) sem equipamento identificado — ver lista de alarmes",
+    },
+  },
 } as const;
 
 type DeepStringTree<T> = {

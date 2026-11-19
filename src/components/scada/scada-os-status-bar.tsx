@@ -12,6 +12,7 @@ import {
   isActiveAlarm,
 } from "@/lib/scada/asset-hierarchy";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { useVisibleAlarms } from "@/lib/scada/alarm-management-store";
 
 const RANK: Record<ScadaAlarmItem["priority"], number> = {
@@ -44,6 +45,7 @@ export function pickBannerAlarm(alarms: readonly ScadaAlarmItem[]): ScadaAlarmIt
 }
 
 export function ScadaOsStatusBar() {
+  const { t } = useI18n();
   const isPhysicalControlAllowed = useScadaStore((s) => s.isPhysicalControlAllowed);
   const gatewayStatus = useScadaStore((s) => s.gatewayStatus);
   const isDemoProject = useScadaStore((s) => s.isDemoProject);
@@ -80,7 +82,7 @@ export function ScadaOsStatusBar() {
               ? "border-zinc-600 text-zinc-200"
               : "border-zinc-800 text-zinc-500",
         )}
-        aria-label={`${unack} alarmes não reconhecidos, ${active.length} ativos`}
+        aria-label={t("scada2.statusBar.counterAria", { unack, active: active.length })}
         data-testid="scada-alarm-counter"
       >
         {active.length > 0 ? (
@@ -102,7 +104,7 @@ export function ScadaOsStatusBar() {
           top?.state === "UNACK" && "text-red-200",
         )}
         data-testid="scada-alarm-banner"
-        title={top ? "Abrir faceplate do equipamento" : undefined}
+        title={top ? t("scada2.statusBar.bannerTitle") : undefined}
       >
         {top ? (
           <>
@@ -110,17 +112,19 @@ export function ScadaOsStatusBar() {
           </>
         ) : (
           <span className="flex items-center gap-1.5">
-            <CheckCircle className="w-3.5 h-3.5" /> Sem alarmes ativos
+            <CheckCircle className="w-3.5 h-3.5" /> {t("scada2.statusBar.noActive")}
           </span>
         )}
       </button>
 
       <span className="hidden lg:inline text-zinc-500 shrink-0" data-testid="scada-driver-summary">
-        Drivers: {drivers.label}
+        {t("scada2.statusBar.drivers", { label: drivers.label })}
       </span>
       <span className="hidden md:flex items-center gap-1 text-amber-300 shrink-0 text-[10px] uppercase font-bold">
         <ShieldWarning className="w-3.5 h-3.5" />
-        {isPhysicalControlAllowed ? "Físico habilitado" : "Controle físico bloqueado"}
+        {isPhysicalControlAllowed
+          ? t("scada2.statusBar.physicalOn")
+          : t("scada2.statusBar.physicalOff")}
       </span>
     </footer>
   );

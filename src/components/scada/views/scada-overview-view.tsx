@@ -14,16 +14,17 @@ import {
 } from "@/lib/scada/asset-hierarchy";
 import { AssetTree, HEALTH_LABEL, healthDotClass } from "@/components/scada/asset-tree";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { useVisibleAlarms } from "@/lib/scada/alarm-management-store";
 
 const KIND_LABEL: Record<Deviation["kind"], string> = {
-  ALARM_UNACK: "Alarme",
-  ALARM_ACK: "Alarme (rec.)",
-  TRIPPED: "Falha",
-  MAINTENANCE: "Manutenção",
-  BAD_QUALITY: "Qualidade",
-  STALE: "Sem atualização",
-  FORCED: "Forçado",
+  ALARM_UNACK: "scada2.kind.alarmUnack",
+  ALARM_ACK: "scada2.kind.alarmAck",
+  TRIPPED: "scada2.kind.tripped",
+  MAINTENANCE: "scada2.kind.maintenance",
+  BAD_QUALITY: "scada2.kind.badQuality",
+  STALE: "scada2.kind.stale",
+  FORCED: "scada2.kind.forced",
 };
 
 function areaBorder(a: AreaSummary, selected: boolean): string {
@@ -35,6 +36,7 @@ function areaBorder(a: AreaSummary, selected: boolean): string {
 }
 
 export function ScadaOverviewView() {
+  const { t } = useI18n();
   const isDemoProject = useScadaStore((s) => s.isDemoProject);
   const projectName = useScadaStore((s) => s.currentProjectName);
   const equipments = useScadaStore((s) => s.equipments);
@@ -78,9 +80,11 @@ export function ScadaOverviewView() {
       <main className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-4 space-y-4">
         <header className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h1 className="text-sm font-bold text-white">{projectName || "Projeto"}</h1>
+            <h1 className="text-sm font-bold text-white">
+              {projectName || t("scada2.overview.projectFallback")}
+            </h1>
             <p className="text-[11px] text-zinc-500">
-              {equipmentCount} equipamento(s) · {h.areas.length} área(s)
+              {t("scada2.overview.summary", { n: equipmentCount, areas: h.areas.length })}
             </p>
           </div>
           <div
@@ -88,25 +92,27 @@ export function ScadaOverviewView() {
             data-testid="overview-summary"
           >
             <span className={unack > 0 ? "text-red-300 font-bold" : "text-zinc-400"}>
-              {unack} não reconhecido(s)
+              {t("scada2.overview.unack", { n: unack })}
             </span>
-            <span className="text-zinc-400">{deviations.length} desvio(s)</span>
+            <span className="text-zinc-400">
+              {t("scada2.overview.deviations", { n: deviations.length })}
+            </span>
             {isDemoProject && (
               <button
                 onClick={() => setActiveView("synoptics")}
                 className="px-2 py-0.5 rounded border border-zinc-700 hover:bg-zinc-800 text-zinc-300"
               >
-                Sinótico da ETE (demonstração)
+                {t("scada2.overview.demoSynoptic")}
               </button>
             )}
           </div>
         </header>
 
         {/* Áreas */}
-        <section aria-label="Áreas">
+        <section aria-label={t("scada2.overview.assets")}>
           {h.areas.length === 0 ? (
             <p className="text-[12px] text-zinc-500 border border-dashed border-zinc-800 rounded p-4">
-              Projeto sem equipamentos. Desenhe o unifilar para que os ativos apareçam aqui.
+              {t("scada2.overview.emptyProject")}
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -128,16 +134,18 @@ export function ScadaOverviewView() {
                     </span>
                     <span className="flex items-center gap-1.5 text-[10px] text-zinc-400">
                       <span className={cn("w-2 h-2 rounded-full", healthDotClass(a.health))} />
-                      {HEALTH_LABEL[a.health]}
+                      {t(HEALTH_LABEL[a.health])}
                     </span>
                   </div>
                   <div className="mt-2 grid grid-cols-3 gap-1 text-[10px] font-mono text-zinc-400">
-                    <span>{a.equipmentIds.length} equip.</span>
+                    <span>{t("scada2.overview.areaEquip", { n: a.equipmentIds.length })}</span>
                     <span className={a.unackAlarms > 0 ? "text-red-300 font-bold" : ""}>
-                      {a.activeAlarms} alarme(s)
+                      {t("scada2.overview.areaAlarms", { n: a.activeAlarms })}
                     </span>
                     <span>
-                      {a.totalTags > 0 ? `${a.connectedTags}/${a.totalTags} tags` : "sem tags"}
+                      {a.totalTags > 0
+                        ? t("scada2.overview.areaTags", { c: a.connectedTags, t: a.totalTags })
+                        : t("scada2.overview.areaNoTags")}
                     </span>
                   </div>
                 </button>
@@ -145,10 +153,7 @@ export function ScadaOverviewView() {
             </div>
           )}
           {hasUnassigned && (
-            <p className="mt-2 text-[10px] text-zinc-500">
-              Equipamentos sem local ficam em “Área não definida”. Defina o local (+local) no
-              unifilar (Documentação EletricAI) para agrupá-los.
-            </p>
+            <p className="mt-2 text-[10px] text-zinc-500">{t("scada2.overview.unassignedNote")}</p>
           )}
         </section>
 
@@ -156,14 +161,15 @@ export function ScadaOverviewView() {
         <section aria-label="Desvios" className="space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-[11px] font-mono font-semibold uppercase text-zinc-400 flex items-center gap-1.5">
-              <WarningCircle className="w-3.5 h-3.5" /> Desvios {area ? `— ${area.label}` : ""}
+              <WarningCircle className="w-3.5 h-3.5" /> {t("scada2.overview.deviationsTitle")}{" "}
+              {area ? `— ${area.label}` : ""}
             </h2>
             {area && (
               <button
                 className="text-[11px] text-zinc-400 hover:text-zinc-100 underline"
                 onClick={() => setAreaKey(null)}
               >
-                todas as áreas
+                {t("scada2.overview.allAreas")}
               </button>
             )}
           </div>
@@ -172,7 +178,7 @@ export function ScadaOverviewView() {
               className="text-[12px] text-zinc-500 flex items-center gap-1.5"
               data-testid="overview-no-deviation"
             >
-              <CheckCircle className="w-4 h-4" /> Nenhum desvio. Tudo dentro do esperado.
+              <CheckCircle className="w-4 h-4" /> {t("scada2.overview.noDeviation")}
             </p>
           ) : (
             <ul
@@ -198,7 +204,7 @@ export function ScadaOverviewView() {
                           critical ? "text-red-300 font-bold" : "text-amber-300",
                         )}
                       >
-                        {KIND_LABEL[d.kind]}
+                        {t(KIND_LABEL[d.kind])}
                         {d.priority ? ` · ${d.priority}` : ""}
                       </span>
                       <span className="font-mono text-[11px] text-zinc-100 w-28 shrink-0 truncate">
@@ -217,7 +223,7 @@ export function ScadaOverviewView() {
               onClick={() => setActiveView("alarms")}
               className="text-[11px] text-zinc-400 hover:text-zinc-100 underline"
             >
-              {h.orphanAlarms.length} alarme(s) sem equipamento identificado — ver lista de alarmes
+              {t("scada2.overview.orphanAlarms", { n: h.orphanAlarms.length })}
             </button>
           )}
         </section>
