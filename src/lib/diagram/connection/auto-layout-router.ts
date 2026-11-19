@@ -184,6 +184,21 @@ export function autoLayoutIndustrialDiagram(doc: DiagramDoc, opts?: LayoutOption
   });
 
   // Calculate orthogonal waypoints using resolved ports and obstacle avoidance
+  return routeDiagramEdges(nextDoc);
+}
+
+/**
+ * Recalcula os waypoints ortogonais de TODAS as arestas a partir das posições
+ * atuais dos nós — sem mover nenhum nó. Usado na correção de um diagrama já
+ * desenhado pelo usuário, onde o layout manual deve ser preservado.
+ */
+export function routeDiagramEdges(doc: DiagramDoc): DiagramDoc {
+  const nextDoc: DiagramDoc = {
+    ...doc,
+    nodes: { ...doc.nodes },
+    edges: { ...doc.edges },
+  };
+
   const allNodes = Object.values(nextDoc.nodes);
   const useObstacles = allNodes.length <= 300;
   const nodeBoxById = new Map<string, ReturnType<typeof computeNodeBoundingBox>>();
@@ -227,4 +242,58 @@ export function autoLayoutIndustrialDiagram(doc: DiagramDoc, opts?: LayoutOption
   }
 
   return nextDoc;
+}
+
+/** Deslocamento vertical padrão (px) entre um equipamento e o seguinte no ramal. */
+const RELATIVE_PLACEMENT_V = 140;
+
+/**
+ * Posiciona APENAS os nós recém-adicionados (`addedIds`), deixando intactas as
+ * posições de todos os equipamentos que o usuário já havia desenhado.
+ *
+ * Cada nó novo é ancorado ao vizinho elétrico já posicionado: abaixo da sua
+ * fonte (aresta que chega) ou acima da sua carga (aresta que sai). Se não houver
+ * vizinho posicionado, mantém a posição que a IA sugeriu. Colisões exatas são
+ * empurradas para baixo, nunca para cima de um equipamento existente.
+ */
+export function placeAddedNodes(doc: DiagramDoc, addedIds: ReadonlySet<string>): DiagramDoc {
+  if (addedIds.size === 0) return doc;
+  const nextNodes: Record<string, DiagramNode> = { ...doc.nodes };
+  const posKey = (x: number, y: number) => `${Math.round(x)},${Math.round(y)}`;
+
+  // Posições ocupadas pelos nós que PERMANECEM (não recém-adicionados).
+  const occupied = new Set<string>();
+  for (const n of Object.values(doc.nodes)) {
+    if (!addedIds.has(n.id)) occupied.add(posKey(n.position.x, n.position.y));
+  }
+
+  const edges = Object.values(doc.edges);
+  // Processa em ordem estável para cadeias de nós novos encadeados.
+  const ordered = [...addedIds].sort();
+  for (const id of ordered) {
+    const node = nextNodes[id];
+    if (!node) continue;
+
+    const inEdge = edges.find((e) => e.target === id && nextNodes[e.source]);
+    const outEdge = edges.find((e) => e.source === id && nextNodes[e.target]);
+
+    let pos = node.position;
+    if (inEdge) {
+      const s = nextNodes[inEdge.source];
+      pos = { x: s.position.x, y: s.position.y + RELATIVE_PLACEMENT_V };
+    } else if (outEdge) {
+      const t = nextNodes[outEdge.target];
+      pos = { x: t.position.x, y: t.position.y - RELATIVE_PLACEMENT_V };
+    }
+    // Evita sobrepor exatamente outro equipamento.
+    let guard = 0;
+    while (occupied.has(posKey(pos.x, pos.y)) && guard < 100) {
+      pos = { x: pos.x + 40, y: pos.y + RELATIVE_PLACEMENT_V };
+      guard += 1;
+    }
+    occupied.add(posKey(pos.x, pos.y));
+    nextNodes[id] = { ...node, position: pos };
+  }
+
+  return { ...doc, nodes: nextNodes };
 }

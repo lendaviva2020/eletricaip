@@ -10,6 +10,7 @@
 //    (trocar disjuntor por motor via "update" mascara uma substituição).
 // Cada correção vira um aviso legível para o relatório ao usuário.
 import type { AiDiagramPatch, DiagramDoc, DiagramEdge, DiagramNode } from "./schema";
+import { isValidDeviceTag, normalizeTag } from "@/lib/documentation/device-designation";
 
 export interface PatchSanitizeResult {
   patch: AiDiagramPatch;
@@ -40,7 +41,31 @@ export function sanitizeAiPatch(doc: DiagramDoc, patch: AiDiagramPatch): PatchSa
   const takenNodeIds = new Set(Object.keys(doc.nodes).filter((id) => !removeNodeIds.has(id)));
   const nodeRename = new Map<string, string>();
   const addNodes: DiagramNode[] = [];
+  // Índice (tipo|TAG) dos equipamentos que PERMANECEM, para barrar que a IA
+  // reemita um equipamento já existente como novo — a causa do "circuito
+  // duplicado / loop" quando se pede uma correção. A deduplicação é por TAG
+  // válida do mesmo tipo: um disjuntor "Q1" só existe uma vez.
+  const existingByTag = new Map<string, string>();
+  for (const n of Object.values(doc.nodes)) {
+    if (removeNodeIds.has(n.id)) continue;
+    const tag = n.params.tag;
+    if (isValidDeviceTag(tag)) {
+      existingByTag.set(`${n.params.kind}|${normalizeTag(tag as string)}`, n.id);
+    }
+  }
+  const addedByTag = new Set<string>();
   for (const n of patch.addNodes) {
+    const tag = n.params.tag;
+    if (isValidDeviceTag(tag)) {
+      const key = `${n.params.kind}|${normalizeTag(tag as string)}`;
+      if (existingByTag.has(key) || addedByTag.has(key)) {
+        warnings.push(
+          `Equipamento novo "${n.label || n.id}" (${n.params.kind} ${tag}) descartado: já existe no diagrama`,
+        );
+        continue;
+      }
+      addedByTag.add(key);
+    }
     let id = n.id;
     if (takenNodeIds.has(id)) {
       id = uniqueId(n.id, takenNodeIds);
