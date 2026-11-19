@@ -25,13 +25,13 @@ export default defineConfig({
       rollupOptions: {
         external: [/^cloudflare:/, "cloudflare:workers"],
         output: {
-          // Sem isto, o Rollup empurra as dependências COMPARTILHADAS (React
-          // inclusive) para dentro do primeiro vendor chunk pesado criado
-          // abaixo — e aí o bundle de entrada (landing/login) passava a baixar
-          // gráficos, Konva, jsPDF e React Flow (~1,26 MB) sem usar nada disso.
-          // Com `true`, só os módulos listados em manualChunks saem para esses
-          // chunks; o resto é dividido por rota pelo próprio Rollup.
-          onlyExplicitManualChunks: true,
+          // NÃO usar `onlyExplicitManualChunks: true` aqui. Ele altera a ordem
+          // de inicialização dos chunks e expõe uma dependência circular latente
+          // do Pixi como TDZ no bundle minificado de produção ("Cannot access 'Tt'
+          // before initialization" em vendor-pixi), derrubando o canvas do unifilar.
+          // Comprovado por teste controlado: com o flag o chunk vendor-pixi quebra
+          // no import; sem ele o canvas carrega limpo. O chunking padrão do Rollup
+          // resolve a ordem dos ciclos corretamente.
           manualChunks(id: string) {
             if (!id.includes("node_modules")) return undefined;
 
