@@ -79,4 +79,4 @@ npm install
 npm run dev
 ```
 
-Variáveis de ambiente locais ficam em `.env` (veja `.env.example`).
+Variáveis de ambiente locais ficam em `.env` (auto-populadas pelo Lovable Cloud — veja `.env.example`).

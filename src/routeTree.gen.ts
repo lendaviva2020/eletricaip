@@ -20,6 +20,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ParaAutonomosRouteImport } from './routes/para-autonomos'
 import { Route as ParaEmpresasRouteImport } from './routes/para-empresas'
@@ -32,6 +33,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
@@ -47,6 +49,7 @@ import { Route as SettingsProfileRouteImport } from './routes/settings.profile'
 import { Route as SettingsProtocolsRouteImport } from './routes/settings.protocols'
 import { Route as SettingsSecurityRouteImport } from './routes/settings.security'
 import { Route as SettingsTeamRouteImport } from './routes/settings.team'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ProjectsProjectIdBomRouteImport } from './routes/projects.$projectId.bom'
 import { Route as ProjectsProjectIdExportRouteImport } from './routes/projects.$projectId.export'
 import { Route as ApiPublicCronExpireSubscriptionsRouteImport } from './routes/api/public/cron.expire-subscriptions'
@@ -109,6 +112,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -169,6 +177,12 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
   path: '/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -244,6 +258,11 @@ const SettingsTeamRoute = SettingsTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => SettingsRoute,
 } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsProjectIdBomRoute = ProjectsProjectIdBomRouteImport.update({
   id: '/$projectId/bom',
   path: '/$projectId/bom',
@@ -288,6 +307,7 @@ export interface FileRoutesByFullPath {
   '/design-system': typeof DesignSystemRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
   '/para-autonomos': typeof ParaAutonomosRoute
   '/para-empresas': typeof ParaEmpresasRoute
@@ -300,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/workspace': typeof WorkspaceRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -315,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/settings/protocols': typeof SettingsProtocolsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
   '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
   '/api/public/cron/expire-subscriptions': typeof ApiPublicCronExpireSubscriptionsRoute
@@ -334,6 +356,7 @@ export interface FileRoutesByTo {
   '/design-system': typeof DesignSystemRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
   '/para-autonomos': typeof ParaAutonomosRoute
   '/para-empresas': typeof ParaEmpresasRoute
@@ -346,6 +369,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/workspace': typeof WorkspaceRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -361,6 +385,7 @@ export interface FileRoutesByTo {
   '/settings/protocols': typeof SettingsProtocolsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
   '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
   '/api/public/cron/expire-subscriptions': typeof ApiPublicCronExpireSubscriptionsRoute
@@ -381,6 +406,7 @@ export interface FileRoutesById {
   '/design-system': typeof DesignSystemRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
   '/para-autonomos': typeof ParaAutonomosRoute
   '/para-empresas': typeof ParaEmpresasRoute
@@ -393,6 +419,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/termos': typeof TermosRoute
   '/workspace': typeof WorkspaceRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
   '/invite/$token': typeof InviteTokenRoute
@@ -408,6 +435,7 @@ export interface FileRoutesById {
   '/settings/protocols': typeof SettingsProtocolsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/settings/team': typeof SettingsTeamRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/projects/$projectId/bom': typeof ProjectsProjectIdBomRoute
   '/projects/$projectId/export': typeof ProjectsProjectIdExportRoute
   '/api/public/cron/expire-subscriptions': typeof ApiPublicCronExpireSubscriptionsRoute
@@ -429,6 +457,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/forgot-password'
     | '/login'
+    | '/mcp'
     | '/onboarding'
     | '/para-autonomos'
     | '/para-empresas'
@@ -441,6 +470,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/termos'
     | '/workspace'
+    | '/.well-known/oauth-protected-resource'
     | '/auth/callback'
     | '/clients/$clientId'
     | '/invite/$token'
@@ -456,6 +486,7 @@ export interface FileRouteTypes {
     | '/settings/protocols'
     | '/settings/security'
     | '/settings/team'
+    | '/.lovable/oauth/consent'
     | '/projects/$projectId/bom'
     | '/projects/$projectId/export'
     | '/api/public/cron/expire-subscriptions'
@@ -475,6 +506,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/forgot-password'
     | '/login'
+    | '/mcp'
     | '/onboarding'
     | '/para-autonomos'
     | '/para-empresas'
@@ -487,6 +519,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/termos'
     | '/workspace'
+    | '/.well-known/oauth-protected-resource'
     | '/auth/callback'
     | '/clients/$clientId'
     | '/invite/$token'
@@ -502,6 +535,7 @@ export interface FileRouteTypes {
     | '/settings/protocols'
     | '/settings/security'
     | '/settings/team'
+    | '/.lovable/oauth/consent'
     | '/projects/$projectId/bom'
     | '/projects/$projectId/export'
     | '/api/public/cron/expire-subscriptions'
@@ -521,6 +555,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/forgot-password'
     | '/login'
+    | '/mcp'
     | '/onboarding'
     | '/para-autonomos'
     | '/para-empresas'
@@ -533,6 +568,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/termos'
     | '/workspace'
+    | '/.well-known/oauth-protected-resource'
     | '/auth/callback'
     | '/clients/$clientId'
     | '/invite/$token'
@@ -548,6 +584,7 @@ export interface FileRouteTypes {
     | '/settings/protocols'
     | '/settings/security'
     | '/settings/team'
+    | '/.lovable/oauth/consent'
     | '/projects/$projectId/bom'
     | '/projects/$projectId/export'
     | '/api/public/cron/expire-subscriptions'
@@ -568,6 +605,7 @@ export interface RootRouteChildren {
   DesignSystemRoute: typeof DesignSystemRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  McpRoute: typeof McpRoute
   OnboardingRoute: typeof OnboardingRoute
   ParaAutonomosRoute: typeof ParaAutonomosRoute
   ParaEmpresasRoute: typeof ParaEmpresasRoute
@@ -580,8 +618,10 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   TermosRoute: typeof TermosRoute
   WorkspaceRoute: typeof WorkspaceRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicCronExpireSubscriptionsRoute: typeof ApiPublicCronExpireSubscriptionsRoute
   ApiPublicIotIngestRoute: typeof ApiPublicIotIngestRoute
   ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
@@ -667,6 +707,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -749,6 +796,13 @@ declare module '@tanstack/react-router' {
       path: '/workspace'
       fullPath: '/workspace'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -855,6 +909,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/team'
       preLoaderRoute: typeof SettingsTeamRouteImport
       parentRoute: typeof SettingsRoute
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId/bom': {
       id: '/projects/$projectId/bom'
@@ -972,6 +1033,7 @@ const rootRouteChildren: RootRouteChildren = {
   DesignSystemRoute: DesignSystemRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  McpRoute: McpRoute,
   OnboardingRoute: OnboardingRoute,
   ParaAutonomosRoute: ParaAutonomosRoute,
   ParaEmpresasRoute: ParaEmpresasRoute,
@@ -984,8 +1046,11 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   TermosRoute: TermosRoute,
   WorkspaceRoute: WorkspaceRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   InviteTokenRoute: InviteTokenRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicCronExpireSubscriptionsRoute: ApiPublicCronExpireSubscriptionsRoute,
   ApiPublicIotIngestRoute: ApiPublicIotIngestRoute,
   ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
