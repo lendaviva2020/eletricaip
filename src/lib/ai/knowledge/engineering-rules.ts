@@ -27,6 +27,7 @@ const PT: Record<EditorId, string> = {
 - PROTEÇÃO: In do disjuntor ≥ Ib; relé térmico com faixa cobrindo o In do motor; Icc do disjuntor ≥ curto presumido.
 - CABOS ficam NA LIGAÇÃO, nunca como equipamento: edge.cable = { section_mm2, length_m, installation (A1…F), insulation (PVC|EPR|XLPE) }. Para alterar um cabo existente use updateEdges[].cable. NUNCA crie nó "cabo"/"condutor". A seção é dimensionada pelo sistema (NBR 5410: Ib ≤ In ≤ I'z; motor I'z ≥ 1,25·In). length_m SÓ se o usuário informou o comprimento — nunca estime; sem comprimento, peça ao usuário.
 - Só o cabo de CAMPO (painel → carga) e o ALIMENTADOR (fonte externa → painel) precisam de comprimento; a fiação interna do painel não.
+- COORDENAÇÃO: In do disjuntor ≥ Ib a jusante; relé térmico ajustado entre 0,95 e 1,25 × In do motor; contator (AC-3) ≥ In do motor; disjuntor de ramal com In MENOR que o geral (seletividade); Icu (icc_kA) ≥ curto presumido no barramento (IEC 60909 pelo trafo — uk_pct de placa, se o usuário informou).
 - TAGS (IEC 81346-2, uma letra de classe + número sequencial por tipo): disjuntor/seccionadora Q, DR/fusível/relé térmico F, contator/relé K, transformador/fonte/inversor/soft T, barramento W, motor M, tomada/borne X, sensor B, botoeira/E-STOP S. Q0 é o geral. O sistema renumera em sequência — não invente DJ1, QF-01 etc.
 - PE (terra) obrigatório em motor e tomada; E-STOP físico por máquina (NR-12).`,
 
@@ -70,6 +71,7 @@ const EN: Record<EditorId, string> = {
 - PROTECTION: breaker In ≥ Ib; thermal relay range covers motor In; breaker breaking capacity ≥ prospective short-circuit.
 - CABLES live ON THE EDGE, never as a device: edge.cable = { section_mm2, length_m, installation (A1…F), insulation (PVC|EPR|XLPE) }. To change an existing cable use updateEdges[].cable. NEVER create a "cable"/"conductor" node. Section is sized by the system (Ib ≤ In ≤ I'z; motor I'z ≥ 1.25·In). length_m ONLY when the user stated the length — never estimate; otherwise ask.
 - Only FIELD cables (panel → load) and the FEEDER (external source → panel) need a length; internal panel wiring does not.
+- COORDINATION: breaker In ≥ downstream Ib; thermal relay set between 0.95 and 1.25 × motor In; contactor (AC-3) ≥ motor In; branch breaker In LOWER than the main (selectivity); Icu (icc_kA) ≥ prospective busbar short circuit (IEC 60909 from the transformer — nameplate uk_pct when the user gave it).
 - TAGS (IEC 81346-2, one class letter + sequential number per type): breaker/disconnector Q, RCD/fuse/thermal relay F, contactor/relay K, transformer/PSU/drive T, busbar W, motor M, socket/terminal X, sensor B, push-button/E-STOP S. Q0 is the main breaker. The system renumbers sequentially.
 - PE mandatory on motors and sockets; physical E-STOP per machine (ISO 13849 / IEC 60204-1).`,
 

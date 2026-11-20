@@ -65,11 +65,40 @@ import {
 import { useSafetyStore } from "@/lib/simulation/safety-core";
 import { useI18n } from "@/lib/i18n";
 
+/** Tags do programa de EXEMPLO — em repouso (nenhuma entrada "ligada" de fábrica). */
+const REFERENCE_EXAMPLE_TAGS = [
+  { id: "tag-1", name: "B_PARTIDA", type: "BOOL", value: false },
+  { id: "tag-2", name: "B_STATUS_RUN", type: "BOOL", value: false },
+  { id: "tag-3", name: "E_PARADA_EMERG", type: "BOOL", value: false },
+  { id: "tag-4", name: "FALHA_SOBRECARGA", type: "BOOL", value: false },
+  { id: "tag-5", name: "BOMBA_MAIN", type: "BOOL", value: false },
+  { id: "tag-6", name: "SINALIZ_RUN", type: "BOOL", value: false },
+  { id: "tag-7", name: "NIVEL_AGUA", type: "INT", value: 0 },
+  { id: "tag-8", name: "NIVEL_CRITICO", type: "INT", value: 1200 },
+] as const;
+
+/** Assinatura estrutural de um conjunto de redes (ids, títulos, instruções). */
+function rungsSignature(rungs: readonly LadderRung[]): string {
+  return JSON.stringify(
+    rungs.map((r) => [
+      r.id,
+      r.label,
+      (r.cells ?? []).map((row) => row.map((c) => [c.kind, c.operand ?? ""])),
+    ]),
+  );
+}
+
+/** true quando as redes são EXATAMENTE o exemplo injetado e nunca editado. */
+export function isUntouchedReferenceExample(rungs: readonly LadderRung[]): boolean {
+  if (rungs.length === 0) return false;
+  return rungsSignature(rungs) === rungsSignature(createReferenceIndustrialProject());
+}
+
 /**
  * Cria o projeto industrial de referência oficial (Imagem 1).
  * Contém Selo clássico de bomba, temporizador TON com pino ET ao vivo e comparador de nível.
  */
-function createReferenceIndustrialProject(): LadderRung[] {
+export function createReferenceIndustrialProject(): LadderRung[] {
   // Rung 0001: Partida Bomba com Selo e Saídas Paralelas
   const r1: LadderRung = {
     id: "rung-0001",
@@ -433,28 +462,33 @@ export function RungGrid() {
     }
   }, [clipboard, selected, rungs, applyRungsWithHistory, select]);
 
-  // Inicializa com o projeto de referência oficial se estiver vazio
+  // Antes: Ladder vazio recebia AUTOMATICAMENTE o programa de exemplo (bombas,
+  // nível, TON) com tags já ligadas — e o autosave o gravava no projeto do
+  // usuário, que via "outro projeto" no seu. Agora o exemplo só entra por ação
+  // explícita, e o exemplo injetado e nunca editado é removido ao abrir.
+  const removeTag = useEditorStore((s) => s.removeTag);
   useEffect(() => {
-    if (rungs.length === 0) {
-      const refRungs = createReferenceIndustrialProject();
-      setRungs(refRungs);
-
-      // Semeia tags iniciais
-      upsertTag({ id: "tag-1", name: "B_PARTIDA", type: "BOOL", value: true, forced: false });
-      upsertTag({ id: "tag-2", name: "B_STATUS_RUN", type: "BOOL", value: true, forced: false });
-      upsertTag({ id: "tag-3", name: "E_PARADA_EMERG", type: "BOOL", value: false, forced: false });
-      upsertTag({
-        id: "tag-4",
-        name: "FALHA_SOBRECARGA",
-        type: "BOOL",
-        value: false,
-        forced: false,
-      });
-      upsertTag({ id: "tag-5", name: "BOMBA_MAIN", type: "BOOL", value: true, forced: false });
-      upsertTag({ id: "tag-6", name: "SINALIZ_RUN", type: "BOOL", value: true, forced: false });
-      upsertTag({ id: "tag-7", name: "NIVEL_AGUA", type: "INT", value: 1450, forced: false });
-      upsertTag({ id: "tag-8", name: "NIVEL_CRITICO", type: "INT", value: 1200, forced: false });
+    if (!isUntouchedReferenceExample(rungs)) return;
+    setRungs([]);
+    for (const t of REFERENCE_EXAMPLE_TAGS) {
+      const cur = useEditorStore.getState().editorTags[t.id];
+      if (cur && cur.name === t.name) removeTag(t.id);
     }
+    // Só ao montar/trocar de projeto: depois disso, edição do usuário manda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadReferenceExample = useCallback(() => {
+    if (
+      rungs.length > 0 &&
+      !window.confirm("Substituir as redes atuais pelo programa de EXEMPLO (demonstração)?")
+    ) {
+      return;
+    }
+    setRungs(createReferenceIndustrialProject());
+    // Valores iniciais em repouso: a simulação é que liga as entradas.
+    for (const t of REFERENCE_EXAMPLE_TAGS) upsertTag({ ...t, forced: false });
+    toast.info("Programa de exemplo carregado (demonstração — não é do seu projeto).");
   }, [rungs.length, setRungs, upsertTag]);
 
   // Inserção Previsível na posição exata do cursor
@@ -884,7 +918,9 @@ export function RungGrid() {
       >
         {/* Nome do Arquivo */}
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-background border border-border text-[11px] font-mono text-foreground font-medium shadow-xs shrink-0">
-          <span className="shrink-0">PROJETO_BOMBAS_E_ESTACAO_TRATAMENTO.ladder</span>
+          <span className="shrink-0">
+            Programa Ladder · {rungs.length} {rungs.length === 1 ? "rede" : "redes"}
+          </span>
         </div>
 
         {/* Ações de Desfazer, Refazer, Copiar, Colar e Excluir */}
@@ -1135,6 +1171,34 @@ export function RungGrid() {
           className="mx-auto max-w-5xl transition-transform duration-75 origin-top"
           style={{ transform: `scale(${zoom / 100})` }}
         >
+          {rungs.length === 0 && (
+            <div
+              className="mx-auto max-w-xl rounded-lg border border-dashed border-border bg-card/60 p-6 text-center text-sm"
+              data-testid="ladder-empty-state"
+            >
+              <p className="font-semibold text-foreground">
+                Este projeto ainda não tem lógica Ladder.
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Crie a primeira rede, gere a partir do unifilar (Simulação → Ponte Unifilar →
+                Ladder) ou peça à IA. O exemplo abaixo é só demonstração e não pertence ao seu
+                projeto.
+              </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Button size="sm" onClick={addRung} data-testid="ladder-empty-add">
+                  <Plus className="h-3.5 w-3.5" /> Nova rede
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={loadReferenceExample}
+                  data-testid="ladder-load-example"
+                >
+                  Carregar exemplo (demonstração)
+                </Button>
+              </div>
+            </div>
+          )}
           {rungs.map((rung, rungIndex) => {
             const topology = ensureRungTopology(rung);
             const isSel = selected === rung.id;

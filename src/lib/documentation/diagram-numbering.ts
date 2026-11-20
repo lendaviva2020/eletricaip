@@ -10,6 +10,7 @@
  */
 import type { Command } from "@/lib/diagram/commands";
 import type { DiagramDoc, DiagramNode } from "@/lib/diagram/schema";
+import { stripStaleDesignation } from "@/lib/diagram/render/node-label";
 import { IEC_81346_CLASS, isValidDeviceTag, normalizeTag } from "./device-designation";
 
 export type NumberingMode = "missing" | "all";
@@ -91,6 +92,11 @@ export function planDeviceNumbering(doc: DiagramDoc, mode: NumberingMode): Numbe
       from: n.params,
       to: { ...n.params, tag: to },
     });
+    // Rótulo com a designação antiga ("KM-01 32A") ficaria "K1 KM-01 32A" no desenho.
+    const cleanLabel = n.label ? stripStaleDesignation(n.label, to) : n.label;
+    if (cleanLabel !== n.label) {
+      commands.push({ type: "UpdateNodeLabel", nodeId: n.id, from: n.label, to: cleanLabel });
+    }
   }
 
   return {

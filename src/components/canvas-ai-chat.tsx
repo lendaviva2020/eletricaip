@@ -140,6 +140,23 @@ export function CanvasAiChat() {
     return () => window.removeEventListener("eletricai-ai-repair", handler as EventListener);
   }, [locale]);
 
+  // Pedido livre vindo do painel lateral de IA: abre este chat e envia.
+  // Antes o campo do painel não enviava para lugar nenhum.
+  useEffect(() => {
+    const handler = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ prompt?: unknown; forcePatch?: unknown }>).detail;
+      const prompt = typeof detail?.prompt === "string" ? detail.prompt.trim().slice(0, 4000) : "";
+      if (!prompt) return;
+      setOpen(true);
+      const forcePatch = detail?.forcePatch === true;
+      if (forcePatch) setPatchMode(true);
+      // Fora do unifilar respeita o modo escolhido no próprio chat.
+      void sendRef.current?.(prompt, undefined, forcePatch ? { forcePatch: true } : undefined);
+    };
+    window.addEventListener("eletricai-ai-prompt", handler);
+    return () => window.removeEventListener("eletricai-ai-prompt", handler);
+  }, []);
+
   // Keep first greeting in sync if user changes language before sending prompts
   useEffect(() => {
     const nextGreeting = t("aiChat.initialGreeting");

@@ -5,7 +5,8 @@ import { makeEdge, makeNode } from "./model";
 import type { CircuitConfig, DiagramDoc, DiagramEdge, DiagramNode, NodeKind } from "./schema";
 import { classifyMargin, type Severity } from "../diagnostics/types";
 import { validateElectricalTopology } from "./connection/graph-validator";
-import { cableName, isFieldCable } from "./connection/cable-sizing";
+import { cableName, isFieldCable, sizeDiagramCables } from "./connection/cable-sizing";
+import { analyzeProtectionCoordination } from "./connection/protection-coordination";
 
 export const CONDUCTOR_LABELS: Record<CircuitConfig, string[]> = {
   F: ["L1"],
@@ -462,6 +463,10 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
     (e) => e.sheet === "unifilar" || !e.id.startsWith("mf_"),
   );
 
+  // Mesma corrente de projeto (Ib = cargas a jusante) do dimensionamento NBR 5410:
+  // diagnóstico e tabela de cabos mostram o mesmo número.
+  const rowByEdge = new Map(sizeDiagramCables(doc).rows.map((r) => [r.edgeId, r]));
+
   for (const e of canonicalEdges) {
     const src = doc.nodes[e.source];
     const tgt = doc.nodes[e.target];
@@ -477,11 +482,17 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
     const length_m = cable.length_m;
     const section_mm2 = cable.section_mm2;
 
-    // Determina a corrente do circuito a partir dos parâmetros do nó de carga ou proteção
+    // Determina a corrente do circuito: Ib das cargas a jusante; sem carga conhecida,
+    // cai para os parâmetros do nó de carga ou proteção (marcado como premissa).
     let current_A = 20;
-    const loadNode = [tgt, src].find(
-      (n) => n.params.kind === "motor" || n.params.kind === "load" || n.params.kind === "breaker",
-    );
+    const row = rowByEdge.get(e.id);
+    const loadNode =
+      row && row.Ib_A > 0
+        ? undefined
+        : [tgt, src].find(
+            (n) =>
+              n.params.kind === "motor" || n.params.kind === "load" || n.params.kind === "breaker",
+          );
     if (loadNode) {
       const p = loadNode.params;
       if (p.kind === "motor") {
@@ -498,6 +509,8 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
       } else if (p.kind === "load") {
         current_A = Math.round((p as any).power_W / ((p as any).voltage_V * (p as any).fp));
       }
+    } else if (row && row.Ib_A > 0) {
+      current_A = row.Ib_A;
     } else {
       assumptions.push("Corrente adotada como padrão (20 A)");
     }
@@ -622,6 +635,19 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
     });
   }
 
+  // 2b. Coordenação das proteções (NBR 5410 §5.3 / IEC 60947): proteção × carga,
+  //     relé térmico × motor, contator AC-3, seletividade e capacidade de interrupção.
+  for (const f of analyzeProtectionCoordination(doc).findings) {
+    alerts.push({
+      id: `coord_${f.code.toLowerCase()}_${f.nodeId}`,
+      type: f.severity === "error" ? "ERRO" : "AVISO",
+      severity: f.severity,
+      message: f.message,
+      nodeId: f.nodeId,
+      ...(f.assumptions ? { assumptions: f.assumptions } : {}),
+    });
+  }
+
   // 3. Cabos sem dados: queda de tensão não verificável (pendência, nunca valor presumido)
   const missing = listCablesMissingData(doc);
   if (missing.length > 0) {
@@ -723,7 +749,10 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
   // 5. Verificação de conectividade contínua
   if (
     edges.length > 0 &&
-    alerts.filter((a) => a.type === "ERRO" || a.severity === "error").length === 0
+    // Coordenação de proteções é verificação à parte: não invalida a continuidade.
+    alerts.filter(
+      (a) => (a.type === "ERRO" || a.severity === "error") && !a.id.startsWith("coord_"),
+    ).length === 0
   ) {
     alerts.push({
       id: "conn_ok",

@@ -489,7 +489,9 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
           // (a numeração sequencial pode ter ajustado a tag).
           const synchronizedNodes = finalPatch.addNodes.map((n) => {
             const docNode = workingDoc.nodes[n.id];
-            return docNode ? { ...n, position: docNode.position, params: docNode.params } : n;
+            return docNode
+              ? { ...n, position: docNode.position, label: docNode.label, params: docNode.params }
+              : n;
           });
 
           // Propaga para nós PRÉ-EXISTENTES: ajuste de posição (só na criação) e
@@ -505,11 +507,13 @@ export const generateDiagramPatch = createServerFn({ method: "POST" })
               origNode.position.x !== docNode.position.x ||
               origNode.position.y !== docNode.position.y;
             const retagged = origNode.params.tag !== docNode.params.tag;
-            if (!moved && !retagged) continue;
+            const relabeled = (origNode.label ?? "") !== (docNode.label ?? "");
+            if (!moved && !retagged && !relabeled) continue;
             const prev = synchronizedUpdateNodesMap.get(id) ?? { id };
             synchronizedUpdateNodesMap.set(id, {
               ...prev,
               ...(moved ? { position: docNode.position } : {}),
+              ...(relabeled ? { label: docNode.label ?? "" } : {}),
               // params completos: o cliente substitui params inteiro (sanitizer
               // bloqueia troca de 'kind', aqui só muda a tag).
               ...(retagged ? { params: docNode.params } : {}),

@@ -21,6 +21,7 @@ import type { DiagramDoc, DiagramEdge, DiagramNode } from "../schema";
 import {
   motorNominalCurrent,
   sizeConductorNBR5410,
+  voltageDrop_pct,
   type InstallationMethod,
   type InsulationType,
 } from "@/lib/electrical-calc";
@@ -47,7 +48,7 @@ export const EXTERNAL_SOURCE_KINDS: ReadonlySet<string> = new Set(["transformer"
 const METHODS: ReadonlySet<string> = new Set(["A1", "A2", "B1", "B2", "C", "D", "E", "F"]);
 /** Método de referência quando o usuário não informou (eletroduto embutido em alvenaria). */
 export const DEFAULT_INSTALLATION_METHOD: InstallationMethod = "B1";
-const MAX_DROP_PCT = 4;
+const MAX_DROP_PCT = 4; // mesmo valor de MAX_CABLE_DROP_PCT (declarado abaixo do tipo)
 
 const isPower = (e: DiagramEdge) => e.kind === "power" && e.sheet === "unifilar";
 
@@ -182,7 +183,41 @@ export interface CableSizingReport {
   /** Ligações sem carga nem proteção conhecidas: não dá para dimensionar sem chutar. */
   notSizable: string[];
   premises: string[];
+  /** Uma linha por condutor de potência (estado ATUAL do diagrama) para a tabela NBR 5410. */
+  rows: CableRow[];
 }
+
+export type CableRowStatus =
+  | "ok"
+  | "sem_secao"
+  | "subdimensionada"
+  | "sem_comprimento"
+  | "queda_excedida"
+  | "nao_dimensionavel";
+
+export interface CableRow {
+  edgeId: string;
+  name: string;
+  /** Cabo de campo ou alimentador (precisa de comprimento medido). */
+  field: boolean;
+  /** Corrente de projeto (soma das cargas a jusante); 0 se desconhecida. */
+  Ib_A: number;
+  /** In do 1º relé térmico/disjuntor a montante. */
+  protection_A?: number;
+  /** Seção gravada no cabo (do usuário ou dimensionada). */
+  section_mm2?: number;
+  /** Seção mínima pela NBR 5410 para Ib/In (e queda, se houver comprimento). */
+  required_mm2?: number;
+  length_m?: number;
+  installation: string;
+  threePhase: boolean;
+  /** Queda de tensão no trecho (%), só com seção e comprimento informados. */
+  drop_pct?: number;
+  status: CableRowStatus;
+}
+
+/** Limite de queda usado na verificação dos trechos (NBR 5410 §6.2.7, circuito terminal). */
+export const MAX_CABLE_DROP_PCT = 4;
 
 export function nodeDisplayName(n: DiagramNode | undefined): string {
   if (!n) return "?";
@@ -206,6 +241,7 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
   const changes: CableSizingChange[] = [];
   const pendingLength: PendingCableLength[] = [];
   const notSizable: string[] = [];
+  const rows: CableRow[] = [];
   let usedDefaultMethod = false;
 
   const edges = Object.values(doc.edges)
@@ -220,8 +256,20 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
     const loads = downstreamLoads(doc, adj, e.target);
     const Ib = loads.reduce((s, n) => s + (loadCurrent_A(n) ?? 0), 0);
     const protection = upstreamProtection_A(doc, adj, e.source);
+    const field = isFieldCable(doc, e);
     if (Ib <= 0 && !protection) {
       notSizable.push(e.id);
+      rows.push({
+        edgeId: e.id,
+        name: cableName(doc, e),
+        field,
+        Ib_A: 0,
+        section_mm2: e.cable?.section_mm2,
+        length_m: e.cable?.length_m,
+        installation: e.cable?.installation ?? DEFAULT_INSTALLATION_METHOD,
+        threePhase: isThreePhase(e, src, tgt),
+        status: "nao_dimensionavel",
+      });
       continue;
     }
     const designIb = Ib > 0 ? Ib : (protection?.in_A ?? 0);
@@ -248,9 +296,35 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
     });
     const required = sizing.section_mm2;
 
-    if (isFieldCable(doc, e) && !cur?.length_m) {
+    if (field && !cur?.length_m) {
       pendingLength.push({ edgeId: e.id, name: cableName(doc, e) });
     }
+
+    // Linha da tabela no ESTADO ATUAL (antes da correção desta passada).
+    const V = three ? 380 : 220;
+    const drop =
+      cur?.section_mm2 && cur?.length_m
+        ? Math.round(voltageDrop_pct(designIb, cur.length_m, cur.section_mm2, V, 0.86) * 100) / 100
+        : undefined;
+    let status: CableRowStatus = "ok";
+    if (!cur?.section_mm2) status = "sem_secao";
+    else if (cur.section_mm2 < required) status = "subdimensionada";
+    else if (field && !cur?.length_m) status = "sem_comprimento";
+    else if (drop !== undefined && drop > MAX_DROP_PCT) status = "queda_excedida";
+    rows.push({
+      edgeId: e.id,
+      name: cableName(doc, e),
+      field,
+      Ib_A: Math.round(designIb * 10) / 10,
+      protection_A: protection?.in_A,
+      section_mm2: cur?.section_mm2,
+      required_mm2: required,
+      length_m: cur?.length_m,
+      installation: method,
+      threePhase: three,
+      drop_pct: drop,
+      status,
+    });
 
     let reason: CableSizingChange["reason"] | null = null;
     if (!cur?.section_mm2) reason = "missing";
@@ -285,5 +359,5 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
     );
   }
 
-  return { doc: { ...doc, edges: nextEdges }, changes, pendingLength, notSizable, premises };
+  return { doc: { ...doc, edges: nextEdges }, changes, pendingLength, notSizable, premises, rows };
 }

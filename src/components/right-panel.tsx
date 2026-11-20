@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   Sparkle,
   ShieldCheck,
@@ -14,6 +15,11 @@ import { useEditorStore } from "@/lib/editor/store";
 import { RightPropertyPanel } from "@/components/editor/right-property-panel";
 import { RevisionHistory } from "@/components/revision-history";
 import { useI18n } from "@/lib/i18n";
+import { useDiagramStore } from "@/lib/diagram/store";
+import { runDiagramDiagnostics } from "@/lib/diagram/multifilar";
+import { buildDiagnosticContextFromMultifilar } from "@/lib/diagnostics/ai-repair-context";
+import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { applyCableSizing, openCableTable } from "@/components/editor/cable-table";
 
 const TABS = [
   { id: "props", key: "rightPanel.props" as const, icon: SlidersHorizontal },
@@ -114,9 +120,48 @@ function LegacyProjectNodeProps() {
   );
 }
 
+/** Envia um pedido livre ao chat de IA do workspace (o mesmo do canvas). */
+function sendToWorkspaceAi(prompt: string, forcePatch: boolean) {
+  window.dispatchEvent(new CustomEvent("eletricai-ai-prompt", { detail: { prompt, forcePatch } }));
+}
+
+const MAX_PENDING_LISTED = 4;
+
 function AiPanel() {
   const { t } = useI18n();
   const [msg, setMsg] = useState("");
+  const activeMode = useEditorStore((s) => s.activeMode);
+  const rungsCount = useEditorStore((s) => s.rungs.length);
+  const tagsCount = useEditorStore((s) => Object.keys(s.editorTags).length);
+  const doc = useDiagramStore((s) => s.doc);
+  const projectId = useProjectStore((s) => s.projectId);
+  const isElectrical = activeMode === "unifilar" || activeMode === "multifilar";
+
+  // Tudo abaixo vem do projeto aberto — nada de exemplo fixo.
+  const pending = useMemo(() => {
+    if (!isElectrical) return [];
+    try {
+      return runDiagramDiagnostics(doc).filter((d) => d.type === "ERRO" || d.type === "AVISO");
+    } catch {
+      return [];
+    }
+  }, [isElectrical, doc]);
+
+  const summary = useMemo(() => {
+    const nodes = Object.values(doc.nodes).filter((n) => n.sheet === "unifilar");
+    const power = Object.values(doc.edges).filter(
+      (e) => e.sheet === "unifilar" && e.kind === "power",
+    );
+    return { eq: nodes.length, pw: power.length };
+  }, [doc]);
+
+  const submit = () => {
+    const p = msg.trim();
+    if (!p) return;
+    sendToWorkspaceAi(p, isElectrical);
+    setMsg("");
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto p-4 space-y-3">
@@ -132,30 +177,94 @@ function AiPanel() {
           </div>
         </div>
 
-        <div className="rounded-md p-3 bg-card border border-border">
-          <div className="text-[11px] text-muted-foreground mb-1">
-            {t("rightPanel.contextualSuggestionTitle")}
+        <div className="rounded-md p-3 bg-card border border-border" data-testid="ai-panel-pending">
+          <div className="text-[11px] text-muted-foreground mb-1.5">
+            {t("rightPanel.pendingTitle")}
           </div>
-          <p className="text-[12px]">{t("rightPanel.contextualSuggestionDesc")}</p>
-          <div className="mt-2 flex gap-1.5">
-            <button className="text-[10px] font-semibold px-2 py-1 rounded bg-primary text-primary-foreground">
-              {t("rightPanel.applyBtn")}
-            </button>
-            <button className="text-[10px] font-semibold px-2 py-1 rounded bg-muted text-foreground">
-              {t("rightPanel.detailsBtn")}
-            </button>
-          </div>
+          {!isElectrical ? (
+            <p className="text-[12px] text-muted-foreground">
+              {t("rightPanel.pendingOnlyElectrical")}
+            </p>
+          ) : pending.length === 0 ? (
+            <p className="text-[12px] text-emerald-400">{t("rightPanel.noPending")}</p>
+          ) : (
+            <ul className="space-y-2">
+              {pending.slice(0, MAX_PENDING_LISTED).map((d) => (
+                <li key={d.id} className="text-[12px] leading-snug">
+                  <span
+                    className={cn(
+                      "mr-1.5 rounded px-1 text-[10px] font-bold",
+                      d.type === "ERRO" ? "bg-destructive text-white" : "bg-amber-500 text-black",
+                    )}
+                  >
+                    {d.type}
+                  </span>
+                  {d.message}
+                  <div className="mt-1">
+                    {d.id === "vd_missing_data" ? (
+                      <button
+                        type="button"
+                        onClick={() => openCableTable(d.edgeId)}
+                        className="text-[10px] font-semibold px-2 py-1 rounded bg-primary text-primary-foreground"
+                      >
+                        {t("cableTable.enterLengths")}
+                      </button>
+                    ) : d.id === "cond_section_missing" ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const { changed } = applyCableSizing();
+                          if (changed > 0) toast.success(t("cableTable.sized", { n: changed }));
+                          else toast.info(t("cableTable.nothingToSize"));
+                        }}
+                        className="text-[10px] font-semibold px-2 py-1 rounded bg-primary text-primary-foreground"
+                      >
+                        {t("cableTable.sizeNow")}
+                      </button>
+                    ) : (
+                      <AiFixButton
+                        diagnostic={buildDiagnosticContextFromMultifilar(
+                          d,
+                          projectId || "proj_active",
+                        )}
+                        size="xs"
+                        variant="compact"
+                      />
+                    )}
+                  </div>
+                </li>
+              ))}
+              {pending.length > MAX_PENDING_LISTED && (
+                <li className="text-[11px] text-muted-foreground">
+                  {t("rightPanel.morePending", { n: pending.length - MAX_PENDING_LISTED })}
+                </li>
+              )}
+            </ul>
+          )}
         </div>
 
-        <div className="rounded-md p-3 bg-card border border-border">
+        <div className="rounded-md p-3 bg-card border border-border" data-testid="ai-panel-summary">
           <div className="text-[11px] text-muted-foreground mb-1">
-            {t("rightPanel.autoGenTitle")}
+            {t("rightPanel.summaryTitle")}
           </div>
-          <p className="text-[12px]">{t("rightPanel.autoGenSummary")}</p>
+          <p className="text-[12px]">
+            {t("rightPanel.summaryLine", {
+              eq: summary.eq,
+              pw: summary.pw,
+              rungs: rungsCount,
+              tags: tagsCount,
+            })}
+          </p>
         </div>
       </div>
 
-      <div className="p-2 border-t border-border">
+      <form
+        className="p-2 border-t border-border"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
         <div className="relative">
           <input
             aria-label={t("rightPanel.inputPlaceholder")}
@@ -166,14 +275,16 @@ function AiPanel() {
             className="w-full h-9 pl-3 pr-9 rounded-md bg-input border border-border text-[12px] outline-none focus:ring-2 focus:ring-ring"
           />
           <button
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded text-primary hover:bg-accent"
+            type="submit"
+            disabled={!msg.trim()}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded text-primary hover:bg-accent disabled:opacity-40"
             title={t("rightPanel.sendAria")}
             aria-label={t("rightPanel.sendAria")}
           >
             <PaperPlaneRight className="h-3.5 w-3.5" />
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
@@ -212,21 +323,11 @@ function VersionsPanel() {
 }
 
 function MaintPanel() {
+  const { t } = useI18n();
+  // Sem fonte real de manutenção no projeto: nada de MTBF/alertas inventados.
   return (
-    <div className="p-4 space-y-3 text-[12px]">
-      <Section title="Manutenção Preditiva">
-        <Row k="MTBF" v="9 240 h" />
-        <Row k="MTTR" v="4.2 min" />
-        <Row k="Disponibilidade" v="99.6%" />
-      </Section>
-      <Section title="Alertas">
-        <div className="rounded-md p-2 bg-warning/10 border border-warning/30 text-[11px]">
-          Rolamento M-03 com vibração acima do baseline. Substituir em ~120h.
-        </div>
-        <div className="rounded-md p-2 bg-info/10 border border-info/30 text-[11px] mt-2">
-          Lubrificação P-201 prevista em 14 dias.
-        </div>
-      </Section>
+    <div className="p-4 text-[12px] text-muted-foreground" data-testid="maint-empty">
+      {t("rightPanel.maintEmpty")}
     </div>
   );
 }

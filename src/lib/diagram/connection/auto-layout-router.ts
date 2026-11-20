@@ -2,7 +2,7 @@
 // Standards: IEC 60617, ISA-101
 // Places nodes cleanly by topological levels and computes orthogonal wire routes
 
-import type { DiagramDoc, DiagramNode, DiagramEdge } from "../schema";
+import type { DiagramDoc, DiagramNode, DiagramEdge, Position } from "../schema";
 import { resolveVisualPort, rotatePort } from "../render/ports";
 import { computeNodeBoundingBox, routeOrthogonalEdge } from "../render/wire-router";
 
@@ -246,6 +246,9 @@ export function routeDiagramEdges(doc: DiagramDoc): DiagramDoc {
 
 /** Deslocamento vertical padrão (px) entre um equipamento e o seguinte no ramal. */
 const RELATIVE_PLACEMENT_V = 140;
+/** Distância mínima entre centros de símbolos (inclui o rótulo abaixo do símbolo). */
+const PLACEMENT_CLEAR_X = 120;
+const PLACEMENT_CLEAR_Y = 100;
 
 /**
  * Posiciona APENAS os nós recém-adicionados (`addedIds`), deixando intactas as
@@ -259,13 +262,18 @@ const RELATIVE_PLACEMENT_V = 140;
 export function placeAddedNodes(doc: DiagramDoc, addedIds: ReadonlySet<string>): DiagramDoc {
   if (addedIds.size === 0) return doc;
   const nextNodes: Record<string, DiagramNode> = { ...doc.nodes };
-  const posKey = (x: number, y: number) => `${Math.round(x)},${Math.round(y)}`;
 
-  // Posições ocupadas pelos nós que PERMANECEM (não recém-adicionados).
-  const occupied = new Set<string>();
+  // Ocupação por CAIXA (símbolo + rótulo), não por ponto exato: antes só a
+  // posição idêntica era evitada e um disjuntor novo caía em cima do contator
+  // vizinho ("K1 32A" sobreposto a "Q2 16A").
+  const occupied: Position[] = [];
   for (const n of Object.values(doc.nodes)) {
-    if (!addedIds.has(n.id)) occupied.add(posKey(n.position.x, n.position.y));
+    if (!addedIds.has(n.id)) occupied.push(n.position);
   }
+  const collides = (p: Position) =>
+    occupied.some(
+      (o) => Math.abs(o.x - p.x) < PLACEMENT_CLEAR_X && Math.abs(o.y - p.y) < PLACEMENT_CLEAR_Y,
+    );
 
   const edges = Object.values(doc.edges);
   // Processa em ordem estável para cadeias de nós novos encadeados.
@@ -277,21 +285,31 @@ export function placeAddedNodes(doc: DiagramDoc, addedIds: ReadonlySet<string>):
     const inEdge = edges.find((e) => e.target === id && nextNodes[e.source]);
     const outEdge = edges.find((e) => e.source === id && nextNodes[e.target]);
 
-    let pos = node.position;
+    let anchor = node.position;
     if (inEdge) {
       const s = nextNodes[inEdge.source];
-      pos = { x: s.position.x, y: s.position.y + RELATIVE_PLACEMENT_V };
+      anchor = { x: s.position.x, y: s.position.y + RELATIVE_PLACEMENT_V };
     } else if (outEdge) {
       const t = nextNodes[outEdge.target];
-      pos = { x: t.position.x, y: t.position.y - RELATIVE_PLACEMENT_V };
+      anchor = { x: t.position.x, y: t.position.y - RELATIVE_PLACEMENT_V };
     }
-    // Evita sobrepor exatamente outro equipamento.
-    let guard = 0;
-    while (occupied.has(posKey(pos.x, pos.y)) && guard < 100) {
-      pos = { x: pos.x + 40, y: pos.y + RELATIVE_PLACEMENT_V };
-      guard += 1;
+
+    // Tenta a posição ancorada, depois colunas laterais (ramal vizinho) e só
+    // então desce — sempre a primeira posição livre, determinística.
+    let pos = anchor;
+    search: for (let row = 0; row < 12; row++) {
+      for (const col of [0, 1, -1, 2, -2, 3]) {
+        const cand = {
+          x: anchor.x + col * PLACEMENT_CLEAR_X * 1.4,
+          y: anchor.y + row * RELATIVE_PLACEMENT_V,
+        };
+        if (!collides(cand)) {
+          pos = cand;
+          break search;
+        }
+      }
     }
-    occupied.add(posKey(pos.x, pos.y));
+    occupied.push(pos);
     nextNodes[id] = { ...node, position: pos };
   }
 

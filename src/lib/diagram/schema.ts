@@ -104,6 +104,8 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
     primary_V: z.number().positive(),
     secondary_V: z.number().positive(),
     vector: z.string().default("Dyn11"),
+    /** Impedância de curto-circuito de placa (uk %). Opcional: sem ela o curto usa valor típico declarado como premissa. */
+    uk_pct: z.number().positive().max(30).optional(),
   }),
   z.object({
     kind: z.literal("psu"),
