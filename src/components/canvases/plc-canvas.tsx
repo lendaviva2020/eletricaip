@@ -46,7 +46,6 @@ import { studioToStructuredText } from "@/lib/compact-studio/runtime/structured-
 import { downloadPlcOpenXml } from "@/lib/plc/plcopen-export";
 import type { LadderRung } from "@/lib/ladder/types";
 import type { Icon } from "@phosphor-icons/react";
-import { FloatingLegend } from "./canvas-chrome";
 import { useI18n } from "@/lib/i18n";
 import { RuntimePanel } from "@/components/plc/runtime-panel";
 
@@ -327,17 +326,25 @@ export function PlcCanvas() {
 
   return (
     <div className="relative h-full w-full flex flex-col bg-[--canvas-bg]">
-      <FloatingLegend
-        title="PLC Editor"
-        items={[
-          `${project.vendor.toUpperCase()} · ${project.rack.modules.length} módulos`,
-          `${totalDI} DI · ${totalDO} DO · ${totalAI} AI`,
-          `${project.programBlocks.length} blocos`,
-        ]}
-      />
+      {/* Resumo do CLP no fluxo da página (antes ficava flutuando sobre as abas). */}
+      <div
+        className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border px-3 py-1.5 font-mono text-[11px] text-foreground/90"
+        data-testid="plc-summary"
+      >
+        <span className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+          PLC Editor
+        </span>
+        <span>
+          {project.vendor.toUpperCase()} · {project.rack.modules.length} módulos
+        </span>
+        <span>
+          {totalDI} DI · {totalDO} DO · {totalAI} AI
+        </span>
+        <span>{project.programBlocks.length} blocos</span>
+      </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-0.5 px-3 pt-12 border-b border-border bg-card/20">
+      <div className="flex items-center gap-0.5 overflow-x-auto px-3 pt-1 border-b border-border bg-card/20 scrollbar-thin">
         {[
           { id: "dashboard" as const, icon: Pulse, label: "Dashboard" },
           { id: "hardware" as const, icon: SlidersHorizontal, label: "Hardware" },
@@ -348,7 +355,7 @@ export function PlcCanvas() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-[10px] font-mono uppercase tracking-wider cursor-pointer border-b-2 transition-colors ${
+            className={`flex shrink-0 items-center gap-1.5 px-3 py-2 text-[10px] font-mono uppercase tracking-wider cursor-pointer border-b-2 transition-colors ${
               activeTab === tab.id
                 ? "border-primary text-primary bg-primary/5"
                 : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/20"
@@ -361,7 +368,7 @@ export function PlcCanvas() {
         <button
           onClick={() => downloadPlcOpenXml(project)}
           title="Exportar projeto PLCopen XML (.plcproj)"
-          className="ml-auto mb-1 flex items-center gap-1.5 px-2.5 py-1 rounded border border-border bg-card/60 text-[10px] font-mono uppercase tracking-wider hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+          className="ml-auto mb-1 flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded border border-border bg-card/60 text-[10px] font-mono uppercase tracking-wider hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
         >
           <DownloadSimple className="h-3 w-3" /> .plcproj
         </button>
