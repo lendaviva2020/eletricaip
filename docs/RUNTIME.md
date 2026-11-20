@@ -43,6 +43,15 @@ Pi 64 bits) ou `:linux-x64`.
 6. Abra `http://<ip do gateway>:8080`, entre com o PIN, confira "Por que não está
    escrevendo" e **Armar** (pede o PIN de novo).
 
+## WebVisu — tela de processo
+
+O WebVisu mostra a **mesma tela de processo** desenhada no Editor HMI (símbolos,
+ligações e posições). Cada equipamento mostra **só o que as tags dizem**, pela
+convenção do editor: `<TAG>.LIGADO` (ou a própria `<TAG>`), `<TAG>.REVERSO`,
+`<TAG>.VELOCIDADE`, `<TAG>.ABERTA` e `<TAG>.NIVEL`. Equipamento sem tag aparece
+apagado como **sem sinal**; nada é deduzido (as ligações não "simulam fluxo").
+Toque no equipamento para ver as tags dele e comandar as de memória.
+
 ## Modos
 
 | Modo | O que faz |
@@ -74,6 +83,8 @@ valores seguros antes de sair.
   consegue desligar as saídas.
 - O Runtime não é um CLP de segurança (SIL/PL). Funções de segurança ficam em
   relé/CLP de segurança certificado.
+- O traçado das ligações no WebVisu é ortogonal e simples; pode cruzar
+  equipamentos em telas densas (a posição de portas e equipamentos é a do editor).
 - Drivers desta versão: Modbus TCP e bancada virtual. OPC UA, MQTT, Modbus RTU e
   GPIO ainda não escrevem pelo Runtime.
 - A validação em campo e a liberação para operação são do engenheiro responsável.

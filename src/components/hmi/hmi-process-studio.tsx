@@ -67,26 +67,10 @@ import { publishTags } from "@/lib/scada/tag-hub";
 import { isDocumentHidden } from "@/lib/utils/visibility";
 import { IDLE_STATE, ProcessSymbol } from "./process-symbols";
 
-// ── Geometria de portas com rotação ───────────────────────────────────
-
-const SIDES: PortSide[] = ["top", "right", "bottom", "left"];
-
-/** Gira o lado e a fração da porta em passos de 90° no sentido horário. */
-export function rotatePort(
-  side: PortSide,
-  at: number,
-  rotation: number,
-): { side: PortSide; at: number } {
-  let s = side;
-  let a = at;
-  for (let i = 0; i < (((rotation / 90) % 4) + 4) % 4; i++) {
-    // left→top (1-a), top→right (a), right→bottom (1-a), bottom→left (a)
-    const flip = s === "left" || s === "right";
-    s = SIDES[(SIDES.indexOf(s) + 1) % 4];
-    a = flip ? 1 - a : a;
-  }
-  return { side: s, at: a };
-}
+// Geometria de portas com rotação: fonte única em lib/hmi/hmi-layout (o WebVisu
+// do Runtime usa a mesma conta).
+export { rotatePort } from "@/lib/hmi/hmi-layout";
+import { rotatePort } from "@/lib/hmi/hmi-layout";
 
 const POS: Record<PortSide, Position> = {
   top: Position.Top,
