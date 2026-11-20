@@ -1,6 +1,7 @@
 node_modules
 dist
 dist-edge
+dist-runtime
 test-results
 playwright-report
 .output

@@ -52,6 +52,8 @@ import { Route as ProjectsProjectIdExportRouteImport } from './routes/projects.$
 import { Route as ApiPublicCronExpireSubscriptionsRouteImport } from './routes/api/public/cron.expire-subscriptions'
 import { Route as ApiPublicIotIngestRouteImport } from './routes/api/public/iot.ingest'
 import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp.webhook'
+import { Route as ApiPublicRuntimePackageRouteImport } from './routes/api/public/runtime.package'
+import { Route as ApiPublicRuntimeReportRouteImport } from './routes/api/public/runtime.report'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe.webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -270,6 +272,16 @@ const ApiPublicMpWebhookRoute = ApiPublicMpWebhookRouteImport.update({
   path: '/api/public/mp/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRuntimePackageRoute = ApiPublicRuntimePackageRouteImport.update({
+  id: '/api/public/runtime/package',
+  path: '/api/public/runtime/package',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicRuntimeReportRoute = ApiPublicRuntimeReportRouteImport.update({
+  id: '/api/public/runtime/report',
+  path: '/api/public/runtime/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   id: '/api/public/stripe/webhook',
   path: '/api/public/stripe/webhook',
@@ -320,6 +332,8 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/expire-subscriptions': typeof ApiPublicCronExpireSubscriptionsRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
+  '/api/public/runtime/package': typeof ApiPublicRuntimePackageRoute
+  '/api/public/runtime/report': typeof ApiPublicRuntimeReportRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -366,6 +380,8 @@ export interface FileRoutesByTo {
   '/api/public/cron/expire-subscriptions': typeof ApiPublicCronExpireSubscriptionsRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
+  '/api/public/runtime/package': typeof ApiPublicRuntimePackageRoute
+  '/api/public/runtime/report': typeof ApiPublicRuntimeReportRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesById {
@@ -413,6 +429,8 @@ export interface FileRoutesById {
   '/api/public/cron/expire-subscriptions': typeof ApiPublicCronExpireSubscriptionsRoute
   '/api/public/iot/ingest': typeof ApiPublicIotIngestRoute
   '/api/public/mp/webhook': typeof ApiPublicMpWebhookRoute
+  '/api/public/runtime/package': typeof ApiPublicRuntimePackageRoute
+  '/api/public/runtime/report': typeof ApiPublicRuntimeReportRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRouteTypes {
@@ -461,6 +479,8 @@ export interface FileRouteTypes {
     | '/api/public/cron/expire-subscriptions'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
+    | '/api/public/runtime/package'
+    | '/api/public/runtime/report'
     | '/api/public/stripe/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -507,6 +527,8 @@ export interface FileRouteTypes {
     | '/api/public/cron/expire-subscriptions'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
+    | '/api/public/runtime/package'
+    | '/api/public/runtime/report'
     | '/api/public/stripe/webhook'
   id:
     | '__root__'
@@ -553,6 +575,8 @@ export interface FileRouteTypes {
     | '/api/public/cron/expire-subscriptions'
     | '/api/public/iot/ingest'
     | '/api/public/mp/webhook'
+    | '/api/public/runtime/package'
+    | '/api/public/runtime/report'
     | '/api/public/stripe/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -585,6 +609,8 @@ export interface RootRouteChildren {
   ApiPublicCronExpireSubscriptionsRoute: typeof ApiPublicCronExpireSubscriptionsRoute
   ApiPublicIotIngestRoute: typeof ApiPublicIotIngestRoute
   ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
+  ApiPublicRuntimePackageRoute: typeof ApiPublicRuntimePackageRoute
+  ApiPublicRuntimeReportRoute: typeof ApiPublicRuntimeReportRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
 
@@ -891,6 +917,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMpWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/runtime/package': {
+      id: '/api/public/runtime/package'
+      path: '/api/public/runtime/package'
+      fullPath: '/api/public/runtime/package'
+      preLoaderRoute: typeof ApiPublicRuntimePackageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/runtime/report': {
+      id: '/api/public/runtime/report'
+      path: '/api/public/runtime/report'
+      fullPath: '/api/public/runtime/report'
+      preLoaderRoute: typeof ApiPublicRuntimeReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/stripe/webhook': {
       id: '/api/public/stripe/webhook'
       path: '/api/public/stripe/webhook'
@@ -989,6 +1029,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronExpireSubscriptionsRoute: ApiPublicCronExpireSubscriptionsRoute,
   ApiPublicIotIngestRoute: ApiPublicIotIngestRoute,
   ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
+  ApiPublicRuntimePackageRoute: ApiPublicRuntimePackageRoute,
+  ApiPublicRuntimeReportRoute: ApiPublicRuntimeReportRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport

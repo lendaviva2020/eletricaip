@@ -62,6 +62,11 @@ export interface PlcProject {
   variables: PlcVariable[];
   programBlocks: PlcProgramBlock[];
   cycleTimeMs: number;
+  /**
+   * Mapa de E/S do ElétricAi Runtime (tag → endereço real de campo). Validado
+   * por `IoMapSchema` ao usar; inválido nunca vira escrita em campo.
+   */
+  ioMap?: unknown;
 }
 
 export interface HardwareModuleDef {

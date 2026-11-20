@@ -29,6 +29,10 @@
     "build:edge:compile:linux-arm64": "bun build --compile --target=bun-linux-arm64 src/edge-daemon/index.ts --outfile=dist-edge/eletricai-edge-daemon-linux-arm64",
     "build:edge:all": "bun run build:edge && bun run build:edge:compile:linux-x64 && bun run build:edge:compile:linux-arm64",
     "verify:edge": "node scripts/verify-edge-artifacts.mjs",
+    "start:runtime": "bun run src/edge-runtime/index.ts",
+    "build:runtime": "bun build src/edge-runtime/index.ts --target=node --outfile=dist-runtime/eletricai-runtime.mjs",
+    "build:runtime:compile:linux-x64": "bun build --compile --target=bun-linux-x64 src/edge-runtime/index.ts --outfile=dist-runtime/eletricai-runtime-linux-x64",
+    "build:runtime:compile:linux-arm64": "bun build --compile --target=bun-linux-arm64 src/edge-runtime/index.ts --outfile=dist-runtime/eletricai-runtime-linux-arm64",
     "test:firmware": "bash scripts/test-firmware.sh"
   },
   "dependencies": {

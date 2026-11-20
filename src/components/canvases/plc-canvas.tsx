@@ -48,6 +48,7 @@ import type { LadderRung } from "@/lib/ladder/types";
 import type { Icon } from "@phosphor-icons/react";
 import { FloatingLegend } from "./canvas-chrome";
 import { useI18n } from "@/lib/i18n";
+import { RuntimePanel } from "@/components/plc/runtime-panel";
 
 const LANG_LABELS: Record<ProgramLang, string> = { ladder: "LAD", fbd: "FBD", st: "ST" };
 
@@ -342,6 +343,7 @@ export function PlcCanvas() {
           { id: "hardware" as const, icon: SlidersHorizontal, label: "Hardware" },
           { id: "variables" as const, icon: Table, label: "Variáveis" },
           { id: "blocks" as const, icon: CodeBlock, label: "Blocos" },
+          { id: "runtime" as const, icon: Cpu, label: "Runtime" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -710,6 +712,8 @@ export function PlcCanvas() {
             </div>
           </div>
         )}
+
+        {activeTab === "runtime" && <RuntimePanel />}
 
         {activeTab === "blocks" && (
           <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 h-full">

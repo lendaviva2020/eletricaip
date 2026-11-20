@@ -4,11 +4,13 @@ import { createDefaultPlcProject } from "./types";
 
 interface PlcStore {
   project: PlcProject;
-  activeTab: "dashboard" | "hardware" | "variables" | "blocks";
+  activeTab: "dashboard" | "hardware" | "variables" | "blocks" | "runtime";
   activeBlockId: string | null;
   setActiveTab: (tab: PlcStore["activeTab"]) => void;
   setActiveBlock: (id: string | null) => void;
   setProject: (project: PlcProject) => void;
+  /** Mapa de E/S do Runtime (validado pelo chamador). */
+  setIoMap: (ioMap: unknown) => void;
   addModule: (
     catalogKey: string,
     label: string,
@@ -51,6 +53,7 @@ export const usePlcStore = create<PlcStore>((set) => ({
   setActiveBlock: (id) => set({ activeBlockId: id }),
 
   setProject: (project) => set({ project }),
+  setIoMap: (ioMap) => set((s) => ({ project: { ...s.project, ioMap } })),
 
   addModule: (catalogKey, label, category, channels) =>
     set((s) => {

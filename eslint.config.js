@@ -10,6 +10,7 @@ export default tseslint.config(
     ignores: [
       "dist",
       "dist-edge",
+      "dist-runtime",
       "test-results",
       "playwright-report",
       ".output",

@@ -105,6 +105,8 @@ export const SnapshotSchema = z
         variables: z.array(z.any()).default([]),
         programBlocks: z.array(z.any()).default([]),
         cycleTimeMs: z.number().default(10),
+        /** Mapa de E/S do Runtime; validado por IoMapSchema ao usar. */
+        ioMap: z.any().optional(),
       })
       .default({
         vendor: "siemens",
