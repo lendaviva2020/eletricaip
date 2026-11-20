@@ -108,6 +108,11 @@ export const getOrCreateProjectConversation = createServerFn({ method: "POST" })
       .object({
         projectId: z.string().uuid(),
         title: z.string().min(1).max(120).default("Engenharia Industrial ElétricAi"),
+        /** Conversa própria de um editor (unifilar, ladder, studio…): título "Editor · <scope>". */
+        scope: z
+          .string()
+          .regex(/^[a-z]{2,20}$/)
+          .optional(),
       })
       .parse(input),
   )
@@ -122,11 +127,14 @@ export const getOrCreateProjectConversation = createServerFn({ method: "POST" })
       const { supabase, userId } = context;
 
       // Busca conversa ativa mais recente para este projeto
-      const { data: existing, error: searchErr } = await supabase
+      const scopedTitle = data.scope ? `Editor · ${data.scope}` : null;
+      let query = supabase
         .from("ai_conversations")
         .select("id, title, created_at, updated_at")
         .eq("project_id", data.projectId)
-        .eq("user_id", userId)
+        .eq("user_id", userId);
+      if (scopedTitle) query = query.eq("title", scopedTitle);
+      const { data: existing, error: searchErr } = await query
         .order("updated_at", { ascending: false })
         .limit(1);
 
@@ -140,7 +148,7 @@ export const getOrCreateProjectConversation = createServerFn({ method: "POST" })
           .insert({
             user_id: userId,
             project_id: data.projectId,
-            title: data.title,
+            title: scopedTitle ?? data.title,
           })
           .select("id, title, created_at, updated_at")
           .single();

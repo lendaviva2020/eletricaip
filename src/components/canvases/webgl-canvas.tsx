@@ -794,6 +794,56 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     e.dataTransfer.dropEffect = "move";
   }, []);
 
+  // Kit de partida por toque/clique: insere no centro da área visível do canvas.
+  useEffect(() => {
+    const handler = (evt: Event) => {
+      const kind = (evt as CustomEvent<{ kind?: unknown }>).detail?.kind;
+      if (kind !== "dol" && kind !== "star_delta" && kind !== "reversing") return;
+      // Espaço livre: à direita de tudo o que já existe na folha (nunca por cima).
+      const existing = Object.values(useDiagramStore.getState().doc.nodes).filter(
+        (n) => n.sheet === effectiveSheet,
+      );
+      const host = hostRef.current;
+      const rect = host?.getBoundingClientRect();
+      const center =
+        existing.length > 0
+          ? {
+              x: Math.max(...existing.map((n) => n.position.x)) + 240,
+              y: Math.min(...existing.map((n) => n.position.y)),
+            }
+          : rect
+            ? (stageRef.current?.screenToWorld(rect.width / 2, rect.height / 3) ?? {
+                x: 2000,
+                y: 2000,
+              })
+            : { x: 2000, y: 2000 };
+      const kit = assignKitTags(
+        useDiagramStore.getState().doc,
+        buildStarterKit(
+          kind,
+          { x: snapToGrid(center.x), y: snapToGrid(center.y) },
+          effectiveSheet,
+          (k) => defaultNodeParams(k),
+        ),
+      );
+      dispatch(
+        cmd.batch([
+          ...kit.nodes.map((node) => ({ type: "AddNode" as const, node })),
+          ...kit.edges.map((edge) => ({ type: "AddEdge" as const, edge })),
+        ]),
+      );
+      // Mostra o kit inserido (independe do auto zoom, travado no celular).
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => stageRef.current?.fitView(kit.nodes, { recordHistory: false })),
+      );
+      if (window.matchMedia?.("(max-width: 1023px)").matches) {
+        useEditorStore.getState().setPanelsCollapsed?.(true, true);
+      }
+    };
+    window.addEventListener("eletricai-insert-kit", handler);
+    return () => window.removeEventListener("eletricai-insert-kit", handler);
+  }, [effectiveSheet, dispatch]);
+
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();

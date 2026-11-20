@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Sparkle,
   PaperPlaneRight,
@@ -12,11 +12,10 @@ import {
   DownloadSimple,
   Robot,
 } from "@phosphor-icons/react";
-import { callArchitect, applyArchitectToStore, AIServiceError } from "@/lib/ai-architect-client";
+import { applyArchitectToStore, AIServiceError } from "@/lib/ai-architect-client";
 import { extractBriefingServerFn, getAiCredits } from "@/lib/ai-architect.functions";
 import type { BriefingDocumentInput } from "@/lib/ai/briefing-parser";
 import { useProjectStore } from "@/lib/project-store";
-import { validateProject } from "@/lib/norm-validator";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { generateDiagramPatch } from "@/lib/diagram/ai.functions";
@@ -31,6 +30,16 @@ import { AiPatchPreview } from "@/components/ai-patch-preview";
 import { detectFormat } from "@/lib/importer/universal-importer";
 import { useI18n } from "@/lib/i18n";
 import { getOrCreateProjectConversation, persistChatMessage } from "@/lib/ai-chat.functions";
+import { askEditorAssistant } from "@/lib/ai/editor-assistant.functions";
+import { editorKeyFromMode, type AssistantEditor } from "@/lib/ai/editor-context";
+import {
+  readEditorContext,
+  runEditorActions,
+  type UndoPoint,
+} from "@/lib/ai/editor-assistant-client";
+import { useEditorStore } from "@/lib/editor/store";
+import { useUnifiedProjectStore } from "@/lib/model/unified-store";
+import { useScadaStore } from "@/lib/scada/scada-store";
 import {
   formatDiagnosticFor7StepRemediation,
   type DiagnosticContext,
@@ -45,6 +54,9 @@ interface Msg {
   patchApplied?: boolean;
   hasPatch?: boolean;
   patchData?: any;
+  /** Ponto de restauração das ações do assistente ("Desfazer"). */
+  undoId?: string;
+  undone?: boolean;
 }
 
 export function CanvasAiChat() {
@@ -55,7 +67,8 @@ export function CanvasAiChat() {
   const [busy, setBusy] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileStep, setFileStep] = useState("");
-  const [patchMode, setPatchMode] = useState(true);
+  // Padrão: assistente (conversa + ações). "Alterar diagrama" força o motor de patch.
+  const [patchMode, setPatchMode] = useState(false);
   const fetchCredits = useServerFn(getAiCredits);
   const extractBriefing = useServerFn(extractBriefingServerFn);
   const creditsQuery = useQuery({
@@ -74,49 +87,69 @@ export function CanvasAiChat() {
     };
   }, [creditsQuery.data, t]);
   const genPatch = useServerFn(generateDiagramPatch);
+  const askAssistant = useServerFn(askEditorAssistant);
   const getProviderPref = useServerFn(getAiProviderPreference);
   const setProviderPref = useServerFn(setAiProviderPreference);
   const applyAiPatch = useDiagramStore((s) => s.applyAiPatch);
   const diagramDoc = useDiagramStore((s) => s.doc);
 
   const projectId = useProjectStore((s) => s.projectId);
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const activeMode = useEditorStore((s) => s.activeMode);
+  const editorKey: AssistantEditor = editorKeyFromMode(activeMode);
   const getOrCreateConv = useServerFn(getOrCreateProjectConversation);
   const persistMsg = useServerFn(persistChatMessage);
 
-  const [msgs, setMsgs] = useState<Msg[]>([
-    {
+  // Uma conversa por editor: o que se fala no unifilar não vai para o Ladder.
+  const greetingFor = useCallback(
+    (key: AssistantEditor): Msg => ({
       role: "ai",
-      text: t("aiChat.initialGreeting"),
-    },
-  ]);
+      text: t("aiChat.editorGreeting", { editor: t(`aiChat.editorName_${key}`) }),
+    }),
+    [t],
+  );
+  const [threads, setThreads] = useState<Partial<Record<AssistantEditor, Msg[]>>>({});
+  const [convIds, setConvIds] = useState<Partial<Record<AssistantEditor, string>>>({});
+  const undoRef = useRef<Map<string, UndoPoint>>(new Map());
+  const msgs = threads[editorKey] ?? [greetingFor(editorKey)];
+  const activeConvId = convIds[editorKey] ?? null;
+  const setThreadMsgs = useCallback(
+    (key: AssistantEditor, fn: Msg[] | ((m: Msg[]) => Msg[])) =>
+      setThreads((prev) => {
+        const cur = prev[key] ?? [greetingFor(key)];
+        return { ...prev, [key]: typeof fn === "function" ? fn(cur) : fn };
+      }),
+    [greetingFor],
+  );
+  const setMsgs = (fn: Msg[] | ((m: Msg[]) => Msg[])) => setThreadMsgs(editorKey, fn);
 
-  // Carrega ou recupera a sessão contínua de engenharia vinculada ao projeto ativo
+  // Carrega a conversa DESTE editor neste projeto (memória separada por editor).
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || convIds[editorKey]) return;
     let mounted = true;
+    const key = editorKey;
     getOrCreateConv({
-      data: { projectId, title: "Engenharia Industrial ElétricAi" },
+      data: { projectId, title: `Editor · ${key}`, scope: key },
     })
       .then((res) => {
         if (!mounted || !res) return;
-        setActiveConvId(res.conversation.id);
+        setConvIds((prev) => ({ ...prev, [key]: res.conversation.id }));
         if (res.messages && res.messages.length > 0) {
-          const loaded: Msg[] = res.messages.map((m) => ({
-            role: m.role === "assistant" ? "ai" : "user",
-            text: m.content,
-          }));
-          setMsgs(loaded);
+          setThreadMsgs(
+            key,
+            res.messages.slice(-60).map((m) => ({
+              role: m.role === "assistant" ? "ai" : "user",
+              text: m.content,
+            })),
+          );
         }
       })
       .catch((err) => {
-        // Fallback gracioso em modo offline ou teste
-        console.warn("[CanvasAiChat] Memória contínua Supabase:", err);
+        console.warn("[CanvasAiChat] memória da conversa do editor:", err);
       });
     return () => {
       mounted = false;
     };
-  }, [projectId, getOrCreateConv]);
+  }, [projectId, editorKey, convIds, getOrCreateConv, setThreadMsgs]);
 
   // Captura eventos do botão "CORRIGIR COM IA" disparados em qualquer módulo
   useEffect(() => {
@@ -129,11 +162,10 @@ export function CanvasAiChat() {
           target,
           locale === "en" ? "en" : "pt-BR",
         );
-        setPatchMode(true);
-        // sendRef: a função do render ATUAL (diagrama, achados e conversa atualizados).
-        // Chamar `send` direto aqui usava a closure do 1º render — diagrama vazio,
-        // modo conversa e `busy` obsoleto.
-        void sendRef.current?.(prompt, undefined, { forcePatch: true });
+        // Vai para o ASSISTENTE (não direto ao patch): ele recebe o diagnóstico real,
+        // corrige valores, pede os dados que faltam e só aciona o patch estrutural
+        // quando é mudança de ligação/equipamento. sendRef = função do render atual.
+        void sendRef.current?.(prompt);
       }
     };
     window.addEventListener("eletricai-ai-repair", handler as EventListener);
@@ -157,38 +189,30 @@ export function CanvasAiChat() {
     return () => window.removeEventListener("eletricai-ai-prompt", handler);
   }, []);
 
-  // Keep first greeting in sync if user changes language before sending prompts
-  useEffect(() => {
-    const nextGreeting = t("aiChat.initialGreeting");
-    setMsgs((m) => {
-      if (m.length === 1 && m[0].role === "ai" && m[0].text !== nextGreeting) {
-        return [{ ...m[0], text: nextGreeting }];
-      }
-      return m;
-    });
-  }, [locale, t]);
-
-  const loadDemo = useProjectStore((s) => s.loadDemoFaulty);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sendRef = useRef<typeof send | null>(null);
 
-  // Read current workspace nodes and edges for dynamic compliance analysis
-  const nodes = useProjectStore((s) => s.nodes);
-  const edges = useProjectStore((s) => s.edges);
-
-  // Calculate active compliance findings in real time
-  const findings = useMemo(() => validateProject(nodes, edges), [nodes, edges]);
-
-  // Map findings to readable warning cards
+  // Problemas REAIS do editor aberto (diagnóstico do unifilar, redes do Ladder,
+  // programa do Studio, alarmes do SCADA) — antes vinha de um validador legado.
+  const watchDoc = useDiagramStore((s) => s.doc);
+  const watchRungs = useEditorStore((s) => s.rungs);
+  const watchTags = useEditorStore((s) => s.editorTags);
+  const watchStudio = useUnifiedProjectStore((s) => s.doc.compactStudio);
+  const watchAlarms = useScadaStore((s) => s.alarms);
+  const editorCtx = useMemo(
+    () => (open ? readEditorContext(editorKey) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [open, editorKey, watchDoc, watchRungs, watchTags, watchStudio, watchAlarms],
+  );
+  const issues = useMemo(() => editorCtx?.issues ?? [], [editorCtx]);
   const normWarnings = useMemo(() => {
-    if (findings.length === 0) {
-      return [t("aiChat.allCompliant")];
-    }
-    return findings.map((f) => {
-      const emoji = f.severity === "error" ? "🚨" : f.severity === "warn" ? "⚠️" : "ℹ️";
-      return `${emoji} [${f.norm}]: ${f.title} — ${f.detail}`;
-    });
-  }, [findings, t]);
+    if (issues.length === 0) return [t("aiChat.noIssues")];
+    return issues
+      .slice(0, 8)
+      .map((f) => `${f.severity === "error" ? "🚨" : "⚠️"} ${f.text}`)
+      .concat(issues.length > 8 ? [t("aiChat.moreIssues", { n: issues.length - 8 })] : []);
+  }, [issues, t]);
+  const isDiagramEditor = editorKey === "unifilar" || editorKey === "multifilar";
 
   const quickChips = useMemo(
     () => [
@@ -214,8 +238,16 @@ export function CanvasAiChat() {
   ) => {
     const p = (textToSend ?? val).trim();
     if (!p || busy) return;
+    // A conversa pertence ao editor em que a mensagem foi enviada, mesmo que o
+    // usuário troque de editor enquanto a IA responde.
+    const threadKey = editorKey;
+    const setMsgs = (fn: Msg[] | ((m: Msg[]) => Msg[])) => setThreadMsgs(threadKey, fn);
+    const activeConvId = convIds[threadKey] ?? null;
+    const priorTurns = (threads[threadKey] ?? []).filter((m) => m.text && !m.error).slice(-12);
     // "CORRIGIR COM IA" força o modo patch: setPatchMode(true) só vale no próximo render.
-    const usePatch = opts?.forcePatch ?? patchMode;
+    const usePatch =
+      opts?.forcePatch === true ||
+      (patchMode && (threadKey === "unifilar" || threadKey === "multifilar"));
     if (!textToSend) setVal("");
 
     // Interceptação determinística de pacotes de projeto externos (0 créditos de IA)
@@ -322,20 +354,20 @@ export function CanvasAiChat() {
     setBusy(true);
 
     try {
-      const activeViolationsText = findings
-        .map(
-          (f) =>
-            `- [${isEn ? "Standard" : "Norma"} ${f.norm} - ${isEn ? "Severity" : "Gravidade"} ${f.severity.toUpperCase()}]: ${f.title}. ${isEn ? "Detail" : "Detalhe"}: ${f.detail}. ${isEn ? "Suggested Fix" : "Dica de Correção"}: ${f.fixHint || "N/A"}`,
-        )
-        .join("\n");
+      // Correção do diagrama recebe o DIAGNÓSTICO REAL do unifilar (antes: validador legado).
+      const patchPrompt = (request: string): string => {
+        const diag = readEditorContext("unifilar").issues;
+        if (diag.length === 0) return request;
+        const lines = diag
+          .slice(0, 60)
+          .map((f) => `- [${f.severity === "error" ? "ERRO" : "AVISO"}] ${f.text}`)
+          .join("\n");
+        return isEn
+          ? `[CURRENT SINGLE-LINE DIAGNOSTICS]:\n${lines}\n\n[USER REQUEST]:\n${request}\n\nFix following IEC 60364, IEC 60947 and NR-10 without inventing data.`
+          : `[DIAGNÓSTICO ATUAL DO UNIFILAR]:\n${lines}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${request}\n\nCorrija conforme ABNT NBR 5410, IEC 60947 e NR-10, sem inventar dados (comprimento, placa, curto).`;
+      };
 
-      const contextualPrompt = activeViolationsText
-        ? isEn
-          ? `[ACTIVE ERRORS/VIOLATIONS CONTEXT ON CANVAS]:\n${activeViolationsText}\n\n[USER REQUEST]:\n${p}\n\nPlease respond suggesting electrical design improvements complying with IEC 60364, NFPA 70E, and ISA-18.2, generating a new corrected diagram if requested.`
-          : `[CONTEXTO DE ERROS/VIOLAÇÕES ATIVAS NO CANVAS ELETRICAIP]:\n${activeViolationsText}\n\n[SOLICITAÇÃO DO USUÁRIO]:\n${p}\n\nPor favor, responda sugerindo melhorias elétricas conforme ABNT NBR 5410, NR-10 e ISA-18.2, gerando um novo diagrama corrigido se solicitado.`
-        : p;
-
-      if (usePatch) {
+      const runPatch = async (contextualPrompt: string) => {
         let res: any = await genPatch({
           data: {
             prompt: contextualPrompt,
@@ -402,28 +434,75 @@ export function CanvasAiChat() {
             return c;
           });
         }
+      };
+
+      if (usePatch) {
+        await runPatch(patchPrompt(p));
       } else {
-        const r = await callArchitect(contextualPrompt, true, briefingDocument, locale);
-        const legacyText = `**${r.title}**\n\n${r.rationale}\n\n* CCM: ${r.ccm.columns} colunas / ${r.ccm.cells} gavetas\n* Trafo: ${r.transformer.kVA}kVA (${r.transformer.primary_kV}kV → ${r.transformer.secondary_V}V)\n* Motores adicionados: ${r.motors.map((mo) => `${mo.id} (${mo.power_kW}kW)`).join(", ")}`;
-        if (activeConvId) {
-          persistMsg({
-            data: {
-              conversationId: activeConvId,
-              role: "assistant",
-              content: legacyText,
-            },
-          }).catch((err) => console.warn("[CanvasAiChat] persist legacy architect:", err));
-        }
-        setMsgs((m) => {
-          const c = [...m];
-          c[c.length - 1] = {
-            role: "ai",
-            text: legacyText,
-            hasPatch: true,
-            patchData: r,
-          };
-          return c;
+        // Assistente do editor: conversa + ações validadas sobre o editor aberto.
+        const ctxNow = readEditorContext(threadKey);
+        let res: any = await askAssistant({
+          data: {
+            editor: threadKey,
+            message: p,
+            history: priorTurns.map((m) => ({
+              role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
+              content: m.text.slice(0, 3000),
+            })),
+            context: ctxNow.summary,
+            locale: isEn ? "en" : "pt-BR",
+          },
         });
+        if (typeof Response !== "undefined" && res instanceof Response) {
+          const status = res.status;
+          res = await res.json().catch(() => null);
+          if (res && !res.error && status >= 400)
+            res = { ok: false, error: { code: `HTTP_${status}`, message: undefined } };
+        }
+        if (!res || res.ok !== true) {
+          const code = res?.error?.code ?? "UNKNOWN";
+          const message = res?.error?.message ?? t("aiChat.assistantFailed");
+          setMsgs((m) => {
+            const c = [...m];
+            c[c.length - 1] = { role: "ai", text: `[${code}] ${message}`, error: message };
+            return c;
+          });
+        } else {
+          const run = runEditorActions(threadKey, res.actions ?? []);
+          let undoId: string | undefined;
+          if (run.undo) {
+            undoId = `u${Date.now().toString(36)}`;
+            undoRef.current.set(undoId, run.undo);
+          }
+          const text = [
+            String(res.reply ?? ""),
+            run.notes.length ? `\n✅ ${run.notes.join("\n✅ ")}` : "",
+            res.rejected ? `\n${t("aiChat.actionsRejected", { n: res.rejected })}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n");
+          setMsgs((m) => {
+            const c = [...m];
+            c[c.length - 1] = { role: "ai", text, ...(undoId ? { undoId } : {}) };
+            return c;
+          });
+          if (activeConvId) {
+            persistMsg({
+              data: {
+                conversationId: activeConvId,
+                role: "assistant",
+                content: text,
+                tokensUsed: res.tokens,
+              },
+            }).catch((err) => console.warn("[CanvasAiChat] persist assistant:", err));
+          }
+          window.dispatchEvent(new Event("ai-usage-event"));
+          // Mudança estrutural no diagrama: motor de patch (reparo + saneamento + créditos).
+          for (const instruction of run.diagramChanges.slice(0, 2)) {
+            setMsgs((m) => [...m, { role: "ai", text: t("aiChat.generatingPatch") }]);
+            await runPatch(patchPrompt(instruction));
+          }
+        }
       }
     } catch (e: any) {
       const isSvc = e instanceof AIServiceError;
@@ -591,6 +670,12 @@ export function CanvasAiChat() {
             <span className="text-[11px] font-display font-bold tracking-wider text-foreground">
               {t("aiChat.title")}
             </span>
+            <span
+              className="text-[8px] border border-border px-1 rounded font-mono uppercase text-muted-foreground"
+              data-testid="ai-chat-editor"
+            >
+              {t(`aiChat.editorName_${editorKey}`)}
+            </span>
             {activeConvId && (
               <span
                 className="text-[8px] bg-emerald-950/70 text-emerald-400 border border-emerald-500/40 px-1 py-0.2 rounded font-mono font-semibold uppercase tracking-wider"
@@ -606,21 +691,17 @@ export function CanvasAiChat() {
         </div>
 
         <div className="ml-auto flex items-center gap-1">
-          <button
-            onClick={() => setPatchMode((v) => !v)}
-            title="Alterna entre patch validado (WebGL) e arquiteto legado"
-            className={`h-6 px-2 rounded text-[9px] font-medium border inline-flex items-center gap-1 cursor-pointer ${patchMode ? "border-primary/60 text-primary bg-primary/10" : "border-border text-muted-foreground hover:bg-accent/40"}`}
-          >
-            <Sparkle className="h-3 w-3" />{" "}
-            {patchMode ? t("aiChat.modePatch") : t("aiChat.modeLegacy")}
-          </button>
-          <button
-            onClick={loadDemo}
-            title="Carregar exemplo com falhas para testar validador"
-            className="h-6 px-2 rounded text-[9px] font-medium border border-warning/40 text-warning hover:bg-warning/10 inline-flex items-center gap-1 cursor-pointer"
-          >
-            <Warning className="h-3 w-3" /> {t("aiChat.demoFaulty")}
-          </button>
+          {isDiagramEditor && (
+            <button
+              onClick={() => setPatchMode((v) => !v)}
+              title={t("aiChat.modeHint")}
+              className={`h-6 px-2 rounded text-[9px] font-medium border inline-flex items-center gap-1 cursor-pointer ${patchMode ? "border-primary/60 text-primary bg-primary/10" : "border-border text-muted-foreground hover:bg-accent/40"}`}
+              data-testid="ai-chat-mode"
+            >
+              <Sparkle className="h-3 w-3" />{" "}
+              {patchMode ? t("aiChat.modePatch") : t("aiChat.modeAssistant")}
+            </button>
+          )}
           <button
             onClick={() => setOpen(false)}
             aria-label="Fechar IA do canvas"
@@ -691,6 +772,27 @@ export function CanvasAiChat() {
               </ol>
             )}
 
+            {m.undoId && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  disabled={m.undone}
+                  onClick={() => {
+                    const u = undoRef.current.get(m.undoId!);
+                    if (!u) return;
+                    u.restore();
+                    undoRef.current.delete(m.undoId!);
+                    setMsgs((prev) =>
+                      prev.map((msg, idx) => (idx === i ? { ...msg, undone: true } : msg)),
+                    );
+                  }}
+                  className="rounded border border-border px-2 py-0.5 text-[10px] hover:bg-accent/40 disabled:opacity-50"
+                >
+                  {m.undone ? t("aiChat.undone") : t("aiChat.undo")}
+                </button>
+              </div>
+            )}
+
             {m.hasPatch && !m.patchApplied && (
               <div className="mt-3">
                 <AiPatchPreview
@@ -717,7 +819,7 @@ export function CanvasAiChat() {
 
       {/* INPUT AND BRIEFING UPLOAD BAR */}
       <div className="shrink-0 p-2 border-t border-border bg-card/10">
-        <div className="flex gap-1.5 mb-1.5">
+        <div className={isDiagramEditor ? "flex gap-1.5 mb-1.5" : "hidden"}>
           <input
             type="file"
             aria-label="Enviar briefing de engenharia"
@@ -764,7 +866,7 @@ export function CanvasAiChat() {
         </div>
 
         {/* Quick prompt suggestion pills */}
-        <div className="flex flex-wrap gap-1 mb-1.5">
+        <div className={isDiagramEditor ? "flex flex-wrap gap-1 mb-1.5" : "hidden"}>
           {quickChips.map((chip, idx) => (
             <button
               key={idx}
@@ -790,7 +892,11 @@ export function CanvasAiChat() {
               }
             }}
             rows={2}
-            placeholder={t("aiChat.promptPlaceholder")}
+            placeholder={
+              isDiagramEditor && patchMode
+                ? t("aiChat.promptPlaceholder")
+                : t("aiChat.promptPlaceholderEditor")
+            }
             className="w-full resize-none rounded-md bg-input border border-border p-2 pr-9 text-[11px] outline-none focus:ring-1 focus:ring-primary font-mono"
           />
           <button

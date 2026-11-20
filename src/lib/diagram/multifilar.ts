@@ -175,6 +175,25 @@ function stripPeInside(doc: DiagramDoc, edge: DiagramEdge, cfg: CircuitConfig): 
   return cfg;
 }
 
+/**
+ * Saída do contator de reversão (função "reverse"): o multifilar desenha L1 e L3
+ * trocados — é a inversão de fases que muda o sentido de giro (IEC 60947-4-1).
+ */
+export function isPhaseSwapFeed(doc: DiagramDoc, edge: DiagramEdge): boolean {
+  const src = doc.nodes[edge.source];
+  return src?.params.kind === "contactor" && (src.params as { role?: string }).role === "reverse";
+}
+
+/** Rótulos dos condutores com a inversão L1↔L3 aplicada quando for o caso. */
+export function conductorLabelsFor(
+  config: CircuitConfig,
+  phaseSwap: boolean | undefined,
+): string[] {
+  const base = CONDUCTOR_LABELS[config];
+  if (!phaseSwap) return base;
+  return base.map((l) => (l === "L1" ? "L3" : l === "L3" ? "L1" : l));
+}
+
 /** Comandos para remover tudo que hoje está na sheet "multifilar" (usado
  * antes de regenerar, pra não duplicar a cada clique). Cascade de RemoveNode
  * já cuida das edges dependentes, mas removemos edges primeiro por
@@ -232,6 +251,7 @@ export function buildMultifilarCommands(doc: DiagramDoc): Command[] {
     if (!newSource || !newTarget) continue;
     const config = inferCircuitConfigInDoc(doc, e);
     const clone = makeEdge({
+      ...(isPhaseSwapFeed(doc, e) ? { phaseSwap: true } : {}),
       id: multifilarEdgeIdFor(e.id),
       sheet: "multifilar",
       source: newSource,
@@ -319,8 +339,15 @@ export function syncMultifilarCommands(doc: DiagramDoc): Command[] {
       // Seção/comprimento editados no unifilar também valem no multifilar
       // (antes só a configuração era sincronizada e o cabo ficava desatualizado).
       const cableChanged = JSON.stringify(existing.cable) !== JSON.stringify(e.cable);
-      if (existing.circuitConfig !== config || cableChanged) {
+      const swap = isPhaseSwapFeed(doc, e);
+      if (
+        existing.circuitConfig !== config ||
+        cableChanged ||
+        Boolean(existing.phaseSwap) !== swap
+      ) {
         const updated: DiagramEdge = { ...existing, circuitConfig: config };
+        if (swap) updated.phaseSwap = true;
+        else delete updated.phaseSwap;
         if (e.cable) updated.cable = e.cable;
         else delete updated.cable;
         commands.push({ type: "RemoveEdge", edgeId: id });
@@ -332,6 +359,7 @@ export function syncMultifilarCommands(doc: DiagramDoc): Command[] {
     commands.push({
       type: "AddEdge",
       edge: makeEdge({
+        ...(isPhaseSwapFeed(doc, e) ? { phaseSwap: true } : {}),
         id,
         sheet: "multifilar",
         source,

@@ -20,7 +20,7 @@ import { CanvasAiChat } from "@/components/canvas-ai-chat";
 import { useProjectPersistence } from "@/lib/use-project-persistence";
 import { useUnifilarLadderSync } from "@/hooks/use-unifilar-ladder-sync";
 import { isBreakerComponent, type VoltaiComponentType } from "@/lib/palette/component-catalog";
-import { LeftSidebarHost } from "@/components/editor/left-sidebar-host";
+import { LeftSidebarHost, hasLeftSidebar } from "@/components/editor/left-sidebar-host";
 import { useEditorStore } from "@/lib/editor/store";
 import { shouldAutoCollapsePanels } from "@/lib/editor/tablet-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -169,7 +169,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       )}
 
       {/* Gaveta esquerda em mobile/tablet (< 1024px) */}
-      {!leftCollapsed && mode !== "scada" && (
+      {!leftCollapsed && mode !== "scada" && hasLeftSidebar(mode) && (
         <div className="lg:hidden flex absolute left-0 inset-y-0 z-40 max-w-[85vw] border-r border-border bg-panel h-full overflow-hidden">
           <LeftSidebarHost mode={mode} />
           <button
@@ -184,7 +184,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
       )}
 
       {/* Alça para expandir o painel esquerdo quando recolhido */}
-      {leftCollapsed && mode !== "scada" && (
+      {leftCollapsed && mode !== "scada" && hasLeftSidebar(mode) && (
         <button
           onClick={toggleLeftPanel}
           className="flex absolute left-0 top-1/2 -translate-y-1/2 z-30 h-12 w-4 [@media(pointer:coarse)]:h-16 [@media(pointer:coarse)]:w-6 bg-panel border border-border border-l-0 rounded-r-sm items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors touch-manipulation"
@@ -200,7 +200,7 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
         orientation="horizontal"
         className="flex-1 min-h-0 min-w-0 h-full w-full"
       >
-        {!leftCollapsed && mode !== "scada" && mode !== "studio" && mode !== "compactStudio" && (
+        {!leftCollapsed && mode !== "scada" && hasLeftSidebar(mode) && (
           <>
             <ResizablePanel
               id="workspace-left-panel"

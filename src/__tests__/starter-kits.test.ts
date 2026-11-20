@@ -171,3 +171,29 @@ describe("FB Electric Studio acompanha o unifilar", () => {
     expect(r.status).toBe("updated");
   });
 });
+
+import { buildMultifilarCommands, conductorLabelsFor } from "@/lib/diagram/multifilar";
+import { applyCommand } from "@/lib/diagram/commands";
+
+describe("multifilar da reversão", () => {
+  it("saída do contator anti-horário tem L1↔L3 trocados", () => {
+    let d = kitDoc("reversing");
+    for (const c of buildMultifilarCommands(d)) d = applyCommand(d, c);
+    const rev = Object.values(d.nodes).find(
+      (n) => n.sheet === "unifilar" && (n.params as { role?: string }).role === "reverse",
+    )!;
+    const fwd = Object.values(d.nodes).find(
+      (n) => n.sheet === "unifilar" && (n.params as { role?: string }).role === "forward",
+    )!;
+    const mf = Object.values(d.edges).filter((e) => e.sheet === "multifilar");
+    const fromRev = mf.find((e) => e.source === `mf_${rev.id}`)!;
+    const fromFwd = mf.find((e) => e.source === `mf_${fwd.id}`)!;
+    expect(fromRev.phaseSwap).toBe(true);
+    expect(fromFwd.phaseSwap).toBeUndefined();
+    expect(conductorLabelsFor(fromRev.circuitConfig!, true).slice(0, 3)).toEqual([
+      "L3",
+      "L2",
+      "L1",
+    ]);
+  });
+});

@@ -138,8 +138,9 @@ describe("Fase G — Integração de Idioma com a IA Google Gemini", () => {
       expect(ptChat.title).toBe("EletricAI");
       expect(enChat.title).toBe("EletricAI");
 
-      expect(ptChat.modePatch).toBe("Patch IA");
-      expect(enChat.modePatch).toBe("AI Patch");
+      expect(ptChat.modePatch).toBe("Alterar diagrama");
+      expect(enChat.modePatch).toBe("Change diagram");
+      expect(ptChat.modeAssistant).toBe("Assistente");
 
       expect(ptChat.allCompliant).toContain("NBR 5410");
       expect(enChat.allCompliant).toContain("IEC 60364");

@@ -473,6 +473,22 @@ export function EditorUnifilarSidebar() {
                   event.dataTransfer.setData("application/eletricai-kit", kit.kind);
                   event.dataTransfer.effectAllowed = "copy";
                 }}
+                // Toque/clique: insere no centro da área visível (celular não tem arrastar).
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("eletricai-insert-kit", { detail: { kind: kit.kind } }),
+                  )
+                }
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    window.dispatchEvent(
+                      new CustomEvent("eletricai-insert-kit", { detail: { kind: kit.kind } }),
+                    );
+                  }
+                }}
                 title={`${t(`library.kit_${kit.kind}`)} — ${t(`library.kitDesc_${kit.kind}`)} (${kit.norm})`}
                 className="group flex items-center gap-2.5 p-2 rounded-md border border-dashed border-primary/40 bg-card hover:bg-accent/40 cursor-grab active:cursor-grabbing"
                 data-testid={`library-kit-${kit.kind}`}

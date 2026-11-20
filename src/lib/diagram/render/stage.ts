@@ -39,7 +39,7 @@ import type {
 } from "../schema";
 import { drawSymbol } from "./symbols";
 import { CANVAS_PALETTE, conductorColor } from "./palette";
-import { CONDUCTOR_LABELS } from "../multifilar";
+import { conductorLabelsFor } from "../multifilar";
 import { getPorts, resolveVisualPort, rotatePort, type PortDef } from "./ports";
 import {
   computeDiagramBounds,
@@ -1159,7 +1159,7 @@ export class DiagramStage {
     const ptsKey = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("|");
     const crossKey = crossings.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(";");
 
-    const hash = `${e.source}:${ptsKey}:${crossKey}:${e.kind}:${e.circuitConfig ?? ""}:sel=${isSelected}:sim=${simFlag}`;
+    const hash = `${e.source}:${ptsKey}:${crossKey}:${e.kind}:${e.circuitConfig ?? ""}:${e.phaseSwap ? "sw" : ""}:sel=${isSelected}:sim=${simFlag}`;
     const existing = this.edges.get(e.id);
     if (existing && existing.hash === hash) return;
     if (existing) existing.graphics.destroy({ children: true });
@@ -1182,7 +1182,7 @@ export class DiagramStage {
 
     // Multifilar: N condutores paralelos (renderizado EXCLUSIVAMENTE na folha multifilar)
     const isMultifilarSheet = this.lastSheet === "multifilar";
-    const conductors = e.circuitConfig ? CONDUCTOR_LABELS[e.circuitConfig] : null;
+    const conductors = e.circuitConfig ? conductorLabelsFor(e.circuitConfig, e.phaseSwap) : null;
     if (isMultifilarSheet && conductors && conductors.length > 1) {
       const spacing = 6;
       const total = conductors.length;
@@ -1231,6 +1231,22 @@ export class DiagramStage {
         text.position.set(anchor.x + 3, anchor.y - 10);
         container.addChild(text);
       });
+      if (e.phaseSwap) {
+        // Marca da inversão de fases (reversão do sentido de giro).
+        const mid = points[Math.floor(points.length / 2)];
+        const swapText = new Text({
+          text: "⇄ L1↔L3",
+          style: {
+            fill: CANVAS_PALETTE.neutral,
+            fontSize: 10,
+            fontFamily: "monospace",
+            fontWeight: "bold",
+          },
+          resolution: 2,
+        });
+        swapText.position.set(mid.x + 14, mid.y + 4);
+        container.addChild(swapText);
+      }
 
       this.attachEdgeEvents(container, e.id);
       this.edgesLayer.addChild(container);

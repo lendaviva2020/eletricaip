@@ -287,6 +287,8 @@ export const DiagramEdgeSchema = z.object({
   targetPort: z.string().max(128).optional(),
   kind: EdgeKindSchema,
   // configuração de condutores do circuito (modo multifilar)
+  /** Multifilar: condutor com L1 e L3 trocados (saída do contator de reversão). */
+  phaseSwap: z.boolean().optional(),
   circuitConfig: z
     .enum(["F", "F+N", "F+N+PE", "3F", "3F+PE", "3F+N", "3F+N+PE", "N", "PE"])
     .optional(),
