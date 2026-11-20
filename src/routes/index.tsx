@@ -25,6 +25,21 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/lib/design-system/theme";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AudienceSection,
+  CapabilitiesSection,
+  CorporateSection,
+  DemoRequestSection,
+  FaqSection,
+  ResponsibilityNotice,
+  SecuritySection,
+} from "@/components/landing/enterprise-sections";
+import { faqJsonLd } from "@/lib/marketing/landing-faq";
+import { softwareJsonLd } from "@/components/marketing/audience-landing";
+import { legalEntity } from "@/lib/legal";
+
+const LANDING_DESCRIPTION =
+  "Projeto elétrico e de automação industrial no mesmo modelo: unifilar e multifilar, cálculos NBR 5410, curto-circuito, seletividade, arco elétrico, Ladder e FBD gerados do unifilar, SCADA e dossiê técnico com revisão selada.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,6 +70,11 @@ export const Route = createFileRoute("/")({
       },
       { name: "twitter:image", content: "/landing/demo-canvas-poster.webp" },
     ],
+    links: [{ rel: "canonical", href: "/" }],
+    scripts: [
+      { type: "application/ld+json", children: softwareJsonLd(LANDING_DESCRIPTION) },
+      { type: "application/ld+json", children: faqJsonLd() },
+    ],
   }),
   component: LandingPage,
 });
@@ -74,10 +94,17 @@ function LandingPage() {
       <Navbar authed={!!user} />
       <main>
         <HeroSection authed={!!user} />
+        <CapabilitiesSection />
         <ArchitectureSection />
         <DemonstrationSection />
+        <AudienceSection />
         <WorkflowSection />
+        <SecuritySection />
         <PricingSection authed={!!user} />
+        <CorporateSection />
+        <FaqSection />
+        <DemoRequestSection />
+        <ResponsibilityNotice />
       </main>
       <Footer authed={!!user} />
     </div>
@@ -104,17 +131,20 @@ function Navbar({ authed }: { authed: boolean }) {
             aria-label="Navegação principal"
             className="hidden md:flex items-center gap-5 text-[13px] font-medium text-muted-foreground"
           >
-            <a href="#arquitetura" className="hover:text-foreground transition-colors">
-              Arquitetura
+            <a href="#recursos" className="hover:text-foreground transition-colors">
+              Recursos
             </a>
             <a href="#demonstracao" className="hover:text-foreground transition-colors">
-              Inspeção Técnica
+              Exemplo prático
             </a>
-            <a href="#workflow" className="hover:text-foreground transition-colors">
-              Fluxo de Projeto
+            <a href="#seguranca" className="hover:text-foreground transition-colors">
+              Segurança
             </a>
             <a href="#planos" className="hover:text-foreground transition-colors">
               Planos e Preços
+            </a>
+            <a href="#contato" className="hover:text-foreground transition-colors">
+              Contato
             </a>
           </nav>
         </div>
@@ -141,6 +171,9 @@ function Navbar({ authed }: { authed: boolean }) {
                 <Link to="/login" search={{ redirect: "/dashboard" }}>
                   Entrar
                 </Link>
+              </Button>
+              <Button asChild variant="outline" size="default">
+                <a href="#contato">Agendar demonstração</a>
               </Button>
               <Button asChild size="default">
                 <Link to="/signup">
@@ -175,25 +208,25 @@ function Navbar({ authed }: { authed: boolean }) {
         <div className="md:hidden border-t border-border bg-card px-4 py-4 space-y-3">
           <nav className="flex flex-col space-y-2 text-[13px] font-medium">
             <a
-              href="#arquitetura"
+              href="#recursos"
               onClick={() => setMobileOpen(false)}
               className="py-1 text-foreground"
             >
-              Arquitetura
+              Recursos
             </a>
             <a
               href="#demonstracao"
               onClick={() => setMobileOpen(false)}
               className="py-1 text-muted-foreground"
             >
-              Inspeção Técnica
+              Exemplo prático
             </a>
             <a
-              href="#workflow"
+              href="#seguranca"
               onClick={() => setMobileOpen(false)}
               className="py-1 text-muted-foreground"
             >
-              Fluxo de Projeto
+              Segurança
             </a>
             <a
               href="#planos"
@@ -201,6 +234,13 @@ function Navbar({ authed }: { authed: boolean }) {
               className="py-1 text-muted-foreground"
             >
               Planos e Preços
+            </a>
+            <a
+              href="#contato"
+              onClick={() => setMobileOpen(false)}
+              className="py-1 text-muted-foreground"
+            >
+              Contato e demonstração
             </a>
           </nav>
           <div className="pt-3 border-t border-border flex flex-col gap-2">
@@ -236,22 +276,29 @@ function HeroSection({ authed }: { authed: boolean }) {
             </div>
 
             <h1 className="text-[28px] sm:text-[32px] font-semibold tracking-[-0.02em] leading-[1.15] text-foreground max-w-[60ch]">
-              Engenharia elétrica industrial e automação em grafo semântico único.
+              Do unifilar ao painel documentado: cálculo, lógica de CLP e dossiê no mesmo projeto.
             </h1>
 
             <p className="mt-3.5 text-sm text-muted-foreground leading-relaxed max-w-[58ch]">
-              Projete diagramas unifilar e multifilar sincronizados, programe lógica Ladder IEC
-              61131-3 com ciclo de varredura determinístico e emita o dossiê técnico com memória de
-              cálculo NBR 5410 e lista de materiais (BOM).
+              Desenhe o unifilar e receba o multifilar, o dimensionamento NBR 5410, o
+              curto-circuito, a seletividade e a lógica Ladder/FBD de partida dos motores —
+              sincronizados. Emita o dossiê com memorial de cálculo, lista de cabos, régua de bornes
+              e BOM, em revisão aprovada e selada.
             </p>
 
-            <div className="mt-6 flex items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Button asChild size="lg">
                 <Link to={authed ? "/dashboard" : "/signup"}>
-                  Começar agora <ArrowRight className="h-4 w-4" />
+                  {authed ? "Abrir Workspace" : "Começar grátis"} <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
+              <Button asChild size="lg" variant="outline">
+                <a href="#contato">Agendar demonstração</a>
+              </Button>
             </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Plano grátis sem cartão de crédito · Plano Corporativo sob consulta
+            </p>
 
             <dl className="mt-8 pt-6 border-t border-border grid grid-cols-3 gap-4 w-full text-left">
               <div>
@@ -652,7 +699,7 @@ function DemonstrationSection() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
           <div>
             <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-primary">
-              Rastreabilidade Entre Vistas
+              Exemplo prático · ramal ilustrativo
             </span>
             <h2 className="mt-1 text-xl sm:text-2xl font-semibold tracking-[-0.02em] text-foreground">
               Um equipamento, três representações técnicas sincronizadas.
@@ -711,7 +758,7 @@ function DemonstrationSection() {
             <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-border">
               <div className="lg:col-span-8 p-5 industrial-grid min-h-[280px] flex flex-col justify-between">
                 <div className="flex items-center justify-between text-xs font-mono text-muted-foreground border-b border-border pb-2.5 bg-card/90 px-2 py-1 rounded-sm">
-                  <span>RAMAL CCM-01 · 380 V / 60 Hz · 3F+N+PE</span>
+                  <span>RAMAL CCM-01 · 380 V / 60 Hz · 3F+PE · exemplo</span>
                   <Badge variant="success">ENERGIZADO</Badge>
                 </div>
 
@@ -727,7 +774,7 @@ function DemonstrationSection() {
                   </div>
                   <div className="flex flex-wrap items-center gap-3 pl-6">
                     <div className="h-8 px-3 rounded-sm bg-card border border-border flex items-center justify-center font-mono text-xs text-foreground">
-                      Q1 (63 A)
+                      Q1 (20 A · D)
                     </div>
                     <div className="h-px w-8 bg-border" />
                     <div className="h-8 px-3 rounded-sm bg-card border border-border flex items-center justify-center font-mono text-xs text-foreground">
@@ -745,8 +792,8 @@ function DemonstrationSection() {
                 </div>
 
                 <div className="text-[11px] font-mono text-muted-foreground tabular-nums">
-                  Condutor dimensionado: 3×6 mm² + PE 6 mm² (Cobre PVC 70 °C, Método B1) · ΔU =
-                  1,18% (≤ 4%)
+                  Condutor dimensionado: 3×4 mm² + PE 4 mm² (cobre PVC 70 °C, método B1, I&apos;z =
+                  32 A) · 30 m · ΔU ≈ 1,0 % (≤ 4 %)
                 </div>
               </div>
 
@@ -761,11 +808,11 @@ function DemonstrationSection() {
                   </div>
                   <div className="flex justify-between py-2">
                     <dt className="text-muted-foreground font-sans">Corrente Nominal (In):</dt>
-                    <dd className="text-primary font-semibold">63 A</dd>
+                    <dd className="text-primary font-semibold">20 A</dd>
                   </div>
                   <div className="flex justify-between py-2">
                     <dt className="text-muted-foreground font-sans">Curva Termomagnética:</dt>
-                    <dd className="text-foreground">Curva C (5–10 × In)</dd>
+                    <dd className="text-foreground">Curva D (10–20 × In)</dd>
                   </div>
                   <div className="flex justify-between py-2">
                     <dt className="text-muted-foreground font-sans">Capacidade Icu:</dt>
@@ -773,7 +820,11 @@ function DemonstrationSection() {
                   </div>
                   <div className="flex justify-between py-2">
                     <dt className="text-muted-foreground font-sans">Critério NBR 5410:</dt>
-                    <dd className="text-success font-semibold">Ib (15,2 A) ≤ In ≤ Iz</dd>
+                    <dd className="text-success font-semibold">15,2 ≤ 20 ≤ 32 A</dd>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <dt className="text-muted-foreground font-sans">Partida direta (≈ 7 × In):</dt>
+                    <dd className="text-success font-semibold">106 A &lt; 200 A</dd>
                   </div>
                 </dl>
               </div>
@@ -794,25 +845,28 @@ function DemonstrationSection() {
                 <div className="p-3 rounded-sm bg-muted/40 border border-border flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="text-muted-foreground">RUNG 01</span>
-                    <span className="text-foreground">[--| S1_LIGA |--]</span>
-                    <span className="text-foreground">[--|/| S0_EMERG |--]</span>
-                    <span className="text-foreground">[--|/| F1_TERM |--]</span>
+                    <span className="text-foreground">[--| M1_PARTIR |--]</span>
+                    <span className="text-muted-foreground">∥ [--| K1 |--]</span>
+                    <span className="text-foreground">[--| M1_PARAR |--]</span>
+                    <span className="text-foreground">[--| S0_OK |--]</span>
+                    <span className="text-foreground">[--| Q1_OK |--]</span>
+                    <span className="text-foreground">[--| F1_OK |--]</span>
                   </div>
-                  <div className="text-primary font-semibold">---( K1_CONTATOR )---</div>
+                  <div className="text-primary font-semibold">---( K1 )---</div>
                 </div>
                 <div className="p-3 rounded-sm bg-muted/40 border border-border flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="text-muted-foreground">RUNG 02</span>
-                    <span className="text-foreground">[--| K1_AUX_13_14 |--]</span>
-                    <span className="text-foreground">[ TON T1_LUB PT=T#5s ]</span>
+                    <span className="text-foreground">[--|/| F1_OK |--]</span>
+                    <span className="text-muted-foreground">∥ [--|/| Q1_OK |--]</span>
                   </div>
-                  <div className="text-success font-semibold">---( Y1_VALVULA_LUB )---</div>
+                  <div className="text-warning font-semibold">---( M1_FALHA )---</div>
                 </div>
               </div>
               <div className="text-[11px] text-muted-foreground">
-                Ponte Unifilar ↔ Ladder ativa: o acionamento da bobina{" "}
-                <code className="text-foreground">K1_CONTATOR</code> fecha os contatos principais
-                1L1-2T1, 3L2-4T2, 5L3-6T3 no diagrama elétrico.
+                Redes geradas do unifilar: parada, emergência, disjuntor e térmico são contatos NF
+                físicos (1 = íntegro), lidos em série — fio rompido para o motor. A bobina{" "}
+                <code className="text-foreground">K1</code> é o mesmo contator do diagrama.
               </div>
             </div>
           )}
@@ -823,7 +877,7 @@ function DemonstrationSection() {
                 <span className="text-foreground font-semibold">
                   LISTA DE MATERIAIS CONSOLIDADA (BOM)
                 </span>
-                <Badge variant="success">CONFORME NBR 5410</Badge>
+                <Badge variant="secondary">EXEMPLO</Badge>
               </div>
               <table className="w-full text-left border-collapse tabular-nums">
                 <thead>
@@ -831,17 +885,17 @@ function DemonstrationSection() {
                     <th className="px-3">Tag</th>
                     <th className="px-3">Especificação Técnica</th>
                     <th className="px-3">Qtd</th>
-                    <th className="px-3">Referência Industrial</th>
+                    <th className="px-3">Origem do preço</th>
                     <th className="px-3 text-right">Verificação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border text-[12px]">
                   <tr className="h-9">
                     <td className="px-3 font-semibold text-primary">Q1</td>
-                    <td className="px-3 font-sans">Disjuntor Caixa Moldada 3P 63 A Icu 25 kA</td>
+                    <td className="px-3 font-sans">Disjuntor motor 3P 20 A curva D Icu 25 kA</td>
                     <td className="px-3">1 un</td>
-                    <td className="px-3 text-muted-foreground">WEG DWB160 / Schneider NSX</td>
-                    <td className="px-3 text-right text-success">Coord. OK</td>
+                    <td className="px-3 text-muted-foreground">Catálogo da empresa</td>
+                    <td className="px-3 text-right text-success">Partida OK</td>
                   </tr>
                   <tr className="h-9">
                     <td className="px-3 font-semibold text-primary">K1</td>
@@ -849,15 +903,15 @@ function DemonstrationSection() {
                       Contator de Potência 3P 32 A AC-3 Bobina 24 Vcc
                     </td>
                     <td className="px-3">1 un</td>
-                    <td className="px-3 text-muted-foreground">WEG CWB32 / Siemens 3RT2</td>
+                    <td className="px-3 text-muted-foreground">Catálogo da empresa</td>
                     <td className="px-3 text-right text-success">AC-3 OK</td>
                   </tr>
                   <tr className="h-9">
                     <td className="px-3 font-semibold text-primary">W1</td>
-                    <td className="px-3 font-sans">Cabo Cobre Unipolar 6 mm² 750 V BWF 70 °C</td>
-                    <td className="px-3">45 m</td>
-                    <td className="px-3 text-muted-foreground">Prysmian Superastic / Cobrecom</td>
-                    <td className="px-3 text-right text-success">ΔU 1,18%</td>
+                    <td className="px-3 font-sans">Cabo cobre 4G4 mm² 0,6/1 kV PVC 70 °C</td>
+                    <td className="px-3">30 m</td>
+                    <td className="px-3 text-muted-foreground">Planilha do fornecedor</td>
+                    <td className="px-3 text-right text-success">ΔU ≈ 1,0 %</td>
                   </tr>
                 </tbody>
               </table>
@@ -990,7 +1044,7 @@ function PricingSection({ authed }: { authed: boolean }) {
       free: "Exportação PDF",
       basic: "Completo",
       pro: "Completo + Revisões",
-      premium: "Completo + Customizado",
+      premium: "Completo + Revisões",
     },
     {
       feature: "FB Electric Studio (FBD/LAD) e SCADA Supervisório",
@@ -1040,7 +1094,68 @@ function PricingSection({ authed }: { authed: boolean }) {
           </p>
         </div>
 
-        <div className="rounded-md border border-border bg-card overflow-x-auto">
+        {/* Celular: um cartão por plano (a tabela larga escondia Pro e Premium). */}
+        <div className="md:hidden space-y-4" data-testid="pricing-cards">
+          {(["free", "basic", "pro", "premium"] as const).map((id) => {
+            const p = SUBSCRIPTION_PLANS[id];
+            const featured = id === "pro";
+            const perfil = id === "basic" ? "autonomo" : id === "free" ? undefined : "empresa";
+            return (
+              <div
+                key={id}
+                className={
+                  featured
+                    ? "rounded-md border-2 border-primary bg-primary/5 p-4"
+                    : "rounded-md border border-border bg-card p-4"
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-foreground">{p.name}</span>
+                  {featured && <Badge variant="brand">Recomendado</Badge>}
+                </div>
+                <div className="mt-1 font-mono text-xl font-semibold text-foreground tabular-nums">
+                  R$ {p.priceBRL.toLocaleString("pt-BR")}
+                  <span className="text-xs font-normal text-muted-foreground">/mês</span>
+                </div>
+                {p.priceYearlyBRL > 0 && (
+                  <div className="text-[11px] font-mono text-success">
+                    ou R$ {p.priceYearlyBRL.toLocaleString("pt-BR")}/ano
+                  </div>
+                )}
+                <div className="mt-1 text-[11px] text-muted-foreground">{p.audience}</div>
+                <dl className="mt-3 divide-y divide-border text-[12px]">
+                  {rows.map((row) => (
+                    <div
+                      key={row.feature}
+                      className="flex items-center justify-between gap-3 py-1.5"
+                    >
+                      <dt className="text-muted-foreground">{row.feature}</dt>
+                      <dd className="shrink-0 text-right text-foreground">{renderCell(row[id])}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <Button
+                  asChild
+                  variant={featured ? "default" : "outline"}
+                  size="sm"
+                  className="mt-3 w-full"
+                >
+                  {authed ? (
+                    <Link to="/settings/billing">
+                      {id === "free" ? "Abrir painel" : `Assinar ${p.name}`}
+                    </Link>
+                  ) : (
+                    <Link to="/signup" search={{ perfil }}>
+                      {id === "free" ? "Começar grátis" : `Assinar ${p.name}`}
+                    </Link>
+                  )}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="hidden md:block rounded-md border border-border bg-card overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[720px]">
             <thead>
               <tr className="border-b border-border bg-muted/30 align-top">
@@ -1143,8 +1258,9 @@ function Footer({ authed }: { authed: boolean }) {
             unifilar/multifilar, lógica Ladder IEC 61131-3 e documentação técnica conforme NBR 5410.
           </p>
           <div className="text-[11px] font-mono text-muted-foreground tabular-nums">
-            © {new Date().getFullYear()} ElétricAi Industrial OS. Todos os direitos reservados.
+            © {new Date().getFullYear()} ElétricAi. Todos os direitos reservados.
           </div>
+          <LegalEntityBlock />
         </div>
 
         <div className="md:col-span-2 space-y-2">
@@ -1153,8 +1269,8 @@ function Footer({ authed }: { authed: boolean }) {
           </div>
           <ul className="space-y-1.5">
             <li>
-              <a href="#arquitetura" className="hover:text-foreground transition-colors">
-                Arquitetura
+              <a href="#recursos" className="hover:text-foreground transition-colors">
+                Recursos
               </a>
             </li>
             <li>
@@ -1166,8 +1282,18 @@ function Footer({ authed }: { authed: boolean }) {
               </Link>
             </li>
             <li>
-              <a href="#demonstracao" className="hover:text-foreground transition-colors">
-                Inspeção Técnica
+              <a href="#seguranca" className="hover:text-foreground transition-colors">
+                Segurança e LGPD
+              </a>
+            </li>
+            <li>
+              <a href="#faq" className="hover:text-foreground transition-colors">
+                Perguntas frequentes
+              </a>
+            </li>
+            <li>
+              <a href="#contato" className="hover:text-foreground transition-colors">
+                Agendar demonstração
               </a>
             </li>
             <li>
@@ -1228,5 +1354,29 @@ function Footer({ authed }: { authed: boolean }) {
         </div>
       </div>
     </footer>
+  );
+}
+
+/** Dados cadastrais reais (variáveis públicas do build) ou "a informar". */
+function LegalEntityBlock() {
+  const e = legalEntity();
+  return (
+    <dl
+      className="text-[11px] font-mono text-muted-foreground space-y-0.5"
+      data-testid="legal-entity"
+    >
+      <div>
+        <dt className="inline">Razão social: </dt>
+        <dd className="inline">{e.legalName}</dd>
+      </div>
+      <div>
+        <dt className="inline">CNPJ: </dt>
+        <dd className="inline">{e.cnpj}</dd>
+      </div>
+      <div>
+        <dt className="inline">Contato: </dt>
+        <dd className="inline">{e.contactEmail}</dd>
+      </div>
+    </dl>
   );
 }
