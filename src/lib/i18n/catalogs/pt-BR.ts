@@ -1069,6 +1069,24 @@ export const ptBR = {
     confirmDesc:
       "O relé D{pin} vai fechar e energizar o circuito real. Confirme que não há pessoas expostas.",
   },
+  tripCurves: {
+    title: "Curvas de disparo e seletividade",
+    load: "Carga",
+    noDevices: "Nenhuma proteção com corrente nominal no caminho desta carga.",
+    start: "Partida",
+    cable: "Cabo",
+    axisX: "Corrente",
+    colPair: "Montante → jusante",
+    colRatio: "Relação In",
+    colLimit: "Seletivo até",
+    colVerdict: "Seletividade",
+    verdict_total: "Total",
+    verdict_parcial: "Parcial",
+    verdict_nenhuma: "Nenhuma",
+    verdict_indeterminada: "Indeterminada (curto do ponto não calculado)",
+    premise:
+      "Faixas dos limites da norma (IEC 60898-1, relé térmico IEC 60947-4-1) e dano adiabático do cabo (k²S²). As curvas reais do fabricante ficam dentro das faixas; seletividade amperimétrica até o disparo magnético mínimo do disjuntor de montante.",
+  },
   networkPanel: {
     title: "Rede e curto-circuito (IEC 60909 / NBR 5410)",
     earthing: "Aterramento",

@@ -17,6 +17,10 @@ import type { DiagramDoc, DiagramEdge, DiagramNode } from "../schema";
 import { shortCircuitIEC60909 } from "@/lib/electrical-sim";
 import { loadCurrent_A, nodeDisplayName } from "./cable-sizing";
 import { analyzeNetwork, typicalTransformerUk } from "./network-calculation";
+import { OVERLOAD_RATIO, motorStartChecks, selectivityByCurves } from "./trip-curves";
+
+const CURVE_PREMISE =
+  "Seletividade amperimétrica (IEC 60898-1 / 60947-2): limite = disparo magnético mínimo do disjuntor de montante (B 3×, C 5×, D 10× In). Tabelas de seletividade do fabricante podem garantir valores maiores.";
 
 export type CoordinationCode =
   | "PROTECTION_UNDERSIZED"
@@ -24,6 +28,10 @@ export type CoordinationCode =
   | "THERMAL_SETTING_HIGH"
   | "CONTACTOR_UNDERSIZED"
   | "NO_SELECTIVITY"
+  | "PARTIAL_SELECTIVITY"
+  | "LOW_OVERLOAD_RATIO"
+  | "BREAKER_TRIPS_ON_START"
+  | "START_INRUSH_RISK"
   | "BREAKING_CAPACITY_LOW"
   | "BREAKING_CAPACITY_MISSING";
 
@@ -149,19 +157,87 @@ export function analyzeProtectionCoordination(doc: DiagramDoc): CoordinationRepo
         }
       }
     }
+  }
 
-    // 4. Seletividade amperimétrica entre disjuntores em cascata
-    if (kind === "breaker" && In) {
-      const up = firstUpstream(n.id, new Set(["breaker"]));
-      const upIn = up ? num(up, "in_A") : undefined;
-      if (up && upIn && In >= upIn) {
-        findings.push({
-          code: "NO_SELECTIVITY",
-          severity: "error",
-          nodeId: n.id,
-          message: `${name(n)} (${In} A) não é menor que ${name(up)} (${upIn} A) a montante: sem seletividade — uma falta no ramal desarma o alimentador.`,
-        });
-      }
+  // 4. Seletividade POR CURVA entre disjuntores em cascata (IEC 60898 / 60947-2),
+  //    examinada até o curto no ponto do disjuntor de jusante.
+  const networkForSel = analyzeNetwork(doc);
+  const partial: Array<{ down: DiagramNode; up: DiagramNode; limit: number; ik: number }> = [];
+  const lowRatio: Array<{ down: DiagramNode; up: DiagramNode; ratio: number }> = [];
+  for (const n of nodes) {
+    if (n.params.kind !== "breaker") continue;
+    const up = firstUpstream(n.id, new Set(["breaker"]));
+    if (!up) continue;
+    const ikLocal = networkForSel.nodes[n.id]?.Ik3max_kA;
+    const sel = selectivityByCurves(up, n, ikLocal ? ikLocal * 1000 : undefined);
+    if (!sel) continue;
+    if (sel.verdict === "nenhuma") {
+      findings.push({
+        code: "NO_SELECTIVITY",
+        severity: "error",
+        nodeId: n.id,
+        message: `${name(n)} (${num(n, "in_A")} A) não é menor que ${name(up)} (${num(up, "in_A")} A) a montante: sem seletividade — uma falta no ramal desarma o alimentador.`,
+        assumptions: [CURVE_PREMISE],
+      });
+      continue;
+    }
+    if (sel.overloadRatio !== undefined && sel.overloadRatio < OVERLOAD_RATIO) {
+      lowRatio.push({ down: n, up, ratio: sel.overloadRatio });
+    }
+    if (sel.verdict === "parcial" && sel.limit_A && ikLocal) {
+      partial.push({ down: n, up, limit: sel.limit_A, ik: ikLocal });
+    }
+  }
+  if (lowRatio.length > 0) {
+    findings.push({
+      code: "LOW_OVERLOAD_RATIO",
+      severity: "warning",
+      nodeId: lowRatio[0].down.id,
+      message: `Relação de correntes nominais abaixo de ${OVERLOAD_RATIO} em ${lowRatio.length} par(es) (${lowRatio
+        .slice(0, 3)
+        .map((p) => `${name(p.up)}/${name(p.down)} = ${p.ratio}`)
+        .join("; ")}): em sobrecarga os dois disjuntores podem atuar juntos.`,
+      assumptions: [CURVE_PREMISE],
+    });
+  }
+  if (partial.length > 0) {
+    const ex = partial
+      .slice(0, 3)
+      .map(
+        (p) =>
+          `${name(p.down)}/${name(p.up)} até ${round1(p.limit / 1000)} kA (curto ${round1(p.ik)} kA)`,
+      )
+      .join("; ");
+    findings.push({
+      code: "PARTIAL_SELECTIVITY",
+      severity: "warning",
+      nodeId: partial[0].down.id,
+      message: `Seletividade parcial em ${partial.length} par(es) de disjuntores: ${ex}${partial.length > 3 ? "…" : ""}. Acima desse valor os dois podem abrir — confirme na tabela de seletividade do fabricante ou veja as curvas.`,
+      assumptions: [CURVE_PREMISE],
+    });
+  }
+
+  // 4b. Partida do motor × disparo magnético do disjuntor do ramal
+  for (const c of motorStartChecks(doc)) {
+    const motor = doc.nodes[c.motorId];
+    const brk = doc.nodes[c.breakerId];
+    if (!motor || !brk) continue;
+    if (c.verdict === "dispara") {
+      findings.push({
+        code: "BREAKER_TRIPS_ON_START",
+        severity: "error",
+        nodeId: brk.id,
+        message: `${name(brk)}: a corrente de partida de ${name(motor)} (≈ ${c.start_A} A) passa do disparo magnético mínimo (${c.magMin_A} A) — o disjuntor desarma na partida. Use curva D, disjuntor-motor ou partida suave.`,
+        assumptions: ["Partida direta ≈ 7 × In do motor (estrela-triângulo ≈ 7/3 × In)."],
+      });
+    } else if (c.verdict === "risco_pico") {
+      findings.push({
+        code: "START_INRUSH_RISK",
+        severity: "warning",
+        nodeId: brk.id,
+        message: `${name(brk)}: o pico do primeiro meio ciclo da partida de ${name(motor)} (≈ ${2 * c.start_A} A) pode alcançar o disparo magnético mínimo (${c.magMin_A} A). Confirme com a curva do fabricante ou use curva D / disjuntor-motor.`,
+        assumptions: ["Pico assimétrico ≈ 2 × corrente eficaz de partida (premissa)."],
+      });
     }
   }
 
@@ -189,7 +265,7 @@ export function analyzeProtectionCoordination(doc: DiagramDoc): CoordinationRepo
       prospectiveIk_kA = undefined;
     }
     if (prospectiveIk_kA !== undefined) {
-      const network = analyzeNetwork(doc);
+      const network = networkForSel;
       const assumptions = [
         `Curto IEC 60909 a partir de ${name(trafo)} (${kVA} kVA, ${U} V, uk ${uk}%${ukGiven ? "" : " típico — informe o uk de placa"}), somando a impedância dos cabos a montante de cada disjuntor.`,
         ...network.premises.filter((p) => p.includes("concessionária")),

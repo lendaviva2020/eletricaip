@@ -1063,6 +1063,24 @@ export const en: TranslationCatalog = {
     confirmDesc:
       "Relay D{pin} will close and energize the real circuit. Confirm nobody is exposed.",
   },
+  tripCurves: {
+    title: "Trip curves and selectivity",
+    load: "Load",
+    noDevices: "No protection with a rated current on this load's path.",
+    start: "Start",
+    cable: "Cable",
+    axisX: "Current",
+    colPair: "Upstream → downstream",
+    colRatio: "In ratio",
+    colLimit: "Selective up to",
+    colVerdict: "Selectivity",
+    verdict_total: "Total",
+    verdict_parcial: "Partial",
+    verdict_nenhuma: "None",
+    verdict_indeterminada: "Undetermined (fault current not computed)",
+    premise:
+      "Bands are the standard limits (IEC 60898-1, thermal relay IEC 60947-4-1) and the cable adiabatic damage (k²S²). Real manufacturer curves lie inside the bands; current selectivity up to the upstream breaker's minimum magnetic trip.",
+  },
   networkPanel: {
     title: "Network and short circuit (IEC 60909 / NBR 5410)",
     earthing: "Earthing",

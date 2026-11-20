@@ -36,6 +36,7 @@ import { runDiagramDiagnostics, type DiagnosticAlert } from "@/lib/diagram/multi
 import { validateRungs, type LadderIssue } from "@/lib/ladder/validator";
 import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
 import { NetworkPanel } from "@/components/editor/network-panel";
+import { TripCurveChart } from "@/components/editor/trip-curve-chart";
 import { CableTable, applyCableSizing, openCableTable } from "@/components/editor/cable-table";
 import {
   buildDiagnosticContextFromMultifilar,
@@ -747,6 +748,7 @@ export function UnifiedBottomDock() {
           {tab === "calculos_nbr" && (
             <div className="space-y-4">
               <NetworkPanel />
+              <TripCurveChart />
               <CableTable />
             </div>
           )}
