@@ -119,6 +119,11 @@ export interface LadderRung {
   poweredOut?: boolean;
   /** Topologia estrutural enriquecida com suporte a selos reais e múltiplos blocos */
   topology?: RungTopology;
+  /**
+   * Origem da rede gerada automaticamente (ex.: do unifilar). `signature` é o
+   * conteúdo gerado: se as células divergirem, o engenheiro editou e a rede é dele.
+   */
+  source?: { kind: "unifilar"; equipmentId: string; signature: string };
 }
 
 // #LAD-05 · colunas por-rung. RUNG_COLS mantém o default histórico (6) usado

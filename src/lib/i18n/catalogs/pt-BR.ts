@@ -1092,6 +1092,17 @@ export const ptBR = {
     premise:
       "Faixas dos limites da norma (IEC 60898-1, relé térmico IEC 60947-4-1) e dano adiabático do cabo (k²S²). As curvas reais do fabricante ficam dentro das faixas; seletividade amperimétrica até o disparo magnético mínimo do disjuntor de montante.",
   },
+  ladderSync: {
+    toggle: "Acompanhar o unifilar",
+    status:
+      "{n} rede(s) geradas do unifilar · {edited} editada(s) por você (essas não são mais sobrescritas)",
+    fromUnifilar: "do unifilar",
+    editedByYou: "editada por você",
+    originHint:
+      "Rede gerada a partir do equipamento do unifilar. Se você editar, ela passa a ser sua e não é mais atualizada automaticamente.",
+    emptyHint:
+      "Desenhe motores e contatores no unifilar: as redes de comando aparecem aqui automaticamente. Você também pode criar redes do seu jeito ou pedir à IA. O exemplo abaixo é só demonstração e não pertence ao seu projeto.",
+  },
   arcPanel: {
     title: "Arco elétrico por quadro (IEEE 1584-2002)",
     noBoards: "Nenhum barramento ou CCM no unifilar.",

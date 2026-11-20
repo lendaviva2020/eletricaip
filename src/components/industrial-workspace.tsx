@@ -18,6 +18,7 @@ import {
 } from "@phosphor-icons/react";
 import { CanvasAiChat } from "@/components/canvas-ai-chat";
 import { useProjectPersistence } from "@/lib/use-project-persistence";
+import { useUnifilarLadderSync } from "@/hooks/use-unifilar-ladder-sync";
 import { isBreakerComponent, type VoltaiComponentType } from "@/lib/palette/component-catalog";
 import { LeftSidebarHost } from "@/components/editor/left-sidebar-host";
 import { useEditorStore } from "@/lib/editor/store";
@@ -108,6 +109,9 @@ export function IndustrialWorkspace({ projectId = null }: { projectId?: string |
   }, [setPanelsCollapsed]);
 
   const { loading, saveState, conflict, resolveConflict } = useProjectPersistence(projectId);
+  // Ladder acompanha o unifilar depois que o projeto carregou (evita gerar
+  // sobre o estado anterior e ser sobrescrito pelo carregamento).
+  useUnifilarLadderSync(!loading);
   // Alarmes, auditoria e histórico persistentes + CCM como fonte de tags.
   useScadaProjectSync();
   const [dossierOpen, setDossierOpen] = useState(false);

@@ -55,7 +55,7 @@ export function LadderCrossReferencePanel() {
   const xref = useMemo(() => {
     const inputTags = new Set<string>();
     for (const tag of Object.values(tags)) {
-      if (INPUT_ADDRESS_RE.test(tag.id)) {
+      if (INPUT_ADDRESS_RE.test(tag.id) || tag.direction === "input") {
         inputTags.add(tag.name.toUpperCase());
         inputTags.add(tag.id.toUpperCase());
       }

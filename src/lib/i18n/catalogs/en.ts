@@ -1086,6 +1086,17 @@ export const en: TranslationCatalog = {
     premise:
       "Bands are the standard limits (IEC 60898-1, thermal relay IEC 60947-4-1) and the cable adiabatic damage (k²S²). Real manufacturer curves lie inside the bands; current selectivity up to the upstream breaker's minimum magnetic trip.",
   },
+  ladderSync: {
+    toggle: "Follow the single-line diagram",
+    status:
+      "{n} rung(s) generated from the single-line · {edited} edited by you (those are no longer overwritten)",
+    fromUnifilar: "from single-line",
+    editedByYou: "edited by you",
+    originHint:
+      "Rung generated from the single-line equipment. Once you edit it, it becomes yours and is no longer updated automatically.",
+    emptyHint:
+      "Draw motors and contactors in the single-line diagram: the control rungs appear here automatically. You can also write rungs your own way or ask the AI. The example below is only a demo and is not part of your project.",
+  },
   arcPanel: {
     title: "Arc flash per board (IEEE 1584-2002)",
     noBoards: "No busbar or MCC in the single-line diagram.",

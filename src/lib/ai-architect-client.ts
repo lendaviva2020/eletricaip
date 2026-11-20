@@ -1,7 +1,3 @@
-import {
-  AI_FBD_PAGE_ID,
-  importLegacyFbdIntoStudio,
-} from "@/lib/compact-studio/conversion/legacy-fbd-import";
 import { currentStudioModel } from "@/lib/compact-studio/integration/legacy-fbd-migration";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -14,13 +10,14 @@ import {
 import { useCurrentProject } from "@/lib/current-project";
 import { SnapshotSchema } from "@/lib/projects.functions";
 import { markAllUnconfirmed } from "@/lib/diagram/unconfirmed-params";
+import { buildLadderFromUnifilar, mergeUnifilarRungs } from "@/lib/ladder/from-unifilar";
+import { syncMotorLogicFromUnifilar } from "@/lib/compact-studio/integration/unifilar-motor-program";
 import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
 import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.functions";
 
-import { useEditorStore, type FbdNode, type FbdEdge } from "@/lib/editor/store";
+import { useEditorStore } from "@/lib/editor/store";
 import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import { buildProjectSnapshot } from "@/lib/use-project-persistence";
-import type { LadderRung } from "@/lib/ladder/types";
 import type { VerificationReport } from "@/lib/ai/verification-types";
 import { useDiagramStore } from "@/lib/diagram/store";
 import { makeNode, makeEdge, createEmptyDoc } from "@/lib/diagram/model";
@@ -393,166 +390,30 @@ export function applyArchitectToStore(
     window.dispatchEvent(new CustomEvent("eletricai-fit-view"));
   }
 
-  // 3. Map and deploy standard compliant Ladder rungs & Shared tags (useEditorStore)
-  const ladderRungs: LadderRung[] = [];
-  const motorList =
-    result.motors && result.motors.length > 0
-      ? result.motors
-      : result.nodes
-          .filter((n) => n.kind.toLowerCase().includes("motor"))
-          .map((n) => ({ id: n.id, startMethod: "DOL" }));
+  // 3. Ladder: o MESMO projeto do unifilar (fonte única). Antes o Arquiteto
+  //    gerava redes próprias com endereços %I inventados e parada em XIO (botão
+  //    NA: fio rompido não parava o motor).
+  const ladder = buildLadderFromUnifilar(diagramDoc);
+  const editor = useEditorStore.getState();
+  for (const tag of ladder.tags) {
+    if (!editor.editorTags[tag.id]) editor.upsertTag(tag);
+  }
+  editor.setRungs((prev) =>
+    opts.mode === "replace"
+      ? mergeUnifilarRungs(
+          prev.filter((r) => r.source?.kind === "unifilar"),
+          ladder.rungs,
+        )
+      : mergeUnifilarRungs(prev, ladder.rungs),
+  );
 
-  motorList.forEach((motor, i) => {
-    const motorId = motor.id || `M${i + 1}`;
-    const kmId = `KM${i + 1}`;
-
-    // Rung 1: Direct-on-Line (DOL) Command & Seal contact
-    const r1: LadderRung = {
-      id: `rung-ai-${Date.now()}-motor-${i}-cmd`,
-      label: `Partida do Motor ${motorId} (Selo de KM)`,
-      cells: [
-        [
-          { kind: "XIC", operand: `%I0.${i * 4}` }, // Motor Overload/Breaker OK
-          { kind: "XIC", operand: `%I0.${i * 4 + 1}` }, // Start Push-Button
-          { kind: "XIO", operand: `%I0.${i * 4 + 2}` }, // Stop Push-Button
-          { kind: "EMPTY", operand: "" },
-          { kind: "EMPTY", operand: "" },
-          { kind: "OTE", operand: `%Q0.${i * 2}` }, // Contactor command
-        ],
-        [
-          { kind: "EMPTY", operand: "" },
-          { kind: "XIC", operand: `%Q0.${i * 2}` }, // Seal contact
-          { kind: "EMPTY", operand: "" },
-          { kind: "EMPTY", operand: "" },
-          { kind: "EMPTY", operand: "" },
-          { kind: "EMPTY", operand: "" },
-        ],
-      ],
-    };
-    ladderRungs.push(r1);
-
-    // Rung 2: Motor Protection Tripped Alarm Lamp
-    const r2: LadderRung = {
-      id: `rung-ai-${Date.now()}-motor-${i}-fault`,
-      label: `Alarme de Disparo / Falha ${motorId}`,
-      cells: [
-        [
-          { kind: "XIO", operand: `%I0.${i * 4}` }, // NC contact of overload
-          { kind: "EMPTY", operand: "" },
-          { kind: "EMPTY", operand: "" },
-          { kind: "EMPTY", operand: "" },
-          { kind: "EMPTY", operand: "" },
-          { kind: "OTE", operand: `%Q0.${i * 2 + 1}` }, // Alarm Lamp
-        ],
-      ],
-    };
-    ladderRungs.push(r2);
-
-    // Register IO Tags in editor store
-    useEditorStore.getState().upsertTag({
-      id: `%I0.${i * 4}`,
-      name: `${motorId}_PROT_OK`,
-      type: "BOOL",
-      value: true,
-      forced: false,
-    });
-    useEditorStore.getState().upsertTag({
-      id: `%I0.${i * 4 + 1}`,
-      name: `${motorId}_START`,
-      type: "BOOL",
-      value: false,
-      forced: false,
-    });
-    useEditorStore.getState().upsertTag({
-      id: `%I0.${i * 4 + 2}`,
-      name: `${motorId}_STOP`,
-      type: "BOOL",
-      value: false,
-      forced: false,
-    });
-    useEditorStore.getState().upsertTag({
-      id: `%Q0.${i * 2}`,
-      name: `${kmId}_CMD`,
-      type: "BOOL",
-      value: false,
-      forced: false,
-    });
-    useEditorStore.getState().upsertTag({
-      id: `%Q0.${i * 2 + 1}`,
-      name: `${motorId}_FAULT_LAMP`,
-      type: "BOOL",
-      value: false,
-      forced: false,
-    });
-  });
-
-  useEditorStore.getState().setRungs(ladderRungs);
-
-  // 4. Map and deploy logical FBD blocks (useEditorStore.fbdNodes / fbdEdges)
-  const fbdNodes: FbdNode[] = [];
-  const fbdEdges: FbdEdge[] = [];
-
-  motorList.forEach((motor, i) => {
-    const motorId = motor.id || `M${i + 1}`;
-
-    // Place an AND block for Protection and Start Buttons
-    fbdNodes.push({
-      id: `AND_${i + 1}`,
-      type: "fbdBlock",
-      position: { x: 100, y: 150 + i * 200 },
-      data: {
-        label: `AND_${i + 1}`,
-        type: "AND",
-        inputs: [
-          { id: "in1", label: "IN1", type: "BOOL" },
-          { id: "in2", label: "IN2", type: "BOOL" },
-        ],
-        outputs: [{ id: "out", label: "OUT", type: "BOOL" }],
-        params: undefined,
-      },
-    });
-
-    // Place a Timer TON block for delayed start/stop
-    fbdNodes.push({
-      id: `TON_${i + 1}`,
-      type: "fbdBlock",
-      position: { x: 340, y: 150 + i * 200 },
-      data: {
-        label: `TON_${i + 1}`,
-        type: "TON",
-        inputs: [
-          { id: "in", label: "IN", type: "BOOL" },
-          { id: "pt", label: "PT", type: "INT" },
-        ],
-        outputs: [
-          { id: "q", label: "Q", type: "BOOL" },
-          { id: "et", label: "ET", type: "INT" },
-        ],
-        params: { PT: "T#5s" },
-      },
-    });
-
-    // Connect the AND output to the TON input
-    fbdEdges.push({
-      id: `fbd-edge-${Date.now()}-${i}`,
-      source: `AND_${i + 1}`,
-      target: `TON_${i + 1}`,
-      sourceHandle: "out",
-      targetHandle: "in",
-      style: { stroke: "oklch(0.78 0.17 200)", strokeWidth: 2 },
-    });
-  });
-
-  // FBD e Studio são um só editor: a lógica gerada vai para uma página
-  // própria do FB Electric Studio (substituída a cada nova geração).
+  // 4. FB Electric Studio: lógica de comando dos motores do unifilar (página
+  //    "uf-motors", idempotente). Antes: blocos AND/TON soltos sem ligação.
   try {
-    const { model } = importLegacyFbdIntoStudio(currentStudioModel(), fbdNodes, fbdEdges, {
-      pageId: AI_FBD_PAGE_ID,
-      pageName: "Lógica FBD (IA)",
-    });
+    const { model } = syncMotorLogicFromUnifilar(currentStudioModel(), diagramDoc);
     useUnifiedProjectStore.getState().setCompactStudioProgram(model);
   } catch (err) {
-    console.warn("[FB Electric Studio] lógica FBD da IA não aplicada:", err);
+    console.warn("[FB Electric Studio] lógica do unifilar não aplicada:", err);
   }
 
   // 5. Synchronize canonical UnifiedProjectDoc

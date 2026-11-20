@@ -259,7 +259,9 @@ describe("Structured Text e blocos FBD do CLP", () => {
 
   it("IA grava a lógica FBD no Studio", () => {
     const ai = readFileSync(resolve(__dirname, "../lib/ai-architect-client.ts"), "utf8");
-    expect(ai).toContain("importLegacyFbdIntoStudio");
+    // Fonte única: a lógica do Studio vem do unifilar gerado pela IA (página uf-motors).
+    expect(ai).toContain("syncMotorLogicFromUnifilar");
+    expect(ai).toContain("buildLadderFromUnifilar");
     expect(ai).not.toContain("setFbdAll(fbdNodes, fbdEdges)");
   });
 });

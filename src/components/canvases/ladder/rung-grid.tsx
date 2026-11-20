@@ -64,6 +64,9 @@ import {
 } from "@phosphor-icons/react";
 import { useSafetyStore } from "@/lib/simulation/safety-core";
 import { useI18n } from "@/lib/i18n";
+import { isUserEditedUnifilarRung } from "@/lib/ladder/from-unifilar";
+import { useLadderUnifilarSync } from "@/lib/ladder/unifilar-sync-store";
+import { syncLadderWithUnifilarNow } from "@/hooks/use-unifilar-ladder-sync";
 
 /** Tags do programa de EXEMPLO — em repouso (nenhuma entrada "ligada" de fábrica). */
 const REFERENCE_EXAMPLE_TAGS = [
@@ -265,6 +268,47 @@ export function createReferenceIndustrialProject(): LadderRung[] {
   };
 
   return [r1, r2, r3];
+}
+
+/** Estado da sincronização Unifilar → Ladder (mesmo projeto nos dois editores). */
+function LadderUnifilarSyncBar({ rungs }: { rungs: readonly LadderRung[] }) {
+  const { t } = useI18n();
+  const enabled = useLadderUnifilarSync((s) => s.enabled);
+  const setEnabled = useLadderUnifilarSync((s) => s.setEnabled);
+  const warnings = useLadderUnifilarSync((s) => s.warnings);
+  const generated = rungs.filter((r) => r.source?.kind === "unifilar");
+  const edited = generated.filter(isUserEditedUnifilarRung).length;
+  return (
+    <div
+      className="mb-4 rounded-md border border-border/60 bg-card/60 px-3 py-2 text-xs"
+      data-testid="ladder-unifilar-sync"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-1.5 font-semibold text-foreground">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => {
+              setEnabled(e.target.checked);
+              if (e.target.checked) syncLadderWithUnifilarNow();
+            }}
+            data-testid="ladder-unifilar-sync-toggle"
+          />
+          {t("ladderSync.toggle")}
+        </label>
+        <span className="text-muted-foreground">
+          {t("ladderSync.status", { n: generated.length, edited })}
+        </span>
+      </div>
+      {enabled && warnings.length > 0 && (
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-amber-600 dark:text-amber-300">
+          {warnings.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 export function RungGrid() {
@@ -1171,6 +1215,7 @@ export function RungGrid() {
           className="mx-auto max-w-5xl transition-transform duration-75 origin-top"
           style={{ transform: `scale(${zoom / 100})` }}
         >
+          <LadderUnifilarSyncBar rungs={rungs} />
           {rungs.length === 0 && (
             <div
               className="mx-auto max-w-xl rounded-lg border border-dashed border-border bg-card/60 p-6 text-center text-sm"
@@ -1179,11 +1224,7 @@ export function RungGrid() {
               <p className="font-semibold text-foreground">
                 Este projeto ainda não tem lógica Ladder.
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Crie a primeira rede, gere a partir do unifilar (Simulação → Ponte Unifilar →
-                Ladder) ou peça à IA. O exemplo abaixo é só demonstração e não pertence ao seu
-                projeto.
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("ladderSync.emptyHint")}</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <Button size="sm" onClick={addRung} data-testid="ladder-empty-add">
                   <Plus className="h-3.5 w-3.5" /> Nova rede
@@ -1221,11 +1262,22 @@ export function RungGrid() {
                   }`}
                 >
                   {/* Cabeçalho da Rede com Edição de Comentário */}
-                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/40 bg-muted/20">
-                    <div className="flex items-center gap-2 flex-1 mr-4">
+                  <div className="flex flex-wrap items-center justify-between gap-y-1 px-3 py-1.5 border-b border-border/40 bg-muted/20">
+                    <div className="flex min-w-[16rem] items-center gap-2 flex-1 mr-4">
                       <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-muted/80 text-foreground border border-border/40">
                         RUNG {rungNum}
                       </span>
+                      {rung.source?.kind === "unifilar" && (
+                        <span
+                          className="shrink-0 whitespace-nowrap text-[10px] px-1.5 py-0.5 rounded border border-border/60 text-muted-foreground"
+                          data-testid={`rung-origin-${rung.id}`}
+                          title={t("ladderSync.originHint")}
+                        >
+                          {isUserEditedUnifilarRung(rung)
+                            ? t("ladderSync.editedByYou")
+                            : t("ladderSync.fromUnifilar")}
+                        </span>
+                      )}
 
                       {isEditingComment ? (
                         <div className="flex items-center gap-1.5 flex-1 max-w-md">
@@ -1250,11 +1302,11 @@ export function RungGrid() {
                         </div>
                       ) : (
                         <div
-                          className="flex items-center gap-1.5 cursor-pointer group"
+                          className="flex min-w-0 flex-1 items-center gap-1.5 cursor-pointer group"
                           onClick={() => startEditingComment(rung)}
-                          title="Clique para editar comentário da rede"
+                          title={rung.comment || rung.label}
                         >
-                          <span className="text-xs font-semibold text-foreground/90 font-mono">
+                          <span className="truncate text-xs font-semibold text-foreground/90 font-mono">
                             {rung.comment || rung.label}
                           </span>
                           <PencilSimple className="h-3 w-3 text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:text-foreground transition-opacity" />

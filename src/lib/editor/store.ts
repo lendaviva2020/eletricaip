@@ -17,6 +17,8 @@ export interface EditorTag {
   type: EditorTagType;
   value: boolean | number | string;
   forced: boolean;
+  /** Sentido no CLP: entrada de campo (botão/sensor/contato), saída (bobina) ou memória. */
+  direction?: "input" | "output" | "memory";
 }
 
 export type FbdNode = Node<any>;
