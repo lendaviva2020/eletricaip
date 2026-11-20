@@ -12,6 +12,7 @@ import {
   type NodeCategory,
 } from "@/lib/project-store";
 import { useCurrentProject } from "@/lib/current-project";
+import { SnapshotSchema } from "@/lib/projects.functions";
 import { markAllUnconfirmed } from "@/lib/diagram/unconfirmed-params";
 import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
 import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.functions";
@@ -565,53 +566,11 @@ export function applyArchitectToStore(
     console.warn("[applyArchitectToStore] unified store sync:", err);
   }
 
-  void autoSaveVersion(result, nodes, edges);
+  // A gravação é responsabilidade de quem aplica: o /ai cria o projeto e salva o
+  // snapshot completo; no workspace, o autosave do projeto aberto grava.
+  // (Antes uma "versão" em formato próprio era inserida no projeto aberto — não
+  // restaurável e gravada até no projeto errado.)
   return { nodes: nodes.length, edges: edges.length };
-}
-
-async function autoSaveVersion(
-  result: ArchitectResult,
-  nodes: IndustrialNode[],
-  edges: IndustrialEdge[],
-) {
-  try {
-    const project = useCurrentProject.getState().project;
-    if (!project?.id) return;
-    const { data: last } = await supabase
-      .from("project_versions")
-      .select("version_number")
-      .eq("project_id", project.id)
-      .order("version_number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const next = ((last as { version_number?: number } | null)?.version_number ?? 0) + 1;
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return;
-    await supabase.from("project_versions").insert({
-      project_id: project.id,
-      created_by: u.user.id,
-      version_number: next,
-      snapshot: {
-        source: "ai-architect",
-        title: result.title,
-        rationale: result.rationale,
-        transformer: result.transformer,
-        ccm: result.ccm,
-        nodes,
-        edges,
-        savedAt: new Date().toISOString(),
-      } as never,
-    });
-    useProjectStore.getState().pushLog({
-      t: new Date().toISOString(),
-      tag: "VERSION",
-      msg: `Versão v${next} salva automaticamente`,
-      lvl: "ok",
-      channel: "IA",
-    });
-  } catch (e) {
-    console.warn("autoSaveVersion failed:", e);
-  }
 }
 
 export async function saveManualVersion(
@@ -630,12 +589,17 @@ export async function saveManualVersion(
     .limit(1)
     .maybeSingle();
   const next = ((last as { version_number?: number } | null)?.version_number ?? 0) + 1;
-  const { nodes, edges } = useProjectStore.getState();
+  // Snapshot COMPLETO do projeto (o mesmo do autosave), validado: só assim a
+  // versão pode ser restaurada. Antes gravava só {nodes, edges} e restaurar
+  // essa versão deixava o canvas vazio.
+  const parsed = SnapshotSchema.safeParse(buildProjectSnapshot());
+  if (!parsed.success) return { ok: false, error: "Estado do projeto inválido para versionar." };
+  void label;
   const { error } = await supabase.from("project_versions").insert({
     project_id: project.id,
     created_by: u.user.id,
     version_number: next,
-    snapshot: { source: "manual", label, nodes, edges, savedAt: new Date().toISOString() } as never,
+    snapshot: parsed.data as never,
   });
   if (error) return { ok: false, error: error.message };
   useProjectStore.getState().pushLog({

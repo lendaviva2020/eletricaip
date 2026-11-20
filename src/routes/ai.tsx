@@ -11,6 +11,11 @@ import {
   Info,
 } from "@phosphor-icons/react";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { createProject, saveProject } from "@/lib/projects.functions";
+import { buildProjectSnapshot } from "@/lib/use-project-persistence";
+import { useEditorStore } from "@/lib/editor/store";
 import {
   callArchitect,
   applyArchitectToStore,
@@ -80,10 +85,42 @@ function AiPage() {
     }
   };
 
-  const apply = (r: ArchitectResult, mode: "ladder" | "unifilar" | "both") => {
-    applyArchitectToStore(r, { mode: "replace" });
-    router.navigate({ to: "/workspace" });
-    void mode;
+  const createFn = useServerFn(createProject);
+  const saveFn = useServerFn(saveProject);
+  const [applying, setApplying] = useState(false);
+
+  /**
+   * Aplica o resultado em um PROJETO NOVO e abre o workspace nele.
+   *
+   * Antes o resultado ficava só na memória da página e o workspace abria sem
+   * projeto; ao criar/abrir um projeto, o carregamento (vazio) do servidor
+   * sobrescrevia o que a IA tinha gerado e o canvas aparecia vazio. Agora o
+   * snapshot completo é gravado no projeto criado antes de navegar, e o
+   * workspace carrega exatamente esse conteúdo.
+   */
+  const apply = async (r: ArchitectResult, mode: "ladder" | "unifilar" | "both") => {
+    if (applying) return;
+    setApplying(true);
+    try {
+      applyArchitectToStore(r, { mode: "replace" });
+      useEditorStore.getState().setActiveMode(mode === "ladder" ? "ladder" : "unifilar");
+      const snapshot = buildProjectSnapshot();
+      const name = (r.title || "").trim().slice(0, 200) || "Projeto gerado pela IA";
+      const project = await createFn({
+        data: {
+          name,
+          ...(r.rationale ? { description: r.rationale.slice(0, 2000) } : {}),
+        },
+      });
+      await saveFn({ data: { projectId: project.id, snapshot, createVersion: true } });
+      toast.success(`Projeto "${project.name}" criado com o resultado da IA.`);
+      await router.navigate({ to: "/workspace", search: { projectId: project.id } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Não foi possível criar o projeto: ${msg}`);
+    } finally {
+      setApplying(false);
+    }
   };
 
   return (
@@ -114,7 +151,7 @@ function AiPage() {
                   <WarningCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" /> {m.error}
                 </div>
               )}
-              {m.result && <ResultCard result={m.result} onApply={apply} />}
+              {m.result && <ResultCard result={m.result} onApply={apply} applying={applying} />}
             </div>
           ))}
 
@@ -170,9 +207,11 @@ function AiPage() {
 function ResultCard({
   result,
   onApply,
+  applying,
 }: {
   result: ArchitectResult;
   onApply: (r: ArchitectResult, mode: "ladder" | "unifilar" | "both") => void;
+  applying: boolean;
 }) {
   const motorSpecs = result.motors.map((m) =>
     calcMotor({
@@ -279,20 +318,23 @@ function ResultCard({
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => onApply(result, "unifilar")}
-          className="text-[12px] px-3 h-9 rounded-md text-primary-foreground glow-primary inline-flex items-center gap-1.5"
+          disabled={applying}
+          className="text-[12px] px-3 h-9 rounded-md text-primary-foreground glow-primary inline-flex items-center gap-1.5 disabled:opacity-50"
           style={{ background: "var(--gradient-primary)" }}
         >
           <CheckCircle className="h-3.5 w-3.5" /> Aplicar como Unifilar
         </button>
         <button
           onClick={() => onApply(result, "ladder")}
-          className="text-[12px] px-3 h-9 rounded-md border border-border hover:bg-accent inline-flex items-center gap-1.5"
+          disabled={applying}
+          className="text-[12px] px-3 h-9 rounded-md border border-border hover:bg-accent inline-flex items-center gap-1.5 disabled:opacity-50"
         >
           Aplicar como Ladder
         </button>
         <button
           onClick={() => onApply(result, "both")}
-          className="text-[12px] px-3 h-9 rounded-md border border-primary/40 text-primary hover:bg-primary/10 inline-flex items-center gap-1.5"
+          disabled={applying}
+          className="text-[12px] px-3 h-9 rounded-md border border-primary/40 text-primary hover:bg-primary/10 inline-flex items-center gap-1.5 disabled:opacity-50"
         >
           Aplicar e abrir Workspace
         </button>

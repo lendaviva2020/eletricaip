@@ -685,23 +685,19 @@ export const restoreProjectVersion = createServerFn({ method: "POST" })
     if (verErr) throw new Error(verErr.message);
     if (!ver) throw new Error("Versão não encontrada.");
 
-    const { data: diagram } = await supabase
-      .from("diagrams")
-      .select("id")
-      .eq("project_id", data.projectId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (diagram) {
-      await supabase
-        .from("diagrams")
-        .update({
-          canvas_data: (ver.snapshot ?? EMPTY_SNAPSHOT) as unknown as Json,
-          updated_at: new Date().toISOString(),
-        })
-
-        .eq("id", diagram.id);
+    // Só restaura snapshot COMPLETO e válido: versões antigas gravadas em outro
+    // formato ({nodes, edges}) deixariam o canvas vazio ao carregar.
+    const parsed = SnapshotSchema.safeParse(ver.snapshot);
+    if (!parsed.success) {
+      throw new Error(
+        `A versão v${ver.version_number} foi gravada em formato antigo e não contém o projeto completo — não pode ser restaurada.`,
+      );
     }
+    await saveProjectRecord(authCtx, {
+      projectId: data.projectId,
+      snapshot: parsed.data,
+      force: true,
+    });
     return { ok: true, restoredVersion: ver.version_number };
   });
 

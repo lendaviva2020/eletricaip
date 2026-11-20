@@ -4,6 +4,7 @@ import { useScadaStore } from "@/lib/scada/scada-store";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useProjectStore } from "@/lib/project-store";
+import { useCurrentProject } from "@/lib/current-project";
 
 import { useEditorStore } from "@/lib/editor/store";
 import { useDiagramStore } from "@/lib/diagram/store";
@@ -170,6 +171,13 @@ export function useProjectPersistence(projectId: string | null) {
       if (snap.plc) {
         usePlcStore.getState().setProject(snap.plc as PlcProject);
       }
+      // Projeto aberto = projeto atual (barra superior, "Salvar versão").
+      // Antes ninguém definia isto e "Salvar versão" sempre dizia "Nenhum projeto ativo".
+      useCurrentProject.getState().setProject({
+        id: res.project.id,
+        name: res.project.name,
+        client: res.project.client ?? null,
+      });
 
       const unifiedDoc = useUnifiedProjectStore.getState().hydrateFromV2Snapshot(
         snap,
