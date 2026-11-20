@@ -249,6 +249,8 @@ export const CableSpecSchema = z.object({
   length_m: z.number().positive().max(100_000).optional(),
   insulation: z.enum(["PVC", "EPR", "XLPE"]).default("PVC"),
   installation: z.string().max(32).optional(), // método A1, B1 etc
+  /** Circuitos agrupados no mesmo conduto/bandeja (NBR 5410 Tab. 42). Ausente = 1. */
+  groupedCircuits: z.number().int().min(1).max(20).optional(),
 });
 
 export const DiagramEdgeSchema = z.object({
@@ -269,11 +271,23 @@ export const DiagramEdgeSchema = z.object({
 export type DiagramEdge = z.infer<typeof DiagramEdgeSchema>;
 export type CircuitConfig = NonNullable<DiagramEdge["circuitConfig"]>;
 
+/** Dados da rede que alimenta o projeto (cálculo de curto e proteção contra choque). */
+export const NetworkSettingsSchema = z.object({
+  /** Esquema de aterramento (NBR 5410 §4.2.2.2). */
+  earthing: z.enum(["TN-S", "TN-C", "TN-C-S", "TT", "IT"]).optional(),
+  /** Potência de curto-circuito da rede a montante do trafo (MVA), informada pela concessionária. */
+  utilityScc_MVA: z.number().positive().max(100_000).optional(),
+  /** Temperatura ambiente dos cabos (°C). Ausente = 30 °C (NBR 5410 Tab. 40). */
+  ambientTemp_C: z.number().min(10).max(80).optional(),
+});
+export type NetworkSettings = z.infer<typeof NetworkSettingsSchema>;
+
 export const DiagramMetadataSchema = z.object({
   title: z.string().max(160).default("Sem título"),
   author: z.string().max(120).optional(),
   client: z.string().max(120).optional(),
   norms: z.array(z.string().max(64)).default(["NBR 5410"]),
+  network: NetworkSettingsSchema.optional(),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
 });

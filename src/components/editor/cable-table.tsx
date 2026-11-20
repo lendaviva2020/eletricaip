@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 
 const METHODS = ["A1", "A2", "B1", "B2", "C", "D", "E", "F"] as const;
 const MAX_LENGTH_M = 100_000;
+const GROUPING_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 16, 20] as const;
 
 /** Cabo a destacar quando a tabela é aberta a partir de um aviso. */
 const useCableFocus = create<{ edgeId: string | null; set: (id: string | null) => void }>(
@@ -189,6 +190,9 @@ export function CableTable() {
               <th className="px-2 py-1 font-semibold">{t("cableTable.colProtection")}</th>
               <th className="px-2 py-1 font-semibold">{t("cableTable.colSection")}</th>
               <th className="px-2 py-1 font-semibold">{t("cableTable.colMethod")}</th>
+              <th className="px-2 py-1 font-semibold" title={t("cableTable.groupingHint")}>
+                {t("cableTable.colGrouping")}
+              </th>
               <th className="px-2 py-1 font-semibold">{t("cableTable.colLength")}</th>
               <th className="px-2 py-1 font-semibold">{t("cableTable.colDrop")}</th>
               <th className="px-2 py-1 font-semibold">{t("cableTable.colStatus")}</th>
@@ -254,6 +258,24 @@ export function CableTable() {
                       {METHODS.map((m) => (
                         <option key={m} value={m}>
                           {m}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <select
+                      value={edge.cable?.groupedCircuits ?? 1}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        updateCable(edge, { groupedCircuits: v > 1 ? v : undefined });
+                      }}
+                      aria-label={t("cableTable.colGrouping")}
+                      title={t("cableTable.groupingHint")}
+                      className="h-7 rounded border border-border bg-input px-1 text-xs"
+                    >
+                      {GROUPING_OPTIONS.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
                         </option>
                       ))}
                     </select>

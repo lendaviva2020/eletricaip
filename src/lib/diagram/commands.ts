@@ -3,7 +3,14 @@
 // History stack com coalescing de moves e suporte a batches.
 import { applyDraft, makeEdge, makeNode } from "./model";
 import type { AiDiagramPatch } from "./schema";
-import type { DiagramDoc, DiagramEdge, DiagramNode, NodeParams, Position } from "./schema";
+import type {
+  DiagramDoc,
+  DiagramEdge,
+  DiagramNode,
+  NetworkSettings,
+  NodeParams,
+  Position,
+} from "./schema";
 
 // ===== tipos de comando =====
 export type Command =
@@ -26,6 +33,11 @@ export type Command =
       edgeId: string;
       from?: Position[];
       to?: Position[];
+    }
+  | {
+      type: "UpdateNetworkSettings";
+      from?: NetworkSettings;
+      to?: NetworkSettings;
     }
   | { type: "ApplyAiPatch"; patch: AiDiagramPatch; inverse: Command[] }
   | { type: "Batch"; commands: Command[] };
@@ -82,6 +94,11 @@ export function applyCommand(doc: DiagramDoc, cmd: Command): DiagramDoc {
       return applyDraft(doc, (d) => {
         const e = d.edges[cmd.edgeId];
         if (e) e.waypoints = cmd.to;
+      });
+    case "UpdateNetworkSettings":
+      return applyDraft(doc, (d) => {
+        if (cmd.to) d.metadata.network = cmd.to;
+        else delete d.metadata.network;
       });
     case "ApplyAiPatch": {
       const p = cmd.patch;
@@ -157,6 +174,8 @@ export function invertCommand(doc: DiagramDoc, cmd: Command): Command | null {
       return { type: "UpdateEdgeCable", edgeId: cmd.edgeId, from: cmd.to, to: cmd.from };
     case "UpdateEdgeWaypoints":
       return { type: "UpdateEdgeWaypoints", edgeId: cmd.edgeId, from: cmd.to, to: cmd.from };
+    case "UpdateNetworkSettings":
+      return { type: "UpdateNetworkSettings", from: cmd.to, to: cmd.from };
     case "ApplyAiPatch":
       return { type: "Batch", commands: cmd.inverse };
     case "Batch": {

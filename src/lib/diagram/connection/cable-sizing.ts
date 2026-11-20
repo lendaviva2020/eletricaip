@@ -290,6 +290,8 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
       loadedConductors: three ? 3 : 2,
       safetyFactor: singleMotor ? 1.25 : 1,
       breaker_A: protection?.in_A,
+      ambientTemp_C: doc.metadata.network?.ambientTemp_C,
+      groupedCircuits: cur?.groupedCircuits,
       length_m: cur?.length_m,
       voltage_V: three ? 380 : 220,
       maxVoltageDrop_pct: MAX_DROP_PCT,
@@ -349,7 +351,7 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
   }
 
   const premises: string[] = [
-    "Condutor de cobre, isolação conforme o cabo (padrão PVC 70 °C), temperatura ambiente 30 °C, um circuito por eletroduto.",
+    `Condutor de cobre, isolação conforme o cabo (padrão PVC 70 °C), temperatura ambiente ${doc.metadata.network?.ambientTemp_C ?? 30} °C${doc.metadata.network?.ambientTemp_C === undefined ? " (padrão — informe nos dados da rede)" : ""}; agrupamento conforme cada cabo (padrão: um circuito por conduto, NBR 5410 Tab. 42).`,
     "Ib = soma das cargas a jusante; ramal de motor único com I'z ≥ 1,25·In (NBR 5410 §6.5.1.3.1).",
     "Coordenação Ib ≤ In ≤ I'z com a proteção a montante (NBR 5410 §5.3.4.1).",
   ];

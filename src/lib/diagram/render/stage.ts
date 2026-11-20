@@ -8,6 +8,14 @@
 // coloração por estado real (energizado, desenergizado, falha) e fundo cinza técnico.
 
 import { nodeDisplayLabel } from "./node-label";
+import type { BadgeLevel, NetworkBadge } from "./network-overlay";
+
+const BADGE_COLORS: Record<BadgeLevel, number> = {
+  ok: CANVAS_PALETTE.badgeOk,
+  warn: CANVAS_PALETTE.badgeWarn,
+  error: CANVAS_PALETTE.badgeError,
+  pending: CANVAS_PALETTE.badgePending,
+};
 // Sem este módulo o Pixi v8 gera código de shader com `new Function`, que a
 // CSP de produção (sem 'unsafe-eval') bloqueia: o canvas nunca iniciava em
 // produção e o app caía no modo de compatibilidade (imagem travada).
@@ -206,6 +214,8 @@ export class DiagramStage {
   private edgesLayer = new Container();
   private junctionsLayer = new Graphics();
   private overlayLayer = new Container();
+  /** Etiquetas do cálculo de rede (curto, Icu, queda) — só leitura, sem eventos. */
+  private resultsLayer = new Container();
   /** Partículas de corrente e pulsos de manobra (redesenhado a cada quadro). */
   private flowLayer = new Graphics();
   private flowPaths = new Map<string, FlowPath>();
@@ -314,7 +324,9 @@ export class DiagramStage {
     this.viewport.addChild(this.junctionsLayer);
     this.viewport.addChild(this.flowLayer);
     this.viewport.addChild(this.nodesLayer);
+    this.viewport.addChild(this.resultsLayer);
     this.viewport.addChild(this.overlayLayer);
+    this.resultsLayer.eventMode = "none";
     this.flowLayer.eventMode = "none";
     this.reducedMotion = prefersReducedMotion();
     this.flowTicker = (t: Ticker) => this.drawFlow(t.lastTime);
@@ -708,6 +720,38 @@ export class DiagramStage {
   }
 
   /** Diff incremental do scene graph contra o doc. */
+  /** Desenha (ou remove, com null/[]) as etiquetas de resultado do cálculo de rede. */
+  setNetworkBadges(badges: ReadonlyArray<NetworkBadge> | null) {
+    if (this.destroyed) return;
+    for (const child of this.resultsLayer.removeChildren()) child.destroy({ children: true });
+    if (!badges || badges.length === 0) return;
+    for (const b of badges) {
+      const color = BADGE_COLORS[b.level];
+      const text = new Text({
+        text: b.lines.join("\n"),
+        style: {
+          fill: CANVAS_PALETTE.badgeText,
+          fontSize: 9.5,
+          fontFamily: "monospace",
+          lineHeight: 12,
+        },
+        resolution: 2,
+      });
+      const padX = 4;
+      const padY = 3;
+      const bg = new Graphics()
+        .roundRect(0, 0, text.width + padX * 2 + 3, text.height + padY * 2, 3)
+        .fill({ color: CANVAS_PALETTE.badgeBg, alpha: 0.88 })
+        .stroke({ width: 1, color });
+      const bar = new Graphics().rect(0, 0, 3, text.height + padY * 2).fill({ color });
+      text.position.set(padX + 3, padY);
+      const c = new Container();
+      c.addChild(bg, bar, text);
+      c.position.set(b.x, b.y);
+      this.resultsLayer.addChild(c);
+    }
+  }
+
   sync(
     doc: DiagramDoc,
     sheet: SheetKind,

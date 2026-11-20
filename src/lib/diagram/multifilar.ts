@@ -6,6 +6,7 @@ import type { CircuitConfig, DiagramDoc, DiagramEdge, DiagramNode, NodeKind } fr
 import { classifyMargin, type Severity } from "../diagnostics/types";
 import { validateElectricalTopology } from "./connection/graph-validator";
 import { cableName, isFieldCable, sizeDiagramCables } from "./connection/cable-sizing";
+import { analyzeNetwork } from "./connection/network-calculation";
 import { analyzeProtectionCoordination } from "./connection/protection-coordination";
 
 export const CONDUCTOR_LABELS: Record<CircuitConfig, string[]> = {
@@ -648,6 +649,18 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
     });
   }
 
+  // 2c. Cálculo de rede: proteção contra choque, queda total, suportabilidade térmica.
+  for (const f of analyzeNetwork(doc).findings) {
+    alerts.push({
+      id: `net_${f.code.toLowerCase()}_${f.nodeId ?? f.edgeId ?? "rede"}`,
+      type: f.severity === "error" ? "ERRO" : "AVISO",
+      severity: f.severity,
+      message: `${f.message} (${f.clause})`,
+      ...(f.nodeId ? { nodeId: f.nodeId } : {}),
+      ...(f.edgeId ? { edgeId: f.edgeId } : {}),
+    });
+  }
+
   // 3. Cabos sem dados: queda de tensão não verificável (pendência, nunca valor presumido)
   const missing = listCablesMissingData(doc);
   if (missing.length > 0) {
@@ -751,7 +764,10 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
     edges.length > 0 &&
     // Coordenação de proteções é verificação à parte: não invalida a continuidade.
     alerts.filter(
-      (a) => (a.type === "ERRO" || a.severity === "error") && !a.id.startsWith("coord_"),
+      (a) =>
+        (a.type === "ERRO" || a.severity === "error") &&
+        !a.id.startsWith("coord_") &&
+        !a.id.startsWith("net_"),
     ).length === 0
   ) {
     alerts.push({

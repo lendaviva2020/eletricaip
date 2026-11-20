@@ -35,6 +35,7 @@ import type { WorkspaceMode, ConsoleTab } from "@/lib/workspace-data";
 import { runDiagramDiagnostics, type DiagnosticAlert } from "@/lib/diagram/multifilar";
 import { validateRungs, type LadderIssue } from "@/lib/ladder/validator";
 import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
+import { NetworkPanel } from "@/components/editor/network-panel";
 import { CableTable, applyCableSizing, openCableTable } from "@/components/editor/cable-table";
 import {
   buildDiagnosticContextFromMultifilar,
@@ -743,7 +744,12 @@ export function UnifiedBottomDock() {
           )}
 
           {/* ABA 2: CÁLCULOS NBR 5410 — tabela real de cabos (dimensionar, comprimento, ΔV) */}
-          {tab === "calculos_nbr" && <CableTable />}
+          {tab === "calculos_nbr" && (
+            <div className="space-y-4">
+              <NetworkPanel />
+              <CableTable />
+            </div>
+          )}
 
           {/* ABA 3: LISTA DE MATERIAIS (BOM) */}
           {tab === "bom" && (

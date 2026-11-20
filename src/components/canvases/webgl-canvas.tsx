@@ -58,6 +58,10 @@ import {
   type MoveDelta,
 } from "@/lib/diagram/render/stage";
 import { cmd } from "@/lib/diagram/commands";
+import { useNetworkOverlay } from "@/lib/diagram/network-overlay-store";
+import { analyzeNetwork } from "@/lib/diagram/connection/network-calculation";
+import { analyzeProtectionCoordination } from "@/lib/diagram/connection/protection-coordination";
+import { buildNetworkBadges } from "@/lib/diagram/render/network-overlay";
 import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { useEditorStore } from "@/lib/editor/store";
 import { useI18n } from "@/lib/i18n";
@@ -532,6 +536,29 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     }
     hadSheetNodesRef.current = hasNodes;
   }, [doc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization, autoZoom]);
+
+  // Camada de resultados do cálculo de rede (curto por ponto, Icu, queda total).
+  const networkOverlay = useNetworkOverlay((s) => s.visible);
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    if (!networkOverlay || effectiveSheet !== "unifilar") {
+      stage.setNetworkBadges(null);
+      return;
+    }
+    // Debounce: o cálculo percorre a rede inteira; não refaz a cada pixel de arraste.
+    const handle = window.setTimeout(() => {
+      try {
+        const network = analyzeNetwork(doc);
+        const coordination = analyzeProtectionCoordination(doc);
+        stageRef.current?.setNetworkBadges(buildNetworkBadges(doc, network, coordination));
+      } catch (err) {
+        console.error("[canvas] falha no cálculo de rede:", err);
+        stageRef.current?.setNetworkBadges(null);
+      }
+    }, 150);
+    return () => window.clearTimeout(handle);
+  }, [doc, effectiveSheet, networkOverlay, stageGeneration]);
 
   // Evento explícito para reenquadramento após IA / Importação em lote
   useEffect(() => {

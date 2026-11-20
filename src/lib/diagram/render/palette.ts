@@ -20,6 +20,13 @@ export const CANVAS_PALETTE = {
   wireEnergized: 0x22c55e,
   /** Partículas de corrente (contraste sobre o verde energizado). */
   flowParticle: 0xfacc15,
+  /** Etiquetas do cálculo de rede. */
+  badgeOk: 0x10b981,
+  badgeWarn: 0xf59e0b,
+  badgeError: 0xef4444,
+  badgePending: 0x94a3b8,
+  badgeBg: 0x0f172a,
+  badgeText: 0xf8fafc,
   wireDeenergized: 0x475569,
   wireFault: 0xef4444,
   selection: 0x22d3ee,

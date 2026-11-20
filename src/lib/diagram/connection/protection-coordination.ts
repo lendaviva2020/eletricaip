@@ -16,6 +16,7 @@
 import type { DiagramDoc, DiagramEdge, DiagramNode } from "../schema";
 import { shortCircuitIEC60909 } from "@/lib/electrical-sim";
 import { loadCurrent_A, nodeDisplayName } from "./cable-sizing";
+import { analyzeNetwork, typicalTransformerUk } from "./network-calculation";
 
 export type CoordinationCode =
   | "PROTECTION_UNDERSIZED"
@@ -44,12 +45,7 @@ export interface CoordinationReport {
 const THERMAL_MIN_RATIO = 0.95;
 const THERMAL_MAX_RATIO = 1.25;
 
-/** uk típico de transformador de distribuição por potência (premissa quando não informado). */
-export function typicalTransformerUk(kVA: number): number {
-  if (kVA <= 150) return 3.5;
-  if (kVA <= 300) return 4.5;
-  return 5.0;
-}
+export { typicalTransformerUk };
 
 const isPower = (e: DiagramEdge) => e.kind === "power" && e.sheet === "unifilar";
 
@@ -169,7 +165,10 @@ export function analyzeProtectionCoordination(doc: DiagramDoc): CoordinationRepo
     }
   }
 
-  // 5. Capacidade de interrupção × curto presumido no barramento
+  // 5. Capacidade de interrupção × curto presumido NO PONTO de cada disjuntor
+  //    (IEC 60909 com a impedância dos cabos a montante). Onde o curto local não é
+  //    calculável (cabo sem dados), usa o curto do secundário do trafo — maior,
+  //    portanto do lado da segurança — e declara isso como premissa.
   let prospectiveIk_kA: number | undefined;
   const trafo = nodes.find((n) => n.params.kind === "transformer");
   const kVA = trafo ? num(trafo, "kVA") : undefined;
@@ -190,21 +189,27 @@ export function analyzeProtectionCoordination(doc: DiagramDoc): CoordinationRepo
       prospectiveIk_kA = undefined;
     }
     if (prospectiveIk_kA !== undefined) {
+      const network = analyzeNetwork(doc);
       const assumptions = [
-        `Curto IEC 60909 no secundário de ${name(trafo)} (${kVA} kVA, ${U} V, uk ${uk}%${ukGiven ? "" : " típico — informe o uk de placa"}); impedância da rede a montante e dos cabos desprezada (lado da segurança).`,
+        `Curto IEC 60909 a partir de ${name(trafo)} (${kVA} kVA, ${U} V, uk ${uk}%${ukGiven ? "" : " típico — informe o uk de placa"}), somando a impedância dos cabos a montante de cada disjuntor.`,
+        ...network.premises.filter((p) => p.includes("concessionária")),
       ];
       const missing: DiagramNode[] = [];
+      let maxLocal = 0;
       for (const b of nodes) {
         if (b.params.kind !== "breaker") continue;
+        const local = network.nodes[b.id]?.Ik3max_kA;
+        const ikAt = local !== undefined ? round1(local) : prospectiveIk_kA;
+        maxLocal = Math.max(maxLocal, ikAt);
         const icu = num(b, "icc_kA");
         if (icu === undefined) {
           missing.push(b);
-        } else if (icu < prospectiveIk_kA) {
+        } else if (icu < ikAt) {
           findings.push({
             code: "BREAKING_CAPACITY_LOW",
             severity: "error",
             nodeId: b.id,
-            message: `${name(b)}: capacidade de interrupção ${icu} kA menor que o curto presumido ${prospectiveIk_kA} kA (NBR 5410 §5.3.5 / IEC 60947-2).`,
+            message: `${name(b)}: capacidade de interrupção ${icu} kA menor que o curto presumido no seu ponto de instalação, ${ikAt} kA${local === undefined ? " (curto do secundário — cabos a montante sem dados)" : ""} (NBR 5410 §5.3.5 / IEC 60947-2).`,
             assumptions,
           });
         }
@@ -214,7 +219,7 @@ export function analyzeProtectionCoordination(doc: DiagramDoc): CoordinationRepo
           code: "BREAKING_CAPACITY_MISSING",
           severity: "warning",
           nodeId: missing[0].id,
-          message: `${missing.length} disjuntor(es) sem capacidade de interrupção (Icu) informada: curto presumido no barramento ≈ ${prospectiveIk_kA} kA — escolha disjuntores com Icu ≥ esse valor.`,
+          message: `${missing.length} disjuntor(es) sem capacidade de interrupção (Icu) informada: curto presumido de até ${round1(maxLocal || prospectiveIk_kA)} kA nos pontos de instalação — escolha disjuntores com Icu ≥ o curto do seu ponto (veja a tabela da rede).`,
           assumptions,
         });
       }
