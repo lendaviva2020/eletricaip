@@ -143,9 +143,7 @@ describe("valores padrão da biblioteca", () => {
       },
     };
     d.edges.e2 = { id: "e2", sheet: "unifilar", source: "q1", target: "m1", kind: "power" };
-    expect(blockingUnifilarErrors(d).some((m) => m.includes("valores padrão da biblioteca"))).toBe(
-      true,
-    );
+    expect(blockingUnifilarErrors(d).some((m) => m.includes("ainda não confirmados"))).toBe(true);
     // Confirmado (sem a lista): deixa de bloquear por esse motivo.
     delete (d.nodes.m1.params as { unconfirmed?: string[] }).unconfirmed;
     expect(blockingUnifilarErrors(d).some((m) => m.includes("valores padrão"))).toBe(false);

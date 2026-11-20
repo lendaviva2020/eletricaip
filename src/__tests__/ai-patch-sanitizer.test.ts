@@ -92,7 +92,13 @@ describe("sanitizeAiPatch", () => {
     });
     const r = sanitizeAiPatch(baseDoc(), p);
     expect(r.warnings).toEqual([]);
-    expect(r.patch.addNodes).toEqual(p.addNodes);
+    // Único acréscimo: valores nominais da IA marcados como não confirmados.
+    expect(r.patch.addNodes).toEqual(
+      p.addNodes.map((n) => ({
+        ...n,
+        params: { ...n.params, unconfirmed: ["power_kW", "voltage_V", "startMethod"] },
+      })),
+    );
     expect(r.patch.addEdges).toEqual(p.addEdges);
   });
 });

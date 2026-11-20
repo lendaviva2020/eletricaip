@@ -356,6 +356,11 @@ export const en: TranslationCatalog = {
     opcDisconnected: "OPC-UA server disconnected",
   },
   rightPanel: {
+    unconfirmedTitle: "Unconfirmed values",
+    unconfirmedHint:
+      "These values were suggested by the system or the AI. Check them against the nameplate/catalog data before issuing the project.",
+    confirmValues: "Confirm checked values",
+    valuesConfirmed: "Values confirmed",
     props: "Properties",
     ai: "AI",
     norms: "Standards",
@@ -1080,6 +1085,25 @@ export const en: TranslationCatalog = {
     verdict_indeterminada: "Undetermined (fault current not computed)",
     premise:
       "Bands are the standard limits (IEC 60898-1, thermal relay IEC 60947-4-1) and the cable adiabatic damage (k²S²). Real manufacturer curves lie inside the bands; current selectivity up to the upstream breaker's minimum magnetic trip.",
+  },
+  arcPanel: {
+    title: "Arc flash per board (IEEE 1584-2002)",
+    noBoards: "No busbar or MCC in the single-line diagram.",
+    colBoard: "Board",
+    colIbf: "Max Ik (kA)",
+    colIa: "Arc I (kA)",
+    colTime: "Time (s)",
+    colEnergy: "Energy (cal/cm²)",
+    colPpe: "PPE (cat.)",
+    colBoundary: "Arc boundary (m)",
+    pending: "pending",
+    capped: "capped at 2 s",
+    outOfRange: "outside the model range",
+    danger: "> 40 cal/cm²: no adequate PPE",
+    downloadLabels: "Download printable labels",
+    labelsHint:
+      "Indicative labels — before posting them on the panel, confirm with the formal arc flash study signed by the engineer of record.",
+    labelsDone: "Labels generated",
   },
   networkPanel: {
     title: "Network and short circuit (IEC 60909 / NBR 5410)",

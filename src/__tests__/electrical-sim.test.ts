@@ -218,16 +218,39 @@ describe("arcFlashIEEE1584", () => {
     );
   });
 
-  it("usa 455 mm e 0,1 s como padrão IEEE 1584", () => {
+  it("usa 455 mm e 0,1 s como padrão IEEE 1584 (painel)", () => {
     const r = arcFlashIEEE1584(10);
     expect(r.workingDistance_mm).toBe(455);
     expect(r.clearingTime_s).toBe(0.1);
   });
 
-  it("energia baixa resulta em PPE 0 e limite de arco maior que a distância de trabalho", () => {
+  it("confere com o cálculo manual do modelo IEEE 1584-2002 (480 V, 10 kA, painel, 0,1 s)", () => {
+    const r = arcFlashIEEE1584(10, { voltage_kV: 0.48, equipment: "panel", clearingTime_s: 0.1 });
+    // lg Ia = 0,8168 → Ia ≈ 6,56 kA; lg En = 0,2425 → En ≈ 1,75 J/cm²;
+    // E = 4,184·1,5·1,75·0,5·(610/455)^1,641 ≈ 8,9 J/cm² ≈ 2,1 cal/cm².
+    expect(r.arcingCurrent_kA).toBeCloseTo(6.56, 1);
+    expect(r.incidentEnergy_J_cm2).toBeGreaterThan(8.5);
+    expect(r.incidentEnergy_J_cm2).toBeLessThan(9.3);
+    expect(r.ppe_category).toBe(1);
+    expect(r.withinModelRange).toBe(true);
+  });
+
+  it("energia baixa resulta em PPE 0 e limite de arco MENOR que a distância de trabalho", () => {
     const r = arcFlashIEEE1584(2, { clearingTime_s: 0.02, workingDistance_mm: 455 });
     expect(r.ppe_category).toBe(0);
+    expect(r.arc_boundary_mm).toBeLessThan(455);
+  });
+
+  it("energia alta: limite de arco além da distância de trabalho", () => {
+    const r = arcFlashIEEE1584(25, { clearingTime_s: 0.5, voltage_kV: 0.38 });
+    expect(r.incidentEnergy_cal_cm2).toBeGreaterThan(1.2);
     expect(r.arc_boundary_mm).toBeGreaterThan(455);
+  });
+
+  it("esquema isolado (IT) dá energia maior que o aterrado (K2 = 0)", () => {
+    expect(arcFlashIEEE1584(10, { grounded: false }).incidentEnergy_J_cm2).toBeGreaterThan(
+      arcFlashIEEE1584(10).incidentEnergy_J_cm2,
+    );
   });
 
   it("não explode com corrente zero (clamp em 0,1 kA)", () => {

@@ -11,6 +11,7 @@
 // Cada correção vira um aviso legível para o relatório ao usuário.
 import type { AiDiagramPatch, DiagramDoc, DiagramEdge, DiagramNode } from "./schema";
 import { isValidDeviceTag, normalizeTag } from "@/lib/documentation/device-designation";
+import { markAllUnconfirmed, markChangedUnconfirmed } from "./unconfirmed-params";
 
 export interface PatchSanitizeResult {
   patch: AiDiagramPatch;
@@ -73,7 +74,10 @@ export function sanitizeAiPatch(doc: DiagramDoc, patch: AiDiagramPatch): PatchSa
       warnings.push(`ID "${n.id}" já existia — novo equipamento renomeado para "${id}"`);
     }
     takenNodeIds.add(id);
-    addNodes.push(id === n.id ? n : { ...n, id });
+    // Valor nominal escolhido pela IA não é dado de placa: fica pendente de
+    // confirmação do engenheiro (diagnóstico avisa; emissão bloqueia).
+    const params = markAllUnconfirmed(n.params);
+    addNodes.push({ ...n, id, params });
   }
   const resolve = (id: string) => nodeRename.get(id) ?? id;
 
@@ -139,7 +143,7 @@ export function sanitizeAiPatch(doc: DiagramDoc, patch: AiDiagramPatch): PatchSa
       if (rest.position || rest.label !== undefined) updateNodes.push(rest);
       continue;
     }
-    updateNodes.push(u);
+    updateNodes.push(u.params ? { ...u, params: markChangedUnconfirmed(cur.params, u.params) } : u);
   }
   const updateEdges = (patch.updateEdges ?? []).filter((u) => {
     const ok = doc.edges[u.id] !== undefined && !removeEdgeIds.has(u.id);

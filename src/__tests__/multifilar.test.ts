@@ -6,7 +6,9 @@ import {
   buildMultifilarCommands,
   clearMultifilarCommands,
   inferCircuitConfig,
+  inferCircuitConfigInDoc,
   summarizeConductors,
+  syncMultifilarCommands,
 } from "@/lib/diagram/multifilar";
 import type {
   DiagramDoc,
@@ -100,7 +102,7 @@ describe("buildMultifilarCommands", () => {
     if (addedEdge.type !== "AddEdge") throw new Error("esperado AddEdge");
     expect(addedEdge.edge.sheet).toBe("multifilar");
     expect(addedEdge.edge.id).not.toBe("e1");
-    expect(addedEdge.edge.circuitConfig).toBe("3F");
+    expect(addedEdge.edge.circuitConfig).toBe("3F+PE");
     const newIds = adds.flatMap((c) => (c.type === "AddNode" ? [c.node.id] : []));
     expect(newIds).toContain(addedEdge.edge.source);
     expect(newIds).toContain(addedEdge.edge.target);
@@ -131,7 +133,7 @@ describe("buildMultifilarCommands", () => {
     const mfEdges = Object.values(applied.edges).filter((e) => e.sheet === "multifilar");
     expect(mfNodes).toHaveLength(2);
     expect(mfEdges).toHaveLength(1);
-    expect(mfEdges[0].circuitConfig).toBe("F+N");
+    expect(mfEdges[0].circuitConfig).toBe("F+N+PE");
 
     const inverse = invertCommand(original, batch);
     expect(inverse).not.toBeNull();
@@ -210,5 +212,45 @@ describe("summarizeConductors (memorial descritivo)", () => {
   it("ignora sheets não-multifilar e retorna vazio", () => {
     const doc = docWith([node("u1", { kind: "terminal" })], [edge("e1", "u1", "u1")]);
     expect(summarizeConductors(doc)).toEqual({ rows: [], totalCircuits: 0, totalConductors: 0 });
+  });
+});
+
+describe("inferCircuitConfigInDoc — condutores pelo circuito", () => {
+  const q1 = node("q1", { kind: "breaker", in_A: 25, curve: "C", poles: 3 });
+  const k1 = node("k1", { kind: "contactor", in_A: 25, coil_V: 24 });
+  const k2 = node("k2", { kind: "contactor", in_A: 25, coil_V: 24 });
+  const vfd = node("v1", { kind: "vfd", power_kW: 5.5, voltage_V: 380 } as NodeParams);
+  const motor = node("m1", { kind: "motor", power_kW: 5.5, voltage_V: 380, startMethod: "DOL" });
+  const socket = node("s1", { kind: "socket", current_A: 10, voltage_V: 220 });
+
+  it("cabo da carga leva PE: motor 3F+PE, tomada F+N+PE", () => {
+    const d = docWith([q1, motor, socket], [edge("e1", "q1", "m1"), edge("e2", "q1", "s1")]);
+    expect(inferCircuitConfigInDoc(d, d.edges.e1)).toBe("3F+PE");
+    expect(inferCircuitConfigInDoc(d, d.edges.e2)).toBe("F+N+PE");
+  });
+
+  it("inversor → motor não ganha neutro", () => {
+    const d = docWith([vfd, motor], [edge("e1", "v1", "m1")]);
+    expect(inferCircuitConfigInDoc(d, d.edges.e1)).toBe("3F+PE");
+  });
+
+  it("ponte contator → contator herda as fases da carga (antes F+N inventado), sem PE", () => {
+    const d = docWith([k1, k2, motor], [edge("e1", "k1", "k2"), edge("e2", "k2", "m1")]);
+    expect(inferCircuitConfigInDoc(d, d.edges.e1)).toBe("3F");
+  });
+
+  it("sincronização leva o cabo editado no unifilar ao multifilar", () => {
+    let d = docWith([q1, motor], [edge("e1", "q1", "m1")]);
+    for (const c of buildMultifilarCommands(d)) d = applyCommand(d, c);
+    d = {
+      ...d,
+      edges: {
+        ...d.edges,
+        e1: { ...d.edges.e1, cable: { section_mm2: 6, length_m: 30, insulation: "PVC" } },
+      },
+    };
+    for (const c of syncMultifilarCommands(d)) d = applyCommand(d, c);
+    expect(d.edges.mf_e1.cable?.section_mm2).toBe(6);
+    expect(d.edges.mf_e1.circuitConfig).toBe("3F+PE");
   });
 });

@@ -508,22 +508,71 @@ export type ElectrodeConfiguration = "VB" | "VC" | "VD" | "HA" | "HB" | "HC";
 export interface ArcFlashResult {
   incidentEnergy_J_cm2: number;
   incidentEnergy_cal_cm2: number;
-  /** Tempo de curto-circuito usado (s) — 0,1 s típico para BT. */
+  /** Tempo de eliminação do arco usado (s). */
   clearingTime_s: number;
-  /** Distância de trabalho padrão IEEE 1584 (455 mm). */
+  /** Distância de trabalho (mm). */
   workingDistance_mm: number;
   ppe_category: 0 | 1 | 2 | 3 | 4;
+  /** Limite de aproximação ao arco (energia = 1,2 cal/cm²), em mm. */
   arc_boundary_mm: number;
+  /** Corrente de arco estimada (kA), IEEE 1584-2002 eq. (1). */
+  arcingCurrent_kA: number;
+  voltage_kV: number;
+  /** Dentro da faixa de validade do modelo (0,208–1 kV; 0,7–106 kA). */
+  withinModelRange: boolean;
+}
+
+/** Tipo de equipamento (IEEE 1584-2002 Tab. 3/4): gap típico, distância de trabalho e expoente x. */
+export type ArcEquipmentClass = "switchgear" | "panel" | "cable" | "open_air";
+
+export const ARC_EQUIPMENT_TYPICAL: Record<
+  ArcEquipmentClass,
+  { gap_mm: number; workingDistance_mm: number; distanceExponent: number; box: boolean }
+> = {
+  switchgear: { gap_mm: 32, workingDistance_mm: 610, distanceExponent: 1.473, box: true },
+  panel: { gap_mm: 25, workingDistance_mm: 455, distanceExponent: 1.641, box: true },
+  cable: { gap_mm: 13, workingDistance_mm: 455, distanceExponent: 2.0, box: true },
+  open_air: { gap_mm: 32, workingDistance_mm: 455, distanceExponent: 2.0, box: false },
+};
+
+/** Energia no limite de aproximação: 1,2 cal/cm² = 5,0 J/cm² (queimadura de 2º grau). */
+const ARC_BOUNDARY_J_CM2 = 5.0;
+/** Fator de cálculo para tensões ≤ 1 kV (IEEE 1584-2002). */
+const CF_LV = 1.5;
+
+/**
+ * Corrente de arco — IEEE 1584-2002 eq. (1), sistemas < 1 kV:
+ * lg Ia = K + 0,662·lg Ibf + 0,0966·V + 0,000526·G + 0,5588·V·lg Ibf − 0,00304·G·lg Ibf
+ * (K = −0,153 ao ar livre; −0,097 em invólucro).
+ */
+export function arcingCurrentIEEE1584(
+  ibf_kA: number,
+  voltage_kV: number,
+  gap_mm: number,
+  box: boolean,
+): number {
+  const lgIbf = Math.log10(Math.max(0.001, ibf_kA));
+  const K = box ? -0.097 : -0.153;
+  const lgIa =
+    K +
+    0.662 * lgIbf +
+    0.0966 * voltage_kV +
+    0.000526 * gap_mm +
+    0.5588 * voltage_kV * lgIbf -
+    0.00304 * gap_mm * lgIbf;
+  return Math.pow(10, lgIa);
 }
 
 /**
- * Energia incidente de arco elétrico — IEEE 1584-2002 (equação abreviada,
- * 3 fases, proteção aterrada por condutor):
+ * Energia incidente de arco elétrico — modelo empírico IEEE 1584-2002 para BT
+ * (tensão ≤ 1 kV):
  *
- * E = 0,137 · I_bc^0,4488 · Z_k^0,2451 · D^0,6403 · e^(0,023·G)   [J/cm²]
+ *   lg En = K1 + K2 + 1,081·lg Ia + 0,0011·G           (normalizada: 0,2 s, 610 mm)
+ *   E = 4,184 · Cf · En · (t / 0,2) · (610^x / D^x)    [J/cm²], Cf = 1,5
  *
- * com I_bc em kA, Z_k = entreferro do eletrodo (mm), D = distância de
- * trabalho (mm), G = gap do arco (mm).
+ * K1 = −0,792 (ar livre) / −0,555 (invólucro); K2 = −0,113 (aterrado) / 0 (IT).
+ * O resultado é o cálculo da norma com os parâmetros informados — gap, distância
+ * e tempo precisam ser conferidos pelo engenheiro (estudo de arco formal).
  */
 export function arcFlashIEEE1584(
   ik_kA: number,
@@ -532,21 +581,31 @@ export function arcFlashIEEE1584(
     workingDistance_mm?: number;
     electrodeGap_mm?: number;
     configuration?: ElectrodeConfiguration;
+    equipment?: ArcEquipmentClass;
+    voltage_kV?: number;
+    grounded?: boolean;
   } = {},
 ): ArcFlashResult {
-  const gap = opts.electrodeGap_mm ?? defaultGap(opts.configuration ?? "VB");
-  const D = opts.workingDistance_mm ?? 455;
+  const eq = ARC_EQUIPMENT_TYPICAL[opts.equipment ?? "panel"];
+  const box = eq.box;
+  const gap =
+    opts.electrodeGap_mm ?? (opts.configuration ? defaultGap(opts.configuration) : eq.gap_mm);
+  const D = opts.workingDistance_mm ?? eq.workingDistance_mm;
+  const x = eq.distanceExponent;
   const t = opts.clearingTime_s ?? 0.1;
-  const Ibc = Math.max(0.1, ik_kA);
+  const V = opts.voltage_kV ?? 0.38;
+  const Ibf = Math.max(0.1, ik_kA);
 
-  const eJ =
-    0.137 *
-    Math.pow(Ibc, 0.4488) *
-    Math.pow(gap, 0.2451) *
-    Math.pow(D, 0.6403) *
-    Math.exp(0.023 * gap) *
-    t;
+  const Ia = arcingCurrentIEEE1584(Ibf, V, gap, box);
+  const K1 = box ? -0.555 : -0.792;
+  const K2 = opts.grounded === false ? 0 : -0.113;
+  const lgEn = K1 + K2 + 1.081 * Math.log10(Ia) + 0.0011 * gap;
+  const En = Math.pow(10, lgEn);
+  const scaleT = CF_LV * 4.184 * En * (t / 0.2);
+  const eJ = scaleT * Math.pow(610 / D, x);
   const eCal = eJ / 4.184;
+  // Limite: distância em que E = 5,0 J/cm²  →  D_B = 610 · (scaleT / E_B)^(1/x).
+  const boundary = 610 * Math.pow(scaleT / ARC_BOUNDARY_J_CM2, 1 / x);
 
   return {
     incidentEnergy_J_cm2: round2(eJ),
@@ -554,27 +613,15 @@ export function arcFlashIEEE1584(
     clearingTime_s: t,
     workingDistance_mm: D,
     ppe_category: ppeFromEnergy(eCal),
-    arc_boundary_mm: round0(calculateArcBoundary(eCal, D)),
+    arc_boundary_mm: round0(boundary),
+    arcingCurrent_kA: round2(Ia),
+    voltage_kV: V,
+    withinModelRange: V >= 0.208 && V <= 1 && ik_kA >= 0.7 && ik_kA <= 106,
   };
 }
 
 function defaultGap(config: ElectrodeConfiguration): number {
-  switch (config) {
-    case "VB":
-      return 32;
-    case "VC":
-      return 32;
-    case "VD":
-      return 32;
-    case "HA":
-      return 19;
-    case "HB":
-      return 19;
-    case "HC":
-      return 19;
-    default:
-      return 32;
-  }
+  return config.startsWith("H") ? 19 : 32;
 }
 
 /** Categorias PPE da NFPA 70E (kcal/cm²): <1,2 | <4 | <8 | <25 | ≥25. */
@@ -584,14 +631,6 @@ export function ppeFromEnergy(cal_cm2: number): 0 | 1 | 2 | 3 | 4 {
   if (cal_cm2 < 8) return 2;
   if (cal_cm2 < 25) return 3;
   return 4;
-}
-
-function calculateArcBoundary(cal_cm2: number, workingDistance_mm: number): number {
-  if (cal_cm2 <= 0) return workingDistance_mm;
-  // E ∝ D^0,6403 → D_boundary = D · (1,2/E)^(1/0,6403)
-  const ratio = 1.2 / cal_cm2;
-  if (ratio <= 1) return workingDistance_mm;
-  return workingDistance_mm * Math.pow(ratio, 1 / 0.6403);
 }
 
 // ---------------- Esforço térmico de partida de motor ----------------

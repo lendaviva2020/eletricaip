@@ -12,6 +12,7 @@ import {
   type NodeCategory,
 } from "@/lib/project-store";
 import { useCurrentProject } from "@/lib/current-project";
+import { markAllUnconfirmed } from "@/lib/diagram/unconfirmed-params";
 import { generateArchitecture, pingArchitect } from "@/lib/ai-architect.functions";
 import { recordAiStatusEvent, listAiStatusEvents } from "@/lib/tenant-settings.functions";
 
@@ -284,7 +285,8 @@ export function convertArchitectResultToDiagramDoc(
     const newNode = makeNode({
       id: finalId,
       sheet: "unifilar",
-      params: canonicalParams,
+      // Valores nominais da IA ficam pendentes de confirmação do engenheiro.
+      params: markAllUnconfirmed(canonicalParams),
       position: n.position || { x: 100, y: 100 },
       label: n.label || n.id,
       rotation: 0,

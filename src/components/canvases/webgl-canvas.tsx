@@ -62,6 +62,7 @@ import { useNetworkOverlay } from "@/lib/diagram/network-overlay-store";
 import { analyzeNetwork } from "@/lib/diagram/connection/network-calculation";
 import { analyzeProtectionCoordination } from "@/lib/diagram/connection/protection-coordination";
 import { buildNetworkBadges } from "@/lib/diagram/render/network-overlay";
+import { analyzeArcFlash } from "@/lib/diagram/connection/arc-flash";
 import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { useEditorStore } from "@/lib/editor/store";
 import { useI18n } from "@/lib/i18n";
@@ -83,6 +84,7 @@ import { useUnifiedProjectStore } from "@/lib/model/unified-store";
 import type { SheetKind, NodeKind } from "@/lib/diagram/schema";
 import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
 import { buildDiagnosticContextFromMultifilar } from "@/lib/diagnostics/ai-repair-context";
+import { markAllUnconfirmed } from "@/lib/diagram/unconfirmed-params";
 import {
   type VoltaiComponentType,
   VOLTAI_COMPONENT_BY_TYPE,
@@ -148,26 +150,13 @@ function voltaiComponentToNodeKind(type: VoltaiComponentType): NodeKind {
   return (map[type] ?? "terminal") as NodeKind;
 }
 
-/** Parâmetros que não são dado nominal (não precisam de confirmação). */
-const NON_RATING_KEYS = new Set([
-  "kind",
-  "tag",
-  "notes",
-  "manufacturer",
-  "model",
-  "cpu",
-  "protocol",
-]);
-
 /**
  * Parâmetros iniciais de um símbolo solto da biblioteca: o esquema exige valores
  * nominais, então eles existem — mas ficam MARCADOS como não confirmados até o
  * engenheiro informar os dados de placa/catálogo.
  */
 function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
-  const base = libraryDefaultParams(kind);
-  const ratingKeys = Object.keys(base).filter((k) => !NON_RATING_KEYS.has(k));
-  return ratingKeys.length > 0 ? { ...base, unconfirmed: ratingKeys } : base;
+  return markAllUnconfirmed(libraryDefaultParams(kind));
 }
 
 function libraryDefaultParams(kind: NodeKind): Record<string, unknown> {
@@ -567,7 +556,10 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       try {
         const network = analyzeNetwork(doc);
         const coordination = analyzeProtectionCoordination(doc);
-        stageRef.current?.setNetworkBadges(buildNetworkBadges(doc, network, coordination));
+        const arcFlash = analyzeArcFlash(doc, network);
+        stageRef.current?.setNetworkBadges(
+          buildNetworkBadges(doc, network, coordination, arcFlash),
+        );
       } catch (err) {
         console.error("[canvas] falha no cálculo de rede:", err);
         stageRef.current?.setNetworkBadges(null);

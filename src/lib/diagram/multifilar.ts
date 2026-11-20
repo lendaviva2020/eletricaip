@@ -9,6 +9,7 @@ import { cableName, isFieldCable, sizeDiagramCables } from "./connection/cable-s
 import { analyzeNetwork } from "./connection/network-calculation";
 import { nodeDisplayName } from "./connection/cable-sizing";
 import { analyzeSurgeProtection } from "./connection/surge-protection";
+import { analyzeArcFlash } from "./connection/arc-flash";
 import { analyzeProtectionCoordination } from "./connection/protection-coordination";
 
 export const CONDUCTOR_LABELS: Record<CircuitConfig, string[]> = {
@@ -16,6 +17,7 @@ export const CONDUCTOR_LABELS: Record<CircuitConfig, string[]> = {
   "F+N": ["L1", "N"],
   "F+N+PE": ["L1", "N", "PE"],
   "3F": ["L1", "L2", "L3"],
+  "3F+PE": ["L1", "L2", "L3", "PE"],
   "3F+N": ["L1", "L2", "L3", "N"],
   "3F+N+PE": ["L1", "L2", "L3", "N", "PE"],
   N: ["N"],
@@ -76,6 +78,103 @@ export function inferCircuitConfig(
   return "F+N";
 }
 
+/** Cargas: o cabo que chega a elas leva o condutor de proteção (NBR 5410: todo circuito com PE). */
+const LOAD_CONFIG: Partial<Record<NodeKind, CircuitConfig>> = {
+  motor: "3F+PE",
+  capacitor_bank: "3F+PE",
+  load: "F+N+PE",
+  lamp: "F+N+PE",
+  socket: "F+N+PE",
+};
+
+function localConfig(
+  edge: DiagramEdge,
+  src: DiagramNode | undefined,
+  tgt: DiagramNode | undefined,
+): CircuitConfig | undefined {
+  if (edge.circuitConfig) return edge.circuitConfig;
+  for (const node of [src, tgt]) {
+    if (node?.params.kind === "ground") return "PE";
+    if (node?.params.kind === "neutral") return "N";
+  }
+  // Carga primeiro: inversor → motor não tem neutro (antes saía "3F+N" do inversor).
+  for (const node of [tgt, src]) {
+    const cfg = node && LOAD_CONFIG[node.params.kind];
+    if (cfg) {
+      // Carga trifásica de tensão ≥ 300 V ou motor: trifásico; carga monofásica fica F+N+PE.
+      if (cfg === "F+N+PE" && node.params.kind === "load") {
+        const V = (node.params as { voltage_V?: number }).voltage_V;
+        if (V !== undefined && V >= 300) return "3F+PE";
+      }
+      return cfg;
+    }
+  }
+  for (const node of [src, tgt]) {
+    const cfg = node && CONFIG_BY_KIND[node.params.kind];
+    if (cfg) return cfg;
+  }
+  for (const node of [src, tgt]) {
+    const p = node?.params;
+    if (p && (p.kind === "breaker" || p.kind === "rcd") && "poles" in p) {
+      if (p.poles === 1) return "F";
+      if (p.poles === 2) return "F+N";
+      if (p.poles === 3) return "3F";
+      if (p.poles === 4) return "3F+N";
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Configuração do circuito considerando o DOCUMENTO: quando os dois lados são
+ * dispositivos de passagem sem informação (contator → relé, borne → borne), o
+ * trecho herda a configuração do circuito a jusante (a carga define as fases) e,
+ * sem carga, a de montante. Só sem nenhuma informação no caminho cai em "F+N".
+ * Dentro do painel o PE da carga não é repetido nas pontes internas.
+ */
+export function inferCircuitConfigInDoc(doc: DiagramDoc, edge: DiagramEdge): CircuitConfig {
+  const direct = localConfig(edge, doc.nodes[edge.source], doc.nodes[edge.target]);
+  if (direct) return stripPeInside(doc, edge, direct);
+  const power = Object.values(doc.edges).filter(
+    (e) => e.sheet === edge.sheet && e.kind === "power" && e.id !== edge.id,
+  );
+  const walk = (start: string, downstream: boolean): CircuitConfig | undefined => {
+    const seen = new Set<string>([edge.id]);
+    let frontier = [start];
+    for (let depth = 0; depth < 20 && frontier.length; depth++) {
+      const next: string[] = [];
+      for (const id of frontier) {
+        for (const e of power) {
+          if (seen.has(e.id) || (downstream ? e.source : e.target) !== id) continue;
+          seen.add(e.id);
+          const cfg = localConfig(e, doc.nodes[e.source], doc.nodes[e.target]);
+          if (cfg && cfg !== "PE" && cfg !== "N") return cfg;
+          next.push(downstream ? e.target : e.source);
+        }
+      }
+      frontier = next;
+    }
+    return undefined;
+  };
+  const found = walk(edge.target, true) ?? walk(edge.source, false);
+  return found ? stripPeInside(doc, edge, found) : "F+N";
+}
+
+/** Ponte interna (não chega à carga): sem o PE, que segue direto da barra de terra à carga. */
+function stripPeInside(doc: DiagramDoc, edge: DiagramEdge, cfg: CircuitConfig): CircuitConfig {
+  if (edge.circuitConfig) return cfg;
+  const tgt = doc.nodes[edge.target];
+  const src = doc.nodes[edge.source];
+  const touchesLoad = !!(
+    (tgt && LOAD_CONFIG[tgt.params.kind]) ||
+    (src && LOAD_CONFIG[src.params.kind])
+  );
+  if (touchesLoad) return cfg;
+  if (cfg === "3F+PE") return "3F";
+  if (cfg === "F+N+PE") return "F+N";
+  return cfg;
+}
+
 /** Comandos para remover tudo que hoje está na sheet "multifilar" (usado
  * antes de regenerar, pra não duplicar a cada clique). Cascade de RemoveNode
  * já cuida das edges dependentes, mas removemos edges primeiro por
@@ -131,7 +230,7 @@ export function buildMultifilarCommands(doc: DiagramDoc): Command[] {
     const newSource = idMap.get(e.source);
     const newTarget = idMap.get(e.target);
     if (!newSource || !newTarget) continue;
-    const config = inferCircuitConfig(e, doc.nodes[e.source], doc.nodes[e.target]);
+    const config = inferCircuitConfigInDoc(doc, e);
     const clone = makeEdge({
       id: multifilarEdgeIdFor(e.id),
       sheet: "multifilar",
@@ -214,12 +313,18 @@ export function syncMultifilarCommands(doc: DiagramDoc): Command[] {
     if (!source || !target) continue;
     const id = multifilarEdgeIdFor(e.id);
     liveMfEdgeIds.add(id);
-    const config = inferCircuitConfig(e, doc.nodes[e.source], doc.nodes[e.target]);
+    const config = inferCircuitConfigInDoc(doc, e);
     const existing = doc.edges[id];
     if (existing && existing.source === source && existing.target === target) {
-      if (existing.circuitConfig !== config) {
+      // Seção/comprimento editados no unifilar também valem no multifilar
+      // (antes só a configuração era sincronizada e o cabo ficava desatualizado).
+      const cableChanged = JSON.stringify(existing.cable) !== JSON.stringify(e.cable);
+      if (existing.circuitConfig !== config || cableChanged) {
+        const updated: DiagramEdge = { ...existing, circuitConfig: config };
+        if (e.cable) updated.cable = e.cable;
+        else delete updated.cable;
         commands.push({ type: "RemoveEdge", edgeId: id });
-        commands.push({ type: "AddEdge", edge: { ...existing, circuitConfig: config } });
+        commands.push({ type: "AddEdge", edge: updated });
       }
       continue;
     }
@@ -332,8 +437,7 @@ export function summarizeConductors(doc: DiagramDoc): ConductorSummary {
   const byConfig = new Map<CircuitConfig, number>();
   for (const e of Object.values(doc.edges)) {
     if (e.sheet !== "multifilar") continue;
-    const config =
-      e.circuitConfig ?? inferCircuitConfig(e, doc.nodes[e.source], doc.nodes[e.target]);
+    const config = e.circuitConfig ?? inferCircuitConfigInDoc(doc, e);
     byConfig.set(config, (byConfig.get(config) ?? 0) + 1);
   }
 
@@ -444,7 +548,6 @@ export interface VoltageDropResult {
   length_m: number;
   section_mm2: number;
   current_A: number;
-  drop_V: number;
   drop_pct: number;
   max_allowed_pct: number;
   compliant: boolean;
@@ -453,14 +556,12 @@ export interface VoltageDropResult {
 }
 
 /**
- * Calcula a queda de tensão real para circuitos com cabos configurados segundo NBR 5410:
- * ΔV = √3 · I · (R · cosφ + X · sinφ) para circuitos trifásicos a 380V
- * ΔV = 2 · I · (R · cosφ + X · sinφ) para circuitos monofásicos a 220V
+ * Queda de tensão por trecho (NBR 5410) — a MESMA da tabela de cabos
+ * (`sizeDiagramCables`): tensão da fonte do diagrama, Ib das cargas a jusante.
+ * Trecho sem seção, comprimento ou corrente não é calculado (pendência).
  */
 export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[] {
   const results: VoltageDropResult[] = [];
-  const RHO_COPPER_70C = 0.0215; // Ω·mm²/m para cobre a 70°C (isolamento PVC)
-  const REACTANCE_X_PER_M = 0.00008; // 0.08 Ω/km = 0.00008 Ω/m
 
   // Avalia conexões canônicas (evita duplicar cálculos entre unifilar e multifilar)
   const canonicalEdges = Object.values(doc.edges).filter(
@@ -498,21 +599,10 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
       );
     }
 
-    const config = e.circuitConfig ?? inferCircuitConfig(e, src, tgt);
-    const isThreePhase = config.startsWith("3F");
-    const voltage_V = isThreePhase ? 380 : 220;
-    const cosPhi = 0.85;
-    const sinPhi = Math.sqrt(1 - cosPhi * cosPhi);
-
-    const R = (RHO_COPPER_70C * length_m) / section_mm2;
-    const X = REACTANCE_X_PER_M * length_m;
-    const impedanceFactor = R * cosPhi + X * sinPhi;
-
-    const drop_V = isThreePhase
-      ? Math.sqrt(3) * current_A * impedanceFactor
-      : 2 * current_A * impedanceFactor;
-
-    const drop_pct = Number(((drop_V / voltage_V) * 100).toFixed(1));
+    // Queda do trecho = a MESMA da tabela de cabos (tensão da fonte do diagrama,
+    // cos φ declarado nas premissas). Antes: 380/220 V e cos φ 0,85 fixos aqui.
+    if (row.drop_pct === undefined) continue;
+    const drop_pct = Math.round(row.drop_pct * 10) / 10;
     const max_allowed_pct = 4.0; // NBR 5410 Tabela 33 para circuitos terminais
     const compliant = drop_pct <= max_allowed_pct;
 
@@ -524,7 +614,6 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
       length_m,
       section_mm2,
       current_A,
-      drop_V: Number(drop_V.toFixed(2)),
       drop_pct,
       max_allowed_pct,
       compliant,
@@ -632,7 +721,8 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
   }
 
   // 2c. Cálculo de rede: proteção contra choque, queda total, suportabilidade térmica.
-  for (const f of analyzeNetwork(doc).findings) {
+  const networkReport = analyzeNetwork(doc);
+  for (const f of networkReport.findings) {
     alerts.push({
       id: `net_${f.code.toLowerCase()}_${f.nodeId ?? f.edgeId ?? "rede"}`,
       type: f.severity === "error" ? "ERRO" : "AVISO",
@@ -643,7 +733,7 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
     });
   }
 
-  // 2c'. Valores padrão da biblioteca ainda não confirmados pelo engenheiro.
+  // 2c'. Valores sugeridos (biblioteca, IA, migração) ainda não confirmados pelo engenheiro.
   for (const n of Object.values(doc.nodes)) {
     const pending = (n.params as { unconfirmed?: string[] }).unconfirmed;
     if (n.sheet !== "unifilar" || !pending?.length) continue;
@@ -651,8 +741,19 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
       id: `defaults_${n.id}`,
       type: "AVISO",
       severity: "warning",
-      message: `${nodeDisplayName(n)}: ${pending.join(", ")} ainda são os valores padrão da biblioteca — confirme com os dados de placa/catálogo.`,
+      message: `${nodeDisplayName(n)}: ${pending.join(", ")} são valores sugeridos (biblioteca ou IA), ainda não confirmados — confira com os dados de placa/catálogo ou use "Confirmar valores" nas propriedades.`,
       nodeId: n.id,
+    });
+  }
+
+  // 2c''. Energia incidente de arco por quadro (IEEE 1584-2002 / NR-10).
+  for (const f of analyzeArcFlash(doc, networkReport).findings) {
+    alerts.push({
+      id: `arc_${f.code.toLowerCase()}_${f.nodeId}`,
+      type: f.severity === "error" ? "ERRO" : "AVISO",
+      severity: f.severity,
+      message: `${f.message} (${f.clause})`,
+      nodeId: f.nodeId,
     });
   }
 
@@ -774,7 +875,8 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
         (a.type === "ERRO" || a.severity === "error") &&
         !a.id.startsWith("coord_") &&
         !a.id.startsWith("net_") &&
-        !a.id.startsWith("spd_"),
+        !a.id.startsWith("spd_") &&
+        !a.id.startsWith("arc_"),
     ).length === 0
   ) {
     alerts.push({

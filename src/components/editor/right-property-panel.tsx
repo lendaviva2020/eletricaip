@@ -16,6 +16,11 @@ import { cmd } from "@/lib/diagram/commands";
 import { getParamSpecs } from "@/lib/diagram/param-specs";
 import { loadCurrent_A } from "@/lib/diagram/connection/cable-sizing";
 import {
+  confirmAllValues,
+  confirmValue,
+  unconfirmedKeysOf,
+} from "@/lib/diagram/unconfirmed-params";
+import {
   NodeParamsSchema,
   type NodeParams,
   type DiagramNode,
@@ -207,14 +212,8 @@ export function RightPropertyPanel() {
     key: string,
     value: string | number | boolean,
   ) => {
-    // Editar um parâmetro confirma o dado (sai da lista de padrões da biblioteca).
-    const pending: string[] = Array.isArray(currentParams?.unconfirmed)
-      ? currentParams.unconfirmed.filter((k: string) => k !== key)
-      : [];
-    const nextObj: Record<string, unknown> = { ...currentParams, [key]: value };
-    if (pending.length > 0) nextObj.unconfirmed = pending;
-    else delete nextObj.unconfirmed;
-    const nextRaw = nextObj as unknown;
+    // Editar um parâmetro confirma o dado (sai da lista de valores pendentes).
+    const nextRaw = confirmValue({ ...currentParams, [key]: value }, key) as unknown;
     const parsed = NodeParamsSchema.safeParse(nextRaw);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Valor inválido");
@@ -230,6 +229,24 @@ export function RightPropertyPanel() {
         },
       ]),
     );
+  };
+
+  const unconfirmedKeys = unconfirmedKeysOf(node.params as unknown as Record<string, unknown>);
+  const confirmAll = () => {
+    const parsed = NodeParamsSchema.safeParse(
+      confirmAllValues(node.params as unknown as Record<string, unknown>),
+    );
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Valor inválido");
+      return;
+    }
+    dispatch({
+      type: "UpdateNodeParams",
+      nodeId: node.id,
+      from: node.params,
+      to: parsed.data,
+    });
+    toast.success(t("rightPanel.valuesConfirmed"));
   };
 
   const restoreFactory = () => {
@@ -323,6 +340,27 @@ export function RightPropertyPanel() {
             <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
               Parâmetros Técnicos
             </div>
+            {unconfirmedKeys.length > 0 && (
+              <div
+                role="status"
+                className="rounded border border-amber-500/50 bg-amber-500/10 p-2 text-[11px] space-y-1.5"
+              >
+                <div className="font-semibold text-amber-600 dark:text-amber-400">
+                  {t("rightPanel.unconfirmedTitle")}:{" "}
+                  {unconfirmedKeys
+                    .map((k) => (paramSpecs as Record<string, { label?: string }>)[k]?.label ?? k)
+                    .join(", ")}
+                </div>
+                <p className="text-muted-foreground">{t("rightPanel.unconfirmedHint")}</p>
+                <button
+                  type="button"
+                  onClick={confirmAll}
+                  className="rounded border border-amber-500/60 px-2 py-1 font-medium hover:bg-amber-500/20"
+                >
+                  {t("rightPanel.confirmValues")}
+                </button>
+              </div>
+            )}
             {Object.keys(paramSpecs).length === 0 ? (
               <div className="text-[11px] text-muted-foreground italic">
                 Sem parâmetros adicionais.

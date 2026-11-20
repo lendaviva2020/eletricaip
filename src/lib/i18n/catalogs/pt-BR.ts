@@ -355,6 +355,11 @@ export const ptBR = {
     opcDisconnected: "Servidor OPC-UA desconectado",
   },
   rightPanel: {
+    unconfirmedTitle: "Valores não confirmados",
+    unconfirmedHint:
+      "Estes valores foram sugeridos pelo sistema ou pela IA. Confira com os dados de placa/catálogo antes de emitir o projeto.",
+    confirmValues: "Confirmar valores conferidos",
+    valuesConfirmed: "Valores confirmados",
     props: "Propriedades",
     ai: "IA",
     norms: "Normas",
@@ -1086,6 +1091,25 @@ export const ptBR = {
     verdict_indeterminada: "Indeterminada (curto do ponto não calculado)",
     premise:
       "Faixas dos limites da norma (IEC 60898-1, relé térmico IEC 60947-4-1) e dano adiabático do cabo (k²S²). As curvas reais do fabricante ficam dentro das faixas; seletividade amperimétrica até o disparo magnético mínimo do disjuntor de montante.",
+  },
+  arcPanel: {
+    title: "Arco elétrico por quadro (IEEE 1584-2002)",
+    noBoards: "Nenhum barramento ou CCM no unifilar.",
+    colBoard: "Quadro",
+    colIbf: "Ik máx. (kA)",
+    colIa: "I arco (kA)",
+    colTime: "Tempo (s)",
+    colEnergy: "Energia (cal/cm²)",
+    colPpe: "EPI (cat.)",
+    colBoundary: "Limite de arco (m)",
+    pending: "pendente",
+    capped: "limitado a 2 s",
+    outOfRange: "fora da faixa do modelo",
+    danger: "> 40 cal/cm²: sem EPI adequado",
+    downloadLabels: "Baixar etiquetas para impressão",
+    labelsHint:
+      "Etiquetas indicativas — para fixar no painel, confirme com o estudo de arco formal assinado pelo responsável técnico.",
+    labelsDone: "Etiquetas geradas",
   },
   networkPanel: {
     title: "Rede e curto-circuito (IEC 60909 / NBR 5410)",

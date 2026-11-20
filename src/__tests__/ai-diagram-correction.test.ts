@@ -158,3 +158,25 @@ describe("sanitizeAiPatch — dedup de equipamento já existente (anti-loop)", (
     expect(r.patch.addNodes[0].id).toBe("a");
   });
 });
+
+describe("sanitizeAiPatch — valores da IA ficam não confirmados", () => {
+  it("equipamento novo da IA: todos os valores nominais pendentes", () => {
+    const r = sanitizeAiPatch(doc([]), patch({ addNodes: [breaker("q1", "Q1", { x: 0, y: 0 })] }));
+    const pending = (r.patch.addNodes[0].params as { unconfirmed?: string[] }).unconfirmed;
+    expect(pending?.sort()).toEqual(["curve", "in_A", "poles"]);
+  });
+
+  it("atualização da IA: só o que mudou fica pendente; o confirmado e igual continua confirmado", () => {
+    const base = doc([breaker("q1", "Q1", { x: 0, y: 0 })]);
+    const r = sanitizeAiPatch(
+      base,
+      patch({
+        updateNodes: [
+          { id: "q1", params: { kind: "breaker", in_A: 25, curve: "C", poles: 3, tag: "Q1" } },
+        ],
+      }),
+    );
+    const pending = (r.patch.updateNodes[0].params as { unconfirmed?: string[] }).unconfirmed;
+    expect(pending).toEqual(["in_A"]);
+  });
+});

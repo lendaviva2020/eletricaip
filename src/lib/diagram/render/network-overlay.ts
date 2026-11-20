@@ -3,6 +3,7 @@
 import type { DiagramDoc, DiagramNode } from "../schema";
 import type { NetworkReport } from "../connection/network-calculation";
 import type { CoordinationReport } from "../connection/protection-coordination";
+import type { ArcFlashReport } from "../connection/arc-flash";
 import { computeNodeBoundingBox } from "./wire-router";
 
 export type BadgeLevel = "ok" | "warn" | "error" | "pending";
@@ -15,7 +16,17 @@ export interface NetworkBadge {
   level: BadgeLevel;
 }
 
-const SHOWN = new Set(["breaker", "fuse", "rcd", "busbar", "motor", "load", "lamp", "socket"]);
+const SHOWN = new Set([
+  "breaker",
+  "fuse",
+  "rcd",
+  "busbar",
+  "ccm",
+  "motor",
+  "load",
+  "lamp",
+  "socket",
+]);
 const LOADS = new Set(["motor", "load", "lamp", "socket"]);
 const fmt = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
@@ -23,7 +34,9 @@ export function buildNetworkBadges(
   doc: DiagramDoc,
   network: NetworkReport,
   coordination?: CoordinationReport,
+  arcFlash?: ArcFlashReport,
 ): NetworkBadge[] {
+  const arcByBoard = new Map((arcFlash?.boards ?? []).map((b) => [b.boardId, b]));
   const severity = new Map<string, BadgeLevel>();
   const bump = (id: string | undefined, lvl: BadgeLevel) => {
     if (!id) return;
@@ -57,6 +70,15 @@ export function buildNetworkBadges(
       const icu = (n.params as { icc_kA?: number }).icc_kA;
       lines.push(icu !== undefined ? `Icu ${fmt(icu)} kA` : "Icu ?");
       if (icu === undefined && level === "ok") level = "warn";
+    }
+    const arc = arcByBoard.get(n.id);
+    if (arc) {
+      if (arc.status === "pending") lines.push("Arco pendente");
+      else {
+        lines.push(`Arco ${fmt(arc.incidentEnergy_cal_cm2!)} cal/cm² · EPI ${arc.ppe_category}`);
+        if (arc.status === "danger") level = "error";
+        else if (arc.status === "high" && level === "ok") level = "warn";
+      }
     }
     if (LOADS.has(n.params.kind) && r.dropTotal_pct !== undefined) {
       lines.push(`ΔV ${fmt(r.dropTotal_pct)}%`);

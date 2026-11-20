@@ -544,7 +544,8 @@ export function convertBundleToDiagramDoc(
     if (!doc.nodes[srcId] || !doc.nodes[tgtId]) continue;
 
     const edgeId = mode === "merge" ? `edge_imp_${ulid().slice(-6)}` : e.id || `edge_${i + 1}`;
-    const circuitConfig = e.circuitConfig === "3F+PE" ? "3F+N+PE" : e.circuitConfig;
+    // "3F+PE" é válido (carga trifásica sem neutro); antes virava "3F+N+PE" (neutro inventado).
+    const circuitConfig = e.circuitConfig;
 
     const srcNode = doc.nodes[srcId];
     const tgtNode = doc.nodes[tgtId];

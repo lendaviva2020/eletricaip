@@ -236,3 +236,31 @@ describe("etiquetas no diagrama", () => {
     expect(badges.some((b) => b.nodeId === "k1" || b.nodeId === "tr")).toBe(false);
   });
 });
+
+describe("esquema IT — segunda falta", () => {
+  const long = { section_mm2: 4, length_m: 50, insulation: "PVC" as const };
+  it("curva B 40 A: passa no TN mas não na dupla falta do IT (metade da corrente)", () => {
+    const fs = analyzeNetwork(
+      plant({ curve: "B", motorCable: long, network: { earthing: "IT" } }),
+    ).findings;
+    expect(fs.find((x) => x.code === "IT_SECOND_FAULT_FAIL")?.nodeId).toBe("q1");
+    expect(fs.some((x) => x.code === "AUTO_DISCONNECTION_FAIL")).toBe(false);
+  });
+  it("cabo curto: dupla falta dispara", () => {
+    expect(
+      codes(
+        plant({
+          curve: "B",
+          motorCable: { section_mm2: 10, length_m: 10, insulation: "PVC" },
+          network: { earthing: "IT" },
+        }),
+      ),
+    ).not.toContain("IT_SECOND_FAULT_FAIL");
+  });
+  it("exige DSI e declara as premissas; sem dados de cabo fica pendente", () => {
+    const r = analyzeNetwork(plant({ network: { earthing: "IT" } }));
+    expect(r.findings.some((x) => x.code === "IT_IMD_REQUIRED")).toBe(true);
+    expect(r.findings.some((x) => x.code === "IT_SECOND_FAULT_PENDING")).toBe(true);
+    expect(r.premises.some((p) => p.includes("U0/(2·Zs)") || p.includes("U'/(2·Zs)"))).toBe(true);
+  });
+});

@@ -73,6 +73,7 @@ export const PhasesConfigSchema = z.enum([
   "1F",
   "2F",
   "3F",
+  "3F+PE",
   "F+N",
   "F+N+PE",
   "3F+N",
@@ -164,7 +165,9 @@ export const ElectricalConnectionSchema = z.object({
   toEquipmentId: z.string().min(1),
   toTerminalId: z.string().min(1),
   kind: EdgeKindSchema.default("power"),
-  circuitConfig: z.enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"]).optional(),
+  circuitConfig: z
+    .enum(["F", "F+N", "F+N+PE", "3F", "3F+PE", "3F+N", "3F+N+PE", "N", "PE"])
+    .optional(),
   conductor: ConductorSpecSchema.optional(),
 });
 export type ElectricalConnection = z.infer<typeof ElectricalConnectionSchema>;
@@ -339,7 +342,9 @@ export const MultifilarEdgeLayoutSchema = z.object({
   connectionId: z.string().min(1),
   sourceNodeId: z.string().min(1),
   targetNodeId: z.string().min(1),
-  circuitConfig: z.enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"]).optional(),
+  circuitConfig: z
+    .enum(["F", "F+N", "F+N+PE", "3F", "3F+PE", "3F+N", "3F+N+PE", "N", "PE"])
+    .optional(),
   waypoints: z.array(PositionSchema).optional(),
 });
 export type MultifilarEdgeLayout = z.infer<typeof MultifilarEdgeLayoutSchema>;

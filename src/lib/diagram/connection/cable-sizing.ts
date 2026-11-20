@@ -235,8 +235,34 @@ function isThreePhase(e: DiagramEdge, src?: DiagramNode, tgt?: DiagramNode): boo
   return V === undefined ? true : V >= 300;
 }
 
+/**
+ * Tensão de linha do sistema: secundário do trafo ou tensão do gerador do
+ * diagrama (a primeira fonte encontrada). Sem fonte com tensão: undefined.
+ */
+export function systemLineVoltage(doc: DiagramDoc): number | undefined {
+  for (const n of Object.values(doc.nodes)) {
+    if (n.sheet !== "unifilar") continue;
+    if (n.params.kind === "transformer") {
+      const V = num(n.params, "secondary_V");
+      if (V) return V;
+    }
+    if (n.params.kind === "generator") {
+      const V = num(n.params, "voltage_V");
+      if (V) return V;
+    }
+  }
+  return undefined;
+}
+
+/** Tensão para queda/dimensionamento: linha (trifásico) ou fase-neutro (monofásico). */
+function circuitVoltage(lineV: number, three: boolean): number {
+  return three ? lineV : Math.round(lineV / Math.sqrt(3));
+}
+
 export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
   const adj = buildAdjacency(doc);
+  const sourceV = systemLineVoltage(doc);
+  const lineV = sourceV ?? 380;
   const nextEdges: Record<string, DiagramEdge> = { ...doc.edges };
   const changes: CableSizingChange[] = [];
   const pendingLength: PendingCableLength[] = [];
@@ -334,7 +360,7 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
       ambientTemp_C: doc.metadata.network?.ambientTemp_C,
       groupedCircuits: cur?.groupedCircuits,
       length_m: cur?.length_m,
-      voltage_V: three ? 380 : 220,
+      voltage_V: circuitVoltage(lineV, three),
       maxVoltageDrop_pct: MAX_DROP_PCT,
     });
     const required = sizing.section_mm2;
@@ -344,7 +370,7 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
     }
 
     // Linha da tabela no ESTADO ATUAL (antes da correção desta passada).
-    const V = three ? 380 : 220;
+    const V = circuitVoltage(lineV, three);
     const drop =
       cur?.section_mm2 && cur?.length_m
         ? Math.round(voltageDrop_pct(designIb, cur.length_m, cur.section_mm2, V, 0.86) * 100) / 100
@@ -397,6 +423,11 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
     "Coordenação Ib ≤ In ≤ I'z com a proteção a montante (NBR 5410 §5.3.4.1).",
     "Condutores de ligação de DPS: seção mínima 4 mm² (16 mm² com DPS classe I), independente da corrente de carga (NBR 5410 §6.3.5.2).",
   ];
+  premises.push(
+    sourceV
+      ? `Queda de tensão com ${sourceV} V entre fases (fonte do diagrama) e ${circuitVoltage(sourceV, false)} V fase-neutro; cos φ 0,86.`
+      : "Fonte do diagrama sem tensão informada: queda de tensão calculada com 380/220 V — informe a tensão do trafo ou do gerador; cos φ 0,86.",
+  );
   if (usedDefaultMethod) {
     premises.unshift(
       `Método de instalação não informado: adotado ${DEFAULT_INSTALLATION_METHOD} (eletroduto embutido) — confirme ou altere no cabo.`,

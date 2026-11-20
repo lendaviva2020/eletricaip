@@ -99,7 +99,7 @@ export function buildPatchJsonSchema(): FlatSchema {
           targetPort: z.string().optional(),
           kind: z.enum(["power", "signal", "pipe", "ground"]),
           circuitConfig: z
-            .enum(["F", "F+N", "F+N+PE", "3F", "3F+N", "3F+N+PE", "N", "PE"])
+            .enum(["F", "F+N", "F+N+PE", "3F", "3F+PE", "3F+N", "3F+N+PE", "N", "PE"])
             .optional(),
         }),
       ),

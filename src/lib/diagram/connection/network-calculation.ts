@@ -42,6 +42,9 @@ export type NetworkFindingCode =
   | "AUTO_DISCONNECTION_FAIL"
   | "AUTO_DISCONNECTION_PENDING"
   | "TT_WITHOUT_RCD"
+  | "IT_SECOND_FAULT_FAIL"
+  | "IT_SECOND_FAULT_PENDING"
+  | "IT_IMD_REQUIRED"
   | "CABLE_THERMAL_LIMITING"
   | "VOLTAGE_DROP_TOTAL"
   | "SHORT_CIRCUIT_PENDING";
@@ -359,8 +362,12 @@ export function analyzeNetwork(doc: DiagramDoc): NetworkReport {
     } else if (earthing !== "IT") {
       checkTnDisconnection(doc, out, nodes, findings, earthing !== undefined);
     } else {
+      checkItSecondFault(doc, out, nodes, findings);
       premisesSet.add(
-        "Esquema IT: a verificação da segunda falta exige dados da impedância de aterramento — não calculada.",
+        "Esquema IT: massas interligadas por condutor de proteção comum e neutro distribuído (U' = U0, caso mais desfavorável). Com massas aterradas individualmente, vale a regra do TT (DR por grupo).",
+      );
+      premisesSet.add(
+        "Esquema IT: impedância do laço da segunda falta Zs = c·U0/Ik1mín (inclui a impedância da fonte — lado da segurança); corrente de dupla falta I = U'/(2·Zs).",
       );
     }
 
@@ -459,6 +466,56 @@ function checkTnDisconnection(
         nodeId: dev.id,
         message: `${nodeDisplayName(dev)}: proteção contra choque não verificável — informe seção e comprimento dos cabos do circuito.`,
         clause: "NBR 5410 §5.1.2.2.4",
+      });
+    }
+  }
+}
+
+/** Segunda falta no esquema IT com massas interligadas (NBR 5410 §5.1.2.2.4.4 / IEC 60364-4-41 §411.6.4). */
+function checkItSecondFault(
+  doc: DiagramDoc,
+  out: Map<string, DiagramEdge[]>,
+  nodes: Record<string, NodeNetworkResult>,
+  findings: NetworkFinding[],
+) {
+  findings.push({
+    code: "IT_IMD_REQUIRED",
+    severity: "warning",
+    message:
+      "Esquema IT: a primeira falta à terra não desliga o circuito — é obrigatório um dispositivo supervisor de isolamento (DSI) com alarme, e a falta deve ser localizada e eliminada o mais rápido possível. O diagrama não representa o DSI: confira no projeto.",
+    clause: "NBR 5410 §5.1.2.2.4.4",
+  });
+  for (const dev of Object.values(doc.nodes)) {
+    if (dev.sheet !== "unifilar" || dev.params.kind !== "breaker") continue;
+    const zone = protectedZone(dev.id, out, doc);
+    if (zone.length === 0) continue;
+    const Ia = instantaneousTrip_A(dev);
+    if (!Ia) continue;
+    let worst: { id: string; ik: number } | null = null;
+    let blocked = false;
+    for (const id of zone) {
+      const r = nodes[id];
+      if (r?.blockedByEdgeId) blocked = true;
+      if (r?.Ik1min_kA === undefined) continue;
+      if (!worst || r.Ik1min_kA < worst.ik) worst = { id, ik: r.Ik1min_kA };
+    }
+    // Neutro distribuído (U' = U0): I_dupla = U0 / (2·Zs) = Ik1mín / 2.
+    const doubleFault_kA = worst ? worst.ik / 2 : undefined;
+    if (worst && doubleFault_kA !== undefined && doubleFault_kA * 1000 < Ia) {
+      findings.push({
+        code: "IT_SECOND_FAULT_FAIL",
+        severity: "error",
+        nodeId: dev.id,
+        message: `${nodeDisplayName(dev)}: na segunda falta (dupla falta em fases diferentes) a corrente estimada de ${round2(doubleFault_kA)} kA em ${nodeDisplayName(doc.nodes[worst.id])} não alcança o disparo instantâneo (${round2(Ia / 1000)} kA). Reduza o comprimento, aumente a seção/PE, troque a curva ou use DR.`,
+        clause: "NBR 5410 §5.1.2.2.4.4",
+      });
+    } else if (blocked) {
+      findings.push({
+        code: "IT_SECOND_FAULT_PENDING",
+        severity: "warning",
+        nodeId: dev.id,
+        message: `${nodeDisplayName(dev)}: segunda falta no esquema IT não verificável — informe seção e comprimento dos cabos do circuito.`,
+        clause: "NBR 5410 §5.1.2.2.4.4",
       });
     }
   }
