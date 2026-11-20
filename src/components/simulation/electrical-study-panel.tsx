@@ -192,7 +192,7 @@ export function deriveStudyDefaultsFromModel(
     return {
       values: {
         current: String(derivedIn),
-        length: String(conn?.conductor?.lengthM ?? 45),
+        length: conn?.conductor?.lengthM !== undefined ? String(conn.conductor.lengthM) : "",
         cable: String(conn?.conductor?.crossSectionMm2 ?? 4),
         voltage: String(v),
         method: conn?.conductor?.installationMethod || "C",

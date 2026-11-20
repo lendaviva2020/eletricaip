@@ -73,7 +73,25 @@ export function evaluateNormativeCompliance(
       });
     }
 
-    if (c.voltageDropPass) {
+    if (c.voltageDropPass === null) {
+      findings.push({
+        id: `norm-5410-vdrop-pending-${c.circuitCode}`,
+        code: "NBR5410_6_2_7_PENDING",
+        standard: "ABNT NBR 5410:2004",
+        edition: "2004",
+        clause: "§6.2.7",
+        status: "PENDENTE",
+        severity: "warning",
+        title: `Queda de tensão não verificada em ${c.circuitCode}`,
+        description: "O comprimento do cabo deste circuito não foi informado no projeto.",
+        evidence:
+          "Sem comprimento não há como calcular a queda de tensão — nenhum valor presumido.",
+        involvedCircuit: c.circuitCode,
+        correctiveAction: "Informe o comprimento do cabo na aba Cálculos NBR 5410 do unifilar.",
+        isResolved: false,
+        testToConfirm: "Medição de tensão com carga nominal conectada.",
+      });
+    } else if (c.voltageDropPass) {
       findings.push({
         id: `norm-5410-vdrop-${c.circuitCode}`,
         code: "NBR5410_6_2_7_PASS",

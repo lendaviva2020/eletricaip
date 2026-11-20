@@ -130,7 +130,7 @@ export function extractCanvasData(input: {
           entityId: eq.id,
           label: eq.displayName || eq.tagCode,
           missingField: "Potência Nominal (kW)",
-          recommendedDefault: 5.5,
+          recommendedDefault: "Informar o dado de placa",
           impact: "Impede cálculo preciso da corrente de projeto Ib e dimensionamento do cabo.",
         });
       }
@@ -277,7 +277,7 @@ export function extractCanvasData(input: {
   });
 
   const plcProgram: PlcProgramDoc = {
-    vendor: doc.plc.project.vendor || "Siemens (S7-1200 / TIA Portal)",
+    vendor: doc.plc.project.vendor || "Não especificado",
     rackName: plcRack.label || "Bastidor Principal de Automação",
     cpuModel:
       (plcRack.modules?.[0] as any)?.catalogKey ||

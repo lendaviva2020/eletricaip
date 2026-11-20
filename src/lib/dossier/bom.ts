@@ -1,557 +1,265 @@
-// Industrial Bill of Materials (BOM) Generator — 10 Canonical Engineering Groups
-// Single Source of Truth from Canvas, deterministic calculations, and normative requirements.
-// Absolute engineering traceability without duplicate counts or fake commercial claims.
-
+// Lista de materiais do dossiê — SOMENTE o que existe no projeto.
+//
+// Antes este gerador acrescentava itens que não estavam no diagrama (DPS 40 kA
+// ×4, DR 63 A/300 mA, botoeiras, sinaleiros, fonte 24 V, CLP "14 DI/10 DO
+// PROFINET", sensores IP67, 150 m de cabo de comando) e completava motores com
+// "IR3 Premium IP55 4 polos". Agora cada item é um equipamento do projeto com
+// os dados que o engenheiro informou; o que falta aparece como pendência de
+// especificação, nunca preenchido.
 import type { ExtractedCanvasData } from "./extractor";
-import type { ElectricalCalculationMemory } from "./types";
 import type { BomGroupCategory, BomItem, BomItemSource, BomValidationState } from "./types";
+import type { ElectricalCalculationMemory } from "./types";
+import type { CanonicalEquipment } from "@/lib/model/unified-schema";
+
+interface KindInfo {
+  name: string;
+  category: BomGroupCategory;
+}
+
+const KIND_INFO: Record<string, KindInfo> = {
+  breaker: { name: "Disjuntor", category: "1_protecao_eletrica" },
+  rcd: { name: "Dispositivo DR", category: "1_protecao_eletrica" },
+  fuse: { name: "Fusível", category: "1_protecao_eletrica" },
+  spd: { name: "DPS (protetor contra surtos)", category: "1_protecao_eletrica" },
+  thermal_relay: { name: "Relé térmico de sobrecarga", category: "1_protecao_eletrica" },
+  disconnector: { name: "Chave seccionadora", category: "2_manobra_comando" },
+  contactor: { name: "Contator", category: "2_manobra_comando" },
+  relay: { name: "Relé auxiliar", category: "2_manobra_comando" },
+  motor: { name: "Motor", category: "3_motores_acionamentos" },
+  vfd: { name: "Inversor de frequência", category: "3_motores_acionamentos" },
+  softstarter: { name: "Soft-starter", category: "3_motores_acionamentos" },
+  plc: { name: "CLP", category: "4_clp_modulos_interfaces" },
+  hmi: { name: "IHM", category: "4_clp_modulos_interfaces" },
+  psu: { name: "Fonte de alimentação", category: "4_clp_modulos_interfaces" },
+  pt100: { name: "Sensor de temperatura PT100", category: "5_sensores_instrumentacao" },
+  pressure: { name: "Transmissor de pressão", category: "5_sensores_instrumentacao" },
+  flow: { name: "Medidor de vazão", category: "5_sensores_instrumentacao" },
+  level: { name: "Sensor de nível", category: "5_sensores_instrumentacao" },
+  encoder: { name: "Encoder", category: "5_sensores_instrumentacao" },
+  terminal: { name: "Borne", category: "7_bornes_acessorios" },
+  busbar: { name: "Barramento", category: "8_paineis_barramentos_montagem" },
+  ccm: { name: "CCM", category: "8_paineis_barramentos_montagem" },
+  transformer: { name: "Transformador", category: "8_paineis_barramentos_montagem" },
+  generator: { name: "Gerador", category: "8_paineis_barramentos_montagem" },
+  capacitor_bank: { name: "Banco de capacitores", category: "8_paineis_barramentos_montagem" },
+  load: { name: "Carga", category: "8_paineis_barramentos_montagem" },
+  lamp: { name: "Luminária", category: "8_paineis_barramentos_montagem" },
+  socket: { name: "Tomada", category: "8_paineis_barramentos_montagem" },
+  estop: { name: "Botão de emergência", category: "9_dispositivos_seguranca" },
+  lightcurtain: { name: "Cortina de luz", category: "9_dispositivos_seguranca" },
+};
+
+/** Referências do desenho, sem item de compra. */
+const NOT_A_PRODUCT = new Set(["ground", "neutral"]);
+
+function num(v: unknown): number | undefined {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : undefined;
+}
+function text(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() ? v.trim() : undefined;
+}
+
+/** Dados nominais que o engenheiro informou no equipamento (nada completado). */
+function ratings(eq: CanonicalEquipment): {
+  parts: string[];
+  item: Partial<BomItem>;
+  missing: string[];
+} {
+  const p = (eq.diagramParams ?? {}) as Record<string, unknown>;
+  const s = eq.specs;
+  const parts: string[] = [];
+  const item: Partial<BomItem> = {};
+  const missing: string[] = [];
+  const In = s.nominalCurrentA ?? num(p.in_A);
+  const kW = s.powerKw ?? num(p.power_kW);
+  const W = s.powerW ?? num(p.power_W);
+  const kVA = s.apparentPowerKva ?? num(p.kVA);
+  const V = s.voltageV ?? num(p.voltage_V) ?? num(p.secondary_V);
+  const curve = s.tripCurve ?? text(p.curve);
+  const poles = s.poles ?? num(p.poles);
+  const icu = s.breakingCapacityKa ?? num(p.icc_kA);
+
+  if (In) {
+    parts.push(`In ${In} A`);
+    item.nominalCurrent = `${In} A`;
+  }
+  if (curve) {
+    parts.push(`curva ${curve}`);
+    item.tripCurve = curve;
+  }
+  if (poles) {
+    parts.push(`${poles} polos`);
+    item.poles = poles;
+  }
+  if (icu) {
+    parts.push(`Icu ${icu} kA`);
+    item.breakingCapacityKa = icu;
+  }
+  if (kW) {
+    parts.push(`${kW} kW`);
+    item.nominalPower = `${kW} kW`;
+  } else if (W) {
+    parts.push(`${W} W`);
+    item.nominalPower = `${W} W`;
+  }
+  if (kVA) {
+    parts.push(`${kVA} kVA`);
+    item.nominalPower = `${kVA} kVA`;
+  }
+  if (V) {
+    parts.push(`${V} V`);
+    item.nominalVoltage = `${V} V`;
+  }
+  const sens = s.rcdSensitivityMa ?? num(p.sensitivity_mA);
+  if (sens) parts.push(`IΔn ${sens} mA`);
+  const coil = s.coilVoltageV ?? num(p.coil_V);
+  if (coil) item.controlVoltage = `${coil} V`;
+  const trip = text(p.trip_class);
+  if (trip) parts.push(`classe ${trip}`);
+  if (eq.catalogType === "spd") {
+    const cls = text(p.spd_class);
+    if (cls) parts.push(`classe ${cls}`);
+    if (num(p.uc_V)) parts.push(`Uc ${num(p.uc_V)} V`);
+    if (num(p.up_kV)) parts.push(`Up ${num(p.up_kV)} kV`);
+    if (num(p.in_kA)) parts.push(`In ${num(p.in_kA)} kA`);
+    if (num(p.iimp_kA)) parts.push(`Iimp ${num(p.iimp_kA)} kA`);
+  }
+
+  const needsCurrent = ["breaker", "rcd", "fuse", "contactor", "thermal_relay", "disconnector"];
+  if (needsCurrent.includes(eq.catalogType) && !In) missing.push("corrente nominal");
+  if (eq.catalogType === "breaker" && !icu) missing.push("capacidade de interrupção (Icu)");
+  if (["motor", "vfd", "softstarter"].includes(eq.catalogType) && !kW) missing.push("potência");
+  return { parts, item, missing };
+}
 
 export function generateIndustrialBom(
   extracted: ExtractedCanvasData,
-  calculations: ElectricalCalculationMemory,
+  _calculations?: ElectricalCalculationMemory,
 ): BomItem[] {
   const items: BomItem[] = [];
-  let itemCounter = 1;
+  let counter = 1;
 
-  // ── Grupo 1: Proteção Elétrica ───────────────────────────────────────────
-  // Disjuntor geral do quadro
-  items.push({
-    id: `bom-brk-main-${itemCounter++}`,
-    tag: "QG_01",
-    description: `Disjuntor Caixa Moldada Tripolar In=${calculations.summary.mainBreakerRatingInA}A Icu=${calculations.summary.mainBreakerIcuKa}kA 380/440V`,
-    category: "1_protecao_eletrica",
-    quantity: 1,
-    unit: "un",
-    nominalVoltage: "380/440 V",
-    nominalCurrent: `${calculations.summary.mainBreakerRatingInA} A`,
-    breakingCapacityKa: calculations.summary.mainBreakerIcuKa,
-    tripCurve: "C",
-    poles: 3,
-    circuitRef: "ALIMENTADOR_GERAL",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes: "Proteção geral contra sobrecorrente e curto-circuito na entrada do QGD/CCM.",
-  });
+  // ── Equipamentos do projeto ──────────────────────────────────────────────
+  const equipments = [...extracted.equipments].sort((a, b) =>
+    a.tagCode.localeCompare(b.tagCode, "pt-BR", { numeric: true }),
+  );
+  for (const eq of equipments) {
+    if (NOT_A_PRODUCT.has(eq.catalogType)) continue;
+    const info = KIND_INFO[eq.catalogType] ?? {
+      name: eq.catalogType,
+      category: "8_paineis_barramentos_montagem" as BomGroupCategory,
+    };
+    const p = (eq.diagramParams ?? {}) as Record<string, unknown>;
+    const manufacturer = text(p.manufacturer);
+    const model = text(p.model);
+    const { parts, item, missing } = ratings(eq);
+    const hasCatalog = Boolean(manufacturer && model);
 
-  // Dispositivos de surto (DPS)
-  items.push({
-    id: `bom-dps-${itemCounter++}`,
-    tag: "DPS_01",
-    description:
-      "Dispositivo de Proteção contra Surtos (DPS) Classe II 275V Imax=40kA In=20kA (Conjunto 3F+N)",
-    category: "1_protecao_eletrica",
-    quantity: 4,
-    unit: "un",
-    nominalVoltage: "275 V",
-    breakingCapacityKa: 40,
-    circuitRef: "ENTRADA_QGD",
-    sourceKind: "recommended_pending",
-    validationStatus: "pending_catalog_selection",
-    notes: "Proteção contra descargas atmosféricas e sobretensões transitórias (NBR 5410 §5.4).",
-  });
+    let sourceKind: BomItemSource = "canvas_identified";
+    let validationStatus: BomValidationState = hasCatalog
+      ? "validated"
+      : "pending_catalog_selection";
+    if (missing.length > 0) {
+      sourceKind = "incomplete_specification";
+      validationStatus = "requires_review";
+    }
+    const notes: string[] = [];
+    if (missing.length) notes.push(`Falta informar: ${missing.join(", ")}.`);
+    if (!hasCatalog) notes.push("Fabricante/modelo não definidos (seleção comercial pendente).");
 
-  // Módulo Diferencial Residual (DR / RCD)
-  items.push({
-    id: `bom-rcd-${itemCounter++}`,
-    tag: "DR_01",
-    description: "Interruptor Diferencial Residual Tetrapolar (3P+N) In=63A IΔn=300mA Tipo AC",
-    category: "1_protecao_eletrica",
-    quantity: 1,
-    unit: "un",
-    nominalVoltage: "380 V",
-    nominalCurrent: "63 A",
-    poles: 4,
-    circuitRef: "QGD_FORCA",
-    sourceKind: "recommended_pending",
-    validationStatus: "pending_catalog_selection",
-    notes:
-      "Proteção adicional contra correntes de fuga à terra e princípio de incêndio (NBR 5410 §5.1.3.2).",
-  });
-
-  // Disjuntores dos circuitos terminais
-  for (const c of calculations.circuits) {
     items.push({
-      id: `bom-brk-${c.circuitCode}-${itemCounter++}`,
-      tag: `DJ_${c.circuitCode.replace("CIR_", "")}`,
-      description: `Disjuntor Termomagnético Tripolar In=${c.breakerRatingInA}A Curva ${c.breakerCurve} Icu=${c.breakingCapacityIcuKa}kA`,
-      category: "1_protecao_eletrica",
+      id: `bom-${eq.id}-${counter++}`,
+      tag: eq.tagCode,
+      description: [
+        info.name,
+        eq.displayName && eq.displayName !== eq.tagCode ? eq.displayName : "",
+        parts.join(", "),
+      ]
+        .filter(Boolean)
+        .join(" — "),
+      category: info.category,
       quantity: 1,
       unit: "un",
-      nominalVoltage: `${c.voltageV} V`,
-      nominalCurrent: `${c.breakerRatingInA} A`,
-      breakingCapacityKa: c.breakingCapacityIcuKa,
-      tripCurve: c.breakerCurve,
-      poles: c.phases.startsWith("3F") ? 3 : 1,
-      circuitRef: c.circuitCode,
-      sourceKind: "calculated_derived",
-      validationStatus: "validated",
-      notes: `Proteção do ${c.description} dimensionada conforme NBR 5410:2004 §5.3.`,
-    });
-
-    // Relé de sobrecarga térmico para motores
-    if (c.circuitType === "motor_branch") {
-      items.push({
-        id: `bom-ft-${c.circuitCode}-${itemCounter++}`,
-        tag: `FT_${c.circuitCode.replace("CIR_", "")}`,
-        description: `Relé de Sobrecarga Bimetálico Térmico faixa de ajuste (${(c.designCurrentIbA * 0.8).toFixed(1)} - ${(c.designCurrentIbA * 1.25).toFixed(1)} A)`,
-        category: "1_protecao_eletrica",
-        quantity: 1,
-        unit: "un",
-        nominalCurrent: `${c.designCurrentIbA} A`,
-        circuitRef: c.circuitCode,
-        sourceKind: "calculated_derived",
-        validationStatus: "validated",
-        notes: `Proteção térmica individual de motor ajustada para In=${c.designCurrentIbA} A com contatos 95-96 (NF) e 97-98 (NA).`,
-      });
-    }
-  }
-
-  // ── Grupo 2: Manobra e Comando ───────────────────────────────────────────
-  // Chave seccionadora rotativa de bloqueio
-  items.push({
-    id: `bom-qs-${itemCounter++}`,
-    tag: "QS_01",
-    description:
-      "Chave Seccionadora Rotativa Tripolar sob Carga In=100A com Manopla Bloqueável LOTO Vermelha/Amarela",
-    category: "2_manobra_comando",
-    quantity: 1,
-    unit: "un",
-    nominalVoltage: "440 V",
-    nominalCurrent: "100 A",
-    poles: 3,
-    circuitRef: "ENTRADA_PAINEL",
-    sourceKind: "canvas_identified",
-    validationStatus: "validated",
-    notes: "Seccionamento de segurança com trava para cadeado conforme NR-10 Item 10.5.1.",
-  });
-
-  // Contatores e sinalizadores por circuito motor
-  for (const c of calculations.circuits) {
-    if (c.circuitType === "motor_branch") {
-      const tagSuffix = c.circuitCode.replace("CIR_", "");
-      items.push({
-        id: `bom-km-${tagSuffix}-${itemCounter++}`,
-        tag: `KM_${tagSuffix}`,
-        description: `Contator Tripolar de Potência Categoria AC-3 Ie=${Math.ceil(c.designCurrentIbA * 1.15)}A Bobina 24Vcc com 1NA+1NF auxiliares`,
-        category: "2_manobra_comando",
-        quantity: 1,
-        unit: "un",
-        nominalVoltage: `${c.voltageV} V`,
-        nominalCurrent: `${Math.ceil(c.designCurrentIbA * 1.15)} A`,
-        controlVoltage: "24 Vdc",
-        utilizationCategory: "AC-3",
-        poles: 3,
-        circuitRef: c.circuitCode,
-        sourceKind: "calculated_derived",
-        validationStatus: "validated",
-        notes: `Contator de acionamento do motor ${tagSuffix}.`,
-      });
-
-      // Botoeiras Liga / Desliga
-      items.push({
-        id: `bom-btn-start-${tagSuffix}-${itemCounter++}`,
-        tag: `SB_START_${tagSuffix}`,
-        description: "Botoeira Pulsadora Faceada 22mm Verde com 1 contato NA (Partida)",
-        category: "2_manobra_comando",
-        quantity: 1,
-        unit: "un",
-        controlVoltage: "24 Vdc",
-        circuitRef: c.circuitCode,
-        sourceKind: "calculated_derived",
-        validationStatus: "validated",
-      });
-      items.push({
-        id: `bom-btn-stop-${tagSuffix}-${itemCounter++}`,
-        tag: `SB_STOP_${tagSuffix}`,
-        description: "Botoeira Pulsadora Faceada 22mm Vermelha com 1 contato NF (Parada)",
-        category: "2_manobra_comando",
-        quantity: 1,
-        unit: "un",
-        controlVoltage: "24 Vdc",
-        circuitRef: c.circuitCode,
-        sourceKind: "calculated_derived",
-        validationStatus: "validated",
-      });
-
-      // Sinaleiros luminosos LED
-      items.push({
-        id: `bom-hl-run-${tagSuffix}-${itemCounter++}`,
-        tag: `HL_RUN_${tagSuffix}`,
-        description: "Sinaleiro LED Monobloco 22mm Verde 24Vdc (Operando)",
-        category: "2_manobra_comando",
-        quantity: 1,
-        unit: "un",
-        controlVoltage: "24 Vdc",
-        circuitRef: c.circuitCode,
-        sourceKind: "calculated_derived",
-        validationStatus: "validated",
-      });
-      items.push({
-        id: `bom-hl-trip-${tagSuffix}-${itemCounter++}`,
-        tag: `HL_TRIP_${tagSuffix}`,
-        description: "Sinaleiro LED Monobloco 22mm Âmbar 24Vdc (Falha Térmica)",
-        category: "2_manobra_comando",
-        quantity: 1,
-        unit: "un",
-        controlVoltage: "24 Vdc",
-        circuitRef: c.circuitCode,
-        sourceKind: "calculated_derived",
-        validationStatus: "validated",
-      });
-    }
-  }
-
-  // ── Grupo 3: Motores e Acionamentos ──────────────────────────────────────
-  for (const eq of extracted.equipments) {
-    if (eq.catalogType === "motor" || eq.category === "drive") {
-      const pKw = eq.specs.powerKw ?? 5.5;
-      items.push({
-        id: `bom-mot-${eq.tagCode}-${itemCounter++}`,
-        tag: eq.tagCode,
-        description: `Motor de Indução Trifásico (MIT) Rotor de Gaiola ${pKw} kW (${(pKw * 1.36).toFixed(1)} CV) 380V 4 Pólos 60Hz Rendimento IR3 (Premium) IP55`,
-        category: "3_motores_acionamentos",
-        quantity: 1,
-        unit: "un",
-        nominalVoltage: `${eq.specs.voltageV || 380} V`,
-        nominalPower: `${pKw} kW`,
-        protectionDegree: "IP55",
-        poles: 4,
-        sourceEquipmentId: eq.id,
-        sourceKind: "canvas_identified",
-        validationStatus: "validated",
-        notes: `Equipamento de força identificado no Canvas. Método de partida: ${eq.specs.startingMethod || "DOL"}.`,
-      });
-    }
-    if (eq.catalogType === "vfd") {
-      items.push({
-        id: `bom-vfd-${eq.tagCode}-${itemCounter++}`,
-        tag: eq.tagCode,
-        description: `Inversor de Frequência Vetorial VFD ${eq.specs.powerKw || 7.5} kW 380-480V 3F com IHM e porta Modbus-RTU/RS-485`,
-        category: "3_motores_acionamentos",
-        quantity: 1,
-        unit: "un",
-        nominalVoltage: "380 V",
-        nominalPower: `${eq.specs.powerKw || 7.5} kW`,
-        sourceEquipmentId: eq.id,
-        sourceKind: "canvas_identified",
-        validationStatus: "validated",
-      });
-    }
-  }
-
-  // ── Grupo 4: CLP, Módulos e Interfaces ───────────────────────────────────
-  // Fonte 24Vdc
-  items.push({
-    id: `bom-psu-${itemCounter++}`,
-    tag: "G1",
-    description:
-      "Fonte Chaveada Industrial para Trilho DIN Entrada 100-240Vca Saída 24Vcc 10A (240W) Proteção contra Curto",
-    category: "4_clp_modulos_interfaces",
-    quantity: 1,
-    unit: "un",
-    nominalVoltage: "100-240 Vca / 24 Vcc",
-    nominalCurrent: "10 A",
-    nominalPower: "240 W",
-    circuitRef: "CIR_COMANDO_24V",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes: "Alimentação de sensores, bobinas de contatores, relés acopladores e I/Os do CLP.",
-  });
-
-  // CPU do CLP e módulos
-  items.push({
-    id: `bom-plc-cpu-${itemCounter++}`,
-    tag: "PLC_CPU",
-    description: `${extracted.plcProgram.cpuModel} com 14 DI 24Vcc, 10 DO Relé/Transistor, 2 AI 0-10V e porta PROFINET/Ethernet`,
-    category: "4_clp_modulos_interfaces",
-    quantity: 1,
-    unit: "un",
-    controlVoltage: "24 Vdc",
-    circuitRef: "CIR_AUTOMACAO",
-    sourceKind: "canvas_identified",
-    validationStatus: "validated",
-    notes: `Controlador Programável do bastidor ${extracted.plcProgram.rackName}.`,
-  });
-
-  for (const mod of extracted.plcProgram.ioModules) {
-    items.push({
-      id: `bom-plc-mod-${mod.slot}-${itemCounter++}`,
-      tag: `MOD_SLOT_${mod.slot}`,
-      description: `Módulo de Expansão ${mod.type} ${mod.channelsCount} Canais (${mod.partNumber})`,
-      category: "4_clp_modulos_interfaces",
-      quantity: 1,
-      unit: "un",
-      controlVoltage: "24 Vdc",
-      circuitRef: "CIR_AUTOMACAO",
-      sourceKind: "canvas_identified",
-      validationStatus: "validated",
+      ...(manufacturer ? { manufacturer } : {}),
+      ...(model ? { modelOrCatalog: model } : {}),
+      ...item,
+      sourceEquipmentId: eq.id,
+      sourceKind,
+      validationStatus,
+      ...(notes.length ? { notes: notes.join(" ") } : {}),
     });
   }
 
-  // Relés acopladores slim 24Vcc
-  const relaysNeeded = Math.max(4, calculations.circuits.length * 2);
-  items.push({
-    id: `bom-relay-slim-${itemCounter++}`,
-    tag: "KA_ARRAY",
-    description:
-      "Relé Acoplador de Interface Slim 6.2mm Bobina 24Vcc 1 Contato Reversor (1NAF) 6A 250Vca com LED",
-    category: "4_clp_modulos_interfaces",
-    quantity: relaysNeeded,
-    unit: "un",
-    controlVoltage: "24 Vdc",
-    circuitRef: "CIR_INTERFACES",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes:
-      "Isolação galvânica entre as saídas a transistor do CLP e as bobinas dos contatores de potência.",
-  });
-
-  // ── Grupo 5: Sensores e Instrumentação ────────────────────────────────────
-  for (const eq of extracted.equipments) {
-    if (
-      eq.category === "instrumentation" ||
-      eq.catalogType === "pt100" ||
-      eq.catalogType === "pressure"
-    ) {
-      items.push({
-        id: `bom-inst-${eq.tagCode}-${itemCounter++}`,
-        tag: eq.tagCode,
-        description: `Transmissor/Sensor Industrial ${eq.displayName || eq.tagCode} Saída 4-20mA / RTD Conexão ao Processo Grau IP67`,
-        category: "5_sensores_instrumentacao",
-        quantity: 1,
-        unit: "un",
-        controlVoltage: "24 Vdc",
-        sourceEquipmentId: eq.id,
-        sourceKind: "canvas_identified",
-        validationStatus: "validated",
-      });
+  // ── Cabos: soma dos comprimentos INFORMADOS por seção ────────────────────
+  interface CableGroup {
+    section: number;
+    insulation: string;
+    material: "Cu" | "Al";
+    lengthM: number;
+    runs: number;
+    runsWithoutLength: number;
+  }
+  const groups = new Map<string, CableGroup>();
+  let withoutSection = 0;
+  for (const c of extracted.connections) {
+    if ((c.kind ?? "power") !== "power") continue;
+    const cond = c.conductor;
+    if (!cond?.crossSectionMm2) {
+      withoutSection += 1;
+      continue;
     }
+    const key = `${cond.crossSectionMm2}|${cond.insulation}|${cond.material}`;
+    const g = groups.get(key) ?? {
+      section: cond.crossSectionMm2,
+      insulation: cond.insulation,
+      material: cond.material,
+      lengthM: 0,
+      runs: 0,
+      runsWithoutLength: 0,
+    };
+    g.runs += 1;
+    if (cond.lengthM) g.lengthM += cond.lengthM;
+    else g.runsWithoutLength += 1;
+    groups.set(key, g);
   }
-
-  // ── Grupo 6: Cabos e Condutores ──────────────────────────────────────────
-  // Cabos de força dos circuitos
-  const cablesBySection = new Map<number, number>();
-  for (const c of calculations.circuits) {
-    const totalCircM = c.lengthM * (c.phases.startsWith("3F") ? 3 : 2);
-    cablesBySection.set(
-      c.selectedCableMm2,
-      (cablesBySection.get(c.selectedCableMm2) || 0) + totalCircM,
-    );
-  }
-
-  for (const [sec, lenM] of cablesBySection.entries()) {
+  for (const g of [...groups.values()].sort((a, b) => a.section - b.section)) {
+    const incomplete = g.runsWithoutLength > 0;
     items.push({
-      id: `bom-cable-power-${sec}-${itemCounter++}`,
-      tag: `CABO_FORCA_${sec}MM`,
-      description: `Cabo de Cobre Unipolar Flexível Classe 5 Seção ${sec} mm² Tensão 0,6/1kV Isolação PVC 70°C Antichama Preto/Cinza/Vermelho (Fases)`,
+      id: `bom-cable-${g.section}-${g.insulation}-${counter++}`,
+      tag: `W ${g.section} mm²`,
+      description: `Cabo de ${g.material === "Cu" ? "cobre" : "alumínio"} ${g.section} mm² isolação ${g.insulation} — ${g.runs} trecho(s) do unifilar`,
       category: "6_cabos_condutores",
-      quantity: Math.ceil(lenM * 1.1), // +10% margem de instalação
-      unit: "m",
-      conductorSectionMm2: sec,
-      conductorLengthM: Math.ceil(lenM * 1.1),
-      conductorMaterial: "Cu",
-      insulationType: "PVC",
-      circuitRef: "CIRCUITOS_FORCA",
-      sourceKind: "calculated_derived",
-      validationStatus: "validated",
-      notes:
-        "Condutores de fase dimensionados conforme critério conjunto de ampacidade e queda de tensão NBR 5410.",
+      quantity: Math.round(g.lengthM * 10) / 10,
+      unit: "m (rota)",
+      conductorSectionMm2: g.section,
+      conductorLengthM: Math.round(g.lengthM * 10) / 10,
+      conductorMaterial: g.material,
+      insulationType: g.insulation as BomItem["insulationType"],
+      sourceKind: incomplete ? "incomplete_specification" : "canvas_identified",
+      validationStatus: incomplete ? "requires_review" : "pending_catalog_selection",
+      notes: [
+        "Comprimento de rota do unifilar; multiplicar pelo número de condutores do circuito (fases, N, PE) e somar as sobras de montagem.",
+        incomplete
+          ? `${g.runsWithoutLength} trecho(s) sem comprimento informado — quantidade incompleta.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
     });
   }
-
-  // Condutor de proteção PE verde/amarelo
-  const totalPeM = calculations.circuits.reduce((acc, c) => acc + c.lengthM, 0) + 25;
-  items.push({
-    id: `bom-cable-pe-${itemCounter++}`,
-    tag: "CABO_PE_VERDE",
-    description:
-      "Cabo de Cobre Unipolar Flexível Classe 5 Seção 16 mm² 750V Isolação PVC Verde/Amarelo (Condutor de Proteção PE)",
-    category: "6_cabos_condutores",
-    quantity: Math.ceil(totalPeM * 1.1),
-    unit: "m",
-    conductorSectionMm2: 16,
-    conductorLengthM: Math.ceil(totalPeM * 1.1),
-    conductorMaterial: "Cu",
-    insulationType: "PVC",
-    circuitRef: "BARRA_PE",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes:
-      "Aterramento e equipotencialização de todas as massas metálicas conforme NBR 5410 Tabela 58 e NR-10.",
-  });
-
-  // Cabos de comando e instrumentação
-  items.push({
-    id: `bom-cable-cmd-${itemCounter++}`,
-    tag: "CABO_COMANDO_1MM",
-    description:
-      "Cabo de Comando Flexível 1,0 mm² 750V PVC Azul Escuro (Comando 24Vcc) e Azul Claro (Neutro)",
-    category: "6_cabos_condutores",
-    quantity: 150,
-    unit: "m",
-    conductorSectionMm2: 1.0,
-    conductorLengthM: 150,
-    conductorMaterial: "Cu",
-    insulationType: "PVC",
-    circuitRef: "CIR_COMANDO",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes: "Fiação interna de comando e sinalização do painel.",
-  });
-
-  // ── Grupo 7: Bornes e Acessórios ─────────────────────────────────────────
-  const bornesCount = Math.max(20, extracted.terminals.length + 10);
-  items.push({
-    id: `bom-borne-pas-${itemCounter++}`,
-    tag: "BORNE_UK5N",
-    description:
-      "Borne de Passagem Tipo Parafuso/Mola para Cabos até 4mm² Cor Cinza Montagem em Trilho DIN TS-35",
-    category: "7_bornes_acessorios",
-    quantity: bornesCount,
-    unit: "un",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes: "Régua de bornes X1 para conexão dos cabos de campo dos motores e comandos.",
-  });
-  items.push({
-    id: `bom-borne-pe-${itemCounter++}`,
-    tag: "BORNE_PE_TERRA",
-    description:
-      "Borne de Passagem de Aterramento (PE) com Contato Direto ao Trilho DIN TS-35 Cor Verde/Amarelo até 10mm²",
-    category: "7_bornes_acessorios",
-    quantity: Math.max(6, Math.ceil(bornesCount / 4)),
-    unit: "un",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-  });
-  items.push({
-    id: `bom-trilho-din-${itemCounter++}`,
-    tag: "TRILHO_DIN_35",
-    description: "Trilho DIN TS-35 Perfurado em Aço Zincado Comprimento 2 Metros",
-    category: "7_bornes_acessorios",
-    quantity: 4,
-    unit: "un",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-  });
-
-  // ── Grupo 8: Painéis, Barramentos e Montagem ─────────────────────────────
-  items.push({
-    id: `bom-painel-box-${itemCounter++}`,
-    tag: "PAINEL_QGD",
-    description:
-      "Quadro Autoportante / Painel de Aço Carbono Pintura Eletrostática RAL 7035 Dimensões 2000x800x600mm Grau de Proteção IP54 com Placa de Montagem Laranja",
-    category: "8_paineis_barramentos_montagem",
-    quantity: 1,
-    unit: "un",
-    protectionDegree: "IP54",
-    circuitRef: "ESTRUTURA_QGD",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes: "Invólucro metálico do painel conforme ABNT NBR IEC 61439-1.",
-  });
-  items.push({
-    id: `bom-barra-cu-${itemCounter++}`,
-    tag: "BARRAMENTO_COBRE",
-    description:
-      "Barra de Cobre Eletrolítico Retangular 25x5mm (Capacidade nominal 250A) com Isoladores Epóxi Paralelos (Conjunto R, S, T, N, PE)",
-    category: "8_paineis_barramentos_montagem",
-    quantity: 5,
-    unit: "barras",
-    circuitRef: "BARRAMENTO_PRINCIPAL",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-  });
-  items.push({
-    id: `bom-canaleta-${itemCounter++}`,
-    tag: "CANALETA_50X50",
-    description: "Canaleta Plástica Recortada PVC Antichama Cinza 50x50mm com Tampa Comprimento 2m",
-    category: "8_paineis_barramentos_montagem",
-    quantity: 10,
-    unit: "un",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-  });
-  items.push({
-    id: `bom-prensa-cabo-${itemCounter++}`,
-    tag: "PRENSA_CABOS_KIT",
-    description:
-      "Conjunto de Prensa-Cabos Metálicos / Nylon PG16, PG21 e PG29 com Porcas e Anéis de Vedação IP68",
-    category: "8_paineis_barramentos_montagem",
-    quantity: 1,
-    unit: "kit",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-  });
-
-  // ── Grupo 9: Dispositivos de Segurança (NR-12) ───────────────────────────
-  items.push({
-    id: `bom-safety-estop-${itemCounter++}`,
-    tag: "SB_EMG_01",
-    description:
-      "Botoeira de Emergência Tipo Cogumelo 40mm Vermelha com Trava Mecânica Girar-para-Soltar com 2 Contatos NF Positivos e Plaqueta Amarela 'EMERGÊNCIA'",
-    category: "9_dispositivos_seguranca",
-    quantity: Math.max(1, extracted.equipments.filter((e) => e.catalogType === "estop").length),
-    unit: "un",
-    controlVoltage: "24 Vdc",
-    circuitRef: "CIR_SEGURANCA",
-    sourceKind: "canvas_identified",
-    validationStatus: "validated",
-    notes: "Conformidade obrigatória com NR-12 Item 12.56 e NBR IEC 60204-1 §10.7.",
-  });
-  items.push({
-    id: `bom-safety-relay-${itemCounter++}`,
-    tag: "KS_01",
-    description:
-      "Relé de Segurança para Monitoramento de Parada de Emergência Categoria 4 / PLe (ISO 13849-1) Alimentação 24Vcc 3 Contatos de Segurança NA + 1 NF Auxiliar",
-    category: "9_dispositivos_seguranca",
-    quantity: 1,
-    unit: "un",
-    controlVoltage: "24 Vdc",
-    circuitRef: "CIR_SEGURANCA",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes: "Supervisão redundante com rearme manual monitorado.",
-  });
-
-  // ── Grupo 10: Identificação, Montagem e Documentação ─────────────────────
-  items.push({
-    id: `bom-anilha-${itemCounter++}`,
-    tag: "ANILHAS_MARCACAO",
-    description:
-      "Kit de Anilhas Marcadoras Tubulares PVC Amarelas para Fios 0.5 a 6.0 mm² Números (0-9) e Letras (L1, L2, L3, N, PE, +, -)",
-    category: "10_identificacao_documentacao",
-    quantity: 1,
-    unit: "kit",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes:
-      "Identificação indelével de cada condutor conforme numeração do diagrama unifilar/multifilar.",
-  });
-  items.push({
-    id: `bom-plaquetas-${itemCounter++}`,
-    tag: "PLAQUETAS_ACRILICO",
-    description:
-      "Conjunto de Plaquetas de Identificação Acrílicas Bicolor Gravadas a Laser com Fita 3M para Frontal do Painel e Componentes Internos",
-    category: "10_identificacao_documentacao",
-    quantity: 1,
-    unit: "kit",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-  });
-  items.push({
-    id: `bom-porta-esquema-${itemCounter++}`,
-    tag: "PORTA_ESQUEMAS_A4",
-    description:
-      "Porta-Documentos / Esquemas Plástico Auto-Adesivo Formato A4 Fixado na Parte Interna da Porta do Painel",
-    category: "10_identificacao_documentacao",
-    quantity: 1,
-    unit: "un",
-    sourceKind: "calculated_derived",
-    validationStatus: "validated",
-    notes:
-      "Armazenamento do Dossiê Técnico e Diagramas Elétricos no interior do painel conforme NR-10.",
-  });
+  if (withoutSection > 0) {
+    items.push({
+      id: `bom-cable-pending-${counter++}`,
+      tag: "W ?",
+      description: `${withoutSection} trecho(s) de potência sem seção definida`,
+      category: "6_cabos_condutores",
+      quantity: withoutSection,
+      unit: "trecho",
+      sourceKind: "incomplete_specification",
+      validationStatus: "requires_review",
+      notes: "Dimensione os cabos na aba Cálculos NBR 5410 do unifilar.",
+    });
+  }
 
   return items;
 }

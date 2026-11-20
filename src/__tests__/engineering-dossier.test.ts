@@ -230,10 +230,27 @@ describe("ElétricAi Engineering Dossier — Industrial Suite", () => {
       expect(c.selectedCableMm2).toBeGreaterThanOrEqual(2.5);
       expect(c.correctedAmpacityIzA).toBeGreaterThanOrEqual(c.designCurrentIbA);
       expect(c.ampacityCheckPass).toBe(true);
-      expect(c.voltageDropPass).toBe(true);
-      expect(c.voltageDropPct).toBeLessThanOrEqual(4.0);
+      // Sem comprimento informado no projeto: queda NÃO verificada (nada presumido).
+      expect(c.lengthM).toBeNull();
+      expect(c.voltageDropPass).toBeNull();
+      expect(c.voltageDropPct).toBeNull();
       expect(c.peCableMm2).toBeGreaterThanOrEqual(2.5);
+      // Disjuntor do projeto (QGD 250 A) é usado; Icu vem do projeto.
+      expect(c.protectionSource).toBe("projeto");
+      expect(c.breakerRatingInA).toBe(250);
+      expect(c.cableSource).toBe("calculado");
     }
+    expect(memory.summary.mainBreakerSource).toBe("projeto");
+    expect(memory.summary.mainBreakerIcuKa).toBe(25);
+  });
+
+  it("3b. Memória sem potência informada não inventa carga", () => {
+    const snap = createMockIndustrialSnapshot();
+    const m2 = snap.project.nodes.find((n) => n.id === "m2")!;
+    m2.params = { U: 380, startMethod: "DOL" };
+    const memory = generateElectricalCalculationMemory(extractCanvasData({ snapshot: snap }));
+    expect(memory.circuits.some((c) => c.equipmentId === "m2")).toBe(false);
+    expect(memory.calculationAssumptions.join(" ")).toMatch(/sem potência informada/);
   });
 
   it("4. Lista de Materiais (BOM): categoriza nos 10 grupos industriais sem duplicidade", () => {
@@ -242,19 +259,19 @@ describe("ElétricAi Engineering Dossier — Industrial Suite", () => {
     const memory = generateElectricalCalculationMemory(extracted);
     const bom = generateIndustrialBom(extracted, memory);
 
-    expect(bom.length).toBeGreaterThanOrEqual(15);
-
-    // Verifica que contém os grupos essenciais
+    // Só o que existe no projeto: trafo, disjuntor geral, 2 motores, E-STOP (+ cabos sem seção).
+    const equipmentItems = bom.filter((b) => b.sourceEquipmentId);
+    expect(equipmentItems.map((b) => b.tag).sort()).toEqual(
+      extracted.equipments.map((e) => e.tagCode).sort(),
+    );
+    // Nada inventado: sem DPS/DR/botoeiras/fonte que não estejam no diagrama.
+    expect(bom.some((b) => /DPS|Diferencial|Botoeira|Sinaleiro|Fonte/.test(b.description))).toBe(
+      false,
+    );
     const categories = new Set(bom.map((b) => b.category));
     expect(categories.has("1_protecao_eletrica")).toBe(true);
-    expect(categories.has("2_manobra_comando")).toBe(true);
     expect(categories.has("3_motores_acionamentos")).toBe(true);
-    expect(categories.has("4_clp_modulos_interfaces")).toBe(true);
-    expect(categories.has("6_cabos_condutores")).toBe(true);
-    expect(categories.has("7_bornes_acessorios")).toBe(true);
-    expect(categories.has("8_paineis_barramentos_montagem")).toBe(true);
     expect(categories.has("9_dispositivos_seguranca")).toBe(true);
-    expect(categories.has("10_identificacao_documentacao")).toBe(true);
 
     // Verifica ausência de IDs duplicados
     const ids = bom.map((b) => b.id);

@@ -34,7 +34,6 @@ import {
   type MotorDriveState,
 } from "@/lib/simulation/motor-protection-engine";
 import type { FleetMotor } from "@/lib/simulation/motor-fleet";
-import { buildMccDemoDiagram } from "@/lib/simulation/mcc-demo-plant";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -362,7 +361,6 @@ function MotorDetail({ motor, drive }: { motor: FleetMotor; drive: MotorDriveSta
 export function ScadaMotorsView() {
   const { t } = useI18n();
   const doc = useDiagramStore((s) => s.doc);
-  const loadDoc = useDiagramStore((s) => s.loadDoc);
   const fleet = useMotorControlStore((s) => s.fleet);
   const drives = useMotorControlStore((s) => s.drives);
   const ticking = useMotorControlStore((s) => s.ticking);
@@ -397,14 +395,6 @@ export function ScadaMotorsView() {
   }, [fleet, drives, acknowledged]);
 
   const selected = fleet.find((m) => m.config.id === selectedId) ?? fleet[0];
-
-  const loadDemo = () => {
-    const hasContent = Object.keys(doc.nodes).length > 0;
-    if (hasContent && !window.confirm(t("mcc.confirmDemo"))) {
-      return;
-    }
-    loadDoc(buildMccDemoDiagram());
-  };
 
   return (
     <div
@@ -550,14 +540,6 @@ export function ScadaMotorsView() {
       {fleet.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <p className="max-w-md text-sm text-zinc-300">{t("mcc.empty")}</p>
-          <button
-            type="button"
-            onClick={loadDemo}
-            className="rounded bg-sky-700 px-3 py-2 text-sm font-bold hover:bg-sky-600"
-            data-testid="mcc-load-demo"
-          >
-            {t("mcc.loadDemo")}
-          </button>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">

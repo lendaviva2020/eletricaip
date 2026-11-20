@@ -94,11 +94,8 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
     ["Código do Projeto:", dossier.projectId],
     ["Data de Emissão:", dossier.approval.issueDate || new Date().toLocaleDateString("pt-BR")],
     ["Revisão:", `Rev. ${dossier.revision}`],
-    ["Responsável Técnico:", dossier.approval.engineerName || "Engenheiro Responsável"],
-    [
-      "Registro Profissional:",
-      dossier.approval.professionalRegistration || "CREA / CFT — Pendente de ART",
-    ],
+    ["Responsável Técnico:", dossier.approval.engineerName || "Não informado"],
+    ["Registro Profissional:", dossier.approval.professionalRegistration || "Não informado"],
   ];
 
   let iy = y + 17;
@@ -153,7 +150,10 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
     ["Tensão / Frequência:", `${sm.systemVoltageV} V / ${sm.nominalFrequencyHz} Hz`],
     ["Esquema de Aterramento:", sm.earthingScheme],
     ["Trafo Recomendado:", `${sm.recommendedTransformerKva} kVA`],
-    ["Disjuntor Geral:", `${sm.mainBreakerRatingInA} A (Icu ${sm.mainBreakerIcuKa} kA)`],
+    [
+      "Disjuntor Geral:",
+      `${sm.mainBreakerRatingInA} A${sm.mainBreakerSource === "recomendado" ? " (recomendado)" : ""} — Icu ${sm.mainBreakerIcuKa !== null ? `${sm.mainBreakerIcuKa} kA` : "não informado"}`,
+    ],
     ["Alimentador Geral:", `${sm.mainFeederCableMm2} mm² Cu (EPR)`],
   ];
 
@@ -245,14 +245,18 @@ export function generateEngineeringDossierPdf(dossier: CompleteEngineeringDossie
     doc.text(`${c.selectedCableMm2} Cu`, colXs[4], y);
     doc.text(String(c.correctedAmpacityIzA), colXs[5], y);
     doc.text(`${c.breakerRatingInA}A (${c.breakerCurve})`, colXs[6], y);
-    doc.text(`${c.voltageDropPct}%`, colXs[7], y);
+    doc.text(c.voltageDropPct !== null ? `${c.voltageDropPct}%` : "s/ comp.", colXs[7], y);
     doc.text(`${c.peCableMm2}`, colXs[8], y);
-    doc.setTextColor(
-      c.ampacityCheckPass && c.voltageDropPass ? 22 : 220,
-      c.ampacityCheckPass && c.voltageDropPass ? 101 : 38,
-      52,
-    );
-    doc.text(c.ampacityCheckPass && c.voltageDropPass ? "OK" : "FALHA", colXs[9], y);
+    const verdict =
+      !c.ampacityCheckPass || c.voltageDropPass === false
+        ? "FALHA"
+        : c.voltageDropPass === null
+          ? "PEND."
+          : "OK";
+    if (verdict === "OK") doc.setTextColor(22, 101, 52);
+    else if (verdict === "FALHA") doc.setTextColor(220, 38, 52);
+    else doc.setTextColor(180, 120, 20);
+    doc.text(verdict, colXs[9], y);
     doc.setTextColor(15, 23, 42);
     y += 5;
   }

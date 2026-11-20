@@ -289,6 +289,9 @@ export function mergeSpecsIntoDiagramParams(
         tag,
         notes: baseParams?.notes,
         power_kW: specs.powerKw ?? (baseParams?.kind === "vfd" ? baseParams.power_kW : 7.5),
+        ...(specs.powerKw === undefined && baseParams?.kind !== "vfd"
+          ? { unconfirmed: ["power_kW"] }
+          : {}),
         voltage_V: specs.voltageV ?? (baseParams?.kind === "vfd" ? baseParams.voltage_V : 380),
       };
     case "softstarter":
@@ -297,6 +300,9 @@ export function mergeSpecsIntoDiagramParams(
         tag,
         notes: baseParams?.notes,
         power_kW: specs.powerKw ?? (baseParams?.kind === "softstarter" ? baseParams.power_kW : 11),
+        ...(specs.powerKw === undefined && baseParams?.kind !== "softstarter"
+          ? { unconfirmed: ["power_kW"] }
+          : {}),
       };
     case "busbar":
       return {
@@ -324,6 +330,9 @@ export function mergeSpecsIntoDiagramParams(
         tag,
         notes: baseParams?.notes,
         power_kW: specs.powerKw ?? (baseParams?.kind === "motor" ? baseParams.power_kW : 7.5),
+        ...(specs.powerKw === undefined && baseParams?.kind !== "motor"
+          ? { unconfirmed: ["power_kW"] }
+          : {}),
         voltage_V: specs.voltageV ?? (baseParams?.kind === "motor" ? baseParams.voltage_V : 380),
         fla_A:
           specs.nominalCurrentA ?? (baseParams?.kind === "motor" ? baseParams.fla_A : undefined),
@@ -756,6 +765,23 @@ export function upgradeSnapshotV2ToV3(
           voltageV,
           nominalCurrentA,
           apparentPowerKva: typeof n.params?.kVA === "number" ? n.params.kVA : undefined,
+          // Antes Icu, curva e polos de projetos antigos ficavam só em `custom` e
+          // sumiam dos cálculos (verificação de Icu sem dado real).
+          breakingCapacityKa:
+            typeof n.params?.icc_kA === "number" && n.params.icc_kA > 0
+              ? n.params.icc_kA
+              : undefined,
+          tripCurve:
+            n.params?.curve === "B" || n.params?.curve === "C" || n.params?.curve === "D"
+              ? n.params.curve
+              : undefined,
+          poles:
+            typeof n.params?.poles === "number" &&
+            Number.isInteger(n.params.poles) &&
+            n.params.poles >= 1 &&
+            n.params.poles <= 4
+              ? n.params.poles
+              : undefined,
           custom: { ...(n.params ?? {}) },
         },
       };

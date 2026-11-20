@@ -64,6 +64,12 @@ export type SheetKind = z.infer<typeof SheetKindSchema>;
 // Mantemos campos comuns + bag tipada por kind.
 const ParamsBase = {
   tag: z.string().max(64).optional(),
+  /**
+   * Parâmetros que ainda são o PADRÃO DA BIBLIOTECA (não confirmados pelo
+   * engenheiro). Editar um parâmetro o remove da lista; o diagnóstico cobra a
+   * confirmação e a emissão da revisão é bloqueada enquanto houver algum.
+   */
+  unconfirmed: z.array(z.string().max(40)).max(20).optional(),
   notes: z.string().max(500).optional(),
   manufacturer: z.string().max(120).optional(),
   model: z.string().max(120).optional(),
@@ -233,14 +239,14 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("plc"),
     ...ParamsBase,
-    cpu: z.string().default("1769-L33ER"),
+    cpu: z.string().max(120).default(""),
     io_count: z.number().int().default(16),
   }),
   z.object({
     kind: z.literal("hmi"),
     ...ParamsBase,
     screen_size_in: z.number().default(10.1),
-    protocol: z.string().default("EtherNet/IP"),
+    protocol: z.string().max(60).default(""),
   }),
   z.object({ kind: z.literal("ground"), ...ParamsBase }),
   z.object({ kind: z.literal("neutral"), ...ParamsBase }),

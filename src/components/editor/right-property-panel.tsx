@@ -14,6 +14,7 @@ import {
 import { useDiagramStore } from "@/lib/diagram/store";
 import { cmd } from "@/lib/diagram/commands";
 import { getParamSpecs } from "@/lib/diagram/param-specs";
+import { loadCurrent_A } from "@/lib/diagram/connection/cable-sizing";
 import {
   NodeParamsSchema,
   type NodeParams,
@@ -28,6 +29,21 @@ import { LadderPropertyPanel } from "./ladder-property-panel";
 import { useI18n } from "@/lib/i18n";
 
 const TAG_TYPES: EditorTagType[] = ["BOOL", "INT", "REAL", "STRING"];
+
+/** Dado ausente aparece como tal — nunca um valor de catálogo inventado. */
+const NOT_INFORMED = "não informado";
+
+function numParam(params: DiagramNode["params"], key: string): number | undefined {
+  const v = (params as unknown as Record<string, unknown>)[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+function textParam(params: DiagramNode["params"], key: string): string | undefined {
+  const v = (params as unknown as Record<string, unknown>)[key];
+  return typeof v === "string" && v.trim() ? v : undefined;
+}
+function fmtOrPending(v: number | undefined, unit: string): string {
+  return v === undefined ? NOT_INFORMED : `${v} ${unit}`;
+}
 
 /**
  * Encontra o dispositivo de proteção (disjuntor) ou alimentador a montante associado ao circuito
@@ -191,7 +207,14 @@ export function RightPropertyPanel() {
     key: string,
     value: string | number | boolean,
   ) => {
-    const nextRaw = { ...currentParams, [key]: value } as unknown;
+    // Editar um parâmetro confirma o dado (sai da lista de padrões da biblioteca).
+    const pending: string[] = Array.isArray(currentParams?.unconfirmed)
+      ? currentParams.unconfirmed.filter((k: string) => k !== key)
+      : [];
+    const nextObj: Record<string, unknown> = { ...currentParams, [key]: value };
+    if (pending.length > 0) nextObj.unconfirmed = pending;
+    else delete nextObj.unconfirmed;
+    const nextRaw = nextObj as unknown;
     const parsed = NodeParamsSchema.safeParse(nextRaw);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Valor inválido");
@@ -263,31 +286,35 @@ export function RightPropertyPanel() {
             </div>
             <div>
               <span className="text-muted-foreground block text-[10px]">TIPO / LAYOUT</span>
-              <span className="font-medium">{kind === "motor" ? "Trifásico / Gaiola" : kind}</span>
+              <span className="font-medium">{kind}</span>
             </div>
             {kind === "motor" && (
               <>
                 <div>
                   <span className="text-muted-foreground block text-[10px]">POTÊNCIA</span>
                   <span className="font-medium text-amber-300">
-                    {(node.params as any).power_kW ?? 7.5} kW
+                    {fmtOrPending(numParam(node.params, "power_kW"), "kW")}
                   </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-[10px]">CORRENTE In</span>
                   <span className="font-medium text-amber-300">
-                    {(node.params as any).current_A ?? 15.2} A
+                    {numParam(node.params, "current_A") !== undefined
+                      ? `${numParam(node.params, "current_A")} A`
+                      : loadCurrent_A(node) !== undefined
+                        ? `${Math.round(loadCurrent_A(node)! * 10) / 10} A (calculada)`
+                        : NOT_INFORMED}
                   </span>
                 </div>
               </>
             )}
             <div>
               <span className="text-muted-foreground block text-[10px]">FABRICANTE</span>
-              <span>{(node.params as any).manufacturer ?? "WEG"}</span>
+              <span>{textParam(node.params, "manufacturer") ?? NOT_INFORMED}</span>
             </div>
             <div>
               <span className="text-muted-foreground block text-[10px]">MODELO</span>
-              <span>{(node.params as any).model ?? "W22 Premium"}</span>
+              <span>{textParam(node.params, "model") ?? NOT_INFORMED}</span>
             </div>
           </div>
 
@@ -366,26 +393,30 @@ export function RightPropertyPanel() {
               <div>
                 <span className="text-muted-foreground block text-[10px]">CURVA DISPARO</span>
                 <span className="font-medium text-amber-300">
-                  Curva {(relatedNode.params as any).curve ?? "C"}
+                  {textParam(relatedNode.params, "curve")
+                    ? `Curva ${textParam(relatedNode.params, "curve")}`
+                    : NOT_INFORMED}
                 </span>
               </div>
               <div>
                 <span className="text-muted-foreground block text-[10px]">CORRENTE In</span>
                 <span className="font-bold text-amber-300">
-                  {(relatedNode.params as any).in_A ?? 63} A
+                  {fmtOrPending(numParam(relatedNode.params, "in_A"), "A")}
                 </span>
               </div>
               <div>
                 <span className="text-muted-foreground block text-[10px]">CAPACIDADE Icu</span>
-                <span className="font-medium">10 kA</span>
+                <span className="font-medium">
+                  {fmtOrPending(numParam(relatedNode.params, "icc_kA"), "kA")}
+                </span>
               </div>
               <div>
                 <span className="text-muted-foreground block text-[10px]">FABRICANTE</span>
-                <span>{(relatedNode.params as any).manufacturer ?? "Schneider"}</span>
+                <span>{textParam(relatedNode.params, "manufacturer") ?? NOT_INFORMED}</span>
               </div>
               <div>
                 <span className="text-muted-foreground block text-[10px]">MODELO</span>
-                <span>{(relatedNode.params as any).model ?? "iC60N"}</span>
+                <span>{textParam(relatedNode.params, "model") ?? NOT_INFORMED}</span>
               </div>
             </div>
 

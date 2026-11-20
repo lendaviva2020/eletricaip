@@ -7,6 +7,7 @@ import { classifyMargin, type Severity } from "../diagnostics/types";
 import { validateElectricalTopology } from "./connection/graph-validator";
 import { cableName, isFieldCable, sizeDiagramCables } from "./connection/cable-sizing";
 import { analyzeNetwork } from "./connection/network-calculation";
+import { nodeDisplayName } from "./connection/cable-sizing";
 import { analyzeSurgeProtection } from "./connection/surge-protection";
 import { analyzeProtectionCoordination } from "./connection/protection-coordination";
 
@@ -485,37 +486,16 @@ export function calculateVoltageDropNbr5410(doc: DiagramDoc): VoltageDropResult[
     const length_m = cable.length_m;
     const section_mm2 = cable.section_mm2;
 
-    // Determina a corrente do circuito: Ib das cargas a jusante; sem carga conhecida,
-    // cai para os parâmetros do nó de carga ou proteção (marcado como premissa).
-    let current_A = 20;
+    // Corrente do trecho = a MESMA da tabela de cabos (Ib das cargas a jusante; sem
+    // carga conhecida, o In da proteção — declarado como premissa). Sem nenhuma das
+    // duas a queda não é calculada: antes adotava 20 A "padrão".
     const row = rowByEdge.get(e.id);
-    const loadNode =
-      row && row.Ib_A > 0
-        ? undefined
-        : [tgt, src].find(
-            (n) =>
-              n.params.kind === "motor" || n.params.kind === "load" || n.params.kind === "breaker",
-          );
-    if (loadNode) {
-      const p = loadNode.params;
-      if (p.kind === "motor") {
-        current_A =
-          (p as any).current_A ??
-          (p as any).fla_A ??
-          Math.round(
-            ((p as any).power_kW * 1000) / (Math.sqrt(3) * (p as any).voltage_V * 0.85 * 0.88),
-          );
-      } else if (p.kind === "breaker") {
-        current_A = (p as any).in_A ?? 20;
-        // In do disjuntor é limite superior, não a corrente de projeto (Ib).
-        assumptions.push(`Corrente adotada = In do disjuntor (${current_A} A)`);
-      } else if (p.kind === "load") {
-        current_A = Math.round((p as any).power_W / ((p as any).voltage_V * (p as any).fp));
-      }
-    } else if (row && row.Ib_A > 0) {
-      current_A = row.Ib_A;
-    } else {
-      assumptions.push("Corrente adotada como padrão (20 A)");
+    if (!row || row.Ib_A <= 0) continue;
+    const current_A = row.Ib_A;
+    if (row.protection_A !== undefined && row.protection_A === row.Ib_A) {
+      assumptions.push(
+        `Corrente adotada = In da proteção (${current_A} A): carga a jusante sem potência informada`,
+      );
     }
 
     const config = e.circuitConfig ?? inferCircuitConfig(e, src, tgt);
@@ -660,6 +640,19 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
       message: `${f.message} (${f.clause})`,
       ...(f.nodeId ? { nodeId: f.nodeId } : {}),
       ...(f.edgeId ? { edgeId: f.edgeId } : {}),
+    });
+  }
+
+  // 2c'. Valores padrão da biblioteca ainda não confirmados pelo engenheiro.
+  for (const n of Object.values(doc.nodes)) {
+    const pending = (n.params as { unconfirmed?: string[] }).unconfirmed;
+    if (n.sheet !== "unifilar" || !pending?.length) continue;
+    alerts.push({
+      id: `defaults_${n.id}`,
+      type: "AVISO",
+      severity: "warning",
+      message: `${nodeDisplayName(n)}: ${pending.join(", ")} ainda são os valores padrão da biblioteca — confirme com os dados de placa/catálogo.`,
+      nodeId: n.id,
     });
   }
 

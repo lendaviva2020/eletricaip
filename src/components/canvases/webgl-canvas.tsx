@@ -148,19 +148,41 @@ function voltaiComponentToNodeKind(type: VoltaiComponentType): NodeKind {
   return (map[type] ?? "terminal") as NodeKind;
 }
 
+/** Parâmetros que não são dado nominal (não precisam de confirmação). */
+const NON_RATING_KEYS = new Set([
+  "kind",
+  "tag",
+  "notes",
+  "manufacturer",
+  "model",
+  "cpu",
+  "protocol",
+]);
+
+/**
+ * Parâmetros iniciais de um símbolo solto da biblioteca: o esquema exige valores
+ * nominais, então eles existem — mas ficam MARCADOS como não confirmados até o
+ * engenheiro informar os dados de placa/catálogo.
+ */
 function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
+  const base = libraryDefaultParams(kind);
+  const ratingKeys = Object.keys(base).filter((k) => !NON_RATING_KEYS.has(k));
+  return ratingKeys.length > 0 ? { ...base, unconfirmed: ratingKeys } : base;
+}
+
+function libraryDefaultParams(kind: NodeKind): Record<string, unknown> {
   switch (kind) {
     case "breaker":
       // 3 polos: a biblioteca é de BT industrial 380 V; com 1 polo todo disjuntor
       // posto num circuito trifásico já nascia com erro de fases.
-      return { kind, in_A: 63, curve: "C", poles: 3, manufacturer: "Schneider", model: "iC60N" };
+      return { kind, in_A: 63, curve: "C", poles: 3 };
     case "rcd":
       return { kind, in_A: 25, sensitivity_mA: 30, poles: 2 };
     case "spd":
       // Valores de catálogo típicos de DPS classe II 220/380 V — editáveis no painel.
       return { kind, spd_class: "II", uc_V: 275, up_kV: 1.5, in_kA: 20, poles: 4 };
     case "contactor":
-      return { kind, in_A: 32, coil_V: 24, manufacturer: "WEG", model: "CWM32" };
+      return { kind, in_A: 32, coil_V: 24 };
     case "relay":
       return { kind, coil_V: 24, contacts: 2 };
     case "fuse":
@@ -168,26 +190,22 @@ function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
     case "disconnector":
       return { kind, in_A: 63 };
     case "thermal_relay":
-      return { kind, in_A: 32, trip_class: "10A", manufacturer: "WEG", model: "RW27-2D" };
+      return { kind, in_A: 32, trip_class: "10A" };
     case "capacitor_bank":
-      return { kind, kvar: 25, voltage_V: 380, manufacturer: "WEG", model: "BCW-25" };
+      return { kind, kvar: 25, voltage_V: 380 };
     case "generator":
-      return { kind, kVA: 150, voltage_V: 380, manufacturer: "Stemac", model: "GTA150" };
+      return { kind, kVA: 150, voltage_V: 380 };
     case "plc":
       return {
         kind,
-        cpu: "1769-L33ER",
+        cpu: "",
         io_count: 16,
-        manufacturer: "Rockwell",
-        model: "CompactLogix",
       };
     case "hmi":
       return {
         kind,
         screen_size_in: 10.1,
-        protocol: "EtherNet/IP",
-        manufacturer: "Siemens",
-        model: "KTP1000",
+        protocol: "",
       };
     case "transformer":
       return {
@@ -196,15 +214,13 @@ function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
         primary_V: 13800,
         secondary_V: 380,
         vector: "Dyn11",
-        manufacturer: "WEG",
-        model: "TRAFO-100",
       };
     case "psu":
       return { kind, output_V: 24, output_A: 10 };
     case "vfd":
-      return { kind, power_kW: 7.5, voltage_V: 380, manufacturer: "WEG", model: "CFW11" };
+      return { kind, power_kW: 7.5, voltage_V: 380 };
     case "softstarter":
-      return { kind, power_kW: 11, manufacturer: "WEG", model: "SSW07" };
+      return { kind, power_kW: 11 };
     case "busbar":
       return { kind, current_A: 630, voltage_V: 380 };
     case "ccm":
@@ -213,11 +229,8 @@ function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
       return {
         kind,
         power_kW: 7.5,
-        current_A: 15.2,
         voltage_V: 380,
         startMethod: "DOL",
-        manufacturer: "WEG",
-        model: "W22 Premium",
       };
     case "load":
       return { kind, power_W: 1000, voltage_V: 220, fp: 0.92 };

@@ -133,7 +133,7 @@ export function buildDossierExcelWorkbook(dossier: CompleteEngineeringDossier): 
     "Iz Corrigido (A)": c.correctedAmpacityIzA,
     "Disjuntor In (A)": c.breakerRatingInA,
     "Curva Disj.": c.breakerCurve,
-    "ΔV (%)": c.voltageDropPct,
+    "ΔV (%)": c.voltageDropPct ?? PENDING,
     "ΔV Limite (%)": c.maxAllowedVoltageDropPct,
     "Neutro (mm²)": c.neutralCableMm2,
     "PE (mm²)": c.peCableMm2,

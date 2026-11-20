@@ -186,6 +186,13 @@ export interface PlcProgramDoc {
 
 export interface CircuitCalculation {
   circuitCode: string;
+  /** Equipamento (carga) do circuito no projeto. */
+  equipmentId: string;
+  /** Disjuntor do circuito encontrado no projeto (se houver). */
+  breakerEquipmentId?: string;
+  /** "projeto" = dado informado no diagrama; "calculado" = mínimo pela norma, ainda não especificado. */
+  cableSource: "projeto" | "calculado";
+  protectionSource: "projeto" | "recomendado";
   description: string;
   circuitType: CircuitType;
   phases: string;
@@ -208,13 +215,15 @@ export interface CircuitCalculation {
   ampacityCheckPass: boolean;
 
   // Condutor por queda de tensão (NBR 5410 §6.2.7)
-  lengthM: number;
+  /** null = comprimento não informado no projeto (queda não verificável). */
+  lengthM: number | null;
   resistanceOhmPerM: number;
   reactanceOhmPerM: number;
-  voltageDropV: number;
-  voltageDropPct: number;
+  voltageDropV: number | null;
+  voltageDropPct: number | null;
   maxAllowedVoltageDropPct: number;
-  voltageDropPass: boolean;
+  /** null = não verificável (sem comprimento). */
+  voltageDropPass: boolean | null;
 
   // Condutores de Neutro e PE (NBR 5410 §6.2.6 e Tabela 58)
   neutralCableMm2: number;
@@ -223,8 +232,10 @@ export interface CircuitCalculation {
   // Proteção
   breakerRatingInA: number;
   breakerCurve: "B" | "C" | "D" | "MA";
-  breakingCapacityIcuKa: number;
-  presumedIccKa: number;
+  /** Icu do disjuntor informado no projeto; null = não informado. */
+  breakingCapacityIcuKa: number | null;
+  /** Curto presumido no ponto do disjuntor (cálculo de rede IEC 60909); null = não calculável. */
+  presumedIccKa: number | null;
   protectionCoordinationPass: boolean; // Ib <= In <= I'z
 
   // Motor / Carga Específica
@@ -248,7 +259,9 @@ export interface ElectricalCalculationMemory {
     mainFeederCurrentIbA: number;
     mainFeederCableMm2: number;
     mainBreakerRatingInA: number;
-    mainBreakerIcuKa: number;
+    /** "projeto" = disjuntor geral do diagrama; "recomendado" = calculado pela demanda. */
+    mainBreakerSource: "projeto" | "recomendado";
+    mainBreakerIcuKa: number | null;
   };
   circuits: CircuitCalculation[];
   calculationAssumptions: string[];

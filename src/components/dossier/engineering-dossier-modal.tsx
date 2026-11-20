@@ -35,7 +35,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getEngineeringDossier, approveAndEmitDossier } from "@/lib/dossier/dossier.functions";
+import {
+  getEngineeringDossier,
+  approveAndEmitDossier,
+  verifyApprovedRevisions,
+} from "@/lib/dossier/dossier.functions";
 import { generateEngineeringDossierPdf } from "@/lib/dossier/pdf-builder";
 import { buildDossierExcelWorkbook, buildBomCsv } from "@/lib/dossier/export-spreadsheets";
 import { generatePlcopenXml, generateStructuredText } from "@/lib/dossier/plcopen";
@@ -60,6 +64,7 @@ export function EngineeringDossierModal({
 }: EngineeringDossierModalProps) {
   const getDossierFn = useServerFn(getEngineeringDossier);
   const approveFn = useServerFn(approveAndEmitDossier);
+  const verifyFn = useServerFn(verifyApprovedRevisions);
   const qc = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<string>("overview");
@@ -68,6 +73,7 @@ export function EngineeringDossierModal({
   const [engineerName, setEngineerName] = useState<string>("");
   const [registration, setRegistration] = useState<string>("");
   const [approvalNotes, setApprovalNotes] = useState<string>("");
+  const [artNumber, setArtNumber] = useState<string>("");
   const [busyExport, setBusyExport] = useState<string | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -78,19 +84,31 @@ export function EngineeringDossierModal({
 
   const dossier = data?.dossier as CompleteEngineeringDossier | undefined;
 
+  const integrity = useQuery({
+    queryKey: ["revision-integrity", projectId],
+    queryFn: () => verifyFn({ data: { projectId } }),
+    enabled: open && !!projectId,
+  });
+  const approverReady = engineerName.trim().length >= 2 && registration.trim().length >= 2;
+
   const approveMut = useMutation({
     mutationFn: () =>
       approveFn({
         data: {
           projectId,
-          engineerName: engineerName || "Engenheiro Responsável Técnico",
-          professionalRegistration: registration || "CREA / CFT",
+          // Dados do responsável técnico são obrigatórios — nunca preenchidos pelo sistema.
+          engineerName: engineerName.trim(),
+          professionalRegistration: registration.trim(),
+          artNumber: artNumber.trim() || undefined,
           approvalNotes,
           syncBomToDatabase: true,
         },
       }),
     onSuccess: (res) => {
-      toast.success(`Dossiê aprovado com sucesso! Nova revisão: Rev. ${res.revision}`);
+      toast.success(
+        `Revisão ${res.revision} aprovada e selada (SHA-256 ${res.sha256.slice(0, 12)}…).`,
+      );
+      qc.invalidateQueries({ queryKey: ["revision-integrity", projectId] });
       qc.invalidateQueries({ queryKey: ["engineering-dossier", projectId] });
       qc.invalidateQueries({ queryKey: ["bom", projectId] });
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -401,7 +419,13 @@ export function EngineeringDossierModal({
                       <span className="text-sm font-normal text-muted-foreground">A</span>
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      Icu: {dossier.calculationMemory.summary.mainBreakerIcuKa} kA (380V)
+                      {dossier.calculationMemory.summary.mainBreakerSource === "recomendado"
+                        ? "Recomendado (não há disjuntor geral no diagrama)"
+                        : "Do projeto"}{" "}
+                      · Icu:{" "}
+                      {dossier.calculationMemory.summary.mainBreakerIcuKa !== null
+                        ? `${dossier.calculationMemory.summary.mainBreakerIcuKa} kA`
+                        : "não informado"}
                     </p>
                   </div>
                 </div>
@@ -487,10 +511,16 @@ export function EngineeringDossierModal({
                           <td className="px-3 py-2">
                             {c.breakerRatingInA}A ({c.breakerCurve})
                           </td>
-                          <td className="px-3 py-2 text-right font-mono">{c.voltageDropPct}%</td>
+                          <td className="px-3 py-2 text-right font-mono">
+                            {c.voltageDropPct !== null ? `${c.voltageDropPct}%` : "sem comprimento"}
+                          </td>
                           <td className="px-3 py-2 font-mono">{c.peCableMm2} mm²</td>
                           <td className="px-3 py-2 text-center">
-                            {c.ampacityCheckPass && c.voltageDropPass ? (
+                            {c.ampacityCheckPass && c.voltageDropPass === null ? (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold text-[10px]">
+                                PENDENTE
+                              </span>
+                            ) : c.ampacityCheckPass && c.voltageDropPass ? (
                               <span className="px-1.5 py-0.5 rounded bg-success/15 text-success font-semibold text-[10px]">
                                 OK
                               </span>
@@ -780,7 +810,7 @@ export function EngineeringDossierModal({
                       </Label>
                       <Input
                         id="eng-name"
-                        placeholder="Ex: Eng. Roberto Silveira"
+                        placeholder="Nome completo do responsável técnico"
                         value={engineerName}
                         onChange={(e) => setEngineerName(e.target.value)}
                         className="mt-1 text-xs"
@@ -792,10 +822,23 @@ export function EngineeringDossierModal({
                       </Label>
                       <Input
                         id="eng-crea"
-                        placeholder="Ex: CREA-SP 5069874123 / ART nº 28022026118"
+                        placeholder="Conselho, UF e número do registro"
                         value={registration}
                         onChange={(e) => setRegistration(e.target.value)}
                         className="mt-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="eng-art" className="text-xs">
+                        ART / RRT / TRT (opcional)
+                      </Label>
+                      <Input
+                        id="eng-art"
+                        placeholder="Número do documento de responsabilidade técnica"
+                        value={artNumber}
+                        onChange={(e) => setArtNumber(e.target.value)}
+                        className="mt-1 text-xs"
+                        maxLength={60}
                       />
                     </div>
                     <div>
@@ -815,13 +858,85 @@ export function EngineeringDossierModal({
 
                   <Button
                     onClick={() => approveMut.mutate()}
-                    disabled={criticalIssues.length > 0 || approveMut.isPending}
+                    disabled={criticalIssues.length > 0 || approveMut.isPending || !approverReady}
                     className="w-full bg-primary text-primary-foreground font-semibold"
                   >
                     {approveMut.isPending
                       ? "Gravando Revisão..."
                       : "Carimbar e Aprovar Emissão Técnica"}
                   </Button>
+                  {!approverReady && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Informe o nome e o registro profissional do responsável técnico para aprovar.
+                    </p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    A aprovação congela o projeto: o conteúdo e o memorial de cálculo do unifilar
+                    recebem um selo SHA-256, registrado na trilha de auditoria. O unifilar não pode
+                    ter erros no diagnóstico.
+                  </p>
+
+                  <div className="space-y-2 pt-2" data-testid="revision-integrity">
+                    <h4 className="text-xs font-semibold text-foreground">
+                      Integridade das revisões aprovadas
+                    </h4>
+                    {integrity.isLoading ? (
+                      <p className="text-[11px] text-muted-foreground">Verificando…</p>
+                    ) : integrity.isError ? (
+                      <p className="text-[11px] text-destructive">
+                        Não foi possível verificar as revisões agora.
+                      </p>
+                    ) : !integrity.data || integrity.data.revisions.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        Nenhuma revisão aprovada com selo ainda.
+                      </p>
+                    ) : (
+                      <>
+                        {integrity.data.changedSinceApproval && (
+                          <p className="text-[11px] text-amber-400">
+                            O projeto foi alterado depois da Rev.{" "}
+                            {integrity.data.revisions[0].revision} — o que está no canvas não é o
+                            conteúdo aprovado.
+                          </p>
+                        )}
+                        <ul className="space-y-1">
+                          {integrity.data.revisions.map((r) => (
+                            <li
+                              key={r.versionId}
+                              className="rounded border border-border/60 px-2 py-1.5 text-[11px]"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-semibold text-foreground">
+                                  Rev. {r.revision} · {r.engineerName} ({r.professionalRegistration}
+                                  {r.artNumber ? ` · ART ${r.artNumber}` : ""})
+                                </span>
+                                <span
+                                  className={
+                                    r.status === "intact"
+                                      ? "text-emerald-400"
+                                      : r.status === "tampered"
+                                        ? "text-destructive font-bold"
+                                        : "text-muted-foreground"
+                                  }
+                                >
+                                  {r.status === "intact"
+                                    ? r.audited
+                                      ? "Íntegra (conferida na auditoria)"
+                                      : "Íntegra (sem registro na auditoria)"
+                                    : r.status === "tampered"
+                                      ? "ADULTERADA — hash não confere"
+                                      : "Sem selo"}
+                                </span>
+                              </div>
+                              <div className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground">
+                                {new Date(r.approvedAt).toLocaleString("pt-BR")} · SHA-256 {r.hash}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
                 </div>
               </TabsContent>
 
