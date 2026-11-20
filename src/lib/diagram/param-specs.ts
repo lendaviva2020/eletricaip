@@ -62,6 +62,35 @@ export const NODE_PARAM_SPECS: Record<NodeKind, SpecMap> = {
     poles: { key: "poles", label: "Polos", type: "number", defaultValue: 1, ...poles14 },
     icc_kA: { key: "icc_kA", label: "Icc", type: "number", unit: "kA", defaultValue: 6 },
   }),
+  spd: withCommon({
+    spd_class: {
+      key: "spd_class",
+      label: "Classe (IEC 61643-11)",
+      type: "select",
+      defaultValue: "II",
+      options: ["I", "II", "III"].map((v) => ({ label: v, value: v })),
+      normRef: "NBR 5410 §6.3.5.2",
+    },
+    uc_V: { key: "uc_V", label: "Uc", type: "number", unit: "V", defaultValue: 275, min: 1 },
+    up_kV: { key: "up_kV", label: "Up", type: "number", unit: "kV", defaultValue: 1.5, min: 0.1 },
+    in_kA: {
+      key: "in_kA",
+      label: "In (8/20)",
+      type: "number",
+      unit: "kA",
+      defaultValue: 20,
+      min: 0.1,
+    },
+    iimp_kA: {
+      key: "iimp_kA",
+      label: "Iimp (10/350)",
+      type: "number",
+      unit: "kA",
+      defaultValue: 12.5,
+      min: 0.1,
+    },
+    poles: { key: "poles", label: "Polos", type: "number", defaultValue: 4, ...poles14 },
+  }),
   rcd: withCommon({
     in_A: {
       key: "in_A",

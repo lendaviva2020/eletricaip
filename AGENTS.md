@@ -1548,3 +1548,12 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - **Partida de motor** (`motorStartChecks`): DOL ≈ 7·In, estrela-triângulo ≈ 7/3·In; inversor/soft no caminho dispensam. Corrente de partida ≥ magnético mínimo do disjuntor do ramal = `BREAKER_TRIPS_ON_START` (erro); pico do 1º meio ciclo (≈ 2 × eficaz, premissa) ≥ magnético mínimo = `START_INRUSH_RISK` (aviso).
 - **UI**: gráfico tempo × corrente log × log (`components/editor/trip-curve-chart.tsx`, SVG próprio) na aba "Cálculos NBR 5410": escolhe a carga, desenha a cadeia de proteção (disjuntores e relé térmico como faixas, cabos tracejados), marca Ib, partida, curto mínimo F-T e curto máximo no ponto; tabela de pares com relação de In, limite e veredito. Verificado em E2E no projeto de demonstração.
 - Testes: `trip-curves.test.ts`.
+
+### DPS — proteção contra surtos (2026-11-20, 24ª rodada)
+
+- **Bug**: o item "Protetor contra Surtos" da biblioteca virava `lightcurtain` (cortina de luz) ao ser solto no unifilar. Agora existe o tipo **`spd`** (schema com `spd_class` I/II/III, `uc_V`, `up_kV`, `in_kA`, `iimp_kA`, `poles`), símbolo IEC 60617, portas, terminais (L1–L3, N → PE), designação `F` (IEC 81346), multifilar 3F+N e parâmetros no painel.
+- **Regras** (`lib/diagram/connection/surge-protection.ts`, puro; alertas `spd_*`, fora do `conn_ok`): DPS no ponto de entrada (origem = fonte → geral → primeiro barramento/derivação), obrigatório com alimentação aérea ou SPDA (`metadata.network.overheadSupply`/`lightningProtection`; não informado = aviso); SPDA exige classe I com Iimp ≥ 12,5 kA; classe II na origem com In ≥ 5 kA; Uc ≥ 1,1·U0 (TN/TT) ou ≥ U (IT); Up ≤ categoria II (1,5/2,5/4 kV por U0); fusível/disjuntor próprio do DPS. Uc/Up/In/Iimp ausentes = pendência (`SPD_DATA_MISSING`), nunca presumidos.
+- **Cabos do DPS**: seção mínima 4 mm² (16 mm² classe I) — antes seriam dimensionados pelo In do disjuntor geral.
+- **UI**: dados da rede ganharam "Alimentação aérea" e "Edificação com SPDA" (Não informado/Sim/Não). IA: regra do DPS no mapa de conhecimento.
+- Próximo: revisão aprovada e congelada (hash) com memorial de cálculo por revisão.
+- Testes: `surge-protection.test.ts`.

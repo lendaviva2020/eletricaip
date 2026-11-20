@@ -159,6 +159,25 @@ export function NetworkPanel() {
             ))}
           </select>
         </label>
+        {(["overheadSupply", "lightningProtection"] as const).map((key) => (
+          <label key={key} className="flex flex-col gap-0.5 text-[10px] text-muted-foreground">
+            {t(`networkPanel.${key}`)}
+            <select
+              value={net?.[key] === undefined ? "" : net[key] ? "yes" : "no"}
+              onChange={(e) =>
+                setNetwork({
+                  [key]: e.target.value === "" ? undefined : e.target.value === "yes",
+                })
+              }
+              data-testid={`network-${key}`}
+              className="h-7 rounded border border-border bg-input px-1 text-xs text-foreground"
+            >
+              <option value="">{t("networkPanel.earthingUnknown")}</option>
+              <option value="yes">{t("networkPanel.yes")}</option>
+              <option value="no">{t("networkPanel.no")}</option>
+            </select>
+          </label>
+        ))}
         <NumberField
           label={t("networkPanel.utilityScc")}
           hint={t("networkPanel.utilitySccHint")}

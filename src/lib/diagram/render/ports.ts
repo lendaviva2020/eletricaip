@@ -56,6 +56,7 @@ const REGISTRY: Partial<Record<NodeKind, ReadonlyArray<PortDef>>> = {
   // proteção / manobra (4 portas para suportar encaminhamento vertical e derivações)
   breaker: fourTerminal,
   rcd: fourTerminal,
+  spd: twoTerminalV,
   contactor: fourTerminal,
   fuse: fourTerminal,
   disconnector: fourTerminal,

@@ -35,6 +35,16 @@ const rcd: Draw = (g) => {
   stroke(g);
 };
 
+const spd: Draw = (g) => {
+  // DPS (IEC 60617 S00370): elemento não linear com descarga para a terra.
+  g.moveTo(0, -22).lineTo(0, -12);
+  g.rect(-7, -12, 14, 20);
+  g.moveTo(-4, 4).lineTo(4, -4).lineTo(-1, -4).moveTo(4, -4).lineTo(4, 1);
+  g.moveTo(0, 8).lineTo(0, 16);
+  g.moveTo(-8, 16).lineTo(8, 16).moveTo(-5, 19).lineTo(5, 19).moveTo(-2, 22).lineTo(2, 22);
+  stroke(g);
+};
+
 const contactor: Draw = (g) => {
   // Contator de potência IEC 60617 com terminais e lâmina de contato
   g.circle(0, -14, 2.5).circle(0, 14, 2.5);
@@ -277,6 +287,7 @@ const REGISTRY: Partial<Record<NodeKind, Draw>> = {
   breaker,
   fuse,
   rcd,
+  spd,
   contactor,
   relay,
   thermal_relay,

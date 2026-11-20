@@ -156,6 +156,20 @@ export const TERMINAL_LIBRARY: Record<NodeKind, (params?: NodeParams) => Equipme
       defaultOutPort: "B",
     }),
 
+    spd: () => ({
+      kind: "spd",
+      description: "Dispositivo de Proteção contra Surtos (DPS)",
+      terminals: [
+        mkTerm("L1", "Fase L1", "power", "in", "T", true, "L1"),
+        mkTerm("L2", "Fase L2", "power", "in", "T", false, "L2"),
+        mkTerm("L3", "Fase L3", "power", "in", "T", false, "L3"),
+        mkTerm("N", "Neutro", "power", "in", "T", false, "N"),
+        mkTerm("PE", "Condutor de proteção (BEP)", "protection", "out", "B", true, "PE"),
+      ],
+      defaultInPort: "T",
+      defaultOutPort: "B",
+    }),
+
     disconnector: () => ({
       kind: "disconnector",
       description: "Chave Seccionadora sob Carga",

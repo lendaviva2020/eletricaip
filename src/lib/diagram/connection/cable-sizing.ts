@@ -253,6 +253,47 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
     const tgt = doc.nodes[e.target];
     if (!src || !tgt) continue;
 
+    // Condutores de ligação do DPS: não conduzem corrente de carga — a seção é a
+    // mínima da norma (4 mm² Cu; 16 mm² com DPS classe I), nunca pelo In a montante.
+    if (tgt.params.kind === "spd") {
+      const cls = (tgt.params as { spd_class?: string }).spd_class ?? "II";
+      const required = cls === "I" ? 16 : 4;
+      const cur = e.cable;
+      const status: CableRowStatus = !cur?.section_mm2
+        ? "sem_secao"
+        : cur.section_mm2 < required
+          ? "subdimensionada"
+          : "ok";
+      rows.push({
+        edgeId: e.id,
+        name: cableName(doc, e),
+        field: false,
+        Ib_A: 0,
+        section_mm2: cur?.section_mm2,
+        required_mm2: required,
+        length_m: cur?.length_m,
+        installation: cur?.installation ?? DEFAULT_INSTALLATION_METHOD,
+        threePhase: isThreePhase(e, src, tgt),
+        status,
+      });
+      if (status !== "ok") {
+        const to: CableSpec = {
+          ...(cur ?? {}),
+          insulation: cur?.insulation ?? "PVC",
+          section_mm2: required,
+        };
+        nextEdges[e.id] = { ...e, cable: to };
+        changes.push({
+          edgeId: e.id,
+          from: cur,
+          to,
+          reason: cur?.section_mm2 ? "undersized" : "missing",
+          Ib_A: 0,
+        });
+      }
+      continue;
+    }
+
     const loads = downstreamLoads(doc, adj, e.target);
     const Ib = loads.reduce((s, n) => s + (loadCurrent_A(n) ?? 0), 0);
     const protection = upstreamProtection_A(doc, adj, e.source);
@@ -354,6 +395,7 @@ export function sizeDiagramCables(doc: DiagramDoc): CableSizingReport {
     `Condutor de cobre, isolação conforme o cabo (padrão PVC 70 °C), temperatura ambiente ${doc.metadata.network?.ambientTemp_C ?? 30} °C${doc.metadata.network?.ambientTemp_C === undefined ? " (padrão — informe nos dados da rede)" : ""}; agrupamento conforme cada cabo (padrão: um circuito por conduto, NBR 5410 Tab. 42).`,
     "Ib = soma das cargas a jusante; ramal de motor único com I'z ≥ 1,25·In (NBR 5410 §6.5.1.3.1).",
     "Coordenação Ib ≤ In ≤ I'z com a proteção a montante (NBR 5410 §5.3.4.1).",
+    "Condutores de ligação de DPS: seção mínima 4 mm² (16 mm² com DPS classe I), independente da corrente de carga (NBR 5410 §6.3.5.2).",
   ];
   if (usedDefaultMethod) {
     premises.unshift(

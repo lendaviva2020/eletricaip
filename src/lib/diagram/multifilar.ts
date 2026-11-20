@@ -7,6 +7,7 @@ import { classifyMargin, type Severity } from "../diagnostics/types";
 import { validateElectricalTopology } from "./connection/graph-validator";
 import { cableName, isFieldCable, sizeDiagramCables } from "./connection/cable-sizing";
 import { analyzeNetwork } from "./connection/network-calculation";
+import { analyzeSurgeProtection } from "./connection/surge-protection";
 import { analyzeProtectionCoordination } from "./connection/protection-coordination";
 
 export const CONDUCTOR_LABELS: Record<CircuitConfig, string[]> = {
@@ -32,6 +33,7 @@ const CONFIG_BY_KIND: Partial<Record<NodeKind, CircuitConfig>> = {
   busbar: "3F+N",
   ccm: "3F+N",
   capacitor_bank: "3F",
+  spd: "3F+N",
   thermal_relay: "3F",
   plc: "F+N",
   hmi: "F+N",
@@ -661,6 +663,17 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
     });
   }
 
+  // 2d. Proteção contra surtos (DPS).
+  for (const f of analyzeSurgeProtection(doc).findings) {
+    alerts.push({
+      id: `spd_${f.code.toLowerCase()}_${f.nodeId ?? "rede"}`,
+      type: f.severity === "error" ? "ERRO" : "AVISO",
+      severity: f.severity,
+      message: `${f.message} (${f.clause})`,
+      ...(f.nodeId ? { nodeId: f.nodeId } : {}),
+    });
+  }
+
   // 3. Cabos sem dados: queda de tensão não verificável (pendência, nunca valor presumido)
   const missing = listCablesMissingData(doc);
   if (missing.length > 0) {
@@ -767,7 +780,8 @@ export function runDiagramDiagnostics(doc: DiagramDoc): DiagnosticAlert[] {
       (a) =>
         (a.type === "ERRO" || a.severity === "error") &&
         !a.id.startsWith("coord_") &&
-        !a.id.startsWith("net_"),
+        !a.id.startsWith("net_") &&
+        !a.id.startsWith("spd_"),
     ).length === 0
   ) {
     alerts.push({

@@ -134,8 +134,8 @@ function voltaiComponentToNodeKind(type: VoltaiComponentType): NodeKind {
     SA: "terminal",
     R: "load",
     L: "load",
-    SPD: "lightcurtain",
-    TVSS: "lightcurtain",
+    SPD: "spd",
+    TVSS: "spd",
     B: "terminal",
     SR: "relay",
     PTZ: "terminal",
@@ -156,6 +156,9 @@ function defaultNodeParams(kind: NodeKind): Record<string, unknown> {
       return { kind, in_A: 63, curve: "C", poles: 3, manufacturer: "Schneider", model: "iC60N" };
     case "rcd":
       return { kind, in_A: 25, sensitivity_mA: 30, poles: 2 };
+    case "spd":
+      // Valores de catálogo típicos de DPS classe II 220/380 V — editáveis no painel.
+      return { kind, spd_class: "II", uc_V: 275, up_kV: 1.5, in_kA: 20, poles: 4 };
     case "contactor":
       return { kind, in_A: 32, coil_V: 24, manufacturer: "WEG", model: "CWM32" };
     case "relay":

@@ -17,6 +17,7 @@ export const IEC_81346_CLASS: Readonly<Record<string, string>> = {
   breaker: "Q",
   disconnector: "Q",
   rcd: "F",
+  spd: "F",
   fuse: "F",
   thermal_relay: "F",
   contactor: "K",

@@ -19,6 +19,8 @@ export const NodeKindSchema = z.enum([
   "thermal_relay",
   "fuse",
   "disconnector",
+  /** DPS — dispositivo de proteção contra surtos (IEC 61643-11 / NBR 5410 §6.3.5.2). */
+  "spd",
   // fonte / conversão
   "transformer",
   "generator",
@@ -97,6 +99,21 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("fuse"), ...ParamsBase, in_A: z.number().positive() }),
   z.object({ kind: z.literal("disconnector"), ...ParamsBase, in_A: z.number().positive() }),
+  z.object({
+    kind: z.literal("spd"),
+    ...ParamsBase,
+    /** Classe de ensaio IEC 61643-11: I (10/350 µs), II (8/20 µs) ou III (onda combinada). */
+    spd_class: z.enum(["I", "II", "III"]).default("II"),
+    /** Máxima tensão de operação contínua Uc (V). */
+    uc_V: z.number().positive().max(2000).optional(),
+    /** Nível de proteção Up (kV). */
+    up_kV: z.number().positive().max(20).optional(),
+    /** Corrente nominal de descarga In 8/20 µs (kA) — classe II. */
+    in_kA: z.number().positive().max(200).optional(),
+    /** Corrente de impulso Iimp 10/350 µs (kA) — classe I. */
+    iimp_kA: z.number().positive().max(200).optional(),
+    poles: z.number().int().min(1).max(4).default(4),
+  }),
   z.object({
     kind: z.literal("transformer"),
     ...ParamsBase,
@@ -277,6 +294,10 @@ export const NetworkSettingsSchema = z.object({
   earthing: z.enum(["TN-S", "TN-C", "TN-C-S", "TT", "IT"]).optional(),
   /** Potência de curto-circuito da rede a montante do trafo (MVA), informada pela concessionária. */
   utilityScc_MVA: z.number().positive().max(100_000).optional(),
+  /** Linha de alimentação aérea (total ou parcial) — torna o DPS obrigatório (NBR 5410 §5.4.2.1). */
+  overheadSupply: z.boolean().optional(),
+  /** Edificação com SPDA (para-raios) — exige DPS classe I no ponto de entrada. */
+  lightningProtection: z.boolean().optional(),
   /** Temperatura ambiente dos cabos (°C). Ausente = 30 °C (NBR 5410 Tab. 40). */
   ambientTemp_C: z.number().min(10).max(80).optional(),
 });
