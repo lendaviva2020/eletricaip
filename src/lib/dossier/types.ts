@@ -239,7 +239,7 @@ export interface CircuitCalculation {
   protectionCoordinationPass: boolean; // Ib <= In <= I'z
 
   // Motor / Carga Específica
-  startMethod?: "DOL" | "STAR_DELTA" | "SOFT" | "VFD";
+  startMethod?: "DOL" | "STAR_DELTA" | "SOFT" | "VFD" | "REVERSING";
   startingCurrentIstartA?: number;
   overloadRelaySettingA?: number;
 

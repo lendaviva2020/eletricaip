@@ -213,7 +213,10 @@ export function RightPropertyPanel() {
     value: string | number | boolean,
   ) => {
     // Editar um parâmetro confirma o dado (sai da lista de valores pendentes).
-    const nextRaw = confirmValue({ ...currentParams, [key]: value }, key) as unknown;
+    const merged: Record<string, unknown> = { ...currentParams, [key]: value };
+    // Seleção "não definida" de campo opcional (ex.: função do contator) remove o campo.
+    if (value === "" && key === "role") delete merged[key];
+    const nextRaw = confirmValue(merged, key) as unknown;
     const parsed = NodeParamsSchema.safeParse(nextRaw);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Valor inválido");
@@ -252,7 +255,7 @@ export function RightPropertyPanel() {
   const restoreFactory = () => {
     const defaults: Record<string, unknown> = { kind };
     for (const [key, spec] of Object.entries(paramSpecs)) {
-      if (key === "notes" || key === "tag") continue;
+      if (key === "notes" || key === "tag" || spec.defaultValue === "") continue;
       defaults[key] = spec.defaultValue;
     }
     const parsed = NodeParamsSchema.safeParse(defaults);

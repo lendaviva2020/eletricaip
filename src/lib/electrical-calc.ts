@@ -31,7 +31,7 @@ export interface MotorSpec {
   voltage_V?: number; // line-to-line, default 380
   cosphi?: number; // default 0.86
   efficiency?: number; // default 0.92
-  startMethod?: "DOL" | "SOFT" | "VFD";
+  startMethod?: "DOL" | "SOFT" | "VFD" | "STAR_DELTA" | "REVERSING";
   installationMethod?: InstallationMethod; // default "C"
   insulation?: InsulationType; // default "PVC"
   ambientTemp_C?: number; // default 30 (ou 20 para método D)
@@ -64,7 +64,14 @@ export function motorNominalCurrent(p: MotorSpec): number {
 }
 
 export function motorStartingCurrent(p: MotorSpec, In: number): number {
-  const factor = p.startMethod === "VFD" ? 1.1 : p.startMethod === "SOFT" ? 3.5 : 7;
+  const factor =
+    p.startMethod === "VFD"
+      ? 1.1
+      : p.startMethod === "SOFT"
+        ? 3.5
+        : p.startMethod === "STAR_DELTA"
+          ? 7 / 3
+          : 7;
   return In * factor;
 }
 

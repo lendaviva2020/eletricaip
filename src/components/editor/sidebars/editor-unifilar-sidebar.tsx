@@ -20,6 +20,7 @@ import {
   type VoltaiComponentDefinition,
 } from "@/lib/palette/component-catalog";
 import { useEditorStore } from "@/lib/editor/store";
+import { STARTER_KITS } from "@/lib/diagram/starter-kits";
 import { useI18n } from "@/lib/i18n";
 import {
   componentDisplayDescription,
@@ -227,6 +228,7 @@ export function EditorUnifilarSidebar() {
 
   // Categorias de engenharia elétrica
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    kits: true,
     alimentacao: true,
     protecao: true,
     manobra: true,
@@ -453,6 +455,44 @@ export function EditorUnifilarSidebar() {
       <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-thin">
         <EletricaiDocPanel />
         <ArduinoBenchPanel />
+
+        {/* Kits de partida: ramal de motor completo e já ligado */}
+        <LibraryAccordion
+          icon={Lightning}
+          title={t("library.catKits")}
+          count={STARTER_KITS.length}
+          open={openSections.kits}
+          onToggle={() => toggleSection("kits")}
+        >
+          <div className="space-y-1.5 pt-1">
+            {STARTER_KITS.map((kit) => (
+              <div
+                key={kit.kind}
+                draggable
+                onDragStart={(event) => {
+                  event.dataTransfer.setData("application/eletricai-kit", kit.kind);
+                  event.dataTransfer.effectAllowed = "copy";
+                }}
+                title={`${t(`library.kit_${kit.kind}`)} — ${t(`library.kitDesc_${kit.kind}`)} (${kit.norm})`}
+                className="group flex items-center gap-2.5 p-2 rounded-md border border-dashed border-primary/40 bg-card hover:bg-accent/40 cursor-grab active:cursor-grabbing"
+                data-testid={`library-kit-${kit.kind}`}
+              >
+                <div className="w-10 h-10 shrink-0 rounded-sm bg-secondary/50 border border-border grid place-items-center text-[10px] font-mono font-bold text-primary">
+                  {kit.kind === "dol" ? "DOL" : kit.kind === "star_delta" ? "Y-Δ" : "⇄"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="block text-xs font-semibold text-foreground truncate">
+                    {t(`library.kit_${kit.kind}`)}
+                  </span>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {t(`library.kitDesc_${kit.kind}`)}
+                  </p>
+                  <span className="text-[9px] font-mono text-muted-foreground/50">{kit.norm}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </LibraryAccordion>
 
         {/* Categoria 1: Alimentação & Fontes */}
         <LibraryAccordion

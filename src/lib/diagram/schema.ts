@@ -96,6 +96,8 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
     ...ParamsBase,
     in_A: z.number().positive(),
     coil_V: z.number().positive().default(24),
+    /** Função no ramal de motor (partidas com mais de um contator). */
+    role: z.enum(["line", "star", "delta", "forward", "reverse"]).optional(),
   }),
   z.object({
     kind: z.literal("relay"),
@@ -162,7 +164,7 @@ export const NodeParamsSchema = z.discriminatedUnion("kind", [
     voltage_V: z.number().positive().default(380),
     current_A: z.number().positive().optional(),
     fla_A: z.number().positive().optional(),
-    startMethod: z.enum(["DOL", "SOFT", "VFD", "STAR_DELTA"]).default("DOL"),
+    startMethod: z.enum(["DOL", "SOFT", "VFD", "STAR_DELTA", "REVERSING"]).default("DOL"),
   }),
   z.object({
     kind: z.literal("load"),

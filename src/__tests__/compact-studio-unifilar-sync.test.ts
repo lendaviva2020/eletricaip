@@ -36,30 +36,30 @@ describe("eletric Studio ← unifilar: lógica de comando de motores", () => {
   it("partida sela, parada desliga, térmico desliga e bloqueia, emergência desliga", () => {
     const engine = new CompactExecutionEngine(model);
     engine.step(20);
-    expect(engine.step(20).variables.K_MG_201).toBe(false);
-    engine.setInput("PARTIDA_MG_201", true);
-    expect(engine.step(20).variables.K_MG_201).toBe(true);
-    engine.setInput("PARTIDA_MG_201", false);
-    expect(engine.step(20).variables.K_MG_201).toBe(true); // selo
-    engine.setInput("PARADA_MG_201", false);
-    expect(engine.step(20).variables.K_MG_201).toBe(false);
-    engine.setInput("PARADA_MG_201", true);
+    expect(engine.step(20).variables.K1).toBe(false);
+    engine.setInput("MG_201_PARTIR", true);
+    expect(engine.step(20).variables.K1).toBe(true);
+    engine.setInput("MG_201_PARTIR", false);
+    expect(engine.step(20).variables.K1).toBe(true); // selo
+    engine.setInput("MG_201_PARAR", false);
+    expect(engine.step(20).variables.K1).toBe(false);
+    engine.setInput("MG_201_PARAR", true);
 
-    engine.setInput("PARTIDA_MG_201", true);
+    engine.setInput("MG_201_PARTIR", true);
     engine.step(20);
-    engine.setInput("PARTIDA_MG_201", false);
-    engine.setInput("TERMICO_MG_201", false); // relé disparou
-    expect(engine.step(20).variables.K_MG_201).toBe(false);
-    engine.setInput("PARTIDA_MG_201", true); // partida com térmico aberto: reset dominante
-    expect(engine.step(20).variables.K_MG_201).toBe(false);
-    engine.setInput("TERMICO_MG_201", true);
-    engine.setInput("PARTIDA_MG_201", false);
+    engine.setInput("MG_201_PARTIR", false);
+    engine.setInput("F1_OK", false); // relé disparou
+    expect(engine.step(20).variables.K1).toBe(false);
+    engine.setInput("MG_201_PARTIR", true); // partida com térmico aberto: reset dominante
+    expect(engine.step(20).variables.K1).toBe(false);
+    engine.setInput("F1_OK", true);
+    engine.setInput("MG_201_PARTIR", false);
 
-    engine.setInput("PARTIDA_RT_203", true);
+    engine.setInput("RT_203_PARTIR", true);
     engine.step(20);
-    engine.setInput("PARTIDA_RT_203", false);
-    engine.setInput("EMERG_OK", false);
-    expect(engine.step(20).variables.K_RT_203).toBe(false);
+    engine.setInput("RT_203_PARTIR", false);
+    engine.setInput("S0_OK", false);
+    expect(engine.step(20).variables.K4).toBe(false);
   });
 
   it("é idempotente e preserva páginas e endereços do usuário", () => {

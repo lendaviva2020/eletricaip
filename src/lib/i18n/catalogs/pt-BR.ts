@@ -798,6 +798,13 @@ export const ptBR = {
     title: "Biblioteca Elétrica",
     dragHint: "Arraste o componente para o diagrama",
     found: "{count} encontrado(s)",
+    catKits: "Kits de partida de motor",
+    kit_dol: "Partida direta",
+    kit_star_delta: "Partida estrela-triângulo",
+    kit_reversing: "Partida com reversão",
+    kitDesc_dol: "Disjuntor-motor, contator, relé térmico e motor — já ligados",
+    kitDesc_star_delta: "Contatores de linha, estrela e triângulo + relé térmico",
+    kitDesc_reversing: "Contatores horário e anti-horário intertravados + relé térmico",
     catPower: "Alimentação & Fontes",
     catProtection: "Dispositivos de Proteção",
     catSwitching: "Manobra & Potência",
@@ -1093,7 +1100,7 @@ export const ptBR = {
       "Faixas dos limites da norma (IEC 60898-1, relé térmico IEC 60947-4-1) e dano adiabático do cabo (k²S²). As curvas reais do fabricante ficam dentro das faixas; seletividade amperimétrica até o disparo magnético mínimo do disjuntor de montante.",
   },
   ladderSync: {
-    toggle: "Acompanhar o unifilar",
+    toggle: "Acompanhar o unifilar (Ladder e FB Electric Studio)",
     status:
       "{n} rede(s) geradas do unifilar · {edited} editada(s) por você (essas não são mais sobrescritas)",
     fromUnifilar: "do unifilar",

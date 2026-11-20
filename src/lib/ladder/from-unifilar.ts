@@ -22,7 +22,7 @@
 // usuário nunca são tocadas.
 import type { DiagramDoc, DiagramEdge, DiagramNode } from "@/lib/diagram/schema";
 import type { EditorTag } from "@/lib/editor/store";
-import { buildMotorFleet } from "@/lib/simulation/motor-fleet";
+import { buildMotorFleet, type FleetMotor } from "@/lib/simulation/motor-fleet";
 import {
   buildTopologyFromCells,
   emptyCell,
@@ -104,6 +104,8 @@ function makeRung(
   output: LadderCell,
   seal?: LadderCell,
   equipmentId?: string,
+  /** Posição na série do contato que recebe o selo em paralelo (padrão: o último). */
+  sealIndex?: number,
 ): LadderRung {
   const cols = Math.max(3, series.length + 1);
   const row0: LadderCell[] = Array.from({ length: cols }, emptyCell);
@@ -112,7 +114,7 @@ function makeRung(
   const cells: LadderCell[][] = [row0];
   if (seal) {
     const row1: LadderCell[] = Array.from({ length: cols }, emptyCell);
-    row1[series.length - 1] = seal;
+    row1[sealIndex ?? series.length - 1] = seal;
     cells.push(row1);
   }
   return withSource({ id, label, comment, cols, cells }, equipmentId ?? id);
@@ -145,6 +147,93 @@ function upstreamChain(doc: DiagramDoc, loadId: string) {
   return out;
 }
 
+/** Operando da emergência: botão do diagrama (tag) ou a entrada padrão S0 do relé de segurança. */
+export function estopOperand(doc: DiagramDoc): string {
+  const node = Object.values(doc.nodes).find(
+    (n) => n.sheet === "unifilar" && n.params.kind === "estop",
+  );
+  return `${tagOf(node) ?? "S0"}_OK`;
+}
+
+/**
+ * Nomes de comando de UM motor — fonte única para Ladder e FB Electric Studio
+ * (os dois editores usam exatamente os mesmos operandos).
+ */
+export interface MotorControlPlan {
+  M: string;
+  method: FleetMotor["config"]["startMethod"];
+  stop: string;
+  start: string;
+  /** Contatos NF de proteção do ramal (sem a emergência): disjuntor, térmico, inversor pronto. */
+  protections: string[];
+  /** Bobina principal (contator de linha/horário ou marcha do inversor). */
+  coil?: string;
+  chainText: string;
+  reversing?: { fwd: string; rev: string; KF: string; KR: string; rolesDeclared: boolean };
+  starDelta?: { K: string; KY: string; KD: string; T: string; drawn: boolean };
+  contactorIds: string[];
+}
+
+export function motorControlPlan(doc: DiagramDoc, m: FleetMotor): MotorControlPlan {
+  const node = (id?: string) => (id ? doc.nodes[id] : undefined);
+  const roleOf = (id: string) => (doc.nodes[id]?.params as { role?: string } | undefined)?.role;
+  const M = tagOf(node(m.nodeId))!;
+  const Q = tagOf(node(m.chain.breakerId));
+  const F = tagOf(node(m.chain.thermalRelayId));
+  const driveNode = node(m.chain.driveId);
+  const D = tagOf(driveNode);
+  const K = tagOf(node(m.chain.contactorId));
+  const contactorIds = m.chain.contactorIds ?? (m.chain.contactorId ? [m.chain.contactorId] : []);
+  const declared = m.config.startMethod;
+  // Dois contatores sem inversor → reversão, mesmo que o motor diga "DOL".
+  const method =
+    declared === "DOL" && contactorIds.length === 2 && !driveNode ? "REVERSING" : declared;
+  const protections = [
+    Q && `${Q}_OK`,
+    F && `${F}_OK`,
+    driveNode?.params.kind === "vfd" && D && `${D}_PRONTO`,
+  ].filter(Boolean) as string[];
+  let coil: string | undefined = K;
+  if (driveNode?.params.kind === "vfd" && (!K || method === "VFD")) coil = `${D}_MARCHA`;
+  else if (!K && driveNode?.params.kind === "softstarter" && D) coil = `${D}_MARCHA`;
+
+  const plan: MotorControlPlan = {
+    M,
+    method,
+    stop: `${M}_PARAR`,
+    start: `${M}_PARTIR`,
+    protections,
+    coil,
+    chainText: [Q, K, F, D].filter(Boolean).join(" → "),
+    contactorIds,
+  };
+  if (method === "REVERSING" && contactorIds.length >= 2) {
+    const fwdId = contactorIds.find((id) => roleOf(id) === "forward") ?? contactorIds[0];
+    const revId =
+      contactorIds.find((id) => roleOf(id) === "reverse" && id !== fwdId) ??
+      contactorIds.find((id) => id !== fwdId)!;
+    plan.reversing = {
+      fwd: `${M}_HORARIO`,
+      rev: `${M}_ANTI_HORARIO`,
+      KF: tagOf(node(fwdId))!,
+      KR: tagOf(node(revId))!,
+      rolesDeclared: roleOf(fwdId) === "forward" && roleOf(revId) === "reverse",
+    };
+  }
+  if (method === "STAR_DELTA" && K) {
+    const starId = contactorIds.find((id) => roleOf(id) === "star");
+    const deltaId = contactorIds.find((id) => roleOf(id) === "delta");
+    plan.starDelta = {
+      K,
+      KY: starId ? tagOf(node(starId))! : `${K}_Y`,
+      KD: deltaId ? tagOf(node(deltaId))! : `${K}_D`,
+      T: `${M}_T_YD`,
+      drawn: !!(starId && deltaId),
+    };
+  }
+  return plan;
+}
+
 export function buildLadderFromUnifilar(doc: DiagramDoc): UnifilarLadderResult {
   const rungs: LadderRung[] = [];
   const warnings: string[] = [];
@@ -167,44 +256,22 @@ export function buildLadderFromUnifilar(doc: DiagramDoc): UnifilarLadderResult {
 
   // Emergência: botão do diagrama (tag) ou a entrada padrão S0 do circuito de segurança.
   const estopNode = unifilar.find((n) => n.params.kind === "estop");
-  const estop = `${tagOf(estopNode) ?? "S0"}_OK`;
+  const estop = estopOperand(doc);
   const usedContactors = new Set<string>();
 
   const fleet = buildMotorFleet(doc);
   for (const m of fleet) {
-    const motorNode = doc.nodes[m.nodeId];
-    const M = tagOf(motorNode)!;
-    const Q = tagOf(m.chain.breakerId ? doc.nodes[m.chain.breakerId] : undefined);
-    const F = tagOf(m.chain.thermalRelayId ? doc.nodes[m.chain.thermalRelayId] : undefined);
-    const driveNode = m.chain.driveId ? doc.nodes[m.chain.driveId] : undefined;
-    const D = tagOf(driveNode);
-    const K = tagOf(m.chain.contactorId ? doc.nodes[m.chain.contactorId] : undefined);
-    if (m.chain.contactorId) usedContactors.add(m.chain.contactorId);
-    const method = m.config.startMethod;
-
+    const plan = motorControlPlan(doc, m);
+    const { M, method, stop, start, coil, chainText } = plan;
+    for (const id of plan.contactorIds) usedContactors.add(id);
     const protections: LadderCell[] = [contact(estop)];
     addTag(estop, "safety", true);
-    if (Q) {
-      protections.push(contact(`${Q}_OK`));
-      addTag(`${Q}_OK`, "safety", true);
+    for (const op of plan.protections) {
+      protections.push(contact(op));
+      addTag(op, "safety", true);
     }
-    if (F) {
-      protections.push(contact(`${F}_OK`));
-      addTag(`${F}_OK`, "safety", true);
-    }
-    if (driveNode?.params.kind === "vfd" && D) {
-      protections.push(contact(`${D}_PRONTO`));
-      addTag(`${D}_PRONTO`, "safety", true);
-    }
-    const stop = `${M}_PARAR`;
-    const start = `${M}_PARTIR`;
     addTag(stop, "stop", true);
     addTag(start, "start", false);
-
-    // Bobina comandada: contator; com inversor sem contator, o comando de marcha do inversor.
-    let coil: string | undefined = K;
-    if (driveNode?.params.kind === "vfd" && (!K || method === "VFD")) coil = `${D}_MARCHA`;
-    else if (!K && driveNode?.params.kind === "softstarter" && D) coil = `${D}_MARCHA`;
     if (!coil) {
       warnings.push(
         `${M}: sem contator nem inversor no ramal — não há o que comandar pelo CLP. Desenhe o contator no unifilar.`,
@@ -220,30 +287,66 @@ export function buildLadderFromUnifilar(doc: DiagramDoc): UnifilarLadderResult {
           ? "soft-starter"
           : method === "STAR_DELTA"
             ? "estrela-triângulo"
-            : "partida direta";
-    const chainText = [Q, K, F, D].filter(Boolean).join(" → ");
+            : method === "REVERSING"
+              ? "partida com reversão"
+              : "partida direta";
 
-    rungs.push(
-      makeRung(
-        `${UF_RUNG_PREFIX}${m.nodeId}-cmd`,
-        `${M} — ${methodLabel}`,
-        `${M} — ${methodLabel}: ${chainText} → ${M} · proteções NF (1 = íntegro) · selo ${coil}`,
-        [...protections, contact(stop), contact(start)],
-        { kind: "OTE", operand: coil },
-        contact(coil),
-        m.nodeId,
-      ),
-    );
+    if (plan.reversing) {
+      const { KF, KR, fwd, rev } = plan.reversing;
+      addTag(fwd, "start", false);
+      addTag(rev, "start", false);
+      addTag(KF, "coil", false);
+      addTag(KR, "coil", false);
+      const sealAt = protections.length + 1; // depois do Parar
+      rungs.push(
+        makeRung(
+          `${UF_RUNG_PREFIX}${m.nodeId}-fwd`,
+          `${M} — sentido horário (${KF})`,
+          `${M} — horário: selo ${KF}, intertravado com ${KR} (NF) — para inverter, pare antes`,
+          [...protections, contact(stop), contact(fwd), contact(KR, "XIO")],
+          { kind: "OTE", operand: KF },
+          contact(KF),
+          m.nodeId,
+          sealAt,
+        ),
+        makeRung(
+          `${UF_RUNG_PREFIX}${m.nodeId}-rev`,
+          `${M} — sentido anti-horário (${KR})`,
+          `${M} — anti-horário: selo ${KR}, intertravado com ${KF} (NF)`,
+          [...protections, contact(stop), contact(rev), contact(KF, "XIO")],
+          { kind: "OTE", operand: KR },
+          contact(KR),
+          m.nodeId,
+          sealAt,
+        ),
+      );
+      if (!plan.reversing.rolesDeclared) {
+        warnings.push(
+          `${M}: dois contatores no ramal — tratados como reversão (${KF} horário, ${KR} anti-horário). Defina a função de cada contator nas propriedades para confirmar. Faça também o intertravamento elétrico pelos contatos auxiliares NF.`,
+        );
+      }
+    } else
+      rungs.push(
+        makeRung(
+          `${UF_RUNG_PREFIX}${m.nodeId}-cmd`,
+          `${M} — ${methodLabel}`,
+          `${M} — ${methodLabel}: ${chainText} → ${M} · proteções NF (1 = íntegro) · selo ${coil}`,
+          [...protections, contact(stop), contact(start)],
+          { kind: "OTE", operand: coil },
+          contact(coil),
+          m.nodeId,
+        ),
+      );
 
-    if (method === "STAR_DELTA" && K) {
-      const T = `${M}_T_YD`;
-      const KY = `${K}_Y`;
-      const KD = `${K}_D`;
+    if (plan.starDelta) {
+      const { K, KY, KD, T } = plan.starDelta;
       addTag(T, "timer", false);
       addTag(KY, "coil", false);
       addTag(KD, "coil", false);
       warnings.push(
-        `${M}: estrela-triângulo usa três contatores — linha ${K}, estrela ${KY} e triângulo ${KD}. Desenhe ${KY} e ${KD} no unifilar e ajuste o tempo de comutação (${STAR_DELTA_DEFAULT_MS / 1000} s sugeridos) à curva de partida.`,
+        plan.starDelta.drawn
+          ? `${M}: tempo de comutação estrela → triângulo sugerido de ${STAR_DELTA_DEFAULT_MS / 1000} s — ajuste à curva de partida da carga.`
+          : `${M}: estrela-triângulo usa três contatores — linha ${K}, estrela ${KY} e triângulo ${KD}. Desenhe os que faltam (com a função "estrela"/"triângulo" nas propriedades) e ajuste o tempo de comutação (${STAR_DELTA_DEFAULT_MS / 1000} s sugeridos).`,
       );
       rungs.push(
         makeRung(
@@ -277,11 +380,7 @@ export function buildLadderFromUnifilar(doc: DiagramDoc): UnifilarLadderResult {
     }
 
     // Sinalização de falha: qualquer proteção do ramal atuada.
-    const faults = [
-      F && `${F}_OK`,
-      Q && `${Q}_OK`,
-      driveNode?.params.kind === "vfd" && D && `${D}_PRONTO`,
-    ].filter(Boolean) as string[];
+    const faults = plan.protections;
     if (faults.length > 0) {
       const alarm = `${M}_FALHA`;
       addTag(alarm, "alarm", false);

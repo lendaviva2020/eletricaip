@@ -45,6 +45,7 @@ const PT: Record<EditorId, string> = {
 
   ladder: `## LADDER (IEC 61131-3 LD) — instruções suportadas: XIC, XIO, OTE, OTL, OTU, TON, TOF, TP, CTU
 - O Ladder acompanha o unifilar: cada motor/contator do unifilar já tem rede gerada (id "uf-…", operandos = tags do unifilar: K1, F1_OK, Q1_OK, M1_PARTIR, M1_PARAR, S0_OK). Não crie outra bobina para o mesmo contator (bobina dupla); para mudar a lógica, edite a rede gerada — ela passa a ser do engenheiro.
+- Partida com reversão: dois contatores em paralelo (role "forward"/"reverse") antes do relé térmico; no Ladder/Studio cada sentido tem selo próprio intertravado pelo outro (NF) — inverter só depois de parar. Estrela-triângulo: contatores com role "line"/"star"/"delta".
 - XIC = "examinar se 1" (contato NA lógico); XIO = "examinar se 0" (contato NF lógico). Linhas paralelas = OU; contatos na mesma linha = E.
 - FAIL-SAFE (NR-12 / IEC 60204-1): parada, E-STOP e relé térmico são contatos NF FÍSICOS — a entrada fica em 1 quando está tudo OK. No ladder eles entram com XIC em SÉRIE (1 = íntegro). Fio rompido = 0 = desliga. Nunca use XIO para ler uma entrada de segurança NF.
 - PARTIDA COM SELO: [XIC PARADA_OK] [XIC TERMICO_OK] [XIC ESTOP_OK] ( [XIC PARTIDA] OU [XIC K1] ) → OTE K1. O contato de selo é a própria bobina/auxiliar do contator, em PARALELO com o botão de partida.
@@ -94,6 +95,7 @@ const EN: Record<EditorId, string> = {
 
   ladder: `## LADDER (IEC 61131-3 LD) — supported: XIC, XIO, OTE, OTL, OTU, TON, TOF, TP, CTU
 - The Ladder follows the single-line diagram: each motor/contactor already has a generated rung (id "uf-…", operands = single-line tags: K1, F1_OK, Q1_OK, M1_PARTIR, M1_PARAR, S0_OK). Never add a second coil for the same contactor (double coil); to change the logic, edit the generated rung — it then belongs to the engineer.
+- Reversing starter: two parallel contactors (role "forward"/"reverse") ahead of the overload relay; in Ladder/Studio each direction has its own seal interlocked by the other (NC) — reverse only after stopping. Star-delta: contactors with role "line"/"star"/"delta".
 - XIC = examine if 1; XIO = examine if 0. Parallel lines = OR; same line = AND.
 - FAIL-SAFE: stop, E-STOP and overload relay are PHYSICAL NC contacts — the input is 1 when healthy. In ladder they are XIC in SERIES (1 = healthy). Never read an NC safety input with XIO.
 - SEAL-IN START: [XIC STOP_OK] [XIC OL_OK] [XIC ESTOP_OK] ( [XIC START] OR [XIC K1] ) → OTE K1.

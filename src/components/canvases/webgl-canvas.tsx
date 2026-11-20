@@ -85,6 +85,7 @@ import type { SheetKind, NodeKind } from "@/lib/diagram/schema";
 import { AiFixButton } from "@/components/diagnostics/ai-fix-button";
 import { buildDiagnosticContextFromMultifilar } from "@/lib/diagnostics/ai-repair-context";
 import { markAllUnconfirmed } from "@/lib/diagram/unconfirmed-params";
+import { assignKitTags, buildStarterKit } from "@/lib/diagram/starter-kits";
 import {
   type VoltaiComponentType,
   VOLTAI_COMPONENT_BY_TYPE,
@@ -796,8 +797,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
+      const kitType = e.dataTransfer.getData("application/eletricai-kit");
       const rawType = e.dataTransfer.getData("application/voltai-component");
-      if (!rawType || !isVoltaiComponentType(rawType)) return;
+      if (!kitType && (!rawType || !isVoltaiComponentType(rawType))) return;
 
       const host = hostRef.current;
       if (!host) return;
@@ -811,6 +813,22 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         y: clientY + 2000 - rect.height / 2,
       };
       const position = { x: snapToGrid(world.x), y: snapToGrid(world.y) };
+
+      // Kit de partida: ramal completo e ligado, com tags únicas, num só comando (Ctrl+Z desfaz tudo).
+      if (kitType === "dol" || kitType === "star_delta" || kitType === "reversing") {
+        const kit = assignKitTags(
+          useDiagramStore.getState().doc,
+          buildStarterKit(kitType, position, effectiveSheet, (k) => defaultNodeParams(k)),
+        );
+        dispatch(
+          cmd.batch([
+            ...kit.nodes.map((node) => ({ type: "AddNode" as const, node })),
+            ...kit.edges.map((edge) => ({ type: "AddEdge" as const, edge })),
+          ]),
+        );
+        return;
+      }
+      if (!isVoltaiComponentType(rawType)) return;
       const kind = voltaiComponentToNodeKind(rawType);
 
       dispatch(

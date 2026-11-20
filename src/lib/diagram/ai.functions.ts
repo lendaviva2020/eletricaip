@@ -81,7 +81,7 @@ MANDATORY RULES:
   • rcd: in_A, sensitivity_mA (default 30), poles (2..4)
   • contactor: in_A, coil_V
   • thermal_relay: in_A, trip_class ("10A"|"20"|"30")
-  • motor: power_kW, voltage_V, startMethod ("DOL"|"SOFT"|"VFD"|"STAR_DELTA")
+  • motor: power_kW, voltage_V, startMethod ("DOL"|"SOFT"|"VFD"|"STAR_DELTA"|"REVERSING")
   • vfd: power_kW, voltage_V
   • softstarter: power_kW
   • psu: output_V, output_A
@@ -89,7 +89,7 @@ MANDATORY RULES:
   • transformer: kVA, primary_V, secondary_V
   • socket: current_A, voltage_V
   • load/lamp: power_W, voltage_V
-- MOTOR BRANCHES (IEC 60947-4-1 / NBR 5410 §6.5.1): DOL or STAR_DELTA → breaker → contactor → thermal_relay → motor (thermal relay is MANDATORY). VFD/SOFT → breaker → (optional isolation contactor) → vfd/softstarter → motor (drive provides electronic overload; NO thermal relay). Size breaker ≥ 1.25·In and thermal relay range covering In.
+- MOTOR BRANCHES (IEC 60947-4-1 / NBR 5410 §6.5.1): DOL or STAR_DELTA → breaker → contactor → thermal_relay → motor (thermal relay is MANDATORY). VFD/SOFT → breaker → (optional isolation contactor) → vfd/softstarter → motor (drive provides electronic overload; NO thermal relay). Size breaker ≥ 1.25·In and thermal relay range covering In. REVERSING → breaker → two contactors in parallel (role "forward" and "reverse") → thermal_relay → motor. STAR_DELTA contactors carry role "line", "star", "delta".
 - Main breaker tag MUST be "Q0" (QGBT) so tools can identify the infeed.
 - Apply IEC 60364 / IEEE standards: include RCD on socket circuits, PE grounding on loads, upstream circuit breaker.
 - rationale: short in English citing touched standards.
@@ -152,7 +152,7 @@ REGRAS OBRIGATÓRIAS:
   • rcd: in_A, sensitivity_mA (default 30), poles (2..4)
   • contactor: in_A, coil_V
   • thermal_relay: in_A, trip_class ("10A"|"20"|"30")
-  • motor: power_kW, voltage_V, startMethod ("DOL"|"SOFT"|"VFD"|"STAR_DELTA")
+  • motor: power_kW, voltage_V, startMethod ("DOL"|"SOFT"|"VFD"|"STAR_DELTA"|"REVERSING")
   • vfd: power_kW, voltage_V
   • softstarter: power_kW
   • psu: output_V, output_A
@@ -160,7 +160,7 @@ REGRAS OBRIGATÓRIAS:
   • transformer: kVA, primary_V, secondary_V
   • socket: current_A, voltage_V
   • load/lamp: power_W, voltage_V
-- RAMAIS DE MOTOR (IEC 60947-4-1 / NBR 5410 §6.5.1): DOL ou STAR_DELTA → disjuntor → contator → thermal_relay → motor (relé térmico OBRIGATÓRIO). VFD/SOFT → disjuntor → (contator de isolação opcional) → vfd/softstarter → motor (o acionamento faz a proteção de sobrecarga eletrônica; SEM relé térmico). Disjuntor ≥ 1,25·In e faixa do relé térmico cobrindo In.
+- RAMAIS DE MOTOR (IEC 60947-4-1 / NBR 5410 §6.5.1): DOL ou STAR_DELTA → disjuntor → contator → thermal_relay → motor (relé térmico OBRIGATÓRIO). VFD/SOFT → disjuntor → (contator de isolação opcional) → vfd/softstarter → motor (o acionamento faz a proteção de sobrecarga eletrônica; SEM relé térmico). Disjuntor ≥ 1,25·In e faixa do relé térmico cobrindo In. REVERSING → disjuntor → dois contatores em paralelo (role "forward" e "reverse") → thermal_relay → motor. Na STAR_DELTA os contatores levam role "line", "star", "delta".
 - A tag do disjuntor geral DEVE ser "Q0" (QGBT) para identificação do alimentador.
 - Aplique NBR 5410: incluir RCD (DR) em circuitos de tomada, aterramento PE em cargas, disjuntor a montante.
 - rationale: curto em PT-BR citando as normas tocadas.

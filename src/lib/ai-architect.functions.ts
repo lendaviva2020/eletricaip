@@ -172,7 +172,7 @@ const SCHEMA = {
           id: { type: "string" },
           power_kW: { type: "number" },
           voltage_V: { type: "number" },
-          startMethod: { type: "string", enum: ["DOL", "SOFT", "VFD"] },
+          startMethod: { type: "string", enum: ["DOL", "SOFT", "VFD", "STAR_DELTA", "REVERSING"] },
           role: { type: "string" },
         },
         required: ["id", "power_kW"],

@@ -95,6 +95,8 @@ export interface CompactPage {
   description?: string;
   gridCols: number;
   gridRows: number;
+  /** Página gerada do unifilar: assinatura do conteúdo gerado (detecta edição manual). */
+  source?: { kind: "unifilar"; signature: string };
 }
 
 export interface CompactIoSymbol {

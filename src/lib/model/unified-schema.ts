@@ -119,7 +119,7 @@ export const EquipmentSpecsSchema = z.object({
   poles: z.number().int().min(1).max(4).optional(),
   rcdSensitivityMa: z.number().positive().optional(),
   coilVoltageV: z.number().positive().optional(),
-  startingMethod: z.enum(["DOL", "STAR_DELTA", "SOFT", "VFD"]).optional(),
+  startingMethod: z.enum(["DOL", "STAR_DELTA", "SOFT", "VFD", "REVERSING"]).optional(),
   powerFactor: z.number().min(0).max(1).optional(),
   efficiency: z.number().min(0).max(1).optional(),
   impedancePct: z.number().positive().optional(),

@@ -45,7 +45,7 @@ export type InjectedMotorFault =
 
 export type MotorWarningCode = "HIGH_CURRENT" | "HIGH_TEMPERATURE" | "THERMAL_PREALARM";
 
-export type MotorStartMethod = "DOL" | "SOFT" | "VFD" | "STAR_DELTA";
+export type MotorStartMethod = "DOL" | "SOFT" | "VFD" | "STAR_DELTA" | "REVERSING";
 export type BreakerCurve = "B" | "C" | "D";
 export type ThermalTripClass = 10 | 20 | 30;
 

@@ -792,6 +792,13 @@ export const en: TranslationCatalog = {
     title: "Electrical Library",
     dragHint: "Drag the component onto the diagram",
     found: "{count} found",
+    catKits: "Motor starter kits",
+    kit_dol: "Direct-on-line starter",
+    kit_star_delta: "Star-delta starter",
+    kit_reversing: "Reversing starter",
+    kitDesc_dol: "Motor breaker, contactor, overload relay and motor — already wired",
+    kitDesc_star_delta: "Line, star and delta contactors + overload relay",
+    kitDesc_reversing: "Interlocked forward and reverse contactors + overload relay",
     catPower: "Power & Sources",
     catProtection: "Protection Devices",
     catSwitching: "Switching & Power",
@@ -1087,7 +1094,7 @@ export const en: TranslationCatalog = {
       "Bands are the standard limits (IEC 60898-1, thermal relay IEC 60947-4-1) and the cable adiabatic damage (k²S²). Real manufacturer curves lie inside the bands; current selectivity up to the upstream breaker's minimum magnetic trip.",
   },
   ladderSync: {
-    toggle: "Follow the single-line diagram",
+    toggle: "Follow the single-line diagram (Ladder and FB Electric Studio)",
     status:
       "{n} rung(s) generated from the single-line · {edited} edited by you (those are no longer overwritten)",
     fromUnifilar: "from single-line",

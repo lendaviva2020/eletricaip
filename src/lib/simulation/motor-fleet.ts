@@ -19,6 +19,8 @@ import type {
 export interface MotorFeederChain {
   breakerId?: string;
   contactorId?: string;
+  /** Todos os contatores do ramal (reversão: 2; estrela-triângulo: 3), do mais próximo ao motor. */
+  contactorIds?: string[];
   thermalRelayId?: string;
   driveId?: string; // VFD ou soft-starter
   fuseId?: string;
@@ -108,7 +110,8 @@ export function discoverFeederChain(
         const kind = node.params.kind;
         if (STOP_KINDS.has(kind)) continue;
         if (kind === "breaker" && !chain.breakerId) chain.breakerId = node.id;
-        else if (kind === "contactor" && !chain.contactorId) chain.contactorId = node.id;
+        if (kind === "contactor") (chain.contactorIds ??= []).push(node.id);
+        if (kind === "contactor" && !chain.contactorId) chain.contactorId = node.id;
         else if (kind === "thermal_relay" && !chain.thermalRelayId) chain.thermalRelayId = node.id;
         else if ((kind === "vfd" || kind === "softstarter") && !chain.driveId)
           chain.driveId = node.id;
@@ -116,11 +119,23 @@ export function discoverFeederChain(
         // Ponto de derivação (alimenta mais de um ramal, ex.: disjuntor geral
         // sem barramento): conta como proteção a montante, mas a busca não
         // desce pelos ramais vizinhos — antes M1 herdava o inversor de M2.
-        if ((adj.get(other)?.length ?? 0) > 2) continue;
+        // Exceção: contator e relé térmico com contatores em paralelo (reversão,
+        // estrela-triângulo) pertencem ao MESMO ramal — a busca atravessa.
+        if ((adj.get(other)?.length ?? 0) > 2 && kind !== "contactor" && kind !== "thermal_relay")
+          continue;
         next.push(other);
       }
     }
     frontier = next;
+  }
+  // Com vários contatores, o principal é o de LINHA (ou o horário na reversão),
+  // pela função declarada — não o primeiro que a busca encontrou.
+  if ((chain.contactorIds?.length ?? 0) > 1) {
+    const main = chain.contactorIds!.find((id) => {
+      const role = (doc.nodes[id]?.params as { role?: string }).role;
+      return role === "line" || role === "forward";
+    });
+    if (main) chain.contactorId = main;
   }
   return chain;
 }
@@ -173,6 +188,7 @@ function motorStartMethod(
     declared === "VFD" ||
     declared === "SOFT" ||
     declared === "STAR_DELTA" ||
+    declared === "REVERSING" ||
     declared === "DOL"
   ) {
     return declared;

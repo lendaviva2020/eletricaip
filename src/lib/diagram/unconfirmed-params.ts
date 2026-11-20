@@ -15,6 +15,7 @@ export const NON_RATING_KEYS: ReadonlySet<string> = new Set([
   "model",
   "cpu",
   "protocol",
+  "role",
   "unconfirmed",
 ]);
 

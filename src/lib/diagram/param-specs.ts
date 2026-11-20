@@ -37,7 +37,22 @@ function withCommon(specs: SpecMap): SpecMap {
 
 const curveOptions = ["B", "C", "D"].map((v) => ({ label: v, value: v }));
 const poles14 = { min: 1, max: 4 };
-const startMethodOptions = ["DOL", "SOFT", "VFD"].map((v) => ({ label: v, value: v }));
+const startMethodOptions = [
+  { label: "Direta (DOL)", value: "DOL" },
+  { label: "Estrela-triângulo", value: "STAR_DELTA" },
+  { label: "Com reversão", value: "REVERSING" },
+  { label: "Soft-starter", value: "SOFT" },
+  { label: "Inversor (VFD)", value: "VFD" },
+];
+/** Função do contator no ramal de motor ("" = não definida). */
+const contactorRoleOptions = [
+  { label: "Não definida", value: "" },
+  { label: "Linha (principal)", value: "line" },
+  { label: "Estrela (Y)", value: "star" },
+  { label: "Triângulo (Δ)", value: "delta" },
+  { label: "Sentido horário", value: "forward" },
+  { label: "Sentido anti-horário", value: "reverse" },
+];
 const insulationOptions = ["PVC", "EPR", "XLPE"].map((v) => ({ label: v, value: v }));
 const estopCategoryOptions = ["0", "1", "2"].map((v) => ({ label: `Cat ${v}`, value: v }));
 
@@ -120,6 +135,13 @@ export const NODE_PARAM_SPECS: Record<NodeKind, SpecMap> = {
       min: 0.1,
     },
     coil_V: { key: "coil_V", label: "Tensão bobina", type: "number", unit: "V", defaultValue: 24 },
+    role: {
+      key: "role",
+      label: "Função no ramal",
+      type: "select",
+      defaultValue: "",
+      options: contactorRoleOptions,
+    },
   }),
   relay: withCommon({
     coil_V: { key: "coil_V", label: "Tensão bobina", type: "number", unit: "V", defaultValue: 24 },

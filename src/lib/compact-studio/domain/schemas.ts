@@ -69,6 +69,8 @@ export const CompactPageSchema = z.object({
   description: z.string().max(500).optional(),
   gridCols: z.number().int().min(4).max(200).default(24),
   gridRows: z.number().int().min(4).max(200).default(16),
+  /** Página gerada do unifilar: assinatura do conteúdo gerado (detecta edição manual). */
+  source: z.object({ kind: z.literal("unifilar"), signature: z.string().max(200) }).optional(),
 });
 
 export const CompactIoSymbolSchema = z.object({

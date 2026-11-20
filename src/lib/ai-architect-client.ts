@@ -38,7 +38,7 @@ export interface ArchitectResult {
     id: string;
     power_kW: number;
     voltage_V?: number;
-    startMethod?: "DOL" | "SOFT" | "VFD";
+    startMethod?: "DOL" | "SOFT" | "VFD" | "STAR_DELTA" | "REVERSING";
     role?: string;
   }>;
   nodes: Array<{

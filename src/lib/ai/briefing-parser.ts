@@ -11,7 +11,7 @@ import { runVerification } from "@/lib/ai/verify-architecture";
 import { summarizeVerification, type VerificationReport } from "@/lib/ai/verification-types";
 import { AiDiagramPatchSchema, type AiDiagramPatch } from "@/lib/diagram/schema";
 
-export const StartMethodSchema = z.enum(["DOL", "SOFT", "VFD"]);
+export const StartMethodSchema = z.enum(["DOL", "SOFT", "VFD", "STAR_DELTA", "REVERSING"]);
 export type StartMethod = z.infer<typeof StartMethodSchema>;
 
 export const InstallationMethodSchema = z.enum(["A1", "A2", "B1", "B2", "C", "D", "E", "F"]);
@@ -64,7 +64,10 @@ function normalizeStartMethod(raw: unknown): StartMethod {
     .trim()
     .toUpperCase();
   if (/VFD|INV|CFW|FREQ|VARIADOR/.test(s)) return "VFD";
-  if (/SOFT|SUAVE|SSW|ESTRELA|Y-D|STAR/.test(s)) return "SOFT";
+  // Estrela-triângulo é partida por contatores — antes virava soft-starter.
+  if (/ESTRELA|TRI[AÂ]NGULO|Y-D|Y\/D|STAR/.test(s)) return "STAR_DELTA";
+  if (/REVERS|REV\b|DOIS SENTIDOS|BIDIRECION/.test(s)) return "REVERSING";
+  if (/SOFT|SUAVE|SSW/.test(s)) return "SOFT";
   return "DOL";
 }
 

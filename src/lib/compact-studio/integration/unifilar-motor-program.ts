@@ -16,6 +16,7 @@
  */
 import type { DiagramDoc } from "@/lib/diagram/schema";
 import { buildMotorFleet, type FleetMotor } from "@/lib/simulation/motor-fleet";
+import { estopOperand, motorControlPlan } from "@/lib/ladder/from-unifilar";
 import type {
   CompactConnection,
   CompactIoSymbol,
@@ -126,6 +127,9 @@ export function syncMotorLogicFromUnifilar(
   const nodes: CompactNode[] = [];
   const connections: CompactConnection[] = [];
   const fbdLayout: Record<string, CompactVisualNodeLayout> = {};
+  // Posição que o engenheiro deu ao bloco é preservada na regeneração.
+  const keepPos = (id: string, x: number, yy: number): CompactVisualNodeLayout =>
+    program.layout.fbd[id] ?? { x, y: yy };
 
   const makeSymbol = (
     id: string,
@@ -156,88 +160,69 @@ export function syncMotorLogicFromUnifilar(
     return s;
   };
 
-  if (fleet.length > 0) {
-    const estop = makeSymbol(
-      `${UF_PREFIX}sym_estop`,
-      "DI",
-      "EMERG_OK",
-      "Cadeia de emergência NF (1 = íntegra) — circuito físico obrigatório (NR-12)",
-      true,
-    );
-    if (estop) {
-      nodes.push(ioNode(`${UF_PREFIX}di_estop`, "INPUT_DI", estop));
-      fbdLayout[`${UF_PREFIX}di_estop`] = { x: 40, y: 20 };
-    }
-  }
-
-  fleet.forEach((m, i) => {
-    const tag = m.config.tag;
-    const k = sym(tag);
-    const y = 120 + i * 200;
-    const start = makeSymbol(
-      `${UF_PREFIX}sym_start_${k}`,
-      "DI",
-      `PARTIDA_${k}`,
-      `${tag} — botoeira de partida NA`,
-      false,
-    );
-    const stop = makeSymbol(
-      `${UF_PREFIX}sym_stop_${k}`,
-      "DI",
-      `PARADA_${k}`,
-      `${tag} — botoeira de parada NF (1 = repouso)`,
-      true,
-    );
-    const ol = makeSymbol(
-      `${UF_PREFIX}sym_ol_${k}`,
-      "DI",
-      `TERMICO_${k}`,
-      `${tag} — relé térmico 95-96 NF (1 = sem disparo)`,
-      true,
-    );
-    const out = makeSymbol(
-      `${UF_PREFIX}sym_k_${k}`,
-      "DO",
-      `K_${k}`,
-      `${tag} — bobina do contator (CCM ${m.io.commandOutput})`,
-      false,
-    );
-    if (!start || !stop || !ol || !out) return;
-
-    const nStart = `${UF_PREFIX}di_start_${k}`;
-    const nStop = `${UF_PREFIX}di_stop_${k}`;
-    const nOl = `${UF_PREFIX}di_ol_${k}`;
-    const nTrip = `${UF_PREFIX}nand_${k}`;
-    const nMem = `${UF_PREFIX}rs_${k}`;
-    const nOut = `${UF_PREFIX}qo_${k}`;
-
-    nodes.push(
-      ioNode(nStart, "INPUT_DI", start),
-      ioNode(nStop, "INPUT_DI", stop),
-      ioNode(nOl, "INPUT_DI", ol),
-    );
+  // Mesmos operandos do Ladder (fonte única `motorControlPlan`): o engenheiro vê
+  // K1, F1_OK, M1_PARTIR… nos dois editores.
+  const generatedByName = new Map<string, CompactIoSymbol>();
+  const symbolFor = (
+    kind: "DI" | "DO",
+    name: string,
+    comment: string,
+    initialValue: boolean,
+  ): CompactIoSymbol | null => {
+    const key = sym(name);
+    const existing = generatedByName.get(key);
+    if (existing) return existing;
+    const s = makeSymbol(`${UF_PREFIX}sym_${key}`, kind, name, comment, initialValue);
+    if (s) generatedByName.set(key, s);
+    return s;
+  };
+  const inputNode = (
+    s: CompactIoSymbol,
+    id: string,
+    x: number,
+    y: number,
+    instanceName?: string,
+  ) => {
+    const n = ioNode(id, "INPUT_DI", s);
+    nodes.push(instanceName ? { ...n, instanceName } : n);
+    fbdLayout[id] = keepPos(id, x, y);
+    return id;
+  };
+  const gate = (
+    id: string,
+    blockType: "NAND" | "OR",
+    instanceName: string,
+    comment: string,
+    x: number,
+    y: number,
+  ) => {
+    const pins = blockType === "NAND" ? 4 : 2;
     nodes.push({
-      id: nTrip,
+      id,
       pageId: UF_PAGE_ID,
-      blockType: "NAND",
-      instanceName: `DESLIGA_${k}`,
+      blockType,
+      instanceName,
       category: "logic",
       libraryVersion: "1.0.0",
       params: {},
-      inputs: [
-        { id: "in1", name: "IN1", direction: "input", signalType: BOOL },
-        { id: "in2", name: "IN2", direction: "input", signalType: BOOL },
-        { id: "in3", name: "IN3", direction: "input", signalType: BOOL, defaultValue: true },
-        { id: "in4", name: "IN4", direction: "input", signalType: BOOL, defaultValue: true },
-      ],
+      inputs: Array.from({ length: pins }, (_, n) => ({
+        id: `in${n + 1}`,
+        name: `IN${n + 1}`,
+        direction: "input" as const,
+        signalType: BOOL,
+        ...(blockType === "NAND" && n >= 2 ? { defaultValue: true } : {}),
+      })),
       outputs: [{ id: "out", name: "OUT", direction: "output", signalType: BOOL }],
-      comment: "Qualquer contato NF aberto (parada, térmico, emergência) desliga",
+      comment,
     });
+    fbdLayout[id] = keepPos(id, x, y);
+  };
+  const selo = (id: string, instanceName: string, x: number, y: number) => {
     nodes.push({
-      id: nMem,
+      id,
       pageId: UF_PAGE_ID,
       blockType: "RS",
-      instanceName: `SELO_${k}`,
+      instanceName,
       category: "logic",
       libraryVersion: "1.0.0",
       params: {},
@@ -248,25 +233,138 @@ export function syncMotorLogicFromUnifilar(
       outputs: [{ id: "q1", name: "Q1", direction: "output", signalType: BOOL }],
       comment: "Selo com reset dominante (parada prevalece sobre partida)",
     });
-    nodes.push(ioNode(nOut, "OUTPUT_QO", out));
+    fbdLayout[id] = keepPos(id, x, y);
+  };
+  const output = (s: CompactIoSymbol, id: string, x: number, y: number) => {
+    nodes.push(ioNode(id, "OUTPUT_QO", s));
+    fbdLayout[id] = keepPos(id, x, y);
+  };
 
-    connections.push(
-      link(`${UF_PREFIX}c_start_${k}`, nStart, "out", nMem, "s"),
-      link(`${UF_PREFIX}c_stop_${k}`, nStop, "out", nTrip, "in1"),
-      link(`${UF_PREFIX}c_ol_${k}`, nOl, "out", nTrip, "in2"),
-      link(`${UF_PREFIX}c_estop_${k}`, `${UF_PREFIX}di_estop`, "out", nTrip, "in3"),
-      link(`${UF_PREFIX}c_trip_${k}`, nTrip, "out", nMem, "r1"),
-      link(`${UF_PREFIX}c_out_${k}`, nMem, "q1", nOut, "in"),
+  const estopName = estopOperand(doc);
+  let estopNodeId: string | undefined;
+  if (fleet.length > 0) {
+    const estop = symbolFor(
+      "DI",
+      estopName,
+      "Cadeia de emergência NF (1 = íntegra) — circuito físico obrigatório (NR-12)",
+      true,
     );
-    fbdLayout[nStart] = { x: 40, y };
-    fbdLayout[nStop] = { x: 40, y: y + 50 };
-    fbdLayout[nOl] = { x: 40, y: y + 100 };
-    fbdLayout[nTrip] = { x: 260, y: y + 50 };
-    fbdLayout[nMem] = { x: 460, y };
-    fbdLayout[nOut] = { x: 660, y };
+    if (estop) estopNodeId = inputNode(estop, `${UF_PREFIX}di_estop`, 40, 20);
+  }
 
-    for (const issue of m.issues) warnings.push(`${tag}: ${issue}`);
-  });
+  let y = 120;
+  for (const m of fleet) {
+    const plan = motorControlPlan(doc, m);
+    const k = sym(plan.M);
+    if (!plan.coil) {
+      warnings.push(`${plan.M}: sem contator nem inversor no ramal — nada a comandar pelo CLP`);
+      continue;
+    }
+    // Desligamento: qualquer contato NF aberto (parada, emergência, disjuntor, térmico, inversor).
+    const stopSym = symbolFor(
+      "DI",
+      plan.stop,
+      `${plan.M} — botoeira de parada NF (1 = repouso)`,
+      true,
+    );
+    const tripSignals: string[] = [];
+    if (stopSym) tripSignals.push(inputNode(stopSym, `${UF_PREFIX}di_stop_${k}`, 40, y));
+    if (estopNodeId) tripSignals.push(estopNodeId);
+    plan.protections.forEach((op, idx) => {
+      const ps = symbolFor(
+        "DI",
+        op,
+        `${op.replace(/_(OK|PRONTO)$/, "")} — contato NF (1 = sem disparo)`,
+        true,
+      );
+      if (ps)
+        tripSignals.push(inputNode(ps, `${UF_PREFIX}di_${sym(op)}_${k}`, 40, y + 50 * (idx + 1)));
+    });
+    // NAND de 4 entradas; com mais sinais, dois NAND somados por OR.
+    const nandA = `${UF_PREFIX}nand_${k}`;
+    gate(nandA, "NAND", `DESLIGA_${k}`, "Qualquer contato NF aberto desliga", 260, y + 50);
+    tripSignals
+      .slice(0, 4)
+      .forEach((src, n) =>
+        connections.push(link(`${UF_PREFIX}c_trip${n}_${k}`, src, "out", nandA, `in${n + 1}`)),
+      );
+    let tripOut = nandA;
+    if (tripSignals.length > 4) {
+      const nandB = `${UF_PREFIX}nandb_${k}`;
+      gate(nandB, "NAND", `DESLIGA_B_${k}`, "Demais contatos NF", 260, y + 150);
+      tripSignals
+        .slice(4, 8)
+        .forEach((src, n) =>
+          connections.push(link(`${UF_PREFIX}c_tripb${n}_${k}`, src, "out", nandB, `in${n + 1}`)),
+        );
+      const or = `${UF_PREFIX}ortrip_${k}`;
+      gate(or, "OR", `DESLIGA_OU_${k}`, "Desliga se qualquer grupo abrir", 360, y + 100);
+      connections.push(
+        link(`${UF_PREFIX}c_ora_${k}`, nandA, "out", or, "in1"),
+        link(`${UF_PREFIX}c_orb_${k}`, nandB, "out", or, "in2"),
+      );
+      tripOut = or;
+    }
+
+    if (plan.reversing) {
+      const { fwd, rev, KF, KR } = plan.reversing;
+      const sF = symbolFor("DI", fwd, `${plan.M} — botoeira sentido horário NA`, false);
+      const sR = symbolFor("DI", rev, `${plan.M} — botoeira sentido anti-horário NA`, false);
+      const oF = symbolFor("DO", KF, `${plan.M} — contator horário`, false);
+      const oR = symbolFor("DO", KR, `${plan.M} — contator anti-horário`, false);
+      if (!sF || !sR || !oF || !oR) continue;
+      const nF = inputNode(sF, `${UF_PREFIX}di_fwd_${k}`, 460, y);
+      const nR = inputNode(sR, `${UF_PREFIX}di_rev_${k}`, 460, y + 120);
+      // Intertravamento: o outro sentido ligado reseta este (leitura da saída no
+      // ciclo anterior — quebra o laço como num CLP real).
+      const fbF = inputNode(oF, `${UF_PREFIX}fb_fwd_${k}`, 460, y + 60, `${sym(KF)}_RET`);
+      const fbR = inputNode(oR, `${UF_PREFIX}fb_rev_${k}`, 460, y + 180, `${sym(KR)}_RET`);
+      const orF = `${UF_PREFIX}or_fwd_${k}`;
+      const orR = `${UF_PREFIX}or_rev_${k}`;
+      gate(orF, "OR", `RESET_HOR_${k}`, `Desliga ou ${KR} ligado`, 600, y + 30);
+      gate(orR, "OR", `RESET_ANTI_${k}`, `Desliga ou ${KF} ligado`, 600, y + 150);
+      const rsF = `${UF_PREFIX}rs_fwd_${k}`;
+      const rsR = `${UF_PREFIX}rs_rev_${k}`;
+      selo(rsF, `SELO_HOR_${k}`, 760, y);
+      selo(rsR, `SELO_ANTI_${k}`, 760, y + 120);
+      output(oF, `${UF_PREFIX}qo_fwd_${k}`, 940, y);
+      output(oR, `${UF_PREFIX}qo_rev_${k}`, 940, y + 120);
+      connections.push(
+        link(`${UF_PREFIX}c_orf1_${k}`, tripOut, "out", orF, "in1"),
+        link(`${UF_PREFIX}c_orf2_${k}`, fbR, "out", orF, "in2"),
+        link(`${UF_PREFIX}c_orr1_${k}`, tripOut, "out", orR, "in1"),
+        link(`${UF_PREFIX}c_orr2_${k}`, fbF, "out", orR, "in2"),
+        link(`${UF_PREFIX}c_sf_${k}`, nF, "out", rsF, "s"),
+        link(`${UF_PREFIX}c_sr_${k}`, nR, "out", rsR, "s"),
+        link(`${UF_PREFIX}c_rf_${k}`, orF, "out", rsF, "r1"),
+        link(`${UF_PREFIX}c_rr_${k}`, orR, "out", rsR, "r1"),
+        link(`${UF_PREFIX}c_qf_${k}`, rsF, "q1", `${UF_PREFIX}qo_fwd_${k}`, "in"),
+        link(`${UF_PREFIX}c_qr_${k}`, rsR, "q1", `${UF_PREFIX}qo_rev_${k}`, "in"),
+      );
+      y += 280;
+    } else {
+      const startSym = symbolFor("DI", plan.start, `${plan.M} — botoeira de partida NA`, false);
+      const out = symbolFor("DO", plan.coil, `${plan.M} — bobina (${plan.chainText})`, false);
+      if (!startSym || !out) continue;
+      const nStart = inputNode(startSym, `${UF_PREFIX}di_start_${k}`, 460, y);
+      const nMem = `${UF_PREFIX}rs_${k}`;
+      const nOut = `${UF_PREFIX}qo_${k}`;
+      selo(nMem, `SELO_${k}`, 660, y);
+      output(out, nOut, 860, y);
+      connections.push(
+        link(`${UF_PREFIX}c_start_${k}`, nStart, "out", nMem, "s"),
+        link(`${UF_PREFIX}c_trip_${k}`, tripOut, "out", nMem, "r1"),
+        link(`${UF_PREFIX}c_out_${k}`, nMem, "q1", nOut, "in"),
+      );
+      if (plan.starDelta) {
+        warnings.push(
+          `${plan.M}: estrela-triângulo — a comutação Y/Δ (${plan.starDelta.KY}/${plan.starDelta.KD}) está no Ladder; aqui o comando de linha ${plan.coil}.`,
+        );
+      }
+      y += Math.max(200, 50 * (plan.protections.length + 2));
+    }
+    for (const issue of m.issues) warnings.push(`${plan.M}: ${issue}`);
+  }
 
   const hw = program.hardware;
   const diCount = [...userSymbols, ...symbols].filter((s) => s.ioKind === "DI").length;
@@ -294,10 +392,16 @@ export function syncMotorLogicFromUnifilar(
             description:
               "Gerada automaticamente a partir do diagrama unifilar — regenerar sobrescreve esta página",
             gridCols: 24,
-            gridRows: Math.max(16, Math.ceil((120 + fleet.length * 200) / 40)),
+            gridRows: Math.min(200, Math.max(16, Math.ceil(y / 40) + 2)),
           },
         ]
       : userPages;
+
+  if (fleet.length > 0) {
+    const page = pages.find((pg) => pg.id === UF_PAGE_ID);
+    if (page)
+      page.source = { kind: "unifilar", signature: ufPageSignature(nodes, connections, symbols) };
+  }
 
   return {
     motorsGenerated: fleet.length,
@@ -318,4 +422,73 @@ export function syncMotorLogicFromUnifilar(
       },
     },
   };
+}
+
+// ── Sincronização automática ───────────────────────────────────────────────
+
+/** FNV-1a 32 bits — assinatura curta e estável (não é segurança, só detecção de edição). */
+function fnv1a(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+/**
+ * Assinatura da LÓGICA da página gerada (blocos, parâmetros, ligações e
+ * símbolos) — sem posições: mover blocos não é editar a lógica.
+ */
+function ufPageSignature(
+  nodes: readonly CompactNode[],
+  connections: readonly CompactConnection[],
+  symbols: readonly CompactIoSymbol[],
+): string {
+  const n = nodes
+    .filter((x) => x.pageId === UF_PAGE_ID)
+    .map(
+      (x) =>
+        `${x.id}|${x.blockType}|${x.instanceName}|${JSON.stringify(x.params)}|${x.ioSymbolId ?? ""}`,
+    )
+    .sort();
+  const c = connections
+    .filter((x) => x.pageId === UF_PAGE_ID)
+    .map((x) => `${x.fromNodeId}.${x.fromPortId}>${x.toNodeId}.${x.toPortId}`)
+    .sort();
+  const s = symbols
+    .filter((x) => x.id.startsWith(UF_PREFIX))
+    .map((x) => `${x.id}|${x.symbolicName}|${x.ioKind}`)
+    .sort();
+  return `${fnv1a(n.join("\n"))}${fnv1a(c.join("\n"))}${fnv1a(s.join("\n"))}`;
+}
+
+export type StudioAutoSyncResult =
+  | { status: "unchanged" }
+  | { status: "edited_by_user" }
+  | { status: "updated"; model: CompactProgramModel; warnings: string[] };
+
+/**
+ * Mantém a página "Motores (unifilar)" acompanhando o unifilar:
+ *  • página editada pelo engenheiro (lógica diferente da assinatura gerada) → é dele, não mexe;
+ *  • sem mudança → nada;
+ *  • senão → regenera preservando posições e o que é do usuário.
+ */
+export function autoSyncStudioFromUnifilar(
+  program: CompactProgramModel,
+  doc: DiagramDoc,
+  nowIso: string = new Date().toISOString(),
+): StudioAutoSyncResult {
+  const page = program.pages.find((p) => p.id === UF_PAGE_ID);
+  if (page?.source) {
+    const current = ufPageSignature(program.nodes, program.connections, program.ioSymbols);
+    if (current !== page.source.signature) return { status: "edited_by_user" };
+  }
+  const next = syncMotorLogicFromUnifilar(program, doc, nowIso);
+  const nextPage = next.model.pages.find((p) => p.id === UF_PAGE_ID);
+  const sameLogic =
+    (!page && !nextPage) ||
+    (!!page?.source && !!nextPage?.source && page.source.signature === nextPage.source.signature);
+  if (sameLogic) return { status: "unchanged" };
+  return { status: "updated", model: next.model, warnings: next.warnings };
 }
