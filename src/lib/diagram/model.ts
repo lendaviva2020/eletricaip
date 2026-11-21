@@ -41,10 +41,13 @@ export function makeNode(input: {
   label?: string;
   id?: string;
   rotation?: number;
+  /** Folha de desenho; ausente = primeira folha. */
+  page?: string;
 }): DiagramNode {
   return {
     id: input.id ?? newId("n"),
     sheet: input.sheet,
+    ...(input.page ? { page: input.page } : {}),
     position: input.position,
     rotation: input.rotation ?? 0,
     label: input.label ?? "",

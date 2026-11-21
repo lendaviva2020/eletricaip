@@ -239,6 +239,7 @@ export function buildMultifilarCommands(doc: DiagramDoc): Command[] {
         label: n.label,
         rotation: n.rotation,
       }),
+      ...(n.page ? { page: n.page } : {}),
       ui: { ...(n.ui ?? {}), equipmentId },
     };
     idMap.set(n.id, clone.id);
@@ -309,6 +310,14 @@ export function syncMultifilarCommands(doc: DiagramDoc): Command[] {
           to: n.label,
         });
       }
+      if (existing.page !== n.page) {
+        commands.push({
+          type: "SetNodePage",
+          nodeId: existing.id,
+          from: existing.page,
+          to: n.page,
+        });
+      }
     } else {
       const clone: DiagramNode = {
         ...makeNode({
@@ -319,6 +328,7 @@ export function syncMultifilarCommands(doc: DiagramDoc): Command[] {
           label: n.label,
           rotation: n.rotation,
         }),
+        ...(n.page ? { page: n.page } : {}),
         ui: { ...(n.ui ?? {}), equipmentId },
       };
       uniToMf.set(n.id, clone.id);
@@ -524,6 +534,14 @@ export function buildUnifilarFromMultifilarCommands(doc: DiagramDoc): Command[] 
           to: n.label,
         });
       }
+      if (existingUni.page !== n.page) {
+        commands.push({
+          type: "SetNodePage",
+          nodeId: existingUni.id,
+          from: existingUni.page,
+          to: n.page,
+        });
+      }
     } else {
       const clone: DiagramNode = {
         ...makeNode({
@@ -534,6 +552,7 @@ export function buildUnifilarFromMultifilarCommands(doc: DiagramDoc): Command[] 
           label: n.label,
           rotation: n.rotation,
         }),
+        ...(n.page ? { page: n.page } : {}),
         ui: { ...(n.ui ?? {}), equipmentId },
       };
       idMap.set(n.id, clone.id);

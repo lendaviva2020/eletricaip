@@ -66,6 +66,18 @@ import { analyzeArcFlash } from "@/lib/diagram/connection/arc-flash";
 import { useDiagramStore, snapToGrid } from "@/lib/diagram/store";
 import { useEditorStore } from "@/lib/editor/store";
 import { useI18n } from "@/lib/i18n";
+import { DrawingPageBar, OPEN_TITLE_BLOCK_EVENT } from "@/components/editor/drawing-page-bar";
+import {
+  DEFAULT_PAGE_ID,
+  docForPage,
+  drawingSetupOf,
+  frameForPage,
+  listPages,
+  nodesOutsideFrame,
+  pageIdOf,
+  pageReferences,
+  titleBlockCells,
+} from "@/lib/diagram/pages";
 import { exportDiagramDxf } from "@/lib/diagram/export-dxf";
 import { exportDiagramSvg } from "@/lib/diagram/export-svg";
 import { DiagramCompatView } from "./diagram-compat-view";
@@ -293,6 +305,27 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const setActiveSheet = useDiagramStore((s) => s.setActiveSheet);
   const effectiveSheet = sheet ?? activeSheet;
   const doc = useDiagramStore((s) => s.doc);
+  const requestedPageId = useDiagramStore((s) => s.activePageBySheet[effectiveSheet]);
+  // Folhas de desenho: o canvas mostra UMA folha; a topologia elétrica continua única.
+  const pages = useMemo(() => listPages(doc, effectiveSheet), [doc, effectiveSheet]);
+  const currentPageId = pages.find((p) => p.id === requestedPageId)?.id ?? pages[0]?.id ?? "p1";
+  const viewDoc = useMemo(
+    () => docForPage(doc, effectiveSheet, currentPageId),
+    [doc, effectiveSheet, currentPageId],
+  );
+  const currentPageRef = useRef(currentPageId);
+  currentPageRef.current = currentPageId;
+  /** Equipamento novo entra na folha ativa (folha 1 = sem `page`, como os projetos antigos). */
+  const onCurrentPage = useCallback(
+    <T extends { page?: string }>(node: T): T =>
+      currentPageRef.current === DEFAULT_PAGE_ID ? node : { ...node, page: currentPageRef.current },
+    [],
+  );
+  /** Recorte da folha ativa para o renderizador (lido por refs dentro de callbacks). */
+  const pageViewOf = useCallback(
+    (d: typeof doc) => docForPage(d, effectiveSheetRef.current, currentPageRef.current),
+    [],
+  );
   const selectedNodeIds = useDiagramStore((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagramStore((s) => s.selectedEdgeIds);
   const setSelection = useDiagramStore((s) => s.setSelection);
@@ -329,7 +362,6 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   const rearmEmergency = useSafetyStore((s) => s.rearmEmergency);
   const canStartSimulation = useSafetyStore((s) => s.canStartSimulation);
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [zoomPercent, setZoomPercent] = useState(100);
   const [autoZoom, setAutoZoom] = useState(true);
@@ -467,7 +499,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       .then(() => {
         if (disposed) return;
         const currentSheet = effectiveSheetRef.current;
-        const currentDoc = useDiagramStore.getState().doc;
+        const currentDoc = pageViewOf(useDiagramStore.getState().doc);
         const sheetNodes = Object.values(currentDoc.nodes).filter((n) => n.sheet === currentSheet);
         stage.sync(
           currentDoc,
@@ -508,7 +540,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         }
       }
     }
-    const latestDoc = useDiagramStore.getState().doc;
+    const latestDoc = pageViewOf(useDiagramStore.getState().doc);
     stageRef.current?.sync(
       latestDoc,
       effectiveSheet,
@@ -521,27 +553,55 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       { recordHistory: false },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveSheet]);
+  }, [effectiveSheet, currentPageId]);
 
   // sync em qualquer mudança relevante; auto-fit APENAS na troca/hidratação de documento
   // (nunca durante arraste/edição manual contínua)
   useEffect(() => {
-    stageRef.current?.sync(doc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization);
-    const sheetNodes = Object.values(doc.nodes).filter((n) => n.sheet === effectiveSheet);
+    stageRef.current?.sync(viewDoc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization);
+    const sheetNodes = Object.values(viewDoc.nodes).filter((n) => n.sheet === effectiveSheet);
     const hasNodes = sheetNodes.length > 0;
-    const docChanged = lastFittedDocIdRef.current !== null && lastFittedDocIdRef.current !== doc.id;
+    const docChanged =
+      lastFittedDocIdRef.current !== null && lastFittedDocIdRef.current !== viewDoc.id;
     const hydratedFromEmpty = !hadSheetNodesRef.current && hasNodes;
 
     if (autoZoom && (docChanged || hydratedFromEmpty)) {
-      lastFittedDocIdRef.current = doc.id;
+      lastFittedDocIdRef.current = viewDoc.id;
       requestAnimationFrame(() => {
         stageRef.current?.fitView(sheetNodes, { recordHistory: false });
       });
-    } else if (lastFittedDocIdRef.current !== doc.id) {
-      lastFittedDocIdRef.current = doc.id;
+    } else if (lastFittedDocIdRef.current !== viewDoc.id) {
+      lastFittedDocIdRef.current = viewDoc.id;
     }
     hadSheetNodesRef.current = hasNodes;
-  }, [doc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization, autoZoom]);
+  }, [viewDoc, effectiveSheet, selectedNodeIds, selectedEdgeIds, energization, autoZoom]);
+
+  // Moldura + carimbo da folha e referências cruzadas para as outras folhas.
+  const drawingSetup = useMemo(() => drawingSetupOf(doc), [doc]);
+  const pageFrame = useMemo(
+    () =>
+      drawingSetup.showFrame && effectiveSheet !== "ladder"
+        ? frameForPage(doc, effectiveSheet, currentPageId, drawingSetup.format)
+        : null,
+    [doc, effectiveSheet, currentPageId, drawingSetup],
+  );
+  const crossRefs = useMemo(
+    () => pageReferences(doc, effectiveSheet, currentPageId),
+    [doc, effectiveSheet, currentPageId],
+  );
+  const outsideCount = useMemo(
+    () => (pageFrame ? nodesOutsideFrame(doc, effectiveSheet, currentPageId, pageFrame).length : 0),
+    [doc, effectiveSheet, currentPageId, pageFrame],
+  );
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    stage.setDrawingFrame(
+      pageFrame,
+      pageFrame ? titleBlockCells(doc, effectiveSheet, currentPageId, drawingSetup.titleBlock) : [],
+    );
+    stage.setPageReferences(crossRefs);
+  }, [pageFrame, crossRefs, doc, effectiveSheet, currentPageId, drawingSetup, stageGeneration]);
 
   // Camada de resultados do cálculo de rede (curto por ponto, Icu, queda total).
   const networkOverlay = useNetworkOverlay((s) => s.visible);
@@ -558,8 +618,11 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         const network = analyzeNetwork(doc);
         const coordination = analyzeProtectionCoordination(doc);
         const arcFlash = analyzeArcFlash(doc, network);
+        // Cálculo sobre a rede inteira; etiquetas só dos equipamentos desta folha.
         stageRef.current?.setNetworkBadges(
-          buildNetworkBadges(doc, network, coordination, arcFlash),
+          buildNetworkBadges(doc, network, coordination, arcFlash).filter(
+            (b) => viewDoc.nodes[b.nodeId] !== undefined,
+          ),
         );
       } catch (err) {
         console.error("[canvas] falha no cálculo de rede:", err);
@@ -567,7 +630,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       }
     }, 150);
     return () => window.clearTimeout(handle);
-  }, [doc, effectiveSheet, networkOverlay, stageGeneration]);
+  }, [doc, viewDoc, effectiveSheet, networkOverlay, stageGeneration]);
 
   // Evento explícito para reenquadramento após IA / Importação em lote
   useEffect(() => {
@@ -658,7 +721,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
 
   const handleExportDxf = useCallback(() => {
     try {
-      const safe = (doc.metadata.title || "MCC-01_REFORCO")
+      const safe = (doc.metadata.title || t("drawingPages.untitledProject"))
         .replace(/[^a-z0-9-_]+/gi, "_")
         .slice(0, 60);
       const counts = exportDiagramDxf(doc, effectiveSheet, `${safe}_${effectiveSheet}.dxf`);
@@ -667,25 +730,31 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [doc, effectiveSheet]);
+  }, [doc, effectiveSheet, t]);
 
   const handleExportSvg = useCallback(() => {
     try {
-      const safe = (doc.metadata.title || "MCC-01_REFORCO")
+      const safe = (doc.metadata.title || t("drawingPages.untitledProject"))
         .replace(/[^a-z0-9-_]+/gi, "_")
         .slice(0, 60);
-      exportDiagramSvg(doc, effectiveSheet, `${safe}_${effectiveSheet}.svg`);
+      const pageNumber = pages.find((p) => p.id === currentPageId)?.number ?? 1;
+      exportDiagramSvg(
+        doc,
+        effectiveSheet,
+        `${safe}_${effectiveSheet}_folha${pageNumber}.svg`,
+        currentPageId,
+      );
       toast.success(`SVG vetorial IEC gerado com sucesso.`);
       setExportMenuOpen(false);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [doc, effectiveSheet]);
+  }, [doc, effectiveSheet, t, pages, currentPageId]);
 
   const handleExportPdf = useCallback(async () => {
     try {
       const { buildProjectPdf } = await import("@/lib/pdf-export");
-      const safe = (doc.metadata.title || "MCC-01_REFORCO")
+      const safe = (doc.metadata.title || t("drawingPages.untitledProject"))
         .replace(/[^a-z0-9-_]+/gi, "_")
         .slice(0, 60);
       let bom: Parameters<typeof buildProjectPdf>[0]["bom"] = [];
@@ -697,7 +766,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       }
       const conductors = summarizeConductors(doc);
       const pdf = buildProjectPdf({
-        project: { name: doc.metadata.title || "MCC-01_REFORCO" },
+        project: { name: doc.metadata.title || t("drawingPages.untitledProject") },
         bom,
         totalBRL,
         conductors: conductors.rows.length > 0 ? conductors : undefined,
@@ -717,7 +786,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [doc, projectId, listBomFn]);
+  }, [doc, projectId, listBomFn, t]);
 
   // Transição de abas Unifilar <-> Multifilar com sincronização bidirecional
   const handleSwitchTab = useCallback(
@@ -784,8 +853,10 @@ export function WebglCanvas({ sheet, projectId }: Props) {
   }, [diagnostics, complianceReport]);
 
   const handleSave = useCallback(() => {
-    toast.success(`Projeto "${doc.metadata.title || "MCC-01_REFORCO"}" salvo no documento ativo.`);
-  }, [doc.metadata.title]);
+    toast.success(
+      `Projeto "${doc.metadata.title || t("drawingPages.untitledProject")}" salvo no documento ativo.`,
+    );
+  }, [doc.metadata.title, t]);
 
   const hasSelection = selectedNodeIds.length > 0 || selectedEdgeIds.length > 0;
 
@@ -801,7 +872,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       if (kind !== "dol" && kind !== "star_delta" && kind !== "reversing") return;
       // Espaço livre: à direita de tudo o que já existe na folha (nunca por cima).
       const existing = Object.values(useDiagramStore.getState().doc.nodes).filter(
-        (n) => n.sheet === effectiveSheet,
+        (n) => n.sheet === effectiveSheet && pageIdOf(n) === currentPageRef.current,
       );
       const host = hostRef.current;
       const rect = host?.getBoundingClientRect();
@@ -828,7 +899,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       );
       dispatch(
         cmd.batch([
-          ...kit.nodes.map((node) => ({ type: "AddNode" as const, node })),
+          ...kit.nodes.map((node) => ({ type: "AddNode" as const, node: onCurrentPage(node) })),
           ...kit.edges.map((edge) => ({ type: "AddEdge" as const, edge })),
         ]),
       );
@@ -842,7 +913,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
     };
     window.addEventListener("eletricai-insert-kit", handler);
     return () => window.removeEventListener("eletricai-insert-kit", handler);
-  }, [effectiveSheet, dispatch]);
+  }, [effectiveSheet, dispatch, onCurrentPage]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -872,7 +943,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         );
         dispatch(
           cmd.batch([
-            ...kit.nodes.map((node) => ({ type: "AddNode" as const, node })),
+            ...kit.nodes.map((node) => ({ type: "AddNode" as const, node: onCurrentPage(node) })),
             ...kit.edges.map((edge) => ({ type: "AddEdge" as const, edge })),
           ]),
         );
@@ -884,13 +955,14 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       dispatch(
         cmd.addNode({
           sheet: effectiveSheet,
+          ...(currentPageRef.current !== DEFAULT_PAGE_ID ? { page: currentPageRef.current } : {}),
           position,
           params: defaultNodeParams(kind) as Parameters<typeof cmd.addNode>[0]["params"],
           label: rawType,
         }),
       );
     },
-    [effectiveSheet, dispatch],
+    [effectiveSheet, dispatch, onCurrentPage],
   );
 
   return (
@@ -938,7 +1010,7 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             <span className="font-bold text-[#38bdf8] truncate">
               {doc.metadata.title && !/^[=\-_*\s]+$/.test(doc.metadata.title)
                 ? doc.metadata.title
-                : "MCC-01_REFORCO"}
+                : t("drawingPages.untitledProject")}
             </span>
           </div>
 
@@ -946,11 +1018,12 @@ export function WebglCanvas({ sheet, projectId }: Props) {
             <span className="text-muted-foreground font-semibold">
               {t("canvasToolbar.sheet") || "FOLHA:"}
             </span>
-            <span className="font-bold">{effectiveSheet === "unifilar" ? "01/03" : "02/03"}</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#131d2e] border border-border/60 text-[#38bdf8]">
-            <span>380V / 60Hz</span>
+            <span className="font-bold">
+              {t("drawingPages.sheetOf", {
+                n: pages.find((p) => p.id === currentPageId)?.number ?? 1,
+                total: pages.length,
+              })}
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#064e3b]/40 border border-[#059669]/60 text-[#34d399] font-medium">
@@ -1226,9 +1299,9 @@ export function WebglCanvas({ sheet, projectId }: Props) {
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => window.dispatchEvent(new Event(OPEN_TITLE_BLOCK_EVENT))}
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            title="Configurações do Diagrama"
+            title={t("drawingPages.titleBlockTitle")}
           >
             <Gear className="h-4 w-4" />
           </Button>
@@ -1372,6 +1445,16 @@ export function WebglCanvas({ sheet, projectId }: Props) {
         </div>
       </div>
 
+      {effectiveSheet !== "ladder" && (
+        <DrawingPageBar
+          sheet={effectiveSheet}
+          pages={pages}
+          currentPageId={currentPageId}
+          outsideCount={outsideCount}
+          crossRefCount={crossRefs.length}
+        />
+      )}
+
       {/* 2. ÁREA CENTRAL DO CANVAS PIXI.JS (tema escuro técnico — ver render/palette.ts) */}
       <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-[#0b1220]">
         <div ref={hostRef} className="absolute inset-0" aria-hidden={renderFailure !== null} />
@@ -1432,65 +1515,6 @@ export function WebglCanvas({ sheet, projectId }: Props) {
       </div>
 
       {/* Modal de Configurações Técnicas do Diagrama */}
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="max-w-md bg-[#0e1626] border-border text-foreground">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-[#38bdf8]">
-              <Gear className="h-5 w-5" />
-              Configurações Técnicas do Projeto
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground text-xs">
-              Altere os parâmetros gerais do documento elétrico conforme a especificação do painel.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2 text-xs">
-            <div>
-              <label className="block text-muted-foreground mb-1">Título do Projeto</label>
-              <input
-                defaultValue={doc.metadata.title || "MCC-01_REFORCO"}
-                onChange={(e) => {
-                  doc.metadata.title = e.target.value;
-                }}
-                className="w-full h-8 rounded bg-[#131d2e] border border-border px-2 text-foreground font-mono"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-muted-foreground mb-1">Tensão Nominal (V)</label>
-                <input
-                  defaultValue="380"
-                  className="w-full h-8 rounded bg-[#131d2e] border border-border px-2 text-foreground font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-muted-foreground mb-1">Frequência (Hz)</label>
-                <input
-                  defaultValue="60"
-                  className="w-full h-8 rounded bg-[#131d2e] border border-border px-2 text-foreground font-mono"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-muted-foreground mb-1">Normas Aplicáveis</label>
-              <input
-                defaultValue="NBR 5410 · IEC 60617 · NR-10"
-                className="w-full h-8 rounded bg-[#131d2e] border border-border px-2 text-foreground font-mono"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                setSettingsOpen(false);
-                toast.success("Configurações do diagrama atualizadas.");
-              }}
-              className="bg-[#38bdf8] text-black hover:bg-[#38bdf8]/80 text-xs font-semibold"
-            >
-              Confirmar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

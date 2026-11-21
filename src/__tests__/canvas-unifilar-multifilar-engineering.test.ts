@@ -506,7 +506,9 @@ describe("ElétricAi — Canvas Elétrico Unifilar + Multifilar Profissional", (
     expect(svgStr).toContain("QF1");
     expect(svgStr).toContain("M1");
     expect(svgStr).toContain("MCC-01_REFORCO");
-    expect(svgStr).toContain("NBR 5410");
+    // Carimbo real da folha (NBR 10582), sem o antigo selo fixo.
+    expect(svgStr).toContain('id="title-block"');
+    expect(svgStr).not.toContain("CAD Elétrico");
 
     // DXF
     const dxfStr = diagramToDxf(doc, "unifilar");

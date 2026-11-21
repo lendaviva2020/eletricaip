@@ -27,6 +27,12 @@ export const CANVAS_PALETTE = {
   badgePending: 0x94a3b8,
   badgeBg: 0x0f172a,
   badgeText: 0xf8fafc,
+  /** Moldura, zonas e carimbo da folha. */
+  frame: 0x64748b,
+  frameText: 0xcbd5e1,
+  frameLabel: 0x94a3b8,
+  /** Referência cruzada para outra folha. */
+  pageRef: 0x38bdf8,
   wireDeenergized: 0x475569,
   wireFault: 0xef4444,
   selection: 0x22d3ee,

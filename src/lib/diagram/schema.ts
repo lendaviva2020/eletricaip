@@ -259,6 +259,8 @@ export type NodeParams = z.infer<typeof NodeParamsSchema>;
 export const DiagramNodeSchema = z.object({
   id: z.string().min(1).max(128),
   sheet: SheetKindSchema,
+  /** Folha de desenho (página) da prancha. Ausente = primeira folha do tipo. Não altera a topologia. */
+  page: z.string().min(1).max(64).optional(),
   position: PositionSchema,
   rotation: z.number().default(0),
   label: z.string().max(160).default(""),
@@ -315,12 +317,55 @@ export const NetworkSettingsSchema = z.object({
 });
 export type NetworkSettings = z.infer<typeof NetworkSettingsSchema>;
 
+/** Formatos de folha (ABNT NBR 10068 / ISO 5457), em paisagem. */
+export const DrawingFormatSchema = z.enum(["A4", "A3", "A2", "A1"]);
+export type DrawingFormat = z.infer<typeof DrawingFormatSchema>;
+
+/** Folha (página) de desenho de um tipo de diagrama. */
+export const DrawingPageSchema = z.object({
+  id: z.string().min(1).max(64),
+  sheet: SheetKindSchema,
+  /** Número da folha dentro do tipo (1, 2, 3…). */
+  number: z.number().int().min(1).max(999),
+  title: z.string().max(80).default(""),
+});
+export type DrawingPage = z.infer<typeof DrawingPageSchema>;
+
+/**
+ * Carimbo (legenda) da prancha — NBR 10582 / ISO 7200. Tudo informado pelo
+ * usuário; campo ausente fica em branco no desenho (nunca é presumido).
+ */
+export const TitleBlockSchema = z.object({
+  company: z.string().max(120).optional(),
+  client: z.string().max(120).optional(),
+  site: z.string().max(120).optional(),
+  drawingNumber: z.string().max(60).optional(),
+  revision: z.string().max(12).optional(),
+  date: z.string().max(20).optional(),
+  drawnBy: z.string().max(80).optional(),
+  checkedBy: z.string().max(80).optional(),
+  approvedBy: z.string().max(80).optional(),
+  responsible: z.string().max(120).optional(),
+  registration: z.string().max(60).optional(),
+});
+export type TitleBlock = z.infer<typeof TitleBlockSchema>;
+
+export const DrawingSetupSchema = z.object({
+  format: DrawingFormatSchema.default("A3"),
+  showFrame: z.boolean().default(true),
+  pages: z.array(DrawingPageSchema).max(200).default([]),
+  titleBlock: TitleBlockSchema.default({}),
+});
+export type DrawingSetup = z.infer<typeof DrawingSetupSchema>;
+
 export const DiagramMetadataSchema = z.object({
   title: z.string().max(160).default("Sem título"),
   author: z.string().max(120).optional(),
   client: z.string().max(120).optional(),
   norms: z.array(z.string().max(64)).default(["NBR 5410"]),
   network: NetworkSettingsSchema.optional(),
+  /** Folhas de desenho e carimbo. Ausente = uma folha por tipo, sem carimbo preenchido. */
+  drawing: DrawingSetupSchema.optional(),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
 });

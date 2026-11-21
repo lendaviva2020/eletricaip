@@ -9,6 +9,15 @@
 
 import { nodeDisplayLabel } from "./node-label";
 import type { BadgeLevel, NetworkBadge } from "./network-overlay";
+import {
+  TITLE_BLOCK_COLS,
+  TITLE_BLOCK_ROWS,
+  groupPageReferences,
+  zoneMarks,
+  type DrawingFrame,
+  type PageReference,
+  type TitleBlockCell,
+} from "../pages";
 
 const BADGE_COLORS: Record<BadgeLevel, number> = {
   ok: CANVAS_PALETTE.badgeOk,
@@ -216,6 +225,10 @@ export class DiagramStage {
   private overlayLayer = new Container();
   /** Etiquetas do cálculo de rede (curto, Icu, queda) — só leitura, sem eventos. */
   private resultsLayer = new Container();
+  /** Moldura, zonas e carimbo da folha (atrás de tudo, sem eventos). */
+  private frameLayer = new Container();
+  /** Referências cruzadas para outras folhas (sem eventos). */
+  private pageRefLayer = new Container();
   /** Partículas de corrente e pulsos de manobra (redesenhado a cada quadro). */
   private flowLayer = new Graphics();
   private flowPaths = new Map<string, FlowPath>();
@@ -320,11 +333,15 @@ export class DiagramStage {
       this.events.onZoomChange?.(this.getZoomPercent());
     });
     this.app.stage.addChild(this.viewport);
+    this.viewport.addChild(this.frameLayer);
     this.viewport.addChild(this.edgesLayer);
     this.viewport.addChild(this.junctionsLayer);
     this.viewport.addChild(this.flowLayer);
     this.viewport.addChild(this.nodesLayer);
     this.viewport.addChild(this.resultsLayer);
+    this.viewport.addChild(this.pageRefLayer);
+    this.frameLayer.eventMode = "none";
+    this.pageRefLayer.eventMode = "none";
     this.viewport.addChild(this.overlayLayer);
     this.resultsLayer.eventMode = "none";
     this.flowLayer.eventMode = "none";
@@ -749,6 +766,144 @@ export class DiagramStage {
       c.addChild(bg, bar, text);
       c.position.set(b.x, b.y);
       this.resultsLayer.addChild(c);
+    }
+  }
+
+  /** Desenha (ou remove, com null) a moldura da folha com zonas e carimbo. */
+  setDrawingFrame(frame: DrawingFrame | null, cells: ReadonlyArray<TitleBlockCell> = []) {
+    if (this.destroyed) return;
+    for (const child of this.frameLayer.removeChildren()) child.destroy({ children: true });
+    if (!frame) return;
+    const g = new Graphics();
+    g.rect(frame.x, frame.y, frame.width, frame.height).stroke({
+      width: 1,
+      color: CANVAS_PALETTE.frame,
+      alpha: 0.5,
+    });
+    g.rect(frame.inner.x, frame.inner.y, frame.inner.width, frame.inner.height).stroke({
+      width: 2.5,
+      color: CANVAS_PALETTE.frame,
+    });
+    const band = 20;
+    g.rect(
+      frame.inner.x + band,
+      frame.inner.y + band,
+      frame.inner.width - 2 * band,
+      frame.inner.height - 2 * band,
+    ).stroke({ width: 1, color: CANVAS_PALETTE.frame, alpha: 0.8 });
+    const zx = frame.inner.x + band;
+    const zw = frame.inner.width - 2 * band;
+    const zy = frame.inner.y + band;
+    const zh = frame.inner.height - 2 * band;
+    for (let c = 1; c < frame.columns; c++) {
+      const x = zx + (c * zw) / frame.columns;
+      g.moveTo(x, frame.inner.y).lineTo(x, zy);
+      g.moveTo(x, zy + zh).lineTo(x, frame.inner.y + frame.inner.height);
+    }
+    for (let r = 1; r < frame.rows; r++) {
+      const y = zy + (r * zh) / frame.rows;
+      g.moveTo(frame.inner.x, y).lineTo(zx, y);
+      g.moveTo(zx + zw, y).lineTo(frame.inner.x + frame.inner.width, y);
+    }
+    g.stroke({ width: 1, color: CANVAS_PALETTE.frame, alpha: 0.8 });
+
+    const tb = frame.titleBlock;
+    g.rect(tb.x, tb.y, tb.width, tb.height)
+      .fill({ color: CANVAS_PALETTE.background, alpha: 0.96 })
+      .stroke({ width: 2, color: CANVAS_PALETTE.frame });
+    const cw = tb.width / TITLE_BLOCK_COLS;
+    const rh = tb.height / TITLE_BLOCK_ROWS;
+    for (const cell of cells) {
+      g.rect(tb.x + cell.col * cw, tb.y + cell.row * rh, cell.span * cw, rh).stroke({
+        width: 1,
+        color: CANVAS_PALETTE.frame,
+      });
+    }
+    this.frameLayer.addChild(g);
+
+    for (const m of zoneMarks(frame)) {
+      const t = new Text({
+        text: m.label,
+        style: { fill: CANVAS_PALETTE.frameLabel, fontSize: 11, fontFamily: "monospace" },
+        resolution: 2,
+      });
+      t.anchor.set(0.5);
+      t.position.set(m.x, m.y);
+      this.frameLayer.addChild(t);
+    }
+    for (const cell of cells) {
+      const x = tb.x + cell.col * cw + 6;
+      const y = tb.y + cell.row * rh + 4;
+      const label = new Text({
+        text: cell.label.toUpperCase(),
+        style: { fill: CANVAS_PALETTE.frameLabel, fontSize: 8, fontFamily: "sans-serif" },
+        resolution: 2,
+      });
+      label.position.set(x, y);
+      const maxChars = Math.max(8, Math.floor((cell.span * cw - 12) / (cell.emphasis ? 8 : 7)));
+      const shown =
+        cell.value.length > maxChars ? `${cell.value.slice(0, maxChars - 1)}…` : cell.value;
+      const value = new Text({
+        text: shown,
+        style: {
+          fill: CANVAS_PALETTE.frameText,
+          fontSize: cell.emphasis ? 13 : 11,
+          fontWeight: cell.emphasis ? "bold" : "normal",
+          fontFamily: "sans-serif",
+        },
+        resolution: 2,
+      });
+      value.position.set(x, y + 14);
+      this.frameLayer.addChild(label, value);
+    }
+  }
+
+  /** Setas de continuação para outra folha ("→ Q1 /2.4") nas portas das ligações. */
+  setPageReferences(refs: ReadonlyArray<PageReference> | null) {
+    if (this.destroyed) return;
+    for (const child of this.pageRefLayer.removeChildren()) child.destroy({ children: true });
+    if (!refs || refs.length === 0) return;
+    for (const r of groupPageReferences(refs)) {
+      const text = new Text({
+        text: r.label,
+        style: {
+          fill: CANVAS_PALETTE.pageRef,
+          fontSize: 10,
+          fontFamily: "monospace",
+          fontWeight: "bold",
+        },
+        resolution: 2,
+      });
+      const L = 18;
+      const v = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[r.dir];
+      const ex = v[0] * L;
+      const ey = v[1] * L;
+      // Ponta da seta: base perpendicular à direção.
+      const px = -v[1] * 5;
+      const py = v[0] * 5;
+      const stub = new Graphics()
+        .moveTo(0, 0)
+        .lineTo(ex, ey)
+        .stroke({ width: 2, color: CANVAS_PALETTE.pageRef })
+        .poly([ex + px, ey + py, ex - px, ey - py, ex + v[0] * 8, ey + v[1] * 8])
+        .fill({ color: CANVAS_PALETTE.pageRef });
+      const bg = new Graphics()
+        .roundRect(-3, 0, text.width + 6, text.height + 2, 2)
+        .fill({ color: CANVAS_PALETTE.badgeBg, alpha: 0.9 })
+        .stroke({ width: 1, color: CANVAS_PALETTE.pageRef });
+      const label = new Container();
+      label.addChild(bg, text);
+      text.position.set(0, 1);
+      const tip = { x: ex + v[0] * 10, y: ey + v[1] * 10 };
+      if (r.dir === "up") label.position.set(tip.x + 6, tip.y - text.height);
+      else if (r.dir === "down") label.position.set(tip.x + 6, tip.y - 2);
+      else if (r.dir === "left")
+        label.position.set(tip.x - text.width - 6, tip.y - text.height / 2);
+      else label.position.set(tip.x + 4, tip.y - text.height / 2);
+      const c = new Container();
+      c.addChild(stub, label);
+      c.position.set(r.x, r.y);
+      this.pageRefLayer.addChild(c);
     }
   }
 

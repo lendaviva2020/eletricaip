@@ -23,6 +23,8 @@ interface DiagramState {
   doc: DiagramDoc;
   history: History;
   activeSheet: SheetKind;
+  /** Folha de desenho ativa por tipo de diagrama (ausente = primeira). */
+  activePageBySheet: Partial<Record<SheetKind, string>>;
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
   snapEnabled: boolean;
@@ -42,6 +44,7 @@ interface DiagramState {
   canRedo: () => boolean;
 
   setActiveSheet: (sheet: SheetKind) => void;
+  setActivePage: (sheet: SheetKind, pageId: string) => void;
   setSelection: (nodes: string[], edges?: string[]) => void;
   clearSelection: () => void;
   toggleSnap: () => void;
@@ -66,6 +69,7 @@ export const useDiagramStore = create<DiagramState>()(
     doc: createEmptyDoc(),
     history: emptyHistory(),
     activeSheet: "unifilar",
+    activePageBySheet: {},
     selectedNodeIds: [],
     selectedEdgeIds: [],
 
@@ -121,6 +125,13 @@ export const useDiagramStore = create<DiagramState>()(
 
     setActiveSheet: (sheet) =>
       set({ activeSheet: sheet, selectedNodeIds: [], selectedEdgeIds: [] }),
+    setActivePage: (sheet, pageId) =>
+      set((s) => ({
+        activePageBySheet: { ...s.activePageBySheet, [sheet]: pageId },
+        selectedNodeIds: [],
+        selectedEdgeIds: [],
+        contextMenu: null,
+      })),
     setSelection: (nodes, edges = []) => set({ selectedNodeIds: nodes, selectedEdgeIds: edges }),
     clearSelection: () => set({ selectedNodeIds: [], selectedEdgeIds: [] }),
     toggleSnap: () => set((s) => ({ snapEnabled: !s.snapEnabled })),
@@ -158,6 +169,7 @@ export const useDiagramStore = create<DiagramState>()(
     loadDoc: (doc) =>
       set({
         doc,
+        activePageBySheet: {},
         history: emptyHistory(),
         selectedNodeIds: [],
         selectedEdgeIds: [],
@@ -166,6 +178,7 @@ export const useDiagramStore = create<DiagramState>()(
     resetDoc: () =>
       set({
         doc: createEmptyDoc(),
+        activePageBySheet: {},
         history: emptyHistory(),
         selectedNodeIds: [],
         selectedEdgeIds: [],

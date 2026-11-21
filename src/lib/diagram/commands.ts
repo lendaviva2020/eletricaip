@@ -7,6 +7,7 @@ import type {
   DiagramDoc,
   DiagramEdge,
   DiagramNode,
+  DrawingSetup,
   NetworkSettings,
   NodeParams,
   Position,
@@ -39,6 +40,8 @@ export type Command =
       from?: NetworkSettings;
       to?: NetworkSettings;
     }
+  | { type: "SetNodePage"; nodeId: string; from?: string; to?: string }
+  | { type: "UpdateDrawingSetup"; from?: DrawingSetup; to?: DrawingSetup }
   | { type: "ApplyAiPatch"; patch: AiDiagramPatch; inverse: Command[] }
   | { type: "Batch"; commands: Command[] };
 
@@ -99,6 +102,18 @@ export function applyCommand(doc: DiagramDoc, cmd: Command): DiagramDoc {
       return applyDraft(doc, (d) => {
         if (cmd.to) d.metadata.network = cmd.to;
         else delete d.metadata.network;
+      });
+    case "SetNodePage":
+      return applyDraft(doc, (d) => {
+        const n = d.nodes[cmd.nodeId];
+        if (!n) return;
+        if (cmd.to) n.page = cmd.to;
+        else delete n.page;
+      });
+    case "UpdateDrawingSetup":
+      return applyDraft(doc, (d) => {
+        if (cmd.to) d.metadata.drawing = cmd.to;
+        else delete d.metadata.drawing;
       });
     case "ApplyAiPatch": {
       const p = cmd.patch;
@@ -176,6 +191,10 @@ export function invertCommand(doc: DiagramDoc, cmd: Command): Command | null {
       return { type: "UpdateEdgeWaypoints", edgeId: cmd.edgeId, from: cmd.to, to: cmd.from };
     case "UpdateNetworkSettings":
       return { type: "UpdateNetworkSettings", from: cmd.to, to: cmd.from };
+    case "SetNodePage":
+      return { type: "SetNodePage", nodeId: cmd.nodeId, from: cmd.to, to: cmd.from };
+    case "UpdateDrawingSetup":
+      return { type: "UpdateDrawingSetup", from: cmd.to, to: cmd.from };
     case "ApplyAiPatch":
       return { type: "Batch", commands: cmd.inverse };
     case "Batch": {
