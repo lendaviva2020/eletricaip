@@ -60,21 +60,26 @@ create index if not exists runtime_devices_target_idx on public.runtime_devices 
 alter table public.runtime_packages enable row level security;
 alter table public.runtime_devices enable row level security;
 
-drop policy if exists runtime_packages_select_members on public.runtime_packages;
-create policy runtime_packages_select_members on public.runtime_packages
-  for select to authenticated
-  using (exists (
-    select 1 from public.tenant_memberships m
-    where m.tenant_id = runtime_packages.tenant_id and m.user_id = (select auth.uid())
-  ));
-
-drop policy if exists runtime_devices_select_members on public.runtime_devices;
-create policy runtime_devices_select_members on public.runtime_devices
-  for select to authenticated
-  using (exists (
-    select 1 from public.tenant_memberships m
-    where m.tenant_id = runtime_devices.tenant_id and m.user_id = (select auth.uid())
-  ));
+-- Cria as policies só se ainda não existirem (sem DROP: idempotente e não destrutivo).
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'runtime_packages' and policyname = 'runtime_packages_select_members') then
+    create policy runtime_packages_select_members on public.runtime_packages
+      for select to authenticated
+      using (exists (
+        select 1 from public.tenant_memberships m
+        where m.tenant_id = runtime_packages.tenant_id and m.user_id = (select auth.uid())
+      ));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'runtime_devices' and policyname = 'runtime_devices_select_members') then
+    create policy runtime_devices_select_members on public.runtime_devices
+      for select to authenticated
+      using (exists (
+        select 1 from public.tenant_memberships m
+        where m.tenant_id = runtime_devices.tenant_id and m.user_id = (select auth.uid())
+      ));
+  end if;
+end $$;
 
 -- Sem acesso anônimo; cliente autenticado só lê (e nunca o hash do token).
 revoke all on public.runtime_packages from anon, authenticated;
