@@ -13,7 +13,7 @@ import {
   type RuntimeReport,
 } from "./runtime-cloud";
 
-const db = supabaseAdmin as unknown as SupabaseClient;
+const db = supabaseAdmin;
 
 export interface DeviceRecord {
   id: string;

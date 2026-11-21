@@ -6,6 +6,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireActiveSession } from "@/integrations/supabase/auth-middleware";
 import { toSafeExternalHref } from "@/lib/security/url-safety";
+import type { Json, TablesInsert } from "@/integrations/supabase/types";
 
 const numeric = z
   .union([z.number(), z.string()])
@@ -89,9 +90,7 @@ export const importCatalogBatch = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const db = supabaseAdmin as unknown as {
-      from: (t: string) => any;
-    };
+    const db = supabaseAdmin;
 
     const report: ImportReport = { inserted: 0, updated: 0, skipped: 0, errors: [] };
     const manufacturerCache = new Map<string, string>();
@@ -162,7 +161,7 @@ export const importCatalogBatch = createServerFn({ method: "POST" })
         const manufacturerId = await getOrCreateManufacturer(row.manufacturer);
         const categoryId = await getOrCreateCategory(row.category ?? DEFAULT_CATEGORY);
 
-        const payload: Record<string, unknown> = {
+        const payload: TablesInsert<"catalog_components"> = {
           manufacturer_id: manufacturerId,
           category_id: categoryId,
           part_number: row.partNumber,
@@ -175,7 +174,7 @@ export const importCatalogBatch = createServerFn({ method: "POST" })
           // RISK-012: só http(s) sem credenciais; `javascript:` etc. é descartado na importação.
           datasheet_url: toSafeExternalHref(row.datasheetUrl),
           certifications: row.certifications,
-          specs: row.specs ?? {},
+          specs: (row.specs ?? {}) as Json,
           embedding: null,
         };
 

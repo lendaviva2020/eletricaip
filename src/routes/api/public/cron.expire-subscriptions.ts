@@ -34,11 +34,7 @@ export const Route = createFileRoute("/api/public/cron/expire-subscriptions")({
           });
         }
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data, error } = await (
-          supabaseAdmin as unknown as {
-            rpc: (fn: string) => Promise<{ data: unknown; error: { message: string } | null }>;
-          }
-        ).rpc("expire_overdue_subscriptions");
+        const { data, error } = await supabaseAdmin.rpc("expire_overdue_subscriptions");
         if (error) {
           console.error("[cron.expire-subscriptions]", error.message);
           return new Response(JSON.stringify({ ok: false, error: "rpc_failed" }), {

@@ -12,7 +12,6 @@
  * preço vindo do navegador).
  */
 import { createServerFn } from "@tanstack/react-start";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth, type AuthContext } from "@/integrations/supabase/auth-middleware";
 import { toSafeExternalHref } from "@/lib/security/url-safety";
@@ -51,19 +50,14 @@ const ITEM_COLUMNS =
   "id, manufacturer, part_number, description, category, rated_current_a, rated_voltage_v, unit_price, currency, price_source, source_part_id, source_url, datasheet_url, stock, price_updated_at, updated_at";
 
 interface CatalogAccess {
-  db: SupabaseClient;
+  db: AuthContext["supabase"];
   tenantId: string;
   role: string;
   canWrite: boolean;
 }
 
-/** Tabela recém-criada ainda ausente dos tipos gerados: acesso sem genérico, saída validada por Zod. */
-function untypedClient(ctx: AuthContext): SupabaseClient {
-  return ctx.supabase as unknown as SupabaseClient;
-}
-
 async function resolveAccess(ctx: AuthContext): Promise<CatalogAccess> {
-  const db = untypedClient(ctx);
+  const db = ctx.supabase;
   const { data: profile, error: pErr } = await ctx.supabase
     .from("profiles")
     .select("tenant_id")

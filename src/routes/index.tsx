@@ -36,7 +36,7 @@ import {
 } from "@/components/landing/enterprise-sections";
 import { faqJsonLd } from "@/lib/marketing/landing-faq";
 import { softwareJsonLd } from "@/components/marketing/audience-landing";
-import { legalEntity } from "@/lib/legal";
+import { providedLegalEntity } from "@/lib/legal";
 
 const LANDING_DESCRIPTION =
   "Projeto elétrico e de automação industrial no mesmo modelo: unifilar e multifilar, cálculos NBR 5410, curto-circuito, seletividade, arco elétrico, Ladder e FBD gerados do unifilar, SCADA e dossiê técnico com revisão selada.";
@@ -1357,26 +1357,25 @@ function Footer({ authed }: { authed: boolean }) {
   );
 }
 
-/** Dados cadastrais reais (variáveis públicas do build) ou "a informar". */
+/** Dados cadastrais informados (variáveis públicas do build); o que faltar não aparece. */
 function LegalEntityBlock() {
-  const e = legalEntity();
+  const e = providedLegalEntity();
+  const rows: Array<[string, string]> = [];
+  if (e.legalName) rows.push(["Razão social", e.legalName]);
+  if (e.cnpj) rows.push(["CNPJ", e.cnpj]);
+  if (e.contactEmail) rows.push(["Contato", e.contactEmail]);
+  if (rows.length === 0) return null;
   return (
     <dl
       className="text-[11px] font-mono text-muted-foreground space-y-0.5"
       data-testid="legal-entity"
     >
-      <div>
-        <dt className="inline">Razão social: </dt>
-        <dd className="inline">{e.legalName}</dd>
-      </div>
-      <div>
-        <dt className="inline">CNPJ: </dt>
-        <dd className="inline">{e.cnpj}</dd>
-      </div>
-      <div>
-        <dt className="inline">Contato: </dt>
-        <dd className="inline">{e.contactEmail}</dd>
-      </div>
+      {rows.map(([k, v]) => (
+        <div key={k}>
+          <dt className="inline">{k}: </dt>
+          <dd className="inline">{v}</dd>
+        </div>
+      ))}
     </dl>
   );
 }

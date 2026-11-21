@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, TablesUpdate } from "@/integrations/supabase/types";
 
 interface AuthCtx {
   supabase: SupabaseClient<Database>;
@@ -87,15 +87,12 @@ export const updateBomItem = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context as unknown as AuthCtx;
-    const patch: Record<string, unknown> = {};
+    const patch: TablesUpdate<"project_bom_items"> = {};
     if (data.quantity !== undefined) patch.quantity = data.quantity;
     if (data.unitPriceBRL !== undefined) patch.unit_price_brl = data.unitPriceBRL;
     if (data.notes !== undefined) patch.notes = data.notes;
     if (data.reference !== undefined) patch.reference = data.reference;
-    const { error } = await supabase
-      .from("project_bom_items")
-      .update(patch as never)
-      .eq("id", data.id);
+    const { error } = await supabase.from("project_bom_items").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

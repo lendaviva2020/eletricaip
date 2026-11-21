@@ -10,6 +10,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth, type AuthContext } from "@/integrations/supabase/auth-middleware";
 import { DEMO_ETE_PROJECT_ID } from "./demo-ete-seed";
@@ -191,7 +192,7 @@ export const updateAlarmPoint = createServerFn({ method: "POST" })
 
     const now = new Date();
     const nowIso = now.toISOString();
-    const patch: Record<string, unknown> = {
+    const patch: TablesInsert<"alarm_point_settings"> = {
       project_id: data.projectId,
       point_key: data.pointKey,
       tag_name: data.tagName,
@@ -259,7 +260,7 @@ export const updateAlarmPoint = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // `patch` é montado dinamicamente (campos variam por tipo de mudança);
     // o cast permite o upsert parcial. As chaves/valores já batem com a tabela.
-    const { data: row, error } = await (supabaseAdmin as unknown as SupabaseClient)
+    const { data: row, error } = await supabaseAdmin
       .from("alarm_point_settings")
       .upsert(patch, { onConflict: "project_id,point_key" })
       .select(SETTING_COLUMNS)

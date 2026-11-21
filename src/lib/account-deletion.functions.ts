@@ -150,13 +150,7 @@ export const eraseUserData = createServerFn({ method: "POST" })
     });
 
     await run("auth_user", async () => {
-      const { error } = await (
-        supabaseAdmin as unknown as {
-          auth: {
-            admin: { deleteUser: (id: string) => Promise<{ error: { message: string } | null }> };
-          };
-        }
-      ).auth.admin.deleteUser(target);
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(target);
       if (error) throw new Error(error.message);
       return "auth.users removed";
     });

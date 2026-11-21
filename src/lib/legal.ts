@@ -37,6 +37,24 @@ export function legalEntity(): LegalEntity {
   };
 }
 
+/**
+ * Só os dados cadastrais REALMENTE informados (para a landing): campo ausente
+ * não aparece — melhor do que exibir "a informar" ao visitante.
+ */
+export function providedLegalEntity(): Partial<LegalEntity> {
+  const name = env("VITE_LEGAL_NAME");
+  const cnpj = env("VITE_LEGAL_CNPJ");
+  const address = env("VITE_LEGAL_ADDRESS");
+  const contact = env("VITE_LEGAL_CONTACT_EMAIL");
+  const out: Partial<LegalEntity> = {
+    ...(name ? { legalName: name } : {}),
+    ...(cnpj ? { cnpj } : {}),
+    ...(address ? { address } : {}),
+    ...(contact ? { contactEmail: contact } : {}),
+  };
+  return out;
+}
+
 /** Substitui {{TOKENS}} dos .md legais pelos dados reais (ou "a informar"). */
 export function fillLegalTokens(markdown: string, entity: LegalEntity = legalEntity()): string {
   const map: Record<string, string> = {

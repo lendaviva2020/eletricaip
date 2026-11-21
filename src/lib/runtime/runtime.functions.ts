@@ -19,9 +19,9 @@ const STOP_ROLES = new Set(["owner", "admin", "engineer", "operator"]);
 const RUNTIME_PLANS = new Set(["pro", "premium"]);
 const MAX_DEVICES_PER_PROJECT = 20;
 
-async function admin(): Promise<SupabaseClient> {
+async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin as unknown as SupabaseClient;
+  return supabaseAdmin;
 }
 
 function dbError(scope: string, error: { code?: string; message?: string } | null): never {
@@ -131,7 +131,8 @@ export const publishRuntimePackage = createServerFn({ method: "POST" })
         version,
         label: pkg.label,
         sha256: hash,
-        package: pkg,
+        // Pacote validado por Zod (RuntimePackageSchema) e serializável em JSON.
+        package: pkg as unknown as Json,
         size_bytes: size,
         summary,
         created_by: ctx.userId,
@@ -400,7 +401,7 @@ export const listRuntime = createServerFn({ method: "POST" })
       >[0],
       data.projectId,
     );
-    const db = ctx.supabase as unknown as SupabaseClient;
+    const db = ctx.supabase;
     const [pk, dv] = await Promise.all([
       db
         .from("runtime_packages")

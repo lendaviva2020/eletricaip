@@ -1638,7 +1638,7 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - **Nuvem**: `runtime.functions.ts` (publicar/aprovar/revogar pacote, cadastrar gateway com token `ert_…` mostrado uma vez e guardado como SHA-256, implantar só pacote aprovado, parar/revogar; papel owner/admin/engineer, parada também operator; planos Pro/Premium; projeto de demonstração bloqueado; auditoria encadeada) e rotas `/api/public/runtime/report` (estado, telemetria por exceção em `tag_samples` com origem `INTERNAL_RUNTIME`, eventos na auditoria) e `/api/public/runtime/package`.
 - **Migration** `20261120150000_runtime_packages_devices.sql` (tabelas `runtime_packages`/`runtime_devices`, RLS de leitura por membro, sem escrita de cliente, coluna do hash do token não legível): **aplicada em 2026-11-21** (versão sem `DROP POLICY`: policies criadas em bloco `DO` só se não existirem — o `DROP` disparava a confirmação do MCP, que expirava). Verificado no banco: RLS ligado nas duas, só policy SELECT para `authenticated`, `anon` sem acesso, `token_hash` NÃO legível por `authenticated`; advisors sem achado novo.
 - **Verificado**: 22 testes novos (`runtime-core`, `runtime-modbus` contra socket real, `runtime-daemon-e2e` com WebVisu+arme+emergência, `runtime-cloud` com nuvem falsa e pacote adulterado); executável compilado rodando offline; pacote gerado na tela a partir do projeto de demonstração (18 redes + FB Studio) executado no Runtime: 308 varreduras, 0,17 ms/varredura, sem falhas; hash do navegador = hash do servidor.
-- **Pendente**: OPC UA/MQTT/Modbus RTU/GPIO com escrita; tipos gerados (`types.ts`) com as tabelas novas.
+- **Pendente**: OPC UA/MQTT/Modbus RTU/GPIO com escrita.
 
 ### WebVisu com a tela de processo completa (2026-11-20, 32ª rodada)
 
@@ -1646,3 +1646,8 @@ O módulo de Diagrama Unifilar e Conectividade Elétrica é o núcleo de distrib
 - Estado só das tags reais (`lib/hmi/hmi-tag-state.ts`): `<TAG>.LIGADO`/`<TAG>`, `.REVERSO`, `.VELOCIDADE`, `.ABERTA`, `.NIVEL`; sem tag = "sem sinal" (apagado). O fluxo nas ligações NÃO é desenhado (no editor ele é dedução da simulação). Clique no equipamento abre as tags dele (comando só em memória).
 - Traçado ortogonal com contorno quando o destino está "atrás" da saída. Rótulos com contorno para leitura sobre as linhas.
 - Bundle do Runtime passou a incluir React (1,3 MB). Testes: `webvisu-hmi.test.ts` (geometria, estado, símbolo sem script, rota com CSP e sessão). Verificado no navegador (desktop e Pixel 7) com o executável compilado.
+
+### Tipos do banco regenerados e rodapé legal (2026-11-21, 33ª rodada)
+
+- `src/integrations/supabase/types.ts` regenerado do banco vivo (inclui `runtime_packages`, `runtime_devices`, `tenant_catalog_items`). Removidos TODOS os acessos sem tipo ao Supabase: `untypedClient` do catálogo da empresa, casts do Runtime, `from: (t: string) => any` da importação de catálogo, casts de `auth.admin.deleteUser` e da RPC `expire_overdue_subscriptions`, `patch as never` do BOM e `Record<string, unknown>` dos pontos de alarme (agora `TablesInsert`/`TablesUpdate`). Único cast restante: o pacote do Runtime → `Json` (validado por Zod). Mudou o banco → regenere os tipos (MCP `generate_typescript_types`).
+- Rodapé da landing (`providedLegalEntity`): mostra só os dados legais configurados (`VITE_LEGAL_*`); sem nenhum, o bloco some (antes exibia "a informar"). `VITE_SALES_WHATSAPP` configurado na Vercel.

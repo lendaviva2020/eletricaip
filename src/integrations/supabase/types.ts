@@ -1,6 +1,3 @@
-// Tipos gerados do banco Supabase (supabase gen types typescript).
-// NÃO editar à mão: regenerar após migrations.
-
 export type Json =
   | string
   | number
@@ -4024,6 +4021,82 @@ export type Database = {
           },
         ]
       }
+      runtime_devices: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          last_mode: string | null
+          last_package_hash: string | null
+          last_seen_at: string | null
+          last_state: Json
+          name: string
+          project_id: string
+          revoked_at: string | null
+          stop_requested: boolean
+          target_package_id: string | null
+          tenant_id: string
+          token_hash: string
+          token_prefix: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          last_mode?: string | null
+          last_package_hash?: string | null
+          last_seen_at?: string | null
+          last_state?: Json
+          name: string
+          project_id: string
+          revoked_at?: string | null
+          stop_requested?: boolean
+          target_package_id?: string | null
+          tenant_id: string
+          token_hash: string
+          token_prefix: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          last_mode?: string | null
+          last_package_hash?: string | null
+          last_seen_at?: string | null
+          last_state?: Json
+          name?: string
+          project_id?: string
+          revoked_at?: string | null
+          stop_requested?: boolean
+          target_package_id?: string | null
+          tenant_id?: string
+          token_hash?: string
+          token_prefix?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_devices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_devices_target_package_id_fkey"
+            columns: ["target_package_id"]
+            isOneToOne: false
+            referencedRelation: "runtime_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_devices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       runtime_logs: {
         Row: {
           channel: string
@@ -4053,6 +4126,75 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      runtime_packages: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string
+          id: string
+          label: string
+          package: Json
+          project_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          sha256: string
+          size_bytes: number
+          summary: Json
+          tenant_id: string
+          version: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          label?: string
+          package: Json
+          project_id: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          sha256: string
+          size_bytes: number
+          summary?: Json
+          tenant_id: string
+          version: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          label?: string
+          package?: Json
+          project_id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          sha256?: string
+          size_bytes?: number
+          summary?: Json
+          tenant_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runtime_packages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runtime_packages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       simulation_tags: {
         Row: {
